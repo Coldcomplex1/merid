@@ -40,6 +40,25 @@ You only ever do this once.
 
 ---
 
+## Activating the waitlist (one time, ~3 minutes)
+
+The waitlist form submits to [Formspree](https://formspree.io), a free form backend.
+**Until you connect it, submissions show a success message but are NOT stored anywhere**
+(a browser console warning reminds you of this).
+
+1. Create a free account at <https://formspree.io/register>.
+2. Click **+ New form**, name it e.g. "Merid waitlist", and create it.
+3. Copy the form's endpoint URL. It looks like `https://formspree.io/f/xyzabcde`.
+4. Open **`src/config.ts`** in this repo and replace the placeholder value of
+   `WAITLIST_FORM_ENDPOINT` with your URL (the comment in that file marks the exact spot).
+5. Commit and push to `main`. Done: every signup now appears in your Formspree
+   dashboard, with optional email notifications and CSV export.
+
+The endpoint URL is public by design (it is not a secret key), so keeping it in the
+frontend code is safe and is how Formspree is meant to be used.
+
+---
+
 ## Making an edit and putting it online again
 
 After the one-time setup, the rule is simply:

@@ -1,0 +1,679 @@
+export type Lang = 'vi' | 'en'
+
+/* Text fragments that render with inline styling (gold marks, bold). */
+export interface Segment {
+  text: string
+  mark?: boolean
+  strong?: boolean
+}
+
+export interface Strings {
+  meta: { title: string; tutorialTitle: string }
+  nav: { demo: string; features: string; how: string; tutorial: string; cta: string }
+  hero: {
+    eyebrow: string
+    title1: string
+    titleAccent: string
+    title2: string
+    sub: string
+    ctaDemo: string
+    ctaWaitlist: string
+    tagNote: string
+  }
+  demo: {
+    eyebrow: string
+    title: string
+    sub: string
+    dataset: string
+    frequency: string
+    freqLabels: [string, string, string]
+    replaceToggle: string
+    popupToggle: string
+    counterWord: string
+    counterWords: string
+    counterLink: string
+    counterTail: string
+    hintOn: string
+    hintOff: string
+  }
+  features: {
+    eyebrow: string
+    title: string
+    sub: string
+    cards: { title: string; body: string }[]
+  }
+  panel: {
+    eyebrow: string
+    title: string
+    body: string
+    notes: { term: string; body: string }[]
+    mockupNote: string
+  }
+  how: { eyebrow: string; title: string; steps: { title: string; body: string }[] }
+  benefits: {
+    title1: string
+    title2: string
+    lead: Segment[]
+    support: Segment[]
+  }
+  faq: { eyebrow: string; title: string; sub: string; items: { q: string; a: string }[] }
+  waitlist: {
+    title1: string
+    titleAccent: string
+    title2: string
+    placeholder: string
+    button: string
+    sending: string
+    successTitle: string
+    successBody: string
+    errorInvalid: string
+    errorSubmit: string
+    note: string
+  }
+  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; waitlist: string }
+  tutorial: {
+    eyebrow: string
+    title: string
+    sub: string
+    steps: {
+      title: string
+      intro: string
+      bullets: { term: string; text: string }[]
+      outro?: string
+      caption?: string
+    }[]
+    toolbarCaption: string
+    intensityLabel: string
+    intensityNotes: [string, string, string]
+    progressLabel: string
+    progressUnit: string
+    progressTail: string
+    outroTitle: string
+    outroSub: string
+    ctaDemo: string
+    ctaWaitlist: string
+  }
+}
+
+const vi: Strings = {
+  meta: {
+    title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
+    tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
+  },
+  nav: {
+    demo: 'Demo',
+    features: 'Tính năng',
+    how: 'Cách hoạt động',
+    tutorial: 'Hướng dẫn',
+    cta: 'Tham gia Waitlist',
+  },
+  hero: {
+    eyebrow: 'Tiện ích Chrome cho người Việt học tiếng Anh',
+    title1: 'Học ',
+    titleAccent: 'tiếng Anh',
+    title2: ' ngay khi lướt web tiếng Việt.',
+    sub: 'Merid thay một vài từ tiếng Việt bằng từ vựng tiếng Anh giá trị cao, để mỗi bài báo, blog hay bài đăng bạn đọc đều trở thành một bài học từ vựng tự nhiên.',
+    ctaDemo: 'Thử demo ngay',
+    ctaWaitlist: 'Tham gia Waitlist',
+    tagNote: 'Học theo ngữ cảnh · Miễn phí trong beta',
+  },
+  demo: {
+    eyebrow: 'Demo tương tác',
+    title: 'Xem Merid hoạt động ngay tại đây',
+    sub: 'Đây chính là cách extension hoạt động thật. Đổi bộ từ, chỉnh tần suất, rồi di chuột lên bất kỳ từ nào được highlight.',
+    dataset: 'Bộ từ vựng',
+    frequency: 'Tần suất highlight',
+    freqLabels: ['Ít', 'Vừa', 'Nhiều'],
+    replaceToggle: 'Thay từ trực tiếp',
+    popupToggle: 'Hiện popup giải thích',
+    counterWord: 'từ',
+    counterWords: 'từ',
+    counterLink: 'thuộc bộ',
+    counterTail: 'đang bật trên trang này',
+    hintOn: 'Di chuột hoặc chạm vào từ được highlight để mở popup, y như trên trang web thật.',
+    hintOff: 'Popup đang tắt. Từ vẫn được highlight để mạch đọc của bạn không bị ngắt.',
+  },
+  features: {
+    eyebrow: 'Tính năng',
+    title: 'Extension nhỏ. Cỗ máy từ vựng nghiêm túc.',
+    sub: 'Tất cả xoay quanh một ý tưởng: bạn cứ đọc như bình thường, từ vựng sẽ tự tìm đến bạn.',
+    cards: [
+      {
+        title: 'Thay từ theo ngữ cảnh',
+        body: 'Merid đọc trang web như cách bạn đọc và chỉ thay những từ thật sự có nghĩa trong câu đó. Không nhiễu, không vỡ ngữ pháp.',
+      },
+      {
+        title: 'Nhiều bộ từ vựng',
+        body: 'SAT, B2, C1 và C2 đã sẵn sàng, các bộ từ theo chủ đề và tự tạo đang trong kế hoạch. Bạn chọn mục tiêu, Merid chọn từ đáng học.',
+      },
+      {
+        title: 'Tần suất tùy chỉnh',
+        body: 'Casual, Focused hoặc Locked-in. Bạn quyết định mỗi trang "nặng" đến đâu, từ nhỏ giọt nhẹ nhàng tới cường độ tối đa.',
+      },
+      {
+        title: 'Lưu từ vào deck',
+        body: 'Một chạm "Save to Deck" để giữ lại từ hay. Ôn lại deck của bạn bất cứ khi nào rảnh 5 phút.',
+      },
+      {
+        title: '"I know this"',
+        body: 'Đánh dấu đã thuộc và từ đó biến mất khỏi mọi trang. Merid chỉ dành sự chú ý của bạn cho những từ chưa thuộc.',
+      },
+      {
+        title: 'Chế độ Vie-Eng và Eng-Eng',
+        body: 'Bắt đầu bằng cách nối tiếng Việt với tiếng Anh. Khi đã cứng, chuyển sang giải nghĩa hoàn toàn bằng tiếng Anh để tư duy trực tiếp.',
+      },
+    ],
+  },
+  panel: {
+    eyebrow: 'Bảng điều khiển',
+    title: 'Toàn bộ việc học, gói gọn trong một cú click.',
+    body: 'Mở bảng điều khiển ngay trên thanh công cụ trình duyệt và chỉnh cách Merid hoạt động trên mọi trang. Không dashboard rườm rà, không menu cài đặt ẩn sâu ba tầng.',
+    notes: [
+      { term: 'Tiến độ tuần.', body: 'Biểu đồ nhỏ đếm số từ bạn thuộc mỗi ngày. Giữ chuỗi ngày học rất cuốn.' },
+      { term: 'Đổi bộ từ.', body: 'Chuyển giữa SAT, C1, C2 hoặc tất cả, tùy từng phiên lướt web.' },
+      { term: 'Thanh tần suất.', body: 'Casual cho ngày đọc chill, Locked-in cho mùa thi.' },
+      { term: 'Chế độ học.', body: 'Thay từ trực tiếp, hoặc giữ tiếng Việt và học khi di chuột.' },
+    ],
+    mockupNote: 'Mockup này bấm được thật. Thử xem!',
+  },
+  how: {
+    eyebrow: 'Cách hoạt động',
+    title: 'Ba bước. Không cần thói quen mới.',
+    steps: [
+      {
+        title: 'Lướt web như bình thường',
+        body: 'Đọc web tiếng Việt như mọi ngày: Wikipedia, báo, blog, tài liệu học. Thói quen của bạn không đổi chút nào.',
+      },
+      {
+        title: 'Merid highlight từ đáng học',
+        body: 'Extension chọn từ trong bộ từ vựng bạn đã chọn rồi highlight hoặc thay thế ngay trong trang.',
+      },
+      {
+        title: 'Học mà không đứt mạch đọc',
+        body: 'Di chuột để xem nghĩa, lưu từ vào deck, hoặc đánh dấu đã thuộc. Rồi cứ thế đọc tiếp.',
+      },
+    ],
+  },
+  benefits: {
+    title1: 'Không cần flashcard trước.',
+    title2: 'Không còn list từ nhàm chán.',
+    lead: [
+      { text: 'Việc ' },
+      { text: 'đọc mỗi ngày', mark: true },
+      { text: ' chính là ' },
+      { text: 'bài học', mark: true },
+      { text: '.' },
+    ],
+    support: [
+      { text: 'Dành cho người Việt đang nhắm tới ' },
+      { text: 'SAT', strong: true },
+      { text: ', ' },
+      { text: 'IELTS', strong: true },
+      { text: ', ' },
+      { text: 'tiếng Anh nâng cao', strong: true },
+      { text: ' và ' },
+      { text: 'từ vựng học thuật', strong: true },
+      { text: ', từng trang một.' },
+    ],
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    title: 'Câu hỏi thường gặp',
+    sub: 'Vài câu trả lời nhanh trước khi bạn tham gia.',
+    items: [
+      {
+        q: 'Extension này hoạt động như thế nào?',
+        a: 'Khi bạn đọc một trang web tiếng Việt, Merid chọn ra một vài từ thuộc bộ từ vựng bạn đã chọn rồi highlight hoặc thay bằng từ tiếng Anh tương ứng. Di chuột lên từ đó là thấy nghĩa, phát âm, từ đồng nghĩa và câu ví dụ, ngay tại chỗ.',
+      },
+      {
+        q: 'Extension có thay đổi toàn bộ nội dung trang web không?',
+        a: 'Không. Merid chỉ chạm vào một vài từ nằm trong bộ từ vựng bạn chọn, phần còn lại của trang giữ nguyên 100%. Bạn có thể giảm tần suất hoặc tắt extension bất cứ lúc nào chỉ với một công tắc.',
+      },
+      {
+        q: 'Mình có thể chọn trình độ từ vựng không?',
+        a: 'Có. Bạn chọn bộ từ theo mục tiêu của mình trong bảng điều khiển và đổi lúc nào cũng được. Thanh tần suất còn cho bạn quyết định học nhẹ nhàng hay cường độ cao.',
+      },
+      {
+        q: 'Có những bộ từ vựng nào?',
+        a: 'Hiện tại có SAT, B2, C1 và C2. Các bộ từ theo chủ đề và bộ từ tự tạo đang nằm trong kế hoạch, nhưng chưa ra mắt.',
+      },
+      {
+        q: 'Extension có miễn phí không?',
+        a: 'Trong giai đoạn beta, Merid hoàn toàn miễn phí. Kế hoạch dài hạn sẽ được thông báo sớm, và người dùng waitlist luôn biết trước tiên.',
+      },
+      {
+        q: 'Dữ liệu của mình có được bảo mật không?',
+        a: 'Có. Merid chỉ xử lý văn bản trên trang để chọn từ cần thay, còn tiến trình học của bạn được lưu ngay trên trình duyệt. Merid không bán dữ liệu của bạn.',
+      },
+      {
+        q: 'Khi nào extension ra mắt?',
+        a: 'Merid đang trong giai đoạn beta riêng tư. Đăng ký waitlist để nhận email ngay khi bản public sẵn sàng trên Chrome Web Store.',
+      },
+      {
+        q: 'Mình đăng ký waitlist để làm gì?',
+        a: 'Bạn được quyền truy cập sớm, mở khóa đầy đủ các bộ từ SAT, B2, C1, C2 ngay từ ngày đầu, và có tiếng nói trực tiếp về những tính năng tiếp theo.',
+      },
+    ],
+  },
+  waitlist: {
+    title1: 'Biến cả Internet thành ',
+    titleAccent: 'lớp học từ vựng',
+    title2: ' của bạn.',
+    placeholder: 'Nhập email của bạn',
+    button: 'Tham gia Waitlist',
+    sending: 'Đang gửi...',
+    successTitle: 'Bạn đã có tên trong danh sách!',
+    successBody: 'Merid sẽ gửi email cho bạn ngay khi extension sẵn sàng trên trình duyệt.',
+    errorInvalid: 'Hmm, email này có vẻ chưa đúng. Bạn kiểm tra lại nhé?',
+    errorSubmit: 'Có lỗi khi gửi đăng ký. Bạn thử lại sau một lát nhé.',
+    note: 'Người dùng sớm sẽ được truy cập các bộ từ SAT, B2, C1 và C2 trước tiên.',
+  },
+  footer: {
+    tagline: 'Làm cho người Việt học tiếng Anh.',
+    demo: 'Demo',
+    features: 'Tính năng',
+    tutorial: 'Hướng dẫn',
+    faq: 'FAQ',
+    waitlist: 'Waitlist',
+  },
+  tutorial: {
+    eyebrow: 'Hướng dẫn',
+    title: 'Cách dùng Merid',
+    sub: 'Năm phút đi từ cài đặt tới thuộc những từ đầu tiên. Mọi mockup trên trang này đều tương tác được, cứ vừa đọc vừa thử nhé.',
+    steps: [
+      {
+        title: 'Cài đặt và ghim Merid',
+        intro: 'Merid đang trong giai đoạn beta riêng tư. Khi lời mời tới, cài đặt chỉ mất chưa đầy một phút:',
+        bullets: [
+          { term: 'Thêm vào Chrome.', text: 'Mở link cài đặt trong Chrome và bấm "Add to Chrome".' },
+          {
+            term: 'Ghim lại.',
+            text: 'Bấm biểu tượng mảnh ghép ở góc trên bên phải của Chrome, rồi bấm ghim cạnh Merid.',
+          },
+        ],
+        outro:
+          'Sau khi ghim, chữ M vàng nằm ngay cạnh thanh địa chỉ. Icon đó là toàn bộ giao diện: một click mở tất cả.',
+      },
+      {
+        title: 'Mở bảng điều khiển và chọn bộ từ',
+        intro:
+          'Bấm chữ M vàng để mở bảng điều khiển. Việc đầu tiên là chọn bộ từ vựng, thứ quyết định Merid dạy bạn loại từ nào:',
+        bullets: [
+          { term: 'SAT.', text: 'Từ vựng cho kỳ thi SAT và các bài thi tuyển sinh tương tự.' },
+          { term: 'B2, C1, C2.', text: 'Các cấp CEFR, từ trên trung cấp tới tiếng Anh học thuật gần bản xứ.' },
+          { term: 'All.', text: 'Tất cả bộ từ cùng lúc, cho độ đa dạng tối đa.' },
+        ],
+        outro: 'Bạn đổi bộ từ lúc nào cũng được. Từ đã thuộc sẽ luôn được ẩn, bất kể bộ từ nào đang bật.',
+        caption: 'Đây là bảng điều khiển thật. Bấm thử đi.',
+      },
+      {
+        title: 'Chỉnh cường độ học',
+        intro: 'Thanh tần suất highlight quyết định Merid chạm vào bao nhiêu từ trên mỗi trang:',
+        bullets: [
+          { term: 'Casual.', text: 'Vài từ mỗi trang. Mạch đọc gần như nguyên vẹn.' },
+          { term: 'Focused.', text: 'Một dòng từ mới đều đặn trên mỗi bài viết.' },
+          { term: 'Locked-in.', text: 'Cường độ tối đa. Mọi từ đủ điều kiện đều được highlight.' },
+        ],
+        outro: 'Tuần đầu hãy để Casual, quen rồi thì tăng dần.',
+        caption: 'Kéo thanh trượt hoặc chạm vào nhãn.',
+      },
+      {
+        title: 'Chọn cách từ xuất hiện',
+        intro: 'Hai công tắc thay đổi cách Merid đưa từ mới tới bạn:',
+        bullets: [
+          {
+            term: 'Thay từ trực tiếp BẬT.',
+            text: 'Từ tiếng Việt được thay bằng từ tiếng Anh ngay trong câu, và ngữ cảnh xung quanh sẽ dạy bạn nghĩa của từ.',
+          },
+          {
+            term: 'Thay từ trực tiếp TẮT.',
+            text: 'Từ tiếng Việt giữ nguyên và được highlight, nghĩa tiếng Anh hiện ra khi di chuột.',
+          },
+        ],
+        outro:
+          'Bên dưới, chế độ Vie - Eng hiện nghĩa tiếng Việt trong popup, còn Eng - Eng giải nghĩa từ tiếng Anh hoàn toàn bằng tiếng Anh. Chuyển sang Eng - Eng là bài luyện tuyệt vời khi bạn chạm C1.',
+        caption: 'Gạt công tắc và xem câu thay đổi.',
+      },
+      {
+        title: 'Đọc, di chuột, học',
+        intro:
+          'Giờ cứ lướt web như mọi khi. Gặp từ được highlight, di chuột lên (hoặc chạm trên màn hình cảm ứng). Popup mở ra với đủ thứ bạn cần:',
+        bullets: [
+          { term: 'Phần cốt lõi.', text: 'Từ loại, phát âm và định nghĩa tiếng Anh ngắn gọn.' },
+          { term: 'Đồng nghĩa và trái nghĩa.', text: 'Chip vàng là từ gần nghĩa, chip nhạt là từ trái nghĩa.' },
+          { term: 'Ngữ cảnh.', text: 'Câu ví dụ, nghĩa tiếng Việt và từ gốc đã được thay.' },
+        ],
+        caption: 'Thử ngay: di chuột lên từ được highlight.',
+      },
+      {
+        title: 'Lưu lại hoặc gạt đi',
+        intro: 'Hai nút ở cuối mỗi popup giúp việc học của bạn gọn gàng:',
+        bullets: [
+          { term: 'Save to Deck.', text: 'Thêm từ vào deck ôn tập cá nhân để luyện lại sau.' },
+          { term: 'I know this.', text: 'Đánh dấu đã thuộc. Merid sẽ không highlight từ đó nữa, trên mọi trang.' },
+        ],
+        outro:
+          'Hãy thành thật với "I know this". Danh sách đã thuộc càng chuẩn, highlight càng thông minh, vì Merid chỉ dồn sự chú ý của bạn vào từ bạn thật sự cần.',
+        caption: 'Popup nào cũng kết thúc bằng hai nút này.',
+      },
+      {
+        title: 'Theo dõi tiến độ',
+        intro:
+          'Biểu đồ tuần trên đầu bảng điều khiển đếm số từ bạn thuộc mỗi ngày. Nhỏ thôi, nhưng chuỗi ngày học tạo động lực bất ngờ.',
+        bullets: [],
+        outro:
+          'Khi một bộ từ bắt đầu thấy dễ, đó là tín hiệu: tăng tần suất, đổi sang bộ từ khó hơn, hoặc bật chế độ Eng - Eng.',
+      },
+    ],
+    toolbarCaption: 'Ghim cạnh thanh địa chỉ, luôn cách bạn đúng một cú click',
+    intensityLabel: 'tần suất highlight',
+    intensityNotes: [
+      'Nhỏ giọt nhẹ nhàng: khoảng 2 tới 3 từ mới mỗi trang.',
+      'Một dòng từ mới đều đặn trên mọi bài viết.',
+      'Cường độ tối đa. Rất hợp mùa ôn thi.',
+    ],
+    progressLabel: 'Số từ đã thuộc tuần này',
+    progressUnit: 'từ',
+    progressTail: 'đã thuộc trong tuần này. Giữ chuỗi học mỗi ngày nhé.',
+    outroTitle: 'Toàn bộ quy trình chỉ có vậy.',
+    outroSub: 'Đọc web là thói quen bạn đã có sẵn. Merid chỉ nâng cấp nó.',
+    ctaDemo: 'Thử demo tương tác',
+    ctaWaitlist: 'Tham gia Waitlist',
+  },
+}
+
+const en: Strings = {
+  meta: {
+    title: 'Merid: Learn English while browsing Vietnamese websites',
+    tutorialTitle: 'Tutorial: How to use Merid',
+  },
+  nav: {
+    demo: 'Demo',
+    features: 'Features',
+    how: 'How it works',
+    tutorial: 'Tutorial',
+    cta: 'Join the Waitlist',
+  },
+  hero: {
+    eyebrow: 'Chrome extension for Vietnamese learners',
+    title1: 'Learn ',
+    titleAccent: 'English',
+    title2: ' while browsing Vietnamese websites.',
+    sub: 'Merid replaces selected Vietnamese words with high-value English vocabulary, so every article, blog, and post becomes a natural vocab lesson.',
+    ctaDemo: 'Try the Demo',
+    ctaWaitlist: 'Join the Waitlist',
+    tagNote: 'Context-aware learning · Free during beta',
+  },
+  demo: {
+    eyebrow: 'Interactive demo',
+    title: 'See it work in real time',
+    sub: 'This is the real behavior of the extension. Change the dataset, tune the frequency, and hover any highlighted word.',
+    dataset: 'Vocabulary dataset',
+    frequency: 'Highlight frequency',
+    freqLabels: ['Low', 'Medium', 'High'],
+    replaceToggle: 'Replace words directly',
+    popupToggle: 'Show popup explanation',
+    counterWord: 'word',
+    counterWords: 'words',
+    counterLink: 'from the',
+    counterTail: 'dataset active on this page',
+    hintOn: 'Hover or tap a highlighted word to see the popup, exactly like on a real page.',
+    hintOff: 'Popups are off. Words stay highlighted so your reading flow is never interrupted.',
+  },
+  features: {
+    eyebrow: 'Features',
+    title: 'Small extension. Serious vocabulary engine.',
+    sub: 'Everything is built around one idea: you keep reading what you already read, and the words come to you.',
+    cards: [
+      {
+        title: 'Context-aware replacement',
+        body: 'Merid reads the page the way you do and only swaps words that carry real meaning in that sentence. No random noise, no broken grammar.',
+      },
+      {
+        title: 'Multiple vocab datasets',
+        body: 'SAT, B2, C1, and C2 today, with themed and custom datasets on the roadmap. Pick your goal, and Merid picks the words worth learning.',
+      },
+      {
+        title: 'Adjustable frequency',
+        body: 'Casual, Focused, or Locked-in. You decide how intense each page gets, from a gentle drip of new words to full immersion.',
+      },
+      {
+        title: 'Save words to deck',
+        body: 'One tap on "Save to Deck" keeps any word for later. Review your personal deck whenever you have five spare minutes.',
+      },
+      {
+        title: '"I know this"',
+        body: 'Mark a word as mastered and it stops appearing everywhere. Merid only spends your attention on words you have not learned yet.',
+      },
+      {
+        title: 'Vie-Eng and Eng-Eng modes',
+        body: 'Start by mapping Vietnamese to English. When you are ready, switch to English-only explanations and think in English directly.',
+      },
+    ],
+  },
+  panel: {
+    eyebrow: 'The extension panel',
+    title: 'Your whole learning setup, one click away.',
+    body: 'Open the panel from your browser toolbar and tune how Merid behaves on every site. No account dashboards, no settings pages buried three levels deep.',
+    notes: [
+      { term: 'Weekly progress.', body: 'A tiny chart tracks the words you mastered each day. Streaks feel good.' },
+      { term: 'Dataset switch.', body: 'Jump between SAT, C1, C2, or everything at once, per browsing session.' },
+      { term: 'Frequency slider.', body: 'Casual for chill reading days, Locked-in for exam season.' },
+      { term: 'Learning modes.', body: 'Replace words directly, or keep Vietnamese and learn on hover.' },
+    ],
+    mockupNote: 'This is a live mockup. Click around.',
+  },
+  how: {
+    eyebrow: 'How it works',
+    title: 'Three steps. Zero new habits.',
+    steps: [
+      {
+        title: 'Browse normally',
+        body: 'Read Vietnamese websites like you always do: Wikipedia, news, blogs, and school materials. Nothing about your routine changes.',
+      },
+      {
+        title: 'Merid highlights useful words',
+        body: 'The extension picks words from your selected vocabulary dataset and highlights or replaces them right inside the page.',
+      },
+      {
+        title: 'Learn without breaking flow',
+        body: 'Hover to see meanings, save words to your deck, or mark them as mastered. Then just keep reading.',
+      },
+    ],
+  },
+  benefits: {
+    title1: 'No flashcards first.',
+    title2: 'No boring word lists.',
+    lead: [
+      { text: 'Your normal ' },
+      { text: 'reading', mark: true },
+      { text: ' becomes the ' },
+      { text: 'lesson', mark: true },
+      { text: '.' },
+    ],
+    support: [
+      { text: 'Built for Vietnamese learners aiming for ' },
+      { text: 'SAT', strong: true },
+      { text: ', ' },
+      { text: 'IELTS', strong: true },
+      { text: ', ' },
+      { text: 'advanced English', strong: true },
+      { text: ', and ' },
+      { text: 'academic vocabulary', strong: true },
+      { text: ', one page at a time.' },
+    ],
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    title: 'Frequently asked questions',
+    sub: 'Quick answers before you join.',
+    items: [
+      {
+        q: 'How does the extension work?',
+        a: 'While you read a Vietnamese page, Merid picks a few words from your chosen vocabulary dataset and highlights them or swaps them for the matching English word. Hover any of them to see the meaning, pronunciation, synonyms, and an example sentence, right in place.',
+      },
+      {
+        q: 'Does it replace the entire webpage?',
+        a: 'No. Merid only touches a handful of words that belong to your selected dataset; the rest of the page stays 100% untouched. You can lower the frequency or switch the extension off any time with one toggle.',
+      },
+      {
+        q: 'Can I choose my vocabulary level?',
+        a: 'Yes. You pick the dataset that matches your goal in the panel and can change it whenever you like. The frequency slider also lets you decide between light exposure and full immersion.',
+      },
+      {
+        q: 'What vocabulary sets are available?',
+        a: 'SAT, B2, C1, and C2 today. Themed and custom datasets are on the roadmap, but not released yet.',
+      },
+      {
+        q: 'Is the extension free?',
+        a: 'Merid is completely free during the beta. Long-term plans will be announced early, and waitlist members always hear first.',
+      },
+      {
+        q: 'Is my data private?',
+        a: 'Yes. Merid only processes the text on the page to decide which words to replace, and your learning progress is stored in your own browser. Merid does not sell your data.',
+      },
+      {
+        q: 'When will the extension launch?',
+        a: 'Merid is in private beta right now. Join the waitlist and you will get an email the moment the public version lands on the Chrome Web Store.',
+      },
+      {
+        q: 'Why should I join the waitlist?',
+        a: 'Early access, all SAT, B2, C1, and C2 datasets unlocked from day one, and a direct say in which features come next.',
+      },
+    ],
+  },
+  waitlist: {
+    title1: 'Turn the entire internet into your ',
+    titleAccent: 'vocabulary classroom',
+    title2: '.',
+    placeholder: 'Enter your email',
+    button: 'Join the Waitlist',
+    sending: 'Sending...',
+    successTitle: 'You’re on the list!',
+    successBody: 'We’ll email you the moment Merid is ready for your browser.',
+    errorInvalid: 'Hmm, that email doesn’t look right. Mind checking it?',
+    errorSubmit: 'Something went wrong while submitting. Please try again in a moment.',
+    note: 'Early users will get access to SAT, B2, C1, and C2 datasets.',
+  },
+  footer: {
+    tagline: 'Made for Vietnamese learners.',
+    demo: 'Demo',
+    features: 'Features',
+    tutorial: 'Tutorial',
+    faq: 'FAQ',
+    waitlist: 'Waitlist',
+  },
+  tutorial: {
+    eyebrow: 'Tutorial',
+    title: 'How to use Merid',
+    sub: 'A five minute walkthrough, from installing the extension to mastering your first words. Every mockup on this page is interactive, so try things as you read.',
+    steps: [
+      {
+        title: 'Install and pin Merid',
+        intro: 'Merid is currently in private beta. When your invite arrives, the install takes under a minute:',
+        bullets: [
+          { term: 'Add it.', text: 'Open the install link in Chrome and click "Add to Chrome".' },
+          {
+            term: 'Pin it.',
+            text: 'Click the puzzle icon at the top right of Chrome, then press the pin next to Merid.',
+          },
+        ],
+        outro:
+          'Once pinned, the gold M sits next to your address bar. That icon is the whole interface: one click opens everything.',
+      },
+      {
+        title: 'Open the panel and choose your dataset',
+        intro:
+          'Click the gold M to open the control panel. The first thing to pick is your vocabulary dataset, which decides what kind of words Merid teaches you:',
+        bullets: [
+          { term: 'SAT.', text: 'Vocabulary for the SAT and similar admission tests.' },
+          { term: 'B2, C1, C2.', text: 'CEFR levels, from upper-intermediate up to near-native academic English.' },
+          { term: 'All.', text: 'Every dataset at once, for maximum variety.' },
+        ],
+        outro:
+          'You can switch datasets any time. Words you have already mastered stay hidden no matter which dataset is active.',
+        caption: 'This is the real panel. Click around.',
+      },
+      {
+        title: 'Set your intensity',
+        intro: 'The highlight frequency slider decides how many words Merid touches on each page:',
+        bullets: [
+          { term: 'Casual.', text: 'A few words per page. Reading stays almost untouched.' },
+          { term: 'Focused.', text: 'A steady stream of new vocabulary on every article.' },
+          { term: 'Locked-in.', text: 'Maximum exposure. Every eligible word gets highlighted.' },
+        ],
+        outro: 'Start on Casual for the first week, then move up as it starts feeling natural.',
+        caption: 'Drag the slider or tap a label.',
+      },
+      {
+        title: 'Choose how words appear',
+        intro: 'Two switches change how Merid presents new words:',
+        bullets: [
+          {
+            term: 'Replace words directly ON.',
+            text: 'The Vietnamese word is swapped for the English one right inside the sentence, so the surrounding context teaches you the meaning.',
+          },
+          {
+            term: 'Replace words directly OFF.',
+            text: 'The Vietnamese word stays put, highlighted, and the English appears when you hover.',
+          },
+        ],
+        outro:
+          'Below that, Vie - Eng mode shows Vietnamese meanings in the popup, while Eng - Eng mode explains English words in English. Switching to Eng - Eng is excellent practice once you reach C1.',
+        caption: 'Flip the toggle and watch the sentence change.',
+      },
+      {
+        title: 'Read, hover, learn',
+        intro:
+          'Now just browse like you always do. When you meet a highlighted word, hover over it (or tap it on a touchscreen). A popup opens with everything you need:',
+        bullets: [
+          { term: 'The essentials.', text: 'Part of speech, pronunciation, and a short English definition.' },
+          {
+            term: 'Synonyms and opposites.',
+            text: 'Gold chips are words with a similar meaning, pale chips are opposites.',
+          },
+          {
+            term: 'Context.',
+            text: 'An example sentence, the Vietnamese meaning, and the original word that was replaced.',
+          },
+        ],
+        caption: 'Try it: hover the highlighted word.',
+      },
+      {
+        title: 'Save it or clear it',
+        intro: 'The two buttons at the bottom of each popup keep your learning organized:',
+        bullets: [
+          { term: 'Save to Deck.', text: 'Adds the word to your personal review deck so you can practice it later.' },
+          { term: 'I know this.', text: 'Marks the word as mastered. Merid never highlights it again, on any page.' },
+        ],
+        outro:
+          'Be honest with "I know this". The cleaner your mastered list, the smarter the highlights become, because Merid only spends your attention on words you actually need.',
+        caption: 'Every popup ends with these two buttons.',
+      },
+      {
+        title: 'Watch your progress',
+        intro:
+          'The weekly chart at the top of the panel counts the words you mastered each day. It is a small thing, but streaks are surprisingly motivating.',
+        bullets: [],
+        outro:
+          'When a dataset starts feeling easy, that is your signal: raise the frequency, switch to a harder dataset, or turn on Eng - Eng mode.',
+      },
+    ],
+    toolbarCaption: 'Pinned next to the address bar, always one click away',
+    intensityLabel: 'highlight frequency',
+    intensityNotes: [
+      'A gentle drip: roughly 2 to 3 new words per page.',
+      'A steady stream of new words on every article.',
+      'Maximum exposure. Popular right before exams.',
+    ],
+    progressLabel: 'Words mastered this week',
+    progressUnit: 'words',
+    progressTail: 'mastered this week. Keep the streak alive.',
+    outroTitle: 'That is the whole workflow.',
+    outroSub: 'Reading is the habit you already have. Merid just upgrades it.',
+    ctaDemo: 'Try the interactive demo',
+    ctaWaitlist: 'Join the Waitlist',
+  },
+}
+
+export const STRINGS: Record<Lang, Strings> = { vi, en }

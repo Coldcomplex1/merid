@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom'
-
-const LINKS = [
-  { label: 'Demo', to: '/#demo' },
-  { label: 'Features', to: '/#features' },
-  { label: 'Tutorial', to: '/tutorial' },
-  { label: 'Waitlist', to: '/#waitlist' },
-]
+import { useLang } from '../../i18n/LanguageContext'
 
 export default function Footer() {
+  const { t } = useLang()
+
+  const links = [
+    { label: t.footer.demo, to: '/#demo' },
+    { label: t.footer.features, to: '/#features' },
+    { label: t.footer.faq, to: '/#faq' },
+    { label: t.footer.tutorial, to: '/tutorial' },
+    { label: t.footer.waitlist, to: '/#waitlist' },
+  ]
+
   return (
     <footer className="border-t border-navy-700/60 py-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-5 sm:flex-row sm:px-8">
@@ -19,11 +23,11 @@ export default function Footer() {
         </div>
 
         <p className="text-xs text-navy-300">
-          © {new Date().getFullYear()} Merid. Made for Vietnamese learners.
+          © {new Date().getFullYear()} Merid. {t.footer.tagline}
         </p>
 
-        <div className="flex gap-6 text-xs font-semibold text-navy-200">
-          {LINKS.map((link) => (
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold text-navy-200">
+          {links.map((link) => (
             <Link key={link.to} to={link.to} className="transition-colors hover:text-gold-300">
               {link.label}
             </Link>

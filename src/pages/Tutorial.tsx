@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import Reveal from '../components/ui/Reveal'
 import ExtensionPanel from '../components/ui/ExtensionPanel'
 import VocabPopupCard from '../components/ui/VocabPopupCard'
 import Toggle from '../components/ui/Toggle'
 import { VOCAB } from '../data/vocab'
+import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
 /* ── Step layout ─────────────────────────────────────────────── */
 
@@ -49,7 +50,7 @@ function Bullet({ term, children }: { term: string; children: ReactNode }) {
 
 /* ── Step visuals ────────────────────────────────────────────── */
 
-function ToolbarDemo() {
+function ToolbarDemo({ caption }: { caption: string }) {
   return (
     <div className="w-full max-w-sm overflow-hidden rounded-2xl shadow-card ring-1 ring-navy-600/60">
       <div className="flex items-center gap-2 bg-cream-100 px-4 py-3">
@@ -66,34 +67,30 @@ function ToolbarDemo() {
         </span>
       </div>
       <div className="bg-navy-800 px-4 py-3 text-center text-xs font-semibold text-gold-300">
-        Pinned next to the address bar, always one click away
+        {caption}
       </div>
     </div>
   )
 }
 
 function IntensityDemo() {
+  const { t } = useLang()
   const [freq, setFreq] = useState(1)
   const LABELS = ['Casual', 'Focused', 'Locked-in']
-  const NOTES = [
-    'A gentle drip: roughly 2 to 3 new words per page.',
-    'A steady stream of new words on every article.',
-    'Maximum exposure. Popular right before exams.',
-  ]
 
   return (
     <div className="w-80 max-w-full rounded-3xl bg-navy-850 p-6 shadow-panel ring-1 ring-navy-600/50">
-      <p className="text-sm text-cream-50">highlight frequency</p>
+      <p className="text-sm text-cream-50">{t.tutorial.intensityLabel}</p>
       <input
         type="range"
         min={0}
         max={2}
         step={1}
         value={freq}
-        aria-label="Highlight frequency"
+        aria-label={t.tutorial.intensityLabel}
         onChange={(e) => setFreq(Number(e.target.value))}
         className="slider-gold mt-3"
-        style={{ '--slider-fill': `${(freq / 2) * 100}%` } as React.CSSProperties}
+        style={{ '--slider-fill': `${(freq / 2) * 100}%` } as CSSProperties}
       />
       <div className="mt-1 flex justify-between">
         {LABELS.map((label, i) => (
@@ -110,26 +107,27 @@ function IntensityDemo() {
         ))}
       </div>
       <p className="mt-4 rounded-xl bg-navy-800 px-4 py-3 text-center text-xs text-navy-200 ring-1 ring-navy-600/40">
-        {NOTES[freq]}
+        {t.tutorial.intensityNotes[freq]}
       </p>
     </div>
   )
 }
 
 function ModeDemo() {
+  const { t } = useLang()
   const [replace, setReplace] = useState(true)
   const entry = VOCAB.significant
 
   return (
     <div className="w-full max-w-sm rounded-3xl bg-cream-50 p-6 text-ink shadow-card">
-      <p className="font-wiki text-lg leading-loose font-semibold">
+      <p className="font-wiki text-lg leading-loose font-semibold" lang="vi">
         Một vài từ{' '}
         <span className={replace ? 'hl-en' : 'hl-vi'}>{replace ? entry.word : entry.vi}</span> sẽ xuất
         hiện ngay trong câu bạn đang đọc.
       </p>
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-navy-200/60 pt-4">
-        <span className="text-sm font-semibold text-navy-700">Replace words directly</span>
-        <Toggle on={replace} onChange={setReplace} label="Replace words directly" surface="light" />
+        <span className="text-sm font-semibold text-navy-700">{t.demo.replaceToggle}</span>
+        <Toggle on={replace} onChange={setReplace} label={t.demo.replaceToggle} surface="light" />
       </div>
     </div>
   )
@@ -142,7 +140,7 @@ function HoverDemo() {
   return (
     <div className="w-full max-w-sm">
       <div className="rounded-3xl bg-cream-50 p-6 text-ink shadow-card">
-        <p className="font-wiki text-lg leading-loose font-semibold">
+        <p className="font-wiki text-lg leading-loose font-semibold" lang="vi">
           Khi gặp một từ{' '}
           <button
             type="button"
@@ -165,6 +163,7 @@ function HoverDemo() {
 }
 
 function ProgressDemo() {
+  const { t } = useLang()
   const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
   const BARS = [3, 5, 2, 6, 4, 1, 2]
   const max = Math.max(...BARS)
@@ -172,7 +171,7 @@ function ProgressDemo() {
   return (
     <div className="w-80 max-w-full rounded-3xl bg-navy-850 p-6 shadow-panel ring-1 ring-navy-600/50">
       <p className="text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-        Words mastered this week
+        {t.tutorial.progressLabel}
       </p>
       <div className="mt-4 flex items-end justify-between border-b border-gold-400/60 pb-2">
         {DAYS.map((day, i) => (
@@ -189,8 +188,10 @@ function ProgressDemo() {
         ))}
       </div>
       <p className="mt-4 text-center text-xs text-navy-200">
-        <span className="font-bold text-gold-300">{BARS.reduce((a, b) => a + b, 0)} words</span>{' '}
-        mastered this week. Keep the streak alive.
+        <span className="font-bold text-gold-300">
+          {BARS.reduce((a, b) => a + b, 0)} {t.tutorial.progressUnit}
+        </span>{' '}
+        {t.tutorial.progressTail}
       </p>
     </div>
   )
@@ -199,12 +200,19 @@ function ProgressDemo() {
 /* ── Page ────────────────────────────────────────────────────── */
 
 export default function Tutorial() {
-  useEffect(() => {
-    document.title = 'Tutorial: How to use Merid'
-    return () => {
-      document.title = 'Merid: Learn English while browsing Vietnamese websites'
-    }
-  }, [])
+  const { t } = useLang()
+  usePageTitle(t.meta.tutorialTitle)
+
+  const steps = t.tutorial.steps
+  const visuals: ReactNode[] = [
+    <ToolbarDemo key="toolbar" caption={t.tutorial.toolbarCaption} />,
+    <ExtensionPanel key="panel" />,
+    <IntensityDemo key="intensity" />,
+    <ModeDemo key="mode" />,
+    <HoverDemo key="hover" />,
+    <VocabPopupCard key="card" entry={VOCAB.solitude} />,
+    <ProgressDemo key="progress" />,
+  ]
 
   return (
     <div className="relative overflow-hidden">
@@ -219,184 +227,57 @@ export default function Tutorial() {
 
       <div className="relative mx-auto max-w-5xl px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-extrabold tracking-[0.22em] text-gold-400 uppercase">Tutorial</p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
-            How to use Merid
-          </h1>
-          <p className="mt-4 text-lg text-navy-200">
-            A five minute walkthrough, from installing the extension to mastering your first words.
-            Every mockup on this page is interactive, so try things as you read.
+          <p className="text-xs font-extrabold tracking-[0.22em] text-gold-400 uppercase">
+            {t.tutorial.eyebrow}
           </p>
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
+            {t.tutorial.title}
+          </h1>
+          <p className="mt-4 text-lg text-navy-200">{t.tutorial.sub}</p>
         </div>
 
         <div className="mt-16 space-y-8">
-          <Step
-            number="01"
-            title="Install and pin Merid"
-            visual={<ToolbarDemo />}
-          >
-            <p>
-              Merid is currently in private beta. When your invite arrives, the install takes under a
-              minute:
-            </p>
-            <ul className="space-y-3">
-              <Bullet term="Add it.">Open the install link in Chrome and click "Add to Chrome".</Bullet>
-              <Bullet term="Pin it.">
-                Click the puzzle icon at the top right of Chrome, then press the pin next to Merid.
-              </Bullet>
-            </ul>
-            <p>
-              Once pinned, the gold M sits next to your address bar. That icon is the whole interface:
-              one click opens everything.
-            </p>
-          </Step>
-
-          <Step
-            number="02"
-            title="Open the panel and choose your dataset"
-            visual={<ExtensionPanel />}
-            caption="This is the real panel. Click around."
-          >
-            <p>
-              Click the gold M to open the control panel. The first thing to pick is your vocabulary
-              dataset, which decides what kind of words Merid teaches you:
-            </p>
-            <ul className="space-y-3">
-              <Bullet term="SAT.">Vocabulary for the SAT and similar admission tests.</Bullet>
-              <Bullet term="B2, C1, C2.">
-                CEFR levels, from upper-intermediate up to near-native academic English.
-              </Bullet>
-              <Bullet term="All.">Every dataset at once, for maximum variety.</Bullet>
-            </ul>
-            <p>
-              You can switch datasets any time. Words you have already mastered stay hidden no matter
-              which dataset is active.
-            </p>
-          </Step>
-
-          <Step
-            number="03"
-            title="Set your intensity"
-            visual={<IntensityDemo />}
-            caption="Drag the slider or tap a label."
-          >
-            <p>
-              The highlight frequency slider decides how many words Merid touches on each page:
-            </p>
-            <ul className="space-y-3">
-              <Bullet term="Casual.">A few words per page. Reading stays almost untouched.</Bullet>
-              <Bullet term="Focused.">A steady stream of new vocabulary on every article.</Bullet>
-              <Bullet term="Locked-in.">
-                Maximum exposure. Every eligible word gets highlighted.
-              </Bullet>
-            </ul>
-            <p>Start on Casual for the first week, then move up as it starts feeling natural.</p>
-          </Step>
-
-          <Step
-            number="04"
-            title="Choose how words appear"
-            visual={<ModeDemo />}
-            caption="Flip the toggle and watch the sentence change."
-          >
-            <p>Two switches change how Merid presents new words:</p>
-            <ul className="space-y-3">
-              <Bullet term="Replace words directly ON.">
-                The Vietnamese word is swapped for the English one right inside the sentence, so the
-                surrounding context teaches you the meaning.
-              </Bullet>
-              <Bullet term="Replace words directly OFF.">
-                The Vietnamese word stays put, highlighted, and the English appears when you hover.
-              </Bullet>
-            </ul>
-            <p>
-              Below that, <strong className="text-cream-50">Vie - Eng mode</strong> shows Vietnamese
-              meanings in the popup, while <strong className="text-cream-50">Eng - Eng mode</strong>{' '}
-              explains English words in English. Switching to Eng - Eng is excellent practice once you
-              reach C1.
-            </p>
-          </Step>
-
-          <Step
-            number="05"
-            title="Read, hover, learn"
-            visual={<HoverDemo />}
-            caption="Try it: hover the highlighted word."
-          >
-            <p>
-              Now just browse like you always do. When you meet a highlighted word, hover over it (or
-              tap it on a touchscreen). A popup opens with everything you need:
-            </p>
-            <ul className="space-y-3">
-              <Bullet term="The essentials.">
-                Part of speech, pronunciation, and a short English definition.
-              </Bullet>
-              <Bullet term="Synonyms and opposites.">
-                Gold chips are words with a similar meaning, pale chips are opposites.
-              </Bullet>
-              <Bullet term="Context.">
-                An example sentence, the Vietnamese meaning, and the original word that was replaced.
-              </Bullet>
-            </ul>
-          </Step>
-
-          <Step
-            number="06"
-            title="Save it or clear it"
-            visual={<VocabPopupCard entry={VOCAB.solitude} />}
-            caption="Every popup ends with these two buttons."
-          >
-            <p>The two buttons at the bottom of each popup keep your learning organized:</p>
-            <ul className="space-y-3">
-              <Bullet term="Save to Deck.">
-                Adds the word to your personal review deck so you can practice it later.
-              </Bullet>
-              <Bullet term="I know this.">
-                Marks the word as mastered. Merid never highlights it again, on any page.
-              </Bullet>
-            </ul>
-            <p>
-              Be honest with "I know this". The cleaner your mastered list, the smarter the highlights
-              become, because Merid only spends your attention on words you actually need.
-            </p>
-          </Step>
-
-          <Step
-            number="07"
-            title="Watch your progress"
-            visual={<ProgressDemo />}
-          >
-            <p>
-              The weekly chart at the top of the panel counts the words you mastered each day. It is a
-              small thing, but streaks are surprisingly motivating.
-            </p>
-            <p>
-              When a dataset starts feeling easy, that is your signal: raise the frequency, switch to a
-              harder dataset, or turn on Eng - Eng mode.
-            </p>
-          </Step>
+          {steps.map((step, i) => (
+            <Step
+              key={i}
+              number={String(i + 1).padStart(2, '0')}
+              title={step.title}
+              visual={visuals[i]}
+              caption={step.caption}
+            >
+              <p>{step.intro}</p>
+              {step.bullets.length > 0 && (
+                <ul className="space-y-3">
+                  {step.bullets.map((bullet) => (
+                    <Bullet key={bullet.term} term={bullet.term}>
+                      {bullet.text}
+                    </Bullet>
+                  ))}
+                </ul>
+              )}
+              {step.outro && <p>{step.outro}</p>}
+            </Step>
+          ))}
         </div>
 
         <Reveal>
           <div className="mt-20 text-center">
             <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
-              That is the whole workflow.
+              {t.tutorial.outroTitle}
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-navy-200">
-              Reading is the habit you already have. Merid just upgrades it.
-            </p>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-navy-200">{t.tutorial.outroSub}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link
                 to="/#demo"
                 className="rounded-full bg-gold-400 px-7 py-3.5 text-base font-bold text-navy-900 transition-all hover:-translate-y-0.5 hover:bg-gold-300 hover:shadow-lift active:scale-95"
               >
-                Try the interactive demo
+                {t.tutorial.ctaDemo}
               </Link>
               <Link
                 to="/#waitlist"
                 className="rounded-full border-2 border-navy-500 px-7 py-3 text-base font-bold text-cream-50 transition-all hover:-translate-y-0.5 hover:border-gold-400 hover:text-gold-300 active:scale-95"
               >
-                Join the Waitlist
+                {t.tutorial.ctaWaitlist}
               </Link>
             </div>
           </div>
