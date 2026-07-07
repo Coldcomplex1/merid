@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { LanguageProvider } from './i18n/LanguageContext'
 import Navbar from './components/sections/Navbar'
 import Footer from './components/sections/Footer'
 import Home from './pages/Home'
@@ -25,19 +26,21 @@ function ScrollManager() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <ScrollManager />
-      <div className="min-h-screen bg-navy-900 text-white">
-        <Navbar />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/tutorial" element={<Tutorial />} />
-            <Route path="*" element={<Home />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <ScrollManager />
+        <div className="min-h-screen bg-navy-900 text-white">
+          <Navbar />
+          <main>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/tutorial" element={<Tutorial />} />
+              <Route path="*" element={<Home />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </BrowserRouter>
+    </LanguageProvider>
   )
 }

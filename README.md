@@ -47,6 +47,18 @@ src/
 
 ## Notable behavior
 
+- **Waitlist backend**: the form posts to Formspree. Paste your form endpoint into
+  `src/config.ts` (see the comment there and the setup steps in
+  [DEPLOYMENT.md](./DEPLOYMENT.md)). Until then, submissions simulate success and log a
+  console warning; no email is stored.
+- **Languages**: Vietnamese is the default; the navbar VI/EN toggle switches all marketing
+  copy and persists in `localStorage` (`merid-lang`). Strings live in
+  `src/i18n/translations.ts`; the tiny provider is `src/i18n/LanguageContext.tsx`. Product
+  mockups (extension panel, vocab popup, fake Wikipedia page) intentionally stay in their
+  original language since they represent the real extension UI.
+- **Social previews**: Open Graph and Twitter tags live in `index.html` (absolute URLs on
+  https://merid.site) with the preview image at `public/og-image.png` (1200 x 630).
+
 - **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
   rewrites all paths to `index.html` so deep links work in production.

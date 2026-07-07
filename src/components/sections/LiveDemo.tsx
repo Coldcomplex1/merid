@@ -11,8 +11,8 @@ import VocabPopupCard from '../ui/VocabPopupCard'
 import SectionHeading from '../ui/SectionHeading'
 import Toggle from '../ui/Toggle'
 import Reveal from '../ui/Reveal'
+import { useLang } from '../../i18n/LanguageContext'
 
-const FREQ_LABELS = ['Low', 'Medium', 'High'] as const
 const POPUP_WIDTH = 320
 
 interface ActivePopup {
@@ -22,6 +22,7 @@ interface ActivePopup {
 }
 
 export default function LiveDemo() {
+  const { t } = useLang()
   const [dataset, setDataset] = useState<Dataset>('SAT')
   const [frequency, setFrequency] = useState(3)
   const [replaceDirectly, setReplaceDirectly] = useState(true)
@@ -48,18 +49,14 @@ export default function LiveDemo() {
   }
 
   const activeWords = DEMO_PARAGRAPH.filter(
-    (t) => 'entryId' in t && isVisible(VOCAB[t.entryId], dataset, frequency),
+    (token) => 'entryId' in token && isVisible(VOCAB[token.entryId], dataset, frequency),
   ).length
 
   return (
     <section id="demo" className="relative z-10 scroll-mt-16 py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal>
-          <SectionHeading
-            eyebrow="Interactive demo"
-            title="See it work in real time"
-            sub="This is the real behavior of the extension. Change the dataset, tune the frequency, and hover any highlighted word."
-          />
+          <SectionHeading eyebrow={t.demo.eyebrow} title={t.demo.title} sub={t.demo.sub} />
         </Reveal>
 
         <Reveal delay={120} className="mt-14">
@@ -67,7 +64,7 @@ export default function LiveDemo() {
             {/* Controls */}
             <div className="h-fit rounded-3xl bg-navy-850 p-6 ring-1 ring-navy-600/50">
               <p className="text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-                Vocabulary dataset
+                {t.demo.dataset}
               </p>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {DATASETS.map((d) => (
@@ -87,7 +84,7 @@ export default function LiveDemo() {
               </div>
 
               <p className="mt-6 text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-                Highlight frequency
+                {t.demo.frequency}
               </p>
               <input
                 type="range"
@@ -95,13 +92,13 @@ export default function LiveDemo() {
                 max={3}
                 step={1}
                 value={frequency}
-                aria-label="Highlight frequency"
+                aria-label={t.demo.frequency}
                 onChange={(e) => setFrequency(Number(e.target.value))}
                 className="slider-gold mt-4"
                 style={{ '--slider-fill': `${((frequency - 1) / 2) * 100}%` } as CSSProperties}
               />
               <div className="mt-1 flex justify-between">
-                {FREQ_LABELS.map((label, i) => (
+                {t.demo.freqLabels.map((label, i) => (
                   <button
                     key={label}
                     type="button"
@@ -117,19 +114,19 @@ export default function LiveDemo() {
 
               <div className="mt-6 space-y-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-cream-50">Replace words directly</span>
-                  <Toggle on={replaceDirectly} onChange={setReplaceDirectly} label="Replace words directly" />
+                  <span className="text-sm text-cream-50">{t.demo.replaceToggle}</span>
+                  <Toggle on={replaceDirectly} onChange={setReplaceDirectly} label={t.demo.replaceToggle} />
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-cream-50">Show popup explanation</span>
-                  <Toggle on={showPopup} onChange={setShowPopup} label="Show popup explanation" />
+                  <span className="text-sm text-cream-50">{t.demo.popupToggle}</span>
+                  <Toggle on={showPopup} onChange={setShowPopup} label={t.demo.popupToggle} />
                 </div>
               </div>
 
               <p className="mt-6 rounded-xl bg-navy-800 px-4 py-3 text-center text-xs text-navy-200 ring-1 ring-navy-600/40">
-                <span className="font-bold text-gold-300">{activeWords}</span> word
-                {activeWords === 1 ? '' : 's'} from the{' '}
-                <span className="font-bold text-cream-50">{dataset}</span> dataset active on this page
+                <span className="font-bold text-gold-300">{activeWords}</span>{' '}
+                {activeWords === 1 ? t.demo.counterWord : t.demo.counterWords} {t.demo.counterLink}{' '}
+                <span className="font-bold text-cream-50">{dataset}</span> {t.demo.counterTail}
               </p>
             </div>
 
@@ -140,7 +137,7 @@ export default function LiveDemo() {
                   <span className="h-2 w-2 rounded-full bg-gold-400" />
                   blog.hocdethi.vn · bài viết hôm nay
                 </div>
-                <p className="font-wiki text-xl leading-[2] font-semibold text-pretty sm:text-[22px]">
+                <p className="font-wiki text-xl leading-[2] font-semibold text-pretty sm:text-[22px]" lang="vi">
                   {DEMO_PARAGRAPH.map((token, i) => {
                     if ('text' in token) return <span key={i}>{token.text}</span>
                     const entry = VOCAB[token.entryId]
@@ -160,11 +157,7 @@ export default function LiveDemo() {
                     )
                   })}
                 </p>
-                <p className="mt-6 text-sm text-navy-500">
-                  {showPopup
-                    ? 'Hover or tap a highlighted word to see the popup, exactly like on a real page.'
-                    : 'Popups are off. Words stay highlighted so your reading flow is never interrupted.'}
-                </p>
+                <p className="mt-6 text-sm text-navy-500">{showPopup ? t.demo.hintOn : t.demo.hintOff}</p>
               </div>
 
               {popup && (

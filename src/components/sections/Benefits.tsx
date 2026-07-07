@@ -1,32 +1,45 @@
 import Reveal from '../ui/Reveal'
+import { useLang } from '../../i18n/LanguageContext'
 
 export default function Benefits() {
+  const { t } = useLang()
+
   return (
     <section className="bg-cream-50 py-24 text-navy-900">
       <div className="mx-auto max-w-4xl px-5 text-center sm:px-8">
         <Reveal>
           <h2 className="text-3xl leading-snug font-extrabold tracking-tight text-balance sm:text-5xl">
-            No flashcards first.
+            {t.benefits.title1}
             <br />
-            No boring word lists.
+            {t.benefits.title2}
           </h2>
         </Reveal>
 
         <Reveal delay={150}>
           <p className="mx-auto mt-8 max-w-2xl text-2xl leading-snug font-bold text-balance sm:text-3xl">
-            Your normal{' '}
-            <span className="rounded-md bg-gold-300 px-2 py-0.5 whitespace-nowrap">reading</span> becomes
-            the{' '}
-            <span className="rounded-md bg-gold-300 px-2 py-0.5 whitespace-nowrap">lesson</span>.
+            {t.benefits.lead.map((seg, i) =>
+              seg.mark ? (
+                <span key={i} className="rounded-md bg-gold-300 px-2 py-0.5 whitespace-nowrap">
+                  {seg.text}
+                </span>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )}
           </p>
         </Reveal>
 
         <Reveal delay={280}>
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-navy-600">
-            Built for Vietnamese learners aiming for <strong className="text-navy-900">SAT</strong>,{' '}
-            <strong className="text-navy-900">IELTS</strong>,{' '}
-            <strong className="text-navy-900">advanced English</strong>, and{' '}
-            <strong className="text-navy-900">academic vocabulary</strong>, one page at a time.
+            {t.benefits.support.map((seg, i) =>
+              seg.strong ? (
+                <strong key={i} className="text-navy-900">
+                  {seg.text}
+                </strong>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )}
           </p>
         </Reveal>
 
