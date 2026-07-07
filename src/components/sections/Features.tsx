@@ -1,36 +1,86 @@
+import type { ReactNode } from 'react'
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
 
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
 const FEATURES = [
   {
-    icon: '🎯',
-    title: 'Contextual replacement',
-    body: 'Contextual reads the page the way you do and only swaps words that carry real meaning in that sentence — no random noise, no broken grammar.',
+    icon: (
+      <Icon>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4.5" />
+        <circle cx="12" cy="12" r="0.5" fill="currentColor" />
+      </Icon>
+    ),
+    title: 'Context-aware replacement',
+    body: 'Merid reads the page the way you do and only swaps words that carry real meaning in that sentence. No random noise, no broken grammar.',
   },
   {
-    icon: '📚',
+    icon: (
+      <Icon>
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </Icon>
+    ),
     title: 'Multiple vocab datasets',
-    body: 'SAT, B2, C1, and C2 today — themed and custom datasets are on the roadmap. Pick your goal, and Contextual picks the words worth learning.',
+    body: 'SAT, B2, C1, and C2 today, with themed and custom datasets on the roadmap. Pick your goal, and Merid picks the words worth learning.',
   },
   {
-    icon: '🎚️',
+    icon: (
+      <Icon>
+        <path d="M4 8h10M18 8h2M4 16h2M10 16h10" />
+        <circle cx="16" cy="8" r="2.2" />
+        <circle cx="8" cy="16" r="2.2" />
+      </Icon>
+    ),
     title: 'Adjustable frequency',
-    body: 'Casual, Focused, or Locked-in. You decide how intense each page gets — from a gentle drip of new words to full immersion.',
+    body: 'Casual, Focused, or Locked-in. You decide how intense each page gets, from a gentle drip of new words to full immersion.',
   },
   {
-    icon: '🗂️',
+    icon: (
+      <Icon>
+        <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z" />
+      </Icon>
+    ),
     title: 'Save words to deck',
-    body: 'One tap on “Save to Deck” keeps any word for later. Review your personal deck whenever you have five spare minutes.',
+    body: 'One tap on "Save to Deck" keeps any word for later. Review your personal deck whenever you have five spare minutes.',
   },
   {
-    icon: '✅',
-    title: '“I know this”',
-    body: 'Mark a word as mastered and it stops appearing everywhere. Contextual only spends your attention on words you haven’t learned yet.',
+    icon: (
+      <Icon>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+      </Icon>
+    ),
+    title: '"I know this"',
+    body: 'Mark a word as mastered and it stops appearing everywhere. Merid only spends your attention on words you have not learned yet.',
   },
   {
-    icon: '🔁',
-    title: 'Vie → Eng and Eng → Eng modes',
-    body: 'Start by mapping Vietnamese to English. When you’re ready, switch to English-only explanations and think in English directly.',
+    icon: (
+      <Icon>
+        <path d="M7 8h10M14 5l3 3-3 3" />
+        <path d="M17 16H7M10 13l-3 3 3 3" />
+      </Icon>
+    ),
+    title: 'Vie-Eng and Eng-Eng modes',
+    body: 'Start by mapping Vietnamese to English. When you are ready, switch to English-only explanations and think in English directly.',
   },
 ]
 
@@ -50,7 +100,7 @@ export default function Features() {
           {FEATURES.map((feature, i) => (
             <Reveal key={feature.title} delay={i * 70}>
               <div className="group h-full rounded-2xl bg-navy-850 p-6 ring-1 ring-navy-600/40 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift hover:ring-gold-400/50">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-navy-700 text-xl transition-transform duration-300 group-hover:scale-110 group-hover:bg-gold-400/20">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-navy-700 text-gold-300 transition-all duration-300 group-hover:scale-110 group-hover:bg-gold-400/20">
                   {feature.icon}
                 </span>
                 <h3 className="mt-4 text-lg font-bold text-cream-50">{feature.title}</h3>

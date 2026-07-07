@@ -31,7 +31,7 @@ export default function ExtensionPanel({ className = '' }: { className?: string 
       ref={ref}
       className={`w-80 max-w-full rounded-3xl bg-navy-850 p-6 shadow-panel ring-1 ring-navy-600/50 transition-transform duration-300 hover:-translate-y-1 ${className}`}
     >
-      <h3 className="text-[22px] font-bold text-gold-400">Contextual by Merid</h3>
+      <h3 className="text-[22px] font-bold text-gold-400">Merid</h3>
 
       <div className="mt-5">
         <SectionLabel>Words mastered this week</SectionLabel>
@@ -120,8 +120,8 @@ export default function ExtensionPanel({ className = '' }: { className?: string 
         {(
           [
             ['Replace words directly', replaceDirectly, setReplaceDirectly],
-            ['Vie – Eng mode', vieEng, setVieEng],
-            ['Eng – Eng mode', engEng, setEngEng],
+            ['Vie - Eng mode', vieEng, setVieEng],
+            ['Eng - Eng mode', engEng, setEngEng],
           ] as const
         ).map(([label, value, setter]) => (
           <div key={label} className="flex items-center justify-between">

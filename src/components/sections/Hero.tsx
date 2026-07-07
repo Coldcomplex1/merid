@@ -15,10 +15,8 @@ export default function Hero() {
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-16 pb-28 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-36">
         <div className="animate-fade-up">
-          <p className="inline-flex items-center gap-2 rounded-full border border-navy-600 bg-navy-850 px-3.5 py-1.5 text-xs font-bold text-navy-200">
-            <span aria-hidden="true">🇻🇳</span> Vietnamese
-            <span className="text-gold-400" aria-hidden="true">→</span>
-            <span aria-hidden="true">🇬🇧</span> English · Chrome extension
+          <p className="text-xs font-extrabold tracking-[0.22em] text-gold-400 uppercase">
+            Chrome extension for Vietnamese learners
           </p>
 
           <h1 className="mt-6 text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-[3.4rem]">
@@ -26,7 +24,7 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-navy-200">
-            Contextual replaces selected Vietnamese words with high-value English vocabulary, so every
+            Merid replaces selected Vietnamese words with high-value English vocabulary, so every
             article, blog, and post becomes a natural vocab lesson.
           </p>
 

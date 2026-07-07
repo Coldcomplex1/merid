@@ -2,7 +2,7 @@ import ExtensionPanel from '../ui/ExtensionPanel'
 import Reveal from '../ui/Reveal'
 
 const CONTROL_NOTES = [
-  ['Weekly progress', 'A tiny chart tracks the words you mastered each day — streaks feel good.'],
+  ['Weekly progress', 'A tiny chart tracks the words you mastered each day. Streaks feel good.'],
   ['Dataset switch', 'Jump between SAT, C1, C2, or everything at once, per browsing session.'],
   ['Frequency slider', 'Casual for chill reading days, Locked-in for exam season.'],
   ['Learning modes', 'Replace words directly, or keep Vietnamese and learn on hover.'],
@@ -29,7 +29,7 @@ export default function PanelShowcase() {
               Your whole learning setup, one click away.
             </h2>
             <p className="mt-4 text-lg text-navy-200">
-              Open the panel from your browser toolbar and tune how Contextual behaves on every site.
+              Open the panel from your browser toolbar and tune how Merid behaves on every site.
               No account dashboards, no settings pages buried three levels deep.
             </p>
 
@@ -45,7 +45,7 @@ export default function PanelShowcase() {
             </ul>
 
             <p className="mt-8 inline-block rounded-full border border-gold-400/40 bg-navy-850 px-4 py-2 text-xs font-bold text-gold-300">
-              👇 This is a live mockup — click around
+              This is a live mockup. Click around.
             </p>
           </div>
         </Reveal>

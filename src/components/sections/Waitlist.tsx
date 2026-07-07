@@ -9,7 +9,7 @@ export default function Waitlist() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError('Hmm, that email doesn’t look right — mind checking it?')
+      setError('Hmm, that email doesn’t look right. Mind checking it?')
       return
     }
     setError('')
@@ -37,10 +37,24 @@ export default function Waitlist() {
         <Reveal delay={150}>
           {joined ? (
             <div className="mx-auto mt-10 max-w-md animate-pop-in rounded-2xl border-2 border-gold-400/60 bg-navy-850 px-8 py-7">
-              <p className="text-2xl">🎉</p>
-              <p className="mt-2 text-lg font-bold text-cream-50">You’re on the list!</p>
+              <svg
+                width="34"
+                height="34"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mx-auto text-gold-400"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+              </svg>
+              <p className="mt-3 text-lg font-bold text-cream-50">You’re on the list!</p>
               <p className="mt-1.5 text-sm text-navy-200">
-                We’ll email you the moment Contextual is ready for your browser.
+                We’ll email you the moment Merid is ready for your browser.
               </p>
             </div>
           ) : (

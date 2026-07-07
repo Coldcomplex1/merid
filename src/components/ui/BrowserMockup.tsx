@@ -7,7 +7,7 @@ const FLOATING_CHIPS = [
   { label: 'B2', className: 'top-1/2 -right-6', delay: '1.1s' },
   { label: 'C1', className: '-top-3 right-10', delay: '0.5s' },
   { label: 'C2', className: 'top-24 -right-4', delay: '1.6s' },
-  { label: '✨ Context-aware learning', className: '-right-3 bottom-20', delay: '2.2s' },
+  { label: 'Context-aware learning', className: '-right-3 bottom-20', delay: '2.2s' },
 ]
 
 /** Fake browser window showing the extension running on a Vietnamese Wikipedia-style page. */
@@ -64,14 +64,14 @@ export default function BrowserMockup({ className = '' }: { className?: string }
               />
               <p>
                 <span className="wiki-link italic">Xuân quang xạ tiết</span> là một bộ phim{' '}
-                <span className="wiki-link">tâm lý tình cảm</span> Hồng Kông năm 1997 — một tác phẩm{' '}
+                <span className="wiki-link">tâm lý tình cảm</span> Hồng Kông năm 1997, một tác phẩm{' '}
                 <span className="hl-en animate-pulse-soft">elaborate</span> do{' '}
                 <span className="wiki-link">Vương Gia Vệ</span> đạo diễn, với sự tham gia của{' '}
                 <span className="wiki-link">Trương Quốc Vinh</span>,{' '}
                 <span className="wiki-link">Lương Triều Vỹ</span> và{' '}
                 <span className="wiki-link">Trương Chấn</span>. Bộ phim khắc họa nỗi{' '}
                 <span className="hl-en animate-pulse-soft" style={{ animationDelay: '0.9s' }}>solitude</span>{' '}
-                của hai người đàn ông nơi đất khách — và được xem là một trong những tác phẩm giàu{' '}
+                của hai người đàn ông nơi đất khách, và được xem là một trong những tác phẩm giàu{' '}
                 <span className="hl-vi animate-pulse-soft" style={{ animationDelay: '1.8s' }}>ẩn dụ</span> xuất
                 sắc nhất của điện ảnh châu Á thập niên 1990.
               </p>
