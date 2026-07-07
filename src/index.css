@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand palette (from extension screenshots) ─────────────── */
+  --color-navy-950: #0a1122;
+  --color-navy-900: #0e1628;
+  --color-navy-850: #121c33;
+  --color-navy-800: #16213c;
+  --color-navy-700: #1e2b4d;
+  --color-navy-600: #2a3a63;
+  --color-navy-500: #3d5183;
+  --color-navy-300: #93a5c9;
+  --color-navy-200: #b9c5de;
+
+  --color-gold-200: #ffe9a3;
+  --color-gold-300: #ffd76a;
+  --color-gold-400: #f5c542;
+  --color-gold-500: #e3af25;
+  --color-gold-600: #b98d17;
+
+  --color-cream-50: #fdf9ef;
+  --color-cream-100: #f7f0dd;
+  --color-beige-100: #f2ecdc;
+  --color-chip-100: #e9edf6;
+
+  --color-wiki-blue: #2f6fce;
+  --color-wiki-blue-deep: #1b4f9c;
+  --color-ink: #1b2a4e;
+
+  --font-display: "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
+  --font-wiki: "Lora", Georgia, "Times New Roman", serif;
+
+  --shadow-card: 0 18px 45px -18px rgb(10 17 34 / 0.55);
+  --shadow-pop: 0 24px 60px -18px rgb(10 17 34 / 0.45), 0 6px 18px -8px rgb(10 17 34 / 0.35);
+  --shadow-panel: 0 30px 70px -25px rgb(0 0 0 / 0.75);
+  --shadow-lift: 0 22px 50px -20px rgb(245 197 66 / 0.35);
+
+  /* ── Motion ─────────────────────────────────────────────────── */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 8s ease-in-out infinite;
+  --animate-pop-in: pop-in 0.7s cubic-bezier(0.22, 1.1, 0.35, 1.15) both;
+  --animate-pulse-soft: pulse-soft 2.8s ease-in-out infinite;
+  --animate-bar-grow: bar-grow 0.9s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes pop-in {
+    0% { opacity: 0; transform: translateY(22px) scale(0.92); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0); }
+    50% { box-shadow: 0 0 0 5px rgb(245 197 66 / 0.28); }
+  }
+  @keyframes bar-grow {
+    0% { transform: scaleY(0); }
+    100% { transform: scaleY(1); }
+  }
+  @keyframes fade-up {
+    0% { opacity: 0; transform: translateY(26px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-display);
+  background-color: var(--color-navy-900);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-gold-400);
+  color: var(--color-navy-900);
+}
+
+@layer components {
+  /* Wikipedia-style demo text */
+  .wiki-link {
+    color: var(--color-wiki-blue);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .wiki-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Vietnamese word highlighted (not yet replaced) */
+  .hl-vi {
+    font-weight: 700;
+    color: var(--color-ink);
+    padding: 0 2px;
+    border-radius: 3px;
+    background-image: linear-gradient(0deg, var(--color-gold-300) 0 0.3em, rgb(255 231 163 / 0.55) 0.3em 100%);
+    cursor: pointer;
+    transition: background-color 150ms ease, filter 150ms ease;
+  }
+  .hl-vi:hover {
+    filter: brightness(0.97);
+  }
+
+  /* English word inserted into the page */
+  .hl-en {
+    font-weight: 700;
+    font-style: italic;
+    color: var(--color-wiki-blue-deep);
+    padding: 0 3px;
+    border-radius: 4px;
+    background: rgb(255 233 163 / 0.75);
+    box-shadow: inset 0 -0.28em 0 var(--color-gold-300);
+    cursor: pointer;
+    transition: filter 150ms ease;
+  }
+  .hl-en:hover {
+    filter: brightness(0.96);
+  }
+
+  /* Gold range slider (extension-panel style) */
+  .slider-gold {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--color-gold-400) 0%,
+      var(--color-gold-400) var(--slider-fill, 50%),
+      var(--color-navy-600) var(--slider-fill, 50%),
+      var(--color-navy-600) 100%
+    );
+    outline: none;
+    cursor: pointer;
+  }
+  .slider-gold::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--color-gold-400);
+    border: 3px solid var(--color-navy-900);
+    box-shadow: 0 0 0 2px var(--color-gold-400);
+    transition: transform 150ms ease;
+  }
+  .slider-gold::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  .slider-gold::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--color-gold-400);
+    border: 3px solid var(--color-navy-900);
+    box-shadow: 0 0 0 2px var(--color-gold-400);
+    transition: transform 150ms ease;
+  }
+  .slider-gold::-moz-range-thumb:hover {
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
