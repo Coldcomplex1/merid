@@ -23,7 +23,7 @@
  *  STORED. A console warning is logged as a reminder.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export const WAITLIST_FORM_ENDPOINT = 'https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID'
+export const WAITLIST_FORM_ENDPOINT = 'https://formspree.io/f/xqevjwra'
 
 /** True until the real Formspree endpoint has been pasted in. */
-export const WAITLIST_NOT_CONFIGURED = WAITLIST_FORM_ENDPOINT.includes('REPLACE_WITH_YOUR_FORM_ID')
+export const WAITLIST_NOT_CONFIGURED = WAITLIST_FORM_ENDPOINT.includes('xqevjwra')
