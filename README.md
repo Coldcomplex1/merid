@@ -57,7 +57,7 @@ src/
   mockups (extension panel, vocab popup, fake Wikipedia page) intentionally stay in their
   original language since they represent the real extension UI.
 - **Social previews**: Open Graph and Twitter tags live in `index.html` (absolute URLs on
-  https://merid.site) with the preview image at `public/og-image.png` (1200 x 630).
+  https://merid.site) with the preview image at `public/og-card.jpg` (1200 x 630, kept under 100 KB for WhatsApp/Zalo client-side fetching).
 
 - **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
