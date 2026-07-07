@@ -6,24 +6,24 @@
  *  form backend designed for frontend use. The endpoint URL below is PUBLIC
  *  by design (it is not a secret key), so it is safe to keep in this file.
  *
- *  >>> TO ACTIVATE THE WAITLIST, REPLACE THE PLACEHOLDER BELOW: <<<
+ *  The endpoint is CONFIGURED and live. To point the form at a different
+ *  Formspree form later, just replace the URL below with the new form's
+ *  endpoint (it looks like https://formspree.io/f/xxxxxxxx), commit, and
+ *  push to main. Vercel redeploys automatically.
  *
- *  1. Create a free account at https://formspree.io/register
- *  2. Click "+ New form", name it e.g. "Merid waitlist"
- *  3. Copy the form's endpoint URL. It looks like:
- *         https://formspree.io/f/xyzabcde
- *  4. Paste it below in place of the placeholder string, commit, and push
- *     to main. Vercel redeploys automatically.
- *
- *  Every submission then appears in your Formspree dashboard (with email
+ *  Every submission appears in the Formspree dashboard (with email
  *  notifications and CSV export on the free plan).
- *
- *  NOTE: while the placeholder is still in place, the form SIMULATES a
- *  successful signup so the live site never looks broken, but NO EMAIL IS
- *  STORED. A console warning is logged as a reminder.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export const WAITLIST_FORM_ENDPOINT = 'https://formspree.io/f/xqevjwra'
 
-/** True until the real Formspree endpoint has been pasted in. */
-export const WAITLIST_NOT_CONFIGURED = WAITLIST_FORM_ENDPOINT.includes('xqevjwra')
+/**
+ * True when the endpoint above is missing or does not look like a real
+ * Formspree form URL. In that state the form simulates a successful signup
+ * (so the live site never looks broken) but stores nothing and logs a
+ * console warning. The check is based on the URL FORMAT, so editing the
+ * endpoint line can never accidentally re-enable simulation mode.
+ */
+export const WAITLIST_NOT_CONFIGURED = !/^https:\/\/formspree\.io\/f\/[a-z0-9]+$/i.test(
+  WAITLIST_FORM_ENDPOINT,
+)
