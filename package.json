@@ -1,5 +1,5 @@
 {
-  "name": "contextual-by-merid",
+  "name": "merid",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -15,7 +15,8 @@
     "@fontsource/be-vietnam-pro": "^5.2.8",
     "@fontsource/lora": "^5.2.5",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",

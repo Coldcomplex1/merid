@@ -5,11 +5,11 @@ const STEPS = [
   {
     number: '01',
     title: 'Browse normally',
-    body: 'Read Vietnamese websites like you always do — Wikipedia, news, blogs, and school materials. Nothing about your routine changes.',
+    body: 'Read Vietnamese websites like you always do: Wikipedia, news, blogs, and school materials. Nothing about your routine changes.',
   },
   {
     number: '02',
-    title: 'Contextual highlights useful words',
+    title: 'Merid highlights useful words',
     body: 'The extension picks words from your selected vocabulary dataset and highlights or replaces them right inside the page.',
   },
   {

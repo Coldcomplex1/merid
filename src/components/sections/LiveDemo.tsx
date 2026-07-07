@@ -162,8 +162,8 @@ export default function LiveDemo() {
                 </p>
                 <p className="mt-6 text-sm text-navy-500">
                   {showPopup
-                    ? '👆 Hover or tap a highlighted word to see the popup — exactly like on a real page.'
-                    : 'Popups are off — words stay highlighted so your reading flow is never interrupted.'}
+                    ? 'Hover or tap a highlighted word to see the popup, exactly like on a real page.'
+                    : 'Popups are off. Words stay highlighted so your reading flow is never interrupted.'}
                 </p>
               </div>
 

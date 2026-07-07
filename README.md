@@ -1,6 +1,6 @@
-# Contextual by Merid — Landing Page
+# Merid Landing Page
 
-Marketing homepage for **Contextual**, a Chrome extension that helps Vietnamese users learn
+Marketing homepage for **Merid**, a Chrome extension that helps Vietnamese users learn
 English passively: while browsing Vietnamese websites, selected Vietnamese words are highlighted
 or replaced with high-value English vocabulary (SAT / B2 / C1 / C2 datasets).
 
@@ -8,9 +8,10 @@ or replaced with high-value English vocabulary (SAT / B2 / C1 / C2 datasets).
 
 - [React 19](https://react.dev) + [Vite 7](https://vite.dev) + TypeScript
 - [Tailwind CSS v4](https://tailwindcss.com) (design tokens in `src/index.css` via `@theme`)
-- Self-hosted fonts via [Fontsource](https://fontsource.org) — Be Vietnam Pro (UI, full Vietnamese
+- [React Router 7](https://reactrouter.com) for the homepage and tutorial pages
+- Self-hosted fonts via [Fontsource](https://fontsource.org): Be Vietnam Pro (UI, full Vietnamese
   glyph coverage) and Lora (Wikipedia-style demo text)
-- No other runtime dependencies — all animation is hand-rolled CSS
+- No other runtime dependencies; all animation is hand-rolled CSS
 
 ## Getting started
 
@@ -28,6 +29,9 @@ src/
   index.css                  # Tailwind theme tokens, keyframes, component classes
   data/vocab.ts              # vocabulary entries + interactive demo paragraph
   hooks/useInView.ts         # IntersectionObserver hook for scroll reveals
+  pages/
+    Home.tsx                 # landing page section stack
+    Tutorial.tsx             # step-by-step "how to use Merid" walkthrough
   components/
     ui/
       VocabPopupCard.tsx     # the floating "ELABORATE" explanation card
@@ -43,10 +47,18 @@ src/
 
 ## Notable behavior
 
+- **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
+  `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
+  rewrites all paths to `index.html` so deep links work in production.
 - **Live demo** (`LiveDemo.tsx`): the Vietnamese paragraph is data-driven. Each vocab entry is
   tagged with datasets and a frequency tier, so switching SAT/B2/C1/C2 or moving the slider
   visibly changes which words are replaced. Hovering/clicking a highlighted word opens the
   popup card anchored to the word (it flips above the word near the card bottom).
-- **Extension panel** (`ExtensionPanel.tsx`): fully interactive mockup — dataset buttons,
+- **Extension panel** (`ExtensionPanel.tsx`): fully interactive mockup. Dataset buttons,
   frequency slider, toggles, and the Extension ON/OFF button all hold real state.
 - Reduced-motion preferences are respected (`prefers-reduced-motion` disables the loops).
+
+## Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md). Short version: the site is on Vercel, and every push to
+`main` republishes it automatically.

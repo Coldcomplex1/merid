@@ -73,7 +73,7 @@ export const VOCAB: Record<string, VocabEntry> = {
     pron: '/ɔːrˈɡæn.ɪk/',
     definition: 'happening or developing naturally, without being forced',
     viMeaning: 'Tự nhiên, không gượng ép',
-    example: 'The best friendships grow in an organic way — you never have to force them.',
+    example: 'The best friendships grow in an organic way; you never have to force them.',
     synonyms: ['natural', 'spontaneous', 'unforced'],
     antonyms: ['forced', 'artificial', 'contrived'],
     datasets: ['B2', 'C1', 'C2'],
@@ -141,7 +141,7 @@ export const DEMO_PARAGRAPH: DemoToken[] = [
   { entryId: 'elaborate' },
   { text: ', chỉ cần di chuột lên từ đó để xem ' },
   { entryId: 'interpret' },
-  { text: ' chi tiết — không cần rời khỏi trang.' },
+  { text: ' chi tiết, không cần rời khỏi trang.' },
 ]
 
 export function isVisible(entry: VocabEntry, dataset: Dataset, frequency: number): boolean {
