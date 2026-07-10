@@ -456,3 +456,19 @@ footer {
 }
 
 .link-btn:hover { text-decoration: underline; }
+/* "View my deck" - primary footer action, opens merid.site/my-deck. */
+.btn-view-deck {
+    background-color: var(--accent-yellow);
+    color: #020c1b;
+    border: 1px solid var(--accent-yellow);
+    width: 100%;
+    padding: 11px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: filter 0.2s;
+}
+
+.btn-view-deck:hover { filter: brightness(1.08); }

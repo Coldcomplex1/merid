@@ -139,6 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('deck.html') });
     });
 
+    // Opens the merid.site deck (cloud-synced view) in a new tab. The URL is a
+    // fixed constant from lib/firebase-config.js - never user-supplied (A10).
+    document.getElementById('view-deck-btn').addEventListener('click', () => {
+        chrome.tabs.create({ url: window.VMFirebaseConfig.webDeckUrl });
+    });
+
     document.getElementById('options-btn').addEventListener('click', () => {
         if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
         else window.open(chrome.runtime.getURL('options.html'));

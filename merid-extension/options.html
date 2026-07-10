@@ -66,13 +66,43 @@
             <p class="hint" id="datasetInfo">Loaded: …</p>
         </section>
 
+        <!-- ACCOUNT & SYNC -->
+        <section class="card" id="accountCard" hidden>
+            <h2>Account &amp; sync</h2>
+
+            <div id="signedOutView">
+                <p class="hint">Sign in to back up your deck and study it on <strong>merid.site/my-deck</strong>. Optional - everything keeps working locally without an account.</p>
+                <div class="field">
+                    <label for="authEmail">Email</label>
+                    <input type="text" id="authEmail" autocomplete="email" placeholder="you@example.com">
+                </div>
+                <div class="field">
+                    <label for="authPassword">Password (min 8 characters)</label>
+                    <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+                </div>
+                <p class="hint auth-error" id="authError" hidden></p>
+                <div class="auth-actions">
+                    <button class="btn" id="signInBtn" type="button">Sign in</button>
+                    <button class="btn ghost" id="signUpBtn" type="button">Create account</button>
+                </div>
+            </div>
+
+            <div id="signedInView" hidden>
+                <p class="hint">Signed in as <strong id="authWho"></strong></p>
+                <p class="hint" id="syncState"></p>
+                <div class="auth-actions">
+                    <button class="btn ghost" id="signOutBtn" type="button">Sign out</button>
+                </div>
+            </div>
+        </section>
+
         <!-- DATA & PRIVACY -->
         <section class="card">
             <h2>Data &amp; privacy</h2>
             <ul class="privacy">
-                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
-                <li>The extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
-                <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches. Page content is <strong>never sent anywhere</strong> and no AI API is used.</li>
+                <li>Your settings and deck are stored on your device via <code>chrome.storage</code>.</li>
+                <li>If you sign in (optional), only your saved deck words are synced to your own account - protected by server-side security rules.</li>
                 <li>Turn the extension off any time from the popup.</li>
             </ul>
             <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>
@@ -84,6 +114,7 @@
     </main>
 
     <script src="lib/vocab-core.js"></script>
+    <script src="lib/firebase-config.js"></script>
     <script src="options.js"></script>
 </body>
 
