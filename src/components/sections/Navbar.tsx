@@ -1,9 +1,16 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useLang } from '../../i18n/LanguageContext'
+import { useAuth } from '../../auth/AuthContext'
+import { signOut } from '../../lib/auth'
 import LangToggle from '../ui/LangToggle'
 
 export default function Navbar() {
   const { t } = useLang()
+  const { user, configured } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
 
   const links = [
     { label: t.nav.demo, to: '/#demo' },
@@ -11,6 +18,20 @@ export default function Navbar() {
     { label: t.nav.how, to: '/#how-it-works' },
     { label: t.nav.tutorial, to: '/tutorial' },
   ]
+
+  // Close the menu on navigation and on outside clicks.
+  useEffect(() => setMenuOpen(false), [location])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [menuOpen])
+
+  const menuItem =
+    'block w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-navy-200 transition-colors hover:bg-navy-800 hover:text-gold-300'
 
   return (
     <header className="sticky top-0 z-40 border-b border-navy-700/60 bg-navy-900/85 backdrop-blur-md">
@@ -38,10 +59,65 @@ export default function Navbar() {
           <LangToggle />
           <Link
             to="/#waitlist"
-            className="rounded-full bg-gold-400 px-4 py-2 text-sm font-bold whitespace-nowrap text-navy-900 transition-all hover:bg-gold-300 hover:shadow-lift active:scale-95"
+            className="hidden rounded-full bg-gold-400 px-4 py-2 text-sm font-bold whitespace-nowrap text-navy-900 transition-all hover:bg-gold-300 hover:shadow-lift active:scale-95 sm:block"
           >
             {t.nav.cta}
           </Link>
+
+          {/* Hamburger: account + deck entry points (all breakpoints). */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label={t.deck.menu.open}
+              aria-expanded={menuOpen}
+              className="flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg border border-navy-600 transition-colors hover:border-gold-400"
+            >
+              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
+              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
+              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-navy-700 bg-navy-850 p-2 shadow-lift">
+                {/* Main nav (small screens only — desktop shows these inline). */}
+                <div className="md:hidden">
+                  {links.map((link) => (
+                    <Link key={link.to} to={link.to} className={menuItem}>
+                      {link.label}
+                    </Link>
+                  ))}
+                  <div className="my-2 border-t border-navy-700" />
+                </div>
+
+                <Link to="/my-deck" className={menuItem}>
+                  {t.deck.menu.deck}
+                </Link>
+                <Link to="/demo" className={menuItem}>
+                  {t.deck.menu.demo}
+                </Link>
+                <div className="my-2 border-t border-navy-700" />
+
+                {user ? (
+                  <>
+                    <p className="truncate px-4 py-1 text-xs text-navy-400">{user.email}</p>
+                    <button type="button" onClick={() => void signOut()} className={menuItem}>
+                      {t.deck.menu.logout}
+                    </button>
+                  </>
+                ) : configured ? (
+                  <>
+                    <Link to="/login" className={menuItem}>
+                      {t.deck.menu.login}
+                    </Link>
+                    <Link to="/signup" className={menuItem}>
+                      {t.deck.menu.signup}
+                    </Link>
+                  </>
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
     </header>

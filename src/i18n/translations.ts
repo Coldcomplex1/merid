@@ -10,6 +10,52 @@ export interface Segment {
 export interface Strings {
   meta: { title: string; tutorialTitle: string }
   nav: { demo: string; features: string; how: string; tutorial: string; cta: string }
+  deck: {
+    title: string
+    demoTitle: string
+    demoBanner: string
+    tabs: { words: string; puzzle: string; flashcards: string }
+    loading: string
+    empty: string
+    remove: string
+    confirmRemove: string
+    markKnown: string
+    markSaved: string
+    savedLabel: string
+    knownLabel: string
+    wordCount: (n: number) => string
+    puzzle: {
+      prompt: string
+      needMore: string
+      correct: string
+      wrong: (answer: string) => string
+      next: string
+      score: (right: number, total: number) => string
+      restart: string
+    }
+    flash: { flipHint: string; prev: string; next: string; counter: (i: number, n: number) => string }
+    menu: { deck: string; demo: string; login: string; signup: string; logout: string; open: string }
+    auth: {
+      loginTitle: string
+      signupTitle: string
+      email: string
+      password: string
+      submitLogin: string
+      submitSignup: string
+      switchToSignup: string
+      switchToLogin: string
+      errors: {
+        badCredentials: string
+        emailInUse: string
+        weakPassword: string
+        invalidEmail: string
+        tooManyRequests: string
+        network: string
+        unknown: string
+        notConfigured: string
+      }
+    }
+  }
   hero: {
     eyebrow: string
     title1: string
@@ -99,6 +145,64 @@ const vi: Strings = {
   meta: {
     title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
+  },
+  deck: {
+    title: 'Deck của tôi',
+    demoTitle: 'Deck thử nghiệm',
+    demoBanner: 'Chế độ thử nghiệm — dữ liệu mẫu, thay đổi chỉ lưu trên trình duyệt này.',
+    tabs: { words: 'Từ vựng', puzzle: 'Puzzle', flashcards: 'Flashcard' },
+    loading: 'Đang tải deck…',
+    empty: 'Chưa có từ nào. Cài extension Merid và lưu từ trong lúc đọc web nhé.',
+    remove: 'Xoá',
+    confirmRemove: 'Xoá từ này khỏi deck?',
+    markKnown: 'Đã thuộc',
+    markSaved: 'Học lại',
+    savedLabel: 'Đang học',
+    knownLabel: 'Đã thuộc',
+    wordCount: (n: number) => `${n} từ`,
+    puzzle: {
+      prompt: 'Chọn từ đúng để điền vào chỗ trống:',
+      needMore: 'Cần ít nhất 4 từ có câu ví dụ để chơi Puzzle. Hãy lưu thêm từ nhé!',
+      correct: 'Chính xác! 🎉',
+      wrong: (answer: string) => `Chưa đúng. Đáp án là “${answer}”.`,
+      next: 'Câu tiếp theo',
+      score: (right: number, total: number) => `Đúng ${right}/${total} câu`,
+      restart: 'Chơi lại',
+    },
+    flash: {
+      flipHint: 'Nhấn để lật thẻ',
+      prev: 'Trước',
+      next: 'Sau',
+      counter: (i: number, n: number) => `Thẻ ${i}/${n}`,
+    },
+    menu: {
+      deck: 'Deck của tôi',
+      demo: 'Deck thử nghiệm',
+      login: 'Đăng nhập',
+      signup: 'Đăng ký',
+      logout: 'Đăng xuất',
+      open: 'Mở menu',
+    },
+    auth: {
+      loginTitle: 'Đăng nhập',
+      signupTitle: 'Tạo tài khoản',
+      email: 'Email',
+      password: 'Mật khẩu (tối thiểu 8 ký tự)',
+      submitLogin: 'Đăng nhập',
+      submitSignup: 'Đăng ký',
+      switchToSignup: 'Chưa có tài khoản? Đăng ký',
+      switchToLogin: 'Đã có tài khoản? Đăng nhập',
+      errors: {
+        badCredentials: 'Email hoặc mật khẩu không đúng.',
+        emailInUse: 'Email này đã được đăng ký. Hãy đăng nhập.',
+        weakPassword: 'Mật khẩu phải có ít nhất 8 ký tự.',
+        invalidEmail: 'Email không hợp lệ.',
+        tooManyRequests: 'Thử lại sau ít phút — quá nhiều lần thử.',
+        network: 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.',
+        unknown: 'Có lỗi xảy ra. Vui lòng thử lại.',
+        notConfigured: 'Tài khoản chưa khả dụng trên bản triển khai này — hãy dùng Deck thử nghiệm.',
+      },
+    },
   },
   nav: {
     demo: 'Demo',
@@ -386,6 +490,64 @@ const en: Strings = {
   meta: {
     title: 'Merid: Learn English while browsing Vietnamese websites',
     tutorialTitle: 'Tutorial: How to use Merid',
+  },
+  deck: {
+    title: 'My Deck',
+    demoTitle: 'Demo Deck',
+    demoBanner: 'Demo mode — sample data, changes only persist in this browser.',
+    tabs: { words: 'Words', puzzle: 'Puzzle', flashcards: 'Flashcards' },
+    loading: 'Loading your deck…',
+    empty: 'No words yet. Install the Merid extension and save words while you browse.',
+    remove: 'Remove',
+    confirmRemove: 'Remove this word from your deck?',
+    markKnown: 'I know this',
+    markSaved: 'Study again',
+    savedLabel: 'Learning',
+    knownLabel: 'Known',
+    wordCount: (n: number) => `${n} ${n === 1 ? 'word' : 'words'}`,
+    puzzle: {
+      prompt: 'Pick the word that completes the sentence:',
+      needMore: 'You need at least 4 words with example sentences to play Puzzle. Save a few more!',
+      correct: 'Correct! 🎉',
+      wrong: (answer: string) => `Not quite. The answer is “${answer}”.`,
+      next: 'Next question',
+      score: (right: number, total: number) => `${right}/${total} correct`,
+      restart: 'Play again',
+    },
+    flash: {
+      flipHint: 'Click to flip',
+      prev: 'Previous',
+      next: 'Next',
+      counter: (i: number, n: number) => `Card ${i}/${n}`,
+    },
+    menu: {
+      deck: 'My Deck',
+      demo: 'Demo Deck',
+      login: 'Log in',
+      signup: 'Sign up',
+      logout: 'Sign out',
+      open: 'Open menu',
+    },
+    auth: {
+      loginTitle: 'Log in',
+      signupTitle: 'Create account',
+      email: 'Email',
+      password: 'Password (min 8 characters)',
+      submitLogin: 'Log in',
+      submitSignup: 'Sign up',
+      switchToSignup: "Don't have an account? Sign up",
+      switchToLogin: 'Already have an account? Log in',
+      errors: {
+        badCredentials: 'Email or password is incorrect.',
+        emailInUse: 'This email is already registered. Try logging in.',
+        weakPassword: 'Password must be at least 8 characters.',
+        invalidEmail: 'Please enter a valid email address.',
+        tooManyRequests: 'Too many attempts — try again in a few minutes.',
+        network: 'No connection. Check your internet and try again.',
+        unknown: 'Something went wrong. Please try again.',
+        notConfigured: 'Accounts are not available on this deployment — try the Demo Deck.',
+      },
+    },
   },
   nav: {
     demo: 'Demo',
