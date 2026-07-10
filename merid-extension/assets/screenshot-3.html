@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+<!--include:_screenshot.css-->
+
+.headline { top: 230px; }
+.demos { position: absolute; right: 90px; top: 150px; width: 540px; display: flex; flex-direction: column; gap: 20px; z-index: 5; }
+.demo { background: #fffdfa; border-radius: 16px; padding: 22px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+.demo .tag { display: inline-block; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #b47d00; background: rgba(244,190,55,0.18); border-radius: 999px; padding: 4px 12px; margin-bottom: 12px; }
+.demo .sent { font-family: 'Inter', Georgia, serif; font-size: 20px; line-height: 1.5; color: #26324a; }
+.eng { color: #244f86; font-weight: 700; }
+.hl { border-bottom: 2px solid #f4be37; background: rgba(244,190,55,0.16); font-weight: 600; padding: 0 1px; }
+.beside { color: #7a879b; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="brand"><div class="logo"></div><div class="name">Meri<b>d</b></div></div>
+
+  <div class="headline">
+    <h1>Hiển thị<br>theo <span class="gold">ý bạn</span>.</h1>
+    <p>Ba kiểu hiển thị. Thay thẳng từ, chỉ tô sáng, hay đặt từ tiếng Anh ngay bên cạnh - tuỳ mức bạn muốn thử thách.</p>
+    <div class="pills"><span class="pill">Nhẹ · Vừa · Nặng</span></div>
+  </div>
+
+  <div class="demos">
+    <div class="demo">
+      <span class="tag">Replace</span>
+      <div class="sent">Chúng tôi cần <span class="eng">consolidate</span> các nguồn lực trước khi bắt đầu.</div>
+    </div>
+    <div class="demo">
+      <span class="tag">Highlight</span>
+      <div class="sent">Chúng tôi cần <span class="hl">hợp nhất</span> các nguồn lực trước khi bắt đầu.</div>
+    </div>
+    <div class="demo">
+      <span class="tag">Beside</span>
+      <div class="sent">Chúng tôi cần <span class="hl">hợp nhất</span> <span class="beside">(consolidate)</span> các nguồn lực trước khi bắt đầu.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

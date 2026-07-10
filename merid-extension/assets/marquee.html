@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: transparent; }
+  body { width: __W__px; height: __H__px; overflow: hidden; }
+  .stage {
+    width: 1400px; height: 560px; transform: scale(__SCALE__); transform-origin: top left;
+    position: relative; overflow: hidden;
+    background: radial-gradient(1100px 700px at 74% -20%, #1c3a66 0%, #112240 46%, #0a192f 100%);
+    font-family: 'Outfit', -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #e6f1ff;
+  }
+  .brand { position: absolute; top: 52px; left: 72px; display: flex; align-items: center; gap: 15px; }
+  .brand .logo { width: 52px; height: 52px; border-radius: 13px; position: relative; background: linear-gradient(145deg, #244f86, #1a3560 52%, #0f2340); box-shadow: 0 8px 18px rgba(0,0,0,0.35); }
+  .brand .logo::before { content: "M"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "Arial Black", Arial, sans-serif; font-weight: 900; font-size: 34px; color: #f3c94b; }
+  .brand .logo::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 10px; height: 3px; border-radius: 2px; background: #f3c94b; }
+  .brand .name { font-size: 30px; font-weight: 700; } .brand .name b { color: #f3c94b; }
+
+  .copy { position: absolute; left: 72px; top: 190px; max-width: 640px; }
+  .copy h1 { font-size: 66px; line-height: 1.02; font-weight: 700; letter-spacing: -0.02em; }
+  .copy h1 .gold { color: #f3c94b; }
+  .copy p { margin-top: 20px; font-size: 22px; color: #a7b6d4; font-family: 'Inter', sans-serif; max-width: 560px; }
+
+  .card {
+    position: absolute; right: 96px; top: 118px; width: 340px;
+    background: linear-gradient(180deg, #fffdfa, #fff8ef); border: 5px solid #19355d; border-radius: 22px; padding: 16px 13px 13px;
+    box-shadow: 0 30px 70px rgba(6,15,35,0.55); color: #162640; font-family: 'Inter', sans-serif;
+  }
+  .card .title { font-family: 'Outfit', sans-serif; font-weight: 900; color: #19355d; font-size: 26px; letter-spacing: 0.02em; }
+  .card .meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .card .type { font-size: 13.5px; font-style: italic; color: #111827; }
+  .card .audio { width: 24px; height: 24px; border-radius: 50%; background: #19355d; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .card .phon { font-size: 12.5px; color: #5d6880; font-weight: 600; }
+  .card .def { margin-top: 9px; font-size: 14px; font-weight: 600; }
+  .chips { display: flex; gap: 6px; margin-top: 9px; padding: 6px 7px; border-radius: 9px; background: #19355d; }
+  .chip { flex: 1; text-align: center; font-weight: 800; font-size: 11px; padding: 6px 4px; border-radius: 8px; }
+  .chip.y { background: #f3c94b; color: #19355d; } .chip.d { background: #e7edf8; color: #254065; }
+  .card .ex { margin-top: 10px; font-size: 12.5px; line-height: 1.35; color: #171f2d; }
+  .card .ex b { color: #355d92; text-decoration: underline; text-underline-offset: 2px; }
+  .card .actions { display: flex; margin-top: 11px; padding-top: 9px; border-top: 2px solid rgba(25,53,93,0.14); }
+  .card .actions button { flex: 1; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; padding: 7px 6px; }
+  .card .actions .save { color: #d49700; } .card .actions .know { color: #161b28; border-left: 2px solid rgba(25,53,93,0.14); }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="brand"><div class="logo"></div><div class="name">Meri<b>d</b></div></div>
+    <div class="copy">
+      <h1>Đọc tiếng Việt.<br><span class="gold">Thấm</span> tiếng Anh.</h1>
+      <p>Học từ vựng SAT/CEFR ngay khi lướt web - hoàn toàn cục bộ, không tài khoản.</p>
+    </div>
+    <div class="card">
+      <div class="title">ELABORATE</div>
+      <div class="meta"><span class="type">(adjective)</span><span class="audio">🔊</span><span class="phon">/ɪˈlæb.ər.ət/</span></div>
+      <div class="def">complex, detailed, intricate</div>
+      <div class="chips"><span class="chip y">intricate</span><span class="chip y">complex</span><span class="chip y">sophisticated</span></div>
+      <div class="chips"><span class="chip d">simple</span><span class="chip d">basic</span><span class="chip d">rudimentary</span></div>
+      <div class="ex">Dan develops such an <b>elaborate</b> game plan.</div>
+      <div class="actions"><button class="save">Save to Deck</button><button class="know">I know this</button></div>
+    </div>
+  </div>
+</body>
+</html>

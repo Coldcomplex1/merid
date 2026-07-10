@@ -1,0 +1,37 @@
+/* Shared look for the Chrome Web Store screenshots (1280x800 stage). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: transparent; }
+body { width: __W__px; height: __H__px; overflow: hidden; }
+.stage {
+  width: 1280px;
+  height: 800px;
+  transform: scale(__SCALE__);
+  transform-origin: top left;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Outfit', -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: radial-gradient(1200px 700px at 78% -10%, #1c3a66 0%, #112240 45%, #0a192f 100%);
+  color: #e6f1ff;
+}
+.brand { position: absolute; top: 54px; left: 72px; display: flex; align-items: center; gap: 14px; z-index: 5; }
+.brand .logo {
+  width: 46px; height: 46px; border-radius: 11px;
+  background: linear-gradient(145deg, #244f86, #1a3560 52%, #0f2340);
+  position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+.brand .logo::before {
+  content: "M"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 30px; color: #f3c94b; font-family: "Arial Black", Arial, sans-serif;
+}
+.brand .logo::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 9px; height: 3px; border-radius: 2px; background: #f3c94b; }
+.brand .name { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.brand .name b { color: #f3c94b; font-weight: 700; }
+
+.headline { position: absolute; left: 72px; top: 176px; max-width: 560px; z-index: 5; }
+.headline h1 { font-size: 62px; line-height: 1.03; font-weight: 700; letter-spacing: -0.02em; }
+.headline h1 .gold { color: #f3c94b; }
+.headline p { margin-top: 22px; font-size: 22px; line-height: 1.45; color: #a7b6d4; font-family: 'Inter', sans-serif; max-width: 500px; }
+.pills { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
+.pill { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; color: #cdd9f0;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 9px 15px; border-radius: 999px; }
+.pill b { color: #f3c94b; }

@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+<!--include:_screenshot.css-->
+
+/* Browser mock with a Vietnamese article */
+.panel { position: absolute; right: 70px; top: 132px; width: 560px; z-index: 4; }
+.window {
+  background: #fffdfa; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 40px 90px rgba(0,0,0,0.45); border: 1px solid rgba(0,0,0,0.06);
+}
+.winbar { display: flex; align-items: center; gap: 8px; padding: 13px 16px; background: #eef1f6; }
+.winbar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.winbar .r { background: #ff5f57; } .winbar .y { background: #febc2e; } .winbar .g { background: #28c840; }
+.winbar .url { margin-left: 12px; flex: 1; background: #fff; border-radius: 7px; padding: 6px 12px; font: 13px 'Inter', sans-serif; color: #6b7280; }
+.article { padding: 26px 28px 30px; color: #1a2233; font-family: 'Inter', Georgia, serif; }
+.article h2 { font-family: 'Outfit', sans-serif; font-size: 22px; color: #0f2340; line-height: 1.25; margin-bottom: 14px; }
+.article p { font-size: 16px; line-height: 1.72; color: #26324a; }
+.hl { border-bottom: 2px solid #f4be37; background: rgba(244,190,55,0.14); font-weight: 600; padding: 0 1px; }
+
+/* Learning card (matches the extension tooltip) */
+.card {
+  position: absolute; right: 60px; top: 250px; width: 330px; z-index: 6;
+  background: linear-gradient(180deg, #fffdfa 0%, #fff8ef 100%);
+  border: 5px solid #19355d; border-radius: 22px; padding: 15px 12px 12px;
+  box-shadow: 0 26px 60px rgba(6,15,35,0.5); color: #162640;
+  font-family: 'Inter', "Segoe UI", sans-serif;
+}
+.card .title { font-family: 'Outfit', sans-serif; font-weight: 900; color: #19355d; font-size: 25px; letter-spacing: 0.02em; line-height: 0.95; }
+.card .meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.card .type { font-size: 13.5px; font-style: italic; color: #111827; }
+.card .audio { width: 24px; height: 24px; border-radius: 50%; background: #19355d; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+.card .phon { font-size: 12.5px; color: #5d6880; font-weight: 600; }
+.card .def { margin-top: 9px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.chips { display: flex; gap: 6px; margin-top: 9px; padding: 6px 7px; border-radius: 9px; background: #19355d; }
+.chip { flex: 1; text-align: center; font-weight: 800; font-size: 11px; padding: 6px 4px; border-radius: 8px; }
+.chip.y { background: #f3c94b; color: #19355d; }
+.chip.d { background: #e7edf8; color: #254065; }
+.card .ex { margin-top: 10px; font-size: 12.5px; line-height: 1.35; color: #171f2d; }
+.card .ex b { color: #355d92; text-decoration: underline; text-underline-offset: 2px; }
+.card .sec { margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(25,53,93,0.07); border: 1px solid rgba(25,53,93,0.1); font-size: 11px; }
+.card .sec .row { display: flex; gap: 6px; }
+.card .sec b { color: #19355d; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.card .sec span { color: #27364d; font-weight: 600; }
+.card .actions { display: flex; margin-top: 8px; padding-top: 8px; border-top: 2px solid rgba(25,53,93,0.14); }
+.card .actions button { flex: 1; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; padding: 8px 6px; }
+.card .actions .save { color: #d49700; }
+.card .actions .know { color: #161b28; border-left: 2px solid rgba(25,53,93,0.14); }
+
+.footer { position: absolute; left: 0; right: 0; bottom: 0; height: 122px; display: flex; align-items: center; justify-content: space-around;
+  padding: 0 72px; background: rgba(255,255,255,0.05); border-top: 1px solid rgba(255,255,255,0.10); font-family: 'Inter', sans-serif; }
+.feat { display: flex; align-items: center; gap: 14px; }
+.feat .ic { width: 42px; height: 42px; border-radius: 11px; background: rgba(243,201,75,0.16); border: 1px solid rgba(243,201,75,0.4);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #f3c94b; font-family: 'Outfit', sans-serif; }
+.feat .tt { font-size: 16px; font-weight: 700; color: #eef4ff; }
+.feat .ss { font-size: 13px; color: #9fb0d0; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="brand"><div class="logo"></div><div class="name">Meri<b>d</b></div></div>
+
+  <div class="headline">
+    <h1>Đọc tiếng Việt.<br><span class="gold">Thấm</span> tiếng Anh.</h1>
+    <p>Merid thay những từ tiếng Việt bằng từ vựng SAT/CEFR ngay trên trang bạn đang đọc - di chuột để xem nghĩa.</p>
+    <div class="pills">
+      <span class="pill">100% <b>offline</b></span>
+      <span class="pill">Không tài khoản</span>
+      <span class="pill">Không gửi dữ liệu</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="window">
+      <div class="winbar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="url">vnexpress.net</span></div>
+      <div class="article">
+        <h2>Kế hoạch phát triển đô thị thông minh</h2>
+        <p>Chính quyền thành phố cho biết sẽ <span class="hl">consolidate</span> các nguồn lực để triển khai một chiến lược <span class="hl">elaborate</span> nhằm nâng cao chất lượng sống cho người dân.</p>
+        <p>Dự án sẽ <span class="hl">facilitate</span> việc kết nối giao thông công cộng và <span class="hl">mitigate</span> tình trạng ùn tắc trong giờ cao điểm. Các chuyên gia cũng khuyến nghị nên <span class="hl">prioritize</span> những khu vực có mật độ dân cư cao.</p>
+        <p>Theo lộ trình, giai đoạn đầu sẽ <span class="hl">commence</span> vào quý sau, tập trung vào việc cải tạo hạ tầng và mở rộng không gian xanh của đô thị.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="title">ELABORATE</div>
+    <div class="meta"><span class="type">(adjective)</span><span class="audio">🔊</span><span class="phon">/ɪˈlæb.ər.ət/</span></div>
+    <div class="def">complex, detailed, intricate</div>
+    <div class="chips"><span class="chip y">intricate</span><span class="chip y">complex</span><span class="chip y">sophisticated</span></div>
+    <div class="chips"><span class="chip d">simple</span><span class="chip d">basic</span><span class="chip d">rudimentary</span></div>
+    <div class="ex">Dan develops such an <b>elaborate</b> game plan that I can never predict his next move.</div>
+    <div class="sec"><div class="row"><b>Vietnamese</b>&nbsp;<span>Công phu, tỉ mỉ, phức tạp</span></div></div>
+    <div class="actions"><button class="save">Save to Deck</button><button class="know">I know this</button></div>
+  </div>
+
+  <div class="footer">
+    <div class="feat"><div class="ic">A</div><div><div class="tt">SAT · C1 · C2</div><div class="ss">Choose your vocabulary level</div></div></div>
+    <div class="feat"><div class="ic">✦</div><div><div class="tt">Hover to learn</div><div class="ss">Definition, example, audio</div></div></div>
+    <div class="feat"><div class="ic">✓</div><div><div class="tt">Private by design</div><div class="ss">Nothing leaves your browser</div></div></div>
+  </div>
+</div>
+</body>
+</html>

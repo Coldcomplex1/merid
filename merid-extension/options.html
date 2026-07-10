@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merid - Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <main class="wrap">
+        <header class="head">
+            <h1>Merid</h1>
+            <p class="tagline">Passive English vocabulary learning while you browse Vietnamese websites. Works fully offline - no account, no setup.</p>
+        </header>
+
+        <!-- REPLACEMENT -->
+        <section class="card">
+            <h2>Replacement</h2>
+
+            <div class="field">
+                <label>How words appear</label>
+                <div class="seg" id="modeSeg">
+                    <button data-val="replace" type="button">Replace directly</button>
+                    <button data-val="highlight" type="button">Highlight only</button>
+                    <button data-val="beside" type="button">Show beside</button>
+                </div>
+                <p class="hint">Replace = swap the word. Highlight = keep the original, show meaning on hover. Beside = <em>từ (word)</em>.</p>
+            </div>
+
+            <div class="field">
+                <label>Intensity</label>
+                <div class="seg" id="intensitySeg">
+                    <button data-val="light" type="button">Light</button>
+                    <button data-val="medium" type="button">Medium</button>
+                    <button data-val="heavy" type="button">Heavy</button>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Languages to scan</label>
+                <div class="mode-cards" id="directionCards">
+                    <button class="mode-card" data-mode="vieEng" type="button" aria-pressed="false">
+                        <span class="mode-card-title">Vietnamese → English</span>
+                        <span class="mode-card-sub">Replace Vietnamese words with the English equivalent</span>
+                    </button>
+                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false">
+                        <span class="mode-card-title">English → English</span>
+                        <span class="mode-card-sub">Swap easy English words for harder synonyms</span>
+                    </button>
+                </div>
+                <p class="hint">Turn on both to scan Vietnamese and English at the same time.</p>
+            </div>
+        </section>
+
+        <!-- DATASET -->
+        <section class="card">
+            <h2>Vocabulary dataset</h2>
+            <div class="seg" id="datasetSeg">
+                <button data-val="sat" type="button">SAT</button>
+                <button data-val="c1" type="button">C1</button>
+                <button data-val="c2" type="button">C2</button>
+                <button data-val="all" type="button">All</button>
+            </div>
+            <p class="hint" id="datasetInfo">Loaded: …</p>
+        </section>
+
+        <!-- DATA & PRIVACY -->
+        <section class="card">
+            <h2>Data &amp; privacy</h2>
+            <ul class="privacy">
+                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
+                <li>The extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
+                <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>Turn the extension off any time from the popup.</li>
+            </ul>
+            <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>
+        </section>
+
+        <footer class="foot">
+            <span id="savedTag" class="saved-tag">Settings save automatically</span>
+        </footer>
+    </main>
+
+    <script src="lib/vocab-core.js"></script>
+    <script src="options.js"></script>
+</body>
+
+</html>

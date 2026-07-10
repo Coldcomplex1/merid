@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: transparent; }
+  body { width: __W__px; height: __H__px; overflow: hidden; }
+  .stage {
+    width: 440px; height: 280px; transform: scale(__SCALE__); transform-origin: top left;
+    position: relative; overflow: hidden;
+    background: radial-gradient(420px 300px at 80% -20%, #1c3a66 0%, #112240 48%, #0a192f 100%);
+    font-family: 'Outfit', -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #e6f1ff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 28px;
+  }
+  .logo { width: 66px; height: 66px; border-radius: 16px; position: relative;
+    background: linear-gradient(145deg, #244f86, #1a3560 52%, #0f2340); box-shadow: 0 10px 22px rgba(0,0,0,0.35); margin-bottom: 18px; }
+  .logo::before { content: "M"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: "Arial Black", Arial, sans-serif; font-weight: 900; font-size: 42px; color: #f3c94b; }
+  .logo::after { content: ""; position: absolute; left: 17px; right: 17px; bottom: 13px; height: 4px; border-radius: 2px; background: #f3c94b; }
+  .name { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; }
+  .name b { color: #f3c94b; font-weight: 700; }
+  .tag { margin-top: 10px; font-size: 15px; color: #a7b6d4; font-family: 'Inter', sans-serif; line-height: 1.4; }
+  .badge { margin-top: 16px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; color: #f3c94b;
+    background: rgba(243,201,75,0.14); border: 1px solid rgba(243,201,75,0.4); border-radius: 999px; padding: 6px 14px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="logo"></div>
+    <div class="name">Meri<b>d</b></div>
+    <div class="tag">Learn English while you browse Vietnamese sites</div>
+    <div class="badge">100% offline · no account</div>
+  </div>
+</body>
+</html>
