@@ -9,16 +9,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit": "npm audit --audit-level=high",
+    "emulators": "firebase emulators:start --only auth,firestore",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\""
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.2.8",
     "@fontsource/lora": "^5.2.5",
+    "firebase": "^12.16.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@tailwindcss/vite": "^4.1.11",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

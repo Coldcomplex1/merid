@@ -3,3 +3,15 @@ dist
 *.local
 .DS_Store
 npm-debug.log*
+
+# Environment files — never commit real Firebase config/secrets (.env.local is
+# already covered by *.local; this catches every other .env variant).
+.env
+.env.*
+!.env.example
+
+# Firebase emulator artifacts
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
