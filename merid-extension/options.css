@@ -169,3 +169,7 @@ body {
 .foot { text-align: center; margin-top: 12px; }
 .saved-tag { color: var(--muted); font-size: 13px; }
 .saved-tag.flash { color: var(--ok); }
+
+/* Account & sync card */
+.auth-actions { display: flex; gap: 10px; margin-top: 14px; }
+.auth-error { color: var(--danger); }

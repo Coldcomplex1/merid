@@ -1,0 +1,140 @@
+rules_version = '2';
+
+// Merid Firestore security rules.
+//
+// Layout:
+//   users/{uid}                – profile + daily write counter (rate limit)
+//   users/{uid}/words/{wordId} – one document per saved/known word,
+//                                wordId == normalized (lowercase) word
+//
+// Guarantees:
+//   A01 – only request.auth.uid == uid can touch anything under users/{uid};
+//         everything else is default-deny, so user A can never read or write
+//         user B's deck regardless of what uid/payload they claim.
+//   A03 – every field is type-, shape- and length-checked at the database
+//         boundary, so malformed or oversized payloads are rejected even if
+//         client-side validation is bypassed.
+//   A04 – creating a word requires atomically bumping the owner's daily
+//         counter (same batch), capped at DAILY_LIMIT words per UTC day.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Max words a single account may create per UTC day (abuse cap).
+    function dailyLimit() { return 200; }
+
+    // Days since Unix epoch (UTC). Clients compute Math.floor(Date.now() / 86400000).
+    function today() { return int(request.time.toMillis() / 86400000); }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid) && validUserDoc();
+
+      // createdAt is immutable; the counter may only move forward within a day.
+      allow update: if isOwner(uid)
+        && validUserDoc()
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          request.resource.data.countDay != resource.data.countDay
+          || request.resource.data.wordCountToday >= resource.data.wordCountToday
+        );
+
+      // The profile/counter doc must never be deleted (it anchors the rate limit).
+      allow delete: if false;
+
+      function validUserDoc() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['createdAt', 'wordCountToday', 'countDay'])
+          && d.keys().hasAll(['createdAt', 'wordCountToday', 'countDay'])
+          && d.createdAt is timestamp
+          && d.wordCountToday is int
+          && d.wordCountToday >= 0
+          && d.wordCountToday <= dailyLimit()
+          && d.countDay is int
+          && d.countDay == today();
+      }
+
+      match /words/{wordId} {
+        allow read: if isOwner(uid);
+
+        // Creating a word must, in the same batch/transaction, bump the
+        // owner's daily counter — otherwise the write is rejected. This is
+        // what enforces the per-day cap without Cloud Functions.
+        allow create: if isOwner(uid)
+          && validWord(wordId)
+          && request.resource.data.createdAt == request.time
+          && counterBumped();
+
+        // Status flips (saved <-> known) and content refreshes; identity and
+        // creation time are immutable.
+        allow update: if isOwner(uid)
+          && validWord(wordId)
+          && request.resource.data.word == resource.data.word
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        allow delete: if isOwner(uid);
+
+        function userDocPath() {
+          return /databases/$(database)/documents/users/$(uid);
+        }
+
+        function counterBumped() {
+          let after = getAfter(userDocPath()).data;
+          return after.countDay == today()
+            && after.wordCountToday <= dailyLimit()
+            && (
+              !exists(userDocPath())
+                // First ever write: batch must create the user doc at count 1.
+                ? after.wordCountToday == 1
+                : (
+                  get(userDocPath()).data.countDay == today()
+                    // Same day: exactly +1 per created word.
+                    ? after.wordCountToday == get(userDocPath()).data.wordCountToday + 1
+                    // New day: counter restarts at 1.
+                    : after.wordCountToday == 1
+                )
+            );
+        }
+
+        // Schema validation at the DB boundary. wordId must equal the
+        // normalized word itself, which both prevents duplicates (one doc per
+        // word) and stops path/payload mismatch tricks.
+        function validWord(wordId) {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['word', 'vietnamese', 'definition', 'example',
+                                   'pos', 'status', 'datasets', 'createdAt', 'updatedAt'])
+            && d.keys().hasAll(['word', 'status', 'createdAt', 'updatedAt'])
+            && d.word is string
+            && d.word == wordId
+            && d.word.size() >= 1
+            && d.word.size() <= 64
+            && d.word == d.word.lower()
+            // Lowercase words/phrases only: letters plus internal space,
+            // hyphen or apostrophe. No control chars, no HTML, no leading or
+            // trailing whitespace.
+            && d.word.matches("[a-z](?:[a-z '-]*[a-z])?")
+            && d.status is string
+            && d.status in ['saved', 'known']
+            && (!('vietnamese' in d) || (d.vietnamese is string && d.vietnamese.size() <= 128))
+            && (!('definition' in d) || (d.definition is string && d.definition.size() <= 512))
+            && (!('example' in d) || (d.example is string && d.example.size() <= 1024))
+            && (!('pos' in d) || (d.pos is string && d.pos.size() <= 32))
+            && (!('datasets' in d) || (d.datasets is list
+                                       && d.datasets.size() <= 4
+                                       && d.datasets.hasOnly(['SAT', 'B2', 'C1', 'C2'])))
+            && d.createdAt is timestamp
+            && d.updatedAt == request.time;
+        }
+      }
+    }
+
+    // Default deny: anything not explicitly matched above is unreachable.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

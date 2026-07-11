@@ -10,13 +10,16 @@
 //     then toggles it on/off. Merid is NEVER injected automatically - there is
 //     no all-URLs content script and no host permissions.
 //
-// This extension is fully local: there are NO API keys, NO backend, and NO
-// network requests to any external server. The only fetches here read the
-// extension's own bundled CSV files via chrome.runtime.getURL().
+// The core experience is fully local: vocabulary datasets are bundled CSV
+// files read via chrome.runtime.getURL(). Optionally, when Firebase is
+// configured (lib/firebase-config.js) AND the user signs in from the options
+// page, the saved deck syncs to their own Firestore account (lib/sync.js).
+// No page content is ever sent anywhere.
 // =============================================================
 
-importScripts('lib/vocab-core.js');
+importScripts('lib/vocab-core.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
 const C = self.VMCore;
+const Sync = self.VMSync;
 
 // The command id declared in manifest.json ("commands").
 const TOGGLE_COMMAND = 'toggle-merid-current-page';
@@ -83,9 +86,18 @@ function initVocabulary() {
 // =============================================================
 // Lifecycle
 // =============================================================
-chrome.runtime.onInstalled.addListener(() => { console.log('[VM] Installed/updated.'); initVocabulary(); });
-chrome.runtime.onStartup.addListener(() => { console.log('[VM] Startup.'); initVocabulary(); });
+chrome.runtime.onInstalled.addListener(() => { console.log('[VM] Installed/updated.'); initVocabulary(); Sync.kick(); });
+chrome.runtime.onStartup.addListener(() => { console.log('[VM] Startup.'); initVocabulary(); Sync.kick(); });
 initVocabulary();
+Sync.kick(); // resume any sync interrupted by a service-worker teardown
+
+// =============================================================
+// Cloud deck sync: mirror local deck changes to Firestore (lib/sync.js).
+// No-op unless Firebase is configured and the user signed in via options.
+// =============================================================
+chrome.storage.onChanged.addListener((changes, area) => {
+    try { Sync.onStorageChanged(changes, area); } catch (e) { /* sync must never break the extension */ }
+});
 
 // =============================================================
 // Per-tab badge feedback (per-tab, so it never leaks across pages)
@@ -264,6 +276,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     const cmd = (cmds || []).find(c => c.name === TOGGLE_COMMAND);
                     sendResponse({ name: TOGGLE_COMMAND, shortcut: (cmd && cmd.shortcut) || '' });
                 });
+                return true;
+            }
+
+            // ---- Cloud sync protocol (options page <-> service worker) ----
+            case 'MERID_SYNC_SIGN_IN': {
+                Sync.signIn(request.email, request.password, !!request.isNewAccount)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+                return true;
+            }
+            case 'MERID_SYNC_SIGN_OUT': {
+                Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_SYNC_STATUS': {
+                Sync.getStatus().then(sendResponse).catch(() => sendResponse({ state: 'error' }));
                 return true;
             }
             default:

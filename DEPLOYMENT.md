@@ -22,14 +22,19 @@ You only ever do this once.
 3. **Import the project.** Back on the *Add New Project* screen, click **Import** next to
    `Coldcomplex1/merid`.
 
-4. **Check the settings (they should already be correct).** Vercel auto-detects everything:
+4. **Check the settings.** Vercel auto-detects the build:
    - Framework Preset: **Vite**
    - Build Command: `npm run build`
    - Output Directory: `dist`
    - Install Command: `npm install`
-   - Environment Variables: none needed
 
-   Don't change anything, just click **Deploy**.
+   Then open the **Environment Variables** section and add the six
+   `VITE_FIREBASE_*` variables (values come from Firebase Console →
+   Project settings → Your apps → SDK setup; see `.env.example` for the
+   exact names). Without them the site still works, but accounts/My Deck
+   stay disabled and only `/demo` is available.
+
+   Now click **Deploy**.
 
 5. **Wait ~1 minute.** When the confetti screen appears, your site is live. The URL looks like
    `https://merid.vercel.app` (or `merid-xxxx.vercel.app` if the name is taken). Click
@@ -37,6 +42,27 @@ You only ever do this once.
 
 6. *(Optional)* **Nicer address:** Project → **Settings → Domains** lets you rename the free
    `*.vercel.app` subdomain or attach a custom domain you own (e.g. `merid.vn`).
+
+---
+
+## Activating accounts & My Deck (Firebase, one time)
+
+The deck/auth features need a Firebase project. Full guide with security notes:
+**`docs/FIREBASE_SETUP.md`**. Short version:
+
+1. Firebase Console → **Authentication → Sign-in method** → enable **Email/Password**.
+2. **Firestore Database → Create database** (Production mode).
+3. Firestore → **Rules** tab → paste the contents of `firestore.rules` from this
+   repo → **Publish**. (Nothing works until the rules are published — the
+   database starts locked.)
+4. **Authentication → Settings → Authorized domains** → add every domain that
+   serves the site (your `*.vercel.app` URL, `merid.site`, plus `localhost` for
+   dev). Sign-in is blocked from any domain not on this list.
+5. Vercel → Environment Variables → the six `VITE_FIREBASE_*` values → Redeploy.
+
+Moving the site to a different Vercel account later needs **no code changes**:
+repeat step 5 on the new project and make sure its domain is in step 4's list.
+All user data lives in Firebase, not in Vercel.
 
 ---
 
