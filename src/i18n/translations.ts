@@ -9,6 +9,8 @@ export interface Segment {
 
 export interface Strings {
   meta: { title: string; tutorialTitle: string }
+  theme: { toDark: string; toLight: string; label: string }
+  banner: { text: string; action: string }
   nav: { demo: string; features: string; how: string; tutorial: string; cta: string }
   deck: {
     title: string
@@ -63,8 +65,9 @@ export interface Strings {
     titleAccent: string
     title2: string
     sub: string
+    ctaInstall: string
     ctaDemo: string
-    ctaWaitlist: string
+    privacy: string
     tagNote: string
   }
   demo: {
@@ -104,20 +107,16 @@ export interface Strings {
     support: Segment[]
   }
   faq: { eyebrow: string; title: string; sub: string; items: { q: string; a: string }[] }
-  waitlist: {
+  finalCta: {
     title1: string
     titleAccent: string
     title2: string
-    placeholder: string
-    button: string
-    sending: string
-    successTitle: string
-    successBody: string
-    errorInvalid: string
-    errorSubmit: string
-    note: string
+    description: string
+    ctaInstall: string
+    ctaDemo: string
+    privacy: string
   }
-  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; waitlist: string }
+  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; install: string }
   tutorial: {
     eyebrow: string
     title: string
@@ -138,7 +137,7 @@ export interface Strings {
     outroTitle: string
     outroSub: string
     ctaDemo: string
-    ctaWaitlist: string
+    ctaInstall: string
   }
 }
 
@@ -146,6 +145,15 @@ const vi: Strings = {
   meta: {
     title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
+  },
+  theme: {
+    toDark: 'Chuyển sang chế độ tối',
+    toLight: 'Chuyển sang chế độ sáng',
+    label: 'Giao diện',
+  },
+  banner: {
+    text: 'Merid đã có mặt trên Chrome Web Store.',
+    action: 'Cài ngay',
   },
   deck: {
     title: 'Deck của tôi',
@@ -211,17 +219,18 @@ const vi: Strings = {
     features: 'Tính năng',
     how: 'Cách hoạt động',
     tutorial: 'Hướng dẫn',
-    cta: 'Tham gia Waitlist',
+    cta: 'Thêm vào Chrome',
   },
   hero: {
     eyebrow: 'Tiện ích Chrome cho người Việt học tiếng Anh',
     title1: 'Học ',
     titleAccent: 'tiếng Anh',
     title2: ' ngay khi lướt web tiếng Việt.',
-    sub: 'Merid thay một vài từ tiếng Việt bằng từ vựng tiếng Anh giá trị cao, để mỗi bài báo, blog hay bài đăng bạn đọc đều trở thành một bài học từ vựng tự nhiên.',
+    sub: 'Học từ vựng tiếng Anh một cách tự nhiên ngay khi đọc những trang web tiếng Việt bạn vẫn dùng mỗi ngày.',
+    ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
-    ctaWaitlist: 'Tham gia Waitlist',
-    tagNote: 'Học theo ngữ cảnh · Miễn phí trong beta',
+    privacy: 'Riêng tư từ trong thiết kế — chạy ngay trên máy bạn, không cần tài khoản, không gửi dữ liệu trang web lên máy chủ.',
+    tagNote: 'Học theo ngữ cảnh · Miễn phí',
   },
   demo: {
     eyebrow: 'Demo tương tác',
@@ -325,7 +334,7 @@ const vi: Strings = {
   faq: {
     eyebrow: 'FAQ',
     title: 'Câu hỏi thường gặp',
-    sub: 'Vài câu trả lời nhanh trước khi bạn tham gia.',
+    sub: 'Vài câu trả lời nhanh trước khi bạn cài Merid.',
     items: [
       {
         q: 'Extension này hoạt động như thế nào?',
@@ -345,34 +354,32 @@ const vi: Strings = {
       },
       {
         q: 'Extension có miễn phí không?',
-        a: 'Trong giai đoạn beta, Merid hoàn toàn miễn phí. Kế hoạch dài hạn sẽ được thông báo sớm, và người dùng waitlist luôn biết trước tiên.',
+        a: 'Merid hiện miễn phí. Nếu sau này có thay đổi về giá, chúng tôi sẽ thông báo trước.',
       },
       {
         q: 'Dữ liệu của mình có được bảo mật không?',
         a: 'Có. Merid chỉ xử lý văn bản trên trang để chọn từ cần thay, còn tiến trình học của bạn được lưu ngay trên trình duyệt. Merid không bán dữ liệu của bạn.',
       },
       {
-        q: 'Khi nào extension ra mắt?',
-        a: 'Merid đang trong giai đoạn beta riêng tư. Đăng ký waitlist để nhận email ngay khi bản public sẵn sàng trên Chrome Web Store.',
+        q: 'Làm sao để cài Merid?',
+        a: 'Merid đã có trên Chrome Web Store. Mở trang Merid, bấm "Add to Chrome", rồi ghim icon để dùng ngay khi lướt web.',
       },
       {
-        q: 'Mình đăng ký waitlist để làm gì?',
-        a: 'Bạn được quyền truy cập sớm, mở khóa đầy đủ các bộ từ SAT, B2, C1, C2 ngay từ ngày đầu, và có tiếng nói trực tiếp về những tính năng tiếp theo.',
+        q: 'Merid dùng được trên trình duyệt nào?',
+        a: 'Merid là extension cho Chrome. Các trình duyệt nhân Chromium hỗ trợ Chrome Web Store (như Edge hay Brave) thường cũng cài được từ cùng một trang.',
       },
     ],
   },
-  waitlist: {
-    title1: 'Biến cả Internet thành ',
-    titleAccent: 'lớp học từ vựng',
-    title2: ' của bạn.',
-    placeholder: 'Nhập email của bạn',
-    button: 'Tham gia Waitlist',
-    sending: 'Đang gửi...',
-    successTitle: 'Bạn đã có tên trong danh sách!',
-    successBody: 'Merid sẽ gửi email cho bạn ngay khi extension sẵn sàng trên trình duyệt.',
-    errorInvalid: 'Hmm, email này có vẻ chưa đúng. Bạn kiểm tra lại nhé?',
-    errorSubmit: 'Có lỗi khi gửi đăng ký. Bạn thử lại sau một lát nhé.',
-    note: 'Người dùng sớm sẽ được truy cập các bộ từ SAT, B2, C1 và C2 trước tiên.',
+  finalCta: {
+    title1: 'Học ngay ',
+    titleAccent: 'khi bạn lướt web',
+    title2: '.',
+    description:
+      'Cài Merid và biến những trang web tiếng Việt hằng ngày thành cơ hội học từ vựng tiếng Anh.',
+    ctaInstall: 'Thêm Merid vào Chrome',
+    ctaDemo: 'Thử demo ngay',
+    privacy:
+      'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn — không tài khoản, không dịch vụ AI, không gửi dữ liệu trang web lên máy chủ.',
   },
   footer: {
     tagline: 'Làm cho người Việt học tiếng Anh.',
@@ -380,7 +387,7 @@ const vi: Strings = {
     features: 'Tính năng',
     tutorial: 'Hướng dẫn',
     faq: 'FAQ',
-    waitlist: 'Waitlist',
+    install: 'Thêm vào Chrome',
   },
   tutorial: {
     eyebrow: 'Hướng dẫn',
@@ -389,9 +396,9 @@ const vi: Strings = {
     steps: [
       {
         title: 'Cài đặt và ghim Merid',
-        intro: 'Merid đang trong giai đoạn beta riêng tư. Khi lời mời tới, cài đặt chỉ mất chưa đầy một phút:',
+        intro: 'Merid đã có trên Chrome Web Store. Cài đặt chỉ mất chưa đầy một phút:',
         bullets: [
-          { term: 'Thêm vào Chrome.', text: 'Mở link cài đặt trong Chrome và bấm "Add to Chrome".' },
+          { term: 'Thêm vào Chrome.', text: 'Mở trang Merid trên Chrome Web Store và bấm "Add to Chrome".' },
           {
             term: 'Ghim lại.',
             text: 'Bấm biểu tượng mảnh ghép ở góc trên bên phải của Chrome, rồi bấm ghim cạnh Merid.',
@@ -484,7 +491,7 @@ const vi: Strings = {
     outroTitle: 'Toàn bộ quy trình chỉ có vậy.',
     outroSub: 'Đọc web là thói quen bạn đã có sẵn. Merid chỉ nâng cấp nó.',
     ctaDemo: 'Thử demo tương tác',
-    ctaWaitlist: 'Tham gia Waitlist',
+    ctaInstall: 'Thêm Merid vào Chrome',
   },
 }
 
@@ -492,6 +499,15 @@ const en: Strings = {
   meta: {
     title: 'Merid: Learn English while browsing Vietnamese websites',
     tutorialTitle: 'Tutorial: How to use Merid',
+  },
+  theme: {
+    toDark: 'Switch to dark mode',
+    toLight: 'Switch to light mode',
+    label: 'Theme',
+  },
+  banner: {
+    text: 'Merid is now live on the Chrome Web Store.',
+    action: 'Install now',
   },
   deck: {
     title: 'My Deck',
@@ -557,17 +573,18 @@ const en: Strings = {
     features: 'Features',
     how: 'How it works',
     tutorial: 'Tutorial',
-    cta: 'Join the Waitlist',
+    cta: 'Add to Chrome',
   },
   hero: {
     eyebrow: 'Chrome extension for Vietnamese learners',
     title1: 'Learn ',
     titleAccent: 'English',
     title2: ' while browsing Vietnamese websites.',
-    sub: 'Merid replaces selected Vietnamese words with high-value English vocabulary, so every article, blog, and post becomes a natural vocab lesson.',
+    sub: 'Learn English vocabulary naturally while reading the Vietnamese websites you already use.',
+    ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
-    ctaWaitlist: 'Join the Waitlist',
-    tagNote: 'Context-aware learning · Free during beta',
+    privacy: 'Private by design — it runs locally on your device, with no account and no webpage data sent to a server.',
+    tagNote: 'Context-aware learning · Free',
   },
   demo: {
     eyebrow: 'Interactive demo',
@@ -671,7 +688,7 @@ const en: Strings = {
   faq: {
     eyebrow: 'FAQ',
     title: 'Frequently asked questions',
-    sub: 'Quick answers before you join.',
+    sub: 'Quick answers before you install.',
     items: [
       {
         q: 'How does the extension work?',
@@ -691,34 +708,32 @@ const en: Strings = {
       },
       {
         q: 'Is the extension free?',
-        a: 'Merid is completely free during the beta. Long-term plans will be announced early, and waitlist members always hear first.',
+        a: 'Merid is free to use. If pricing ever changes in the future, we will announce it ahead of time.',
       },
       {
         q: 'Is my data private?',
         a: 'Yes. Merid only processes the text on the page to decide which words to replace, and your learning progress is stored in your own browser. Merid does not sell your data.',
       },
       {
-        q: 'When will the extension launch?',
-        a: 'Merid is in private beta right now. Join the waitlist and you will get an email the moment the public version lands on the Chrome Web Store.',
+        q: 'How do I install Merid?',
+        a: 'Merid is on the Chrome Web Store. Open the Merid listing, click "Add to Chrome", then pin the icon to start learning as you browse.',
       },
       {
-        q: 'Why should I join the waitlist?',
-        a: 'Early access, all SAT, B2, C1, and C2 datasets unlocked from day one, and a direct say in which features come next.',
+        q: 'Which browsers does Merid support?',
+        a: 'Merid is a Chrome extension. Chromium-based browsers that support the Chrome Web Store (such as Edge or Brave) can usually install it from the same listing.',
       },
     ],
   },
-  waitlist: {
-    title1: 'Turn the entire internet into your ',
-    titleAccent: 'vocabulary classroom',
+  finalCta: {
+    title1: 'Start learning ',
+    titleAccent: 'while you browse',
     title2: '.',
-    placeholder: 'Enter your email',
-    button: 'Join the Waitlist',
-    sending: 'Sending...',
-    successTitle: 'You’re on the list!',
-    successBody: 'We’ll email you the moment Merid is ready for your browser.',
-    errorInvalid: 'Hmm, that email doesn’t look right. Mind checking it?',
-    errorSubmit: 'Something went wrong while submitting. Please try again in a moment.',
-    note: 'Early users will get access to SAT, B2, C1, and C2 datasets.',
+    description:
+      'Install Merid and turn everyday Vietnamese webpages into opportunities to learn English vocabulary.',
+    ctaInstall: 'Add Merid to Chrome',
+    ctaDemo: 'Try the Demo',
+    privacy:
+      'Private by design. Merid works locally on your device — no account, no AI service, and no webpage data sent to a server.',
   },
   footer: {
     tagline: 'Made for Vietnamese learners.',
@@ -726,7 +741,7 @@ const en: Strings = {
     features: 'Features',
     tutorial: 'Tutorial',
     faq: 'FAQ',
-    waitlist: 'Waitlist',
+    install: 'Add to Chrome',
   },
   tutorial: {
     eyebrow: 'Tutorial',
@@ -735,9 +750,9 @@ const en: Strings = {
     steps: [
       {
         title: 'Install and pin Merid',
-        intro: 'Merid is currently in private beta. When your invite arrives, the install takes under a minute:',
+        intro: 'Merid is on the Chrome Web Store. Installing takes under a minute:',
         bullets: [
-          { term: 'Add it.', text: 'Open the install link in Chrome and click "Add to Chrome".' },
+          { term: 'Add it.', text: 'Open the Merid listing on the Chrome Web Store and click "Add to Chrome".' },
           {
             term: 'Pin it.',
             text: 'Click the puzzle icon at the top right of Chrome, then press the pin next to Merid.',
@@ -837,7 +852,7 @@ const en: Strings = {
     outroTitle: 'That is the whole workflow.',
     outroSub: 'Reading is the habit you already have. Merid just upgrades it.',
     ctaDemo: 'Try the interactive demo',
-    ctaWaitlist: 'Join the Waitlist',
+    ctaInstall: 'Add Merid to Chrome',
   },
 }
 

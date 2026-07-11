@@ -72,14 +72,14 @@ export default function PuzzleMode({ words }: { words: DeckWord[] }) {
   const [right, setRight] = useState(0)
 
   if (!rounds.length) {
-    return <p className="rounded-xl border border-navy-700 bg-navy-850 p-6 text-navy-300">{t.deck.puzzle.needMore}</p>
+    return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.puzzle.needMore}</p>
   }
 
   const finished = index >= rounds.length
   if (finished) {
     return (
-      <div className="rounded-xl border border-navy-700 bg-navy-850 p-8 text-center">
-        <p className="text-2xl font-bold text-white">{t.deck.puzzle.score(right, rounds.length)}</p>
+      <div className="rounded-xl border border-line bg-surface p-8 text-center">
+        <p className="text-2xl font-bold text-heading">{t.deck.puzzle.score(right, rounds.length)}</p>
         <button
           type="button"
           onClick={() => {
@@ -101,24 +101,24 @@ export default function PuzzleMode({ words }: { words: DeckWord[] }) {
   const isCorrect = picked === round.answer
 
   return (
-    <div className="rounded-xl border border-navy-700 bg-navy-850 p-6 sm:p-8">
-      <p className="text-xs font-semibold tracking-wide text-navy-300 uppercase">
+    <div className="rounded-xl border border-line bg-surface p-6 sm:p-8">
+      <p className="text-xs font-semibold tracking-wide text-muted uppercase">
         {index + 1} / {rounds.length} · {round.kind === 'cloze' ? t.deck.puzzle.prompt : t.deck.puzzle.promptMeaning}
       </p>
-      <p className="mt-4 font-serif text-lg leading-relaxed text-white">
+      <p className="mt-4 font-serif text-lg leading-relaxed text-heading">
         {round.kind === 'meaning' ? `“${round.prompt}”` : round.prompt}
       </p>
-      {round.hint && <p className="mt-1.5 text-sm text-navy-300 italic">{round.hint}</p>}
+      {round.hint && <p className="mt-1.5 text-sm text-muted italic">{round.hint}</p>}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {round.options.map((option) => {
           const isAnswer = option === round.answer
           const isPicked = option === picked
-          let style = 'border-navy-600 text-navy-100 hover:border-gold-400 hover:text-gold-200'
+          let style = 'border-line-strong text-body hover:border-accent hover:text-accent'
           if (answered) {
-            if (isAnswer) style = 'border-emerald-400 bg-emerald-400/10 text-emerald-300'
-            else if (isPicked) style = 'border-red-400 bg-red-400/10 text-red-300'
-            else style = 'border-navy-700 text-navy-400'
+            if (isAnswer) style = 'border-success/60 bg-success/10 text-success'
+            else if (isPicked) style = 'border-danger/60 bg-danger/10 text-danger'
+            else style = 'border-line text-faint'
           }
           return (
             <button
@@ -139,7 +139,7 @@ export default function PuzzleMode({ words }: { words: DeckWord[] }) {
 
       {answered && (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <p className={`text-sm font-semibold ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
+          <p className={`text-sm font-semibold ${isCorrect ? 'text-success' : 'text-danger'}`}>
             {isCorrect ? t.deck.puzzle.correct : t.deck.puzzle.wrong(round.answer)}
           </p>
           <button

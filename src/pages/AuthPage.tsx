@@ -30,8 +30,8 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   if (!configured) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="rounded-xl border border-navy-700 bg-navy-850 p-6 text-navy-200">{errors.notConfigured}</p>
-        <Link to="/demo" className="mt-4 inline-block font-semibold text-gold-300 hover:underline">
+        <p className="rounded-xl border border-line bg-surface p-6 text-body">{errors.notConfigured}</p>
+        <Link to="/demo" className="mt-4 inline-block font-semibold text-accent hover:text-accent-hover hover:underline">
           {t.deck.menu.demo} →
         </Link>
       </div>
@@ -60,23 +60,23 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-16">
-      <h1 className="text-3xl font-bold text-white">{isSignup ? t.deck.auth.signupTitle : t.deck.auth.loginTitle}</h1>
+      <h1 className="text-3xl font-bold text-heading">{isSignup ? t.deck.auth.signupTitle : t.deck.auth.loginTitle}</h1>
 
       <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4" noValidate>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-semibold text-navy-200">{t.deck.auth.email}</span>
+          <span className="text-sm font-semibold text-body">{t.deck.auth.email}</span>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="rounded-lg border border-navy-600 bg-navy-850 px-3.5 py-2.5 text-white placeholder-navy-400 focus:border-gold-400 focus:outline-none"
+            className="rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-heading placeholder-muted focus:border-accent focus:outline-none"
             placeholder="you@example.com"
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-semibold text-navy-200">{t.deck.auth.password}</span>
+          <span className="text-sm font-semibold text-body">{t.deck.auth.password}</span>
           <input
             type="password"
             value={password}
@@ -84,13 +84,13 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             autoComplete={isSignup ? 'new-password' : 'current-password'}
             required
             minLength={8}
-            className="rounded-lg border border-navy-600 bg-navy-850 px-3.5 py-2.5 text-white placeholder-navy-400 focus:border-gold-400 focus:outline-none"
+            className="rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-heading placeholder-muted focus:border-accent focus:outline-none"
             placeholder="••••••••"
           />
         </label>
 
         {error && (
-          <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3.5 py-2.5 text-sm text-red-200" role="alert">
+          <p className="rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm text-danger" role="alert">
             {error}
           </p>
         )}
@@ -104,11 +104,11 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-navy-300">
+      <p className="mt-6 text-sm text-muted">
         <Link
           to={isSignup ? '/login' : '/signup'}
           state={location.state}
-          className="font-semibold text-gold-300 hover:underline"
+          className="font-semibold text-accent hover:text-accent-hover hover:underline"
         >
           {isSignup ? t.deck.auth.switchToLogin : t.deck.auth.switchToSignup}
         </Link>

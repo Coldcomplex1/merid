@@ -35,6 +35,9 @@
   --shadow-panel: 0 30px 70px -25px rgb(0 0 0 / 0.75);
   --shadow-lift: 0 22px 50px -20px rgb(245 197 66 / 0.35);
 
+  /* ── Semantic surface shadows (soften automatically in light mode) ──── */
+  --shadow-soft: 0 18px 45px -20px var(--shadow-tint);
+
   /* ── Motion ─────────────────────────────────────────────────── */
   --animate-float: float 6s ease-in-out infinite;
   --animate-float-slow: float 8s ease-in-out infinite;
@@ -65,20 +68,164 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   THEME TOKENS
+
+   Semantic design tokens are the single source of truth for every themed
+   surface. They are registered with Tailwind through `@theme inline` so
+   utilities such as `bg-canvas`, `text-heading`, `border-line`, `text-accent`
+   resolve to a CSS variable that flips between light and dark. The concrete
+   values live in the :root / [data-theme] blocks below, so a single toggle
+   re-themes the whole site.
+
+   Product mockups that literally depict the extension or a real web page
+   (BrowserMockup, ExtensionPanel, VocabPopupCard, the demo "page") keep the
+   fixed navy/cream brand palette on purpose — they are illustrations, not
+   chrome, so we don't simply invert them.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-canvas-2: var(--canvas-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-band: var(--band);
+  --color-ring: var(--ring);
+
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+}
+
+/* Light theme (default). */
+:root {
+  color-scheme: light;
+
+  --canvas: #faf8f2;
+  --canvas-2: #f2ede1;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --surface-3: #e2e7f1;
+
+  --heading: #15213b;
+  --body: #414c63;
+  --muted: #5f6a81;
+  --faint: #8b93a4;
+
+  --line: #e7e1d3;
+  --line-strong: #d6cfbe;
+
+  --accent: #9a7412;
+  --accent-hover: #7d5e0d;
+  --band: #f4ecd8;
+  --ring: #b98d17;
+
+  --danger: #b91c1c;
+  --success: #047857;
+
+  --shadow-tint: rgb(23 33 59 / 0.14);
+}
+
+/* Dark theme — the site's original look, preserved 1:1. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0e1628;
+  --canvas-2: #0a1122;
+  --surface: #121c33;
+  --surface-2: #1e2b4d;
+  --surface-3: #2a3a63;
+
+  --heading: #fdf9ef;
+  --body: #b9c5de;
+  --muted: #93a5c9;
+  --faint: #6f7ea6;
+
+  --line: #1e2b4d;
+  --line-strong: #2a3a63;
+
+  --accent: #f5c542;
+  --accent-hover: #ffd76a;
+  --band: #fdf9ef;
+  --ring: #f5c542;
+
+  --danger: #fca5a5;
+  --success: #6ee7b7;
+
+  --shadow-tint: rgb(10 17 34 / 0.55);
+}
+
+/* Follow the OS when the user has not made a manual choice yet (also covers
+   the no-JS case). An explicit data-theme always wins over this. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --canvas: #0e1628;
+    --canvas-2: #0a1122;
+    --surface: #121c33;
+    --surface-2: #1e2b4d;
+    --surface-3: #2a3a63;
+
+    --heading: #fdf9ef;
+    --body: #b9c5de;
+    --muted: #93a5c9;
+    --faint: #6f7ea6;
+
+    --line: #1e2b4d;
+    --line-strong: #2a3a63;
+
+    --accent: #f5c542;
+    --accent-hover: #ffd76a;
+    --band: #fdf9ef;
+    --ring: #f5c542;
+
+    --danger: #fca5a5;
+    --success: #6ee7b7;
+
+    --shadow-tint: rgb(10 17 34 / 0.55);
+  }
+}
+
 html {
   scroll-behavior: smooth;
+  background-color: var(--canvas);
 }
 
 body {
   font-family: var(--font-display);
-  background-color: var(--color-navy-900);
-  color: #fff;
+  background-color: var(--canvas);
+  color: var(--body);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
   background: var(--color-gold-400);
   color: var(--color-navy-900);
+}
+
+/* Smooth, accessible theme changes: only color-ish properties animate, and
+   this lives in @layer base so per-element Tailwind transitions still win. */
+@layer base {
+  @media (prefers-reduced-motion: no-preference) {
+    *,
+    *::before,
+    *::after {
+      transition-property: color, background-color, border-color, fill, stroke, box-shadow;
+      transition-duration: 250ms;
+      transition-timing-function: ease;
+    }
+  }
 }
 
 @layer components {

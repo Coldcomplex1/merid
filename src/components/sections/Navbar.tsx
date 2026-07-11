@@ -4,6 +4,8 @@ import { useLang } from '../../i18n/LanguageContext'
 import { useAuth } from '../../auth/AuthContext'
 import { signOut } from '../../lib/auth'
 import LangToggle from '../ui/LangToggle'
+import ThemeToggle from '../ui/ThemeToggle'
+import InstallButton from '../ui/InstallButton'
 
 export default function Navbar() {
   const { t } = useLang()
@@ -31,16 +33,16 @@ export default function Navbar() {
   }, [menuOpen])
 
   const menuItem =
-    'block w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-navy-200 transition-colors hover:bg-navy-800 hover:text-gold-300'
+    'block w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-body transition-colors hover:bg-surface-2 hover:text-accent'
 
   return (
-    <header className="sticky top-0 z-40 border-b border-navy-700/60 bg-navy-900/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-8">
         <Link to="/" className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold-400 text-lg font-extrabold text-navy-900 shadow-[0_0_20px_-4px_rgb(245_197_66/0.7)]">
             M
           </span>
-          <span className="text-lg font-bold text-white">Merid</span>
+          <span className="text-lg font-bold text-heading">Merid</span>
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
@@ -48,7 +50,7 @@ export default function Navbar() {
             <Link
               key={link.to}
               to={link.to}
-              className="text-sm font-semibold text-navy-200 transition-colors hover:text-gold-300"
+              className="text-sm font-semibold text-body transition-colors hover:text-accent"
             >
               {link.label}
             </Link>
@@ -57,12 +59,10 @@ export default function Navbar() {
 
         <div className="flex items-center gap-2.5 sm:gap-3">
           <LangToggle />
-          <Link
-            to="/#waitlist"
-            className="hidden rounded-full bg-gold-400 px-4 py-2 text-sm font-bold whitespace-nowrap text-navy-900 transition-all hover:bg-gold-300 hover:shadow-lift active:scale-95 sm:block"
-          >
-            {t.nav.cta}
-          </Link>
+          <ThemeToggle />
+          <span className="hidden sm:block">
+            <InstallButton label={t.nav.cta} variant="compact" />
+          </span>
 
           {/* Hamburger: account + deck entry points (all breakpoints). */}
           <div className="relative" ref={menuRef}>
@@ -71,15 +71,21 @@ export default function Navbar() {
               onClick={() => setMenuOpen((o) => !o)}
               aria-label={t.deck.menu.open}
               aria-expanded={menuOpen}
-              className="flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg border border-navy-600 transition-colors hover:border-gold-400"
+              className="flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg border border-line-strong transition-colors hover:border-accent"
             >
-              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
-              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
-              <span className="h-0.5 w-4.5 rounded bg-navy-200" />
+              <span className="h-0.5 w-4.5 rounded bg-body" />
+              <span className="h-0.5 w-4.5 rounded bg-body" />
+              <span className="h-0.5 w-4.5 rounded bg-body" />
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-navy-700 bg-navy-850 p-2 shadow-lift">
+              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-line bg-surface p-2 shadow-lift">
+                {/* Install CTA — the primary action, always available on mobile. */}
+                <div className="p-1 sm:hidden">
+                  <InstallButton label={t.nav.cta} variant="menu" />
+                </div>
+                <div className="my-2 border-t border-line sm:hidden" />
+
                 {/* Main nav (small screens only — desktop shows these inline). */}
                 <div className="md:hidden">
                   {links.map((link) => (
@@ -87,7 +93,7 @@ export default function Navbar() {
                       {link.label}
                     </Link>
                   ))}
-                  <div className="my-2 border-t border-navy-700" />
+                  <div className="my-2 border-t border-line" />
                 </div>
 
                 <Link to="/my-deck" className={menuItem}>
@@ -96,11 +102,11 @@ export default function Navbar() {
                 <Link to="/demo" className={menuItem}>
                   {t.deck.menu.demo}
                 </Link>
-                <div className="my-2 border-t border-navy-700" />
+                <div className="my-2 border-t border-line" />
 
                 {user ? (
                   <>
-                    <p className="truncate px-4 py-1 text-xs text-navy-400">{user.email}</p>
+                    <p className="truncate px-4 py-1 text-xs text-muted">{user.email}</p>
                     <button type="button" onClick={() => void signOut()} className={menuItem}>
                       {t.deck.menu.logout}
                     </button>

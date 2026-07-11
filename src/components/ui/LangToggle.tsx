@@ -14,7 +14,7 @@ export default function LangToggle() {
     <div
       role="group"
       aria-label="Language / Ngôn ngữ"
-      className="flex shrink-0 rounded-full bg-navy-800 p-0.5 ring-1 ring-navy-600/60"
+      className="flex shrink-0 rounded-full bg-surface-2 p-0.5 ring-1 ring-line-strong/70"
     >
       {OPTIONS.map((opt) => (
         <button
@@ -27,7 +27,7 @@ export default function LangToggle() {
           className={`cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-wide transition-all duration-200 active:scale-95 ${
             lang === opt.value
               ? 'bg-gold-400 text-navy-900'
-              : 'text-navy-200 hover:text-cream-50'
+              : 'text-muted hover:text-heading'
           }`}
         >
           {opt.label}

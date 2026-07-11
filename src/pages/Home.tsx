@@ -5,7 +5,7 @@ import PanelShowcase from '../components/sections/PanelShowcase'
 import HowItWorks from '../components/sections/HowItWorks'
 import Benefits from '../components/sections/Benefits'
 import Faq from '../components/sections/Faq'
-import Waitlist from '../components/sections/Waitlist'
+import FinalCta from '../components/sections/FinalCta'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
 export default function Home() {
@@ -21,7 +21,7 @@ export default function Home() {
       <HowItWorks />
       <Benefits />
       <Faq />
-      <Waitlist />
+      <FinalCta />
     </>
   )
 }

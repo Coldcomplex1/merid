@@ -3,10 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Theme bootstrap: runs before first paint so the saved (or system) theme is
+      applied to <html> immediately and there is no flash of the wrong theme.
+      Keep the storage key, colours and logic in sync with src/theme/ThemeContext.tsx.
+    -->
+    <meta name="theme-color" content="#faf8f2" />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('merid-theme');
+          var theme =
+            saved === 'light' || saved === 'dark'
+              ? saved
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          var root = document.documentElement;
+          root.setAttribute('data-theme', theme);
+          root.style.colorScheme = theme;
+          root.style.backgroundColor = theme === 'dark' ? '#0e1628' : '#faf8f2';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#0e1628' : '#faf8f2');
+        } catch (e) {}
+      })();
+    </script>
+
     <title>Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt</title>
     <meta
       name="description"
-      content="Một Chrome Extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay thế từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
+      content="Đã có trên Chrome Web Store. Merid là extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay vài từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href="https://merid.site/" />
@@ -22,7 +49,7 @@
     <meta property="og:title" content="Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt" />
     <meta
       property="og:description"
-      content="Một Chrome Extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay thế từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
+      content="Đã có trên Chrome Web Store. Merid là extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay vài từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
     />
     <meta property="og:image" content="https://merid.site/og-card.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -36,9 +63,24 @@
     <meta name="twitter:title" content="Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt" />
     <meta
       name="twitter:description"
-      content="Một Chrome Extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay thế từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
+      content="Đã có trên Chrome Web Store. Merid là extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay vài từ tiếng Việt bằng tiếng Anh khi bạn lướt web."
     />
     <meta name="twitter:image" content="https://merid.site/og-card.jpg" />
+
+    <!-- Structured data: Merid is a free Chrome extension on the Chrome Web Store. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Merid",
+        "applicationCategory": "BrowserApplication",
+        "operatingSystem": "Chrome",
+        "url": "https://merid.site/",
+        "downloadUrl": "https://chromewebstore.google.com/detail/merid/ggfpandbibalomfbappkblppmffncoeo",
+        "description": "Merid is a Chrome extension for Vietnamese speakers that swaps a few Vietnamese words for high-value English vocabulary while you browse, so everyday reading becomes natural vocabulary practice. It runs locally on your device.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
