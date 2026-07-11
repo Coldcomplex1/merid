@@ -102,7 +102,7 @@ export default function BrowserMockup({ className = '' }: { className?: string }
 
       {/* Floating vocab popup */}
       <div
-        className={`absolute -bottom-28 left-0 z-30 transition-all duration-500 sm:-left-16 ${
+        className={`absolute -bottom-28 left-0 z-30 transition-all duration-500 sm:-left-16 lg:-left-6 ${
           popupVisible ? 'animate-pop-in' : 'pointer-events-none translate-y-4 opacity-0'
         }`}
         style={{ animationDelay: popupVisible ? '0.45s' : '0s' }}
