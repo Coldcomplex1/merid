@@ -35,6 +35,17 @@ export default function Footer() {
           <InstallButton label={t.footer.install} variant="link" className="text-accent hover:text-accent-hover" />
         </div>
       </div>
+
+      <div className="mt-6 text-center">
+        <a
+          href="https://meridpp.netlify.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-muted transition-colors hover:text-accent"
+        >
+          {t.footer.privacy}
+        </a>
+      </div>
     </footer>
   )
 }
