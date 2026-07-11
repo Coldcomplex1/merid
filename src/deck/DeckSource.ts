@@ -15,9 +15,8 @@ export interface DeckWord {
 }
 
 /**
- * Swappable deck backend. `/my-deck` uses the Firestore implementation,
- * `/demo` uses the in-browser mock — both drive the exact same UI, so every
- * deck feature can be tested end-to-end without touching Firebase.
+ * Swappable deck backend. `/my-deck` drives the whole deck UI through this
+ * interface, keeping the Firestore implementation decoupled from components.
  */
 export interface DeckSource {
   listWords(): Promise<DeckWord[]>

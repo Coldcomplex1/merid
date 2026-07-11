@@ -40,15 +40,16 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Route guard: renders children only for signed-in users, otherwise sends
- *  them to /login (remembering where they came from). */
+ *  them to /login (remembering where they came from). On deploys without
+ *  Firebase env config, /login explains that accounts are unavailable. */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading, configured } = useAuth()
   const location = useLocation()
 
-  if (!configured) return <Navigate to="/demo" replace />
+  if (!configured) return <Navigate to="/login" replace />
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-navy-300" role="status">
+      <div className="flex min-h-[50vh] items-center justify-center text-muted" role="status">
         <span className="animate-pulse">…</span>
       </div>
     )

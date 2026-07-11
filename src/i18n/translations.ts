@@ -14,8 +14,11 @@ export interface Strings {
   nav: { demo: string; features: string; how: string; tutorial: string; cta: string }
   deck: {
     title: string
-    demoTitle: string
-    demoBanner: string
+    backHome: string
+    greeting: string
+    greetingSub: string
+    statTotal: string
+    emptyTitle: string
     tabs: { words: string; puzzle: string; flashcards: string }
     loading: string
     empty: string
@@ -37,7 +40,7 @@ export interface Strings {
       restart: string
     }
     flash: { flipHint: string; prev: string; next: string; counter: (i: number, n: number) => string }
-    menu: { deck: string; demo: string; login: string; signup: string; logout: string; open: string }
+    menu: { deck: string; login: string; signup: string; logout: string; open: string }
     auth: {
       loginTitle: string
       signupTitle: string
@@ -157,8 +160,11 @@ const vi: Strings = {
   },
   deck: {
     title: 'Deck của tôi',
-    demoTitle: 'Deck thử nghiệm',
-    demoBanner: 'Chế độ thử nghiệm — dữ liệu mẫu, thay đổi chỉ lưu trên trình duyệt này.',
+    backHome: 'Về trang chủ',
+    greeting: 'Chào mừng bạn trở lại!',
+    greetingSub: 'Ôn lại những từ bạn đã lưu trong lúc lướt web nhé.',
+    statTotal: 'Tổng số từ',
+    emptyTitle: 'Deck của bạn còn trống',
     tabs: { words: 'Từ vựng', puzzle: 'Puzzle', flashcards: 'Flashcard' },
     loading: 'Đang tải deck…',
     empty: 'Chưa có từ nào. Cài extension Merid và lưu từ trong lúc đọc web nhé.',
@@ -187,7 +193,6 @@ const vi: Strings = {
     },
     menu: {
       deck: 'Deck của tôi',
-      demo: 'Deck thử nghiệm',
       login: 'Đăng nhập',
       signup: 'Đăng ký',
       logout: 'Đăng xuất',
@@ -210,7 +215,7 @@ const vi: Strings = {
         tooManyRequests: 'Thử lại sau ít phút — quá nhiều lần thử.',
         network: 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.',
         unknown: 'Có lỗi xảy ra. Vui lòng thử lại.',
-        notConfigured: 'Tài khoản chưa khả dụng trên bản triển khai này — hãy dùng Deck thử nghiệm.',
+        notConfigured: 'Tài khoản chưa khả dụng trên bản triển khai này.',
       },
     },
   },
@@ -511,8 +516,11 @@ const en: Strings = {
   },
   deck: {
     title: 'My Deck',
-    demoTitle: 'Demo Deck',
-    demoBanner: 'Demo mode — sample data, changes only persist in this browser.',
+    backHome: 'Back to home',
+    greeting: 'Welcome back!',
+    greetingSub: 'Review the words you saved while browsing.',
+    statTotal: 'Total words',
+    emptyTitle: 'Your deck is empty',
     tabs: { words: 'Words', puzzle: 'Puzzle', flashcards: 'Flashcards' },
     loading: 'Loading your deck…',
     empty: 'No words yet. Install the Merid extension and save words while you browse.',
@@ -541,7 +549,6 @@ const en: Strings = {
     },
     menu: {
       deck: 'My Deck',
-      demo: 'Demo Deck',
       login: 'Log in',
       signup: 'Sign up',
       logout: 'Sign out',
@@ -564,7 +571,7 @@ const en: Strings = {
         tooManyRequests: 'Too many attempts — try again in a few minutes.',
         network: 'No connection. Check your internet and try again.',
         unknown: 'Something went wrong. Please try again.',
-        notConfigured: 'Accounts are not available on this deployment — try the Demo Deck.',
+        notConfigured: 'Accounts are not available on this deployment.',
       },
     },
   },

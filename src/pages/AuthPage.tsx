@@ -31,8 +31,8 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <p className="rounded-xl border border-line bg-surface p-6 text-body">{errors.notConfigured}</p>
-        <Link to="/demo" className="mt-4 inline-block font-semibold text-accent hover:text-accent-hover hover:underline">
-          {t.deck.menu.demo} →
+        <Link to="/" className="mt-4 inline-block font-semibold text-accent hover:text-accent-hover hover:underline">
+          {t.deck.backHome} →
         </Link>
       </div>
     )

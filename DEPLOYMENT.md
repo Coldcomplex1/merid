@@ -32,7 +32,7 @@ You only ever do this once.
    `VITE_FIREBASE_*` variables (values come from Firebase Console →
    Project settings → Your apps → SDK setup; see `.env.example` for the
    exact names). Without them the site still works, but accounts/My Deck
-   stay disabled and only `/demo` is available.
+   stay disabled.
 
    Now click **Deploy**.
 

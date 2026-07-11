@@ -99,9 +99,6 @@ export default function Navbar() {
                 <Link to="/my-deck" className={menuItem}>
                   {t.deck.menu.deck}
                 </Link>
-                <Link to="/demo" className={menuItem}>
-                  {t.deck.menu.demo}
-                </Link>
                 <div className="my-2 border-t border-line" />
 
                 {user ? (
