@@ -4,6 +4,7 @@ import Reveal from '../components/ui/Reveal'
 import ExtensionPanel from '../components/ui/ExtensionPanel'
 import VocabPopupCard from '../components/ui/VocabPopupCard'
 import Toggle from '../components/ui/Toggle'
+import InstallButton from '../components/ui/InstallButton'
 import { VOCAB } from '../data/vocab'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
@@ -20,17 +21,17 @@ interface StepProps {
 function Step({ number, title, children, visual, caption }: StepProps) {
   return (
     <Reveal>
-      <div className="grid items-center gap-10 rounded-3xl bg-navy-850/60 p-8 ring-1 ring-navy-600/40 sm:p-10 lg:grid-cols-[1.1fr_1fr]">
+      <div className="grid items-center gap-10 rounded-3xl bg-surface p-8 ring-1 ring-line sm:p-10 lg:grid-cols-[1.1fr_1fr]">
         <div>
-          <span className="text-5xl font-extrabold text-gold-400/30">{number}</span>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-cream-50 sm:text-3xl">
+          <span className="text-5xl font-extrabold text-accent/40">{number}</span>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-heading sm:text-3xl">
             {title}
           </h2>
-          <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-navy-200">{children}</div>
+          <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-body">{children}</div>
         </div>
         <div className="flex flex-col items-center gap-3">
           {visual}
-          {caption && <p className="text-xs font-semibold text-gold-300">{caption}</p>}
+          {caption && <p className="text-xs font-semibold text-accent">{caption}</p>}
         </div>
       </div>
     </Reveal>
@@ -42,7 +43,7 @@ function Bullet({ term, children }: { term: string; children: ReactNode }) {
     <li className="flex gap-3">
       <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-gold-400" />
       <span>
-        <span className="font-bold text-cream-50">{term}</span> {children}
+        <span className="font-bold text-heading">{term}</span> {children}
       </span>
     </li>
   )
@@ -227,13 +228,13 @@ export default function Tutorial() {
 
       <div className="relative mx-auto max-w-5xl px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-extrabold tracking-[0.22em] text-gold-400 uppercase">
+          <p className="text-xs font-extrabold tracking-[0.22em] text-accent uppercase">
             {t.tutorial.eyebrow}
           </p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-balance text-heading sm:text-5xl">
             {t.tutorial.title}
           </h1>
-          <p className="mt-4 text-lg text-navy-200">{t.tutorial.sub}</p>
+          <p className="mt-4 text-lg text-body">{t.tutorial.sub}</p>
         </div>
 
         <div className="mt-16 space-y-8">
@@ -262,22 +263,17 @@ export default function Tutorial() {
 
         <Reveal>
           <div className="mt-20 text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-balance text-heading sm:text-4xl">
               {t.tutorial.outroTitle}
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-navy-200">{t.tutorial.outroSub}</p>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-body">{t.tutorial.outroSub}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <InstallButton label={t.tutorial.ctaInstall} variant="primary" />
               <Link
                 to="/#demo"
-                className="rounded-full bg-gold-400 px-7 py-3.5 text-base font-bold text-navy-900 transition-all hover:-translate-y-0.5 hover:bg-gold-300 hover:shadow-lift active:scale-95"
+                className="rounded-full border-2 border-line-strong px-7 py-3 text-base font-bold text-heading transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent active:scale-95"
               >
                 {t.tutorial.ctaDemo}
-              </Link>
-              <Link
-                to="/#waitlist"
-                className="rounded-full border-2 border-navy-500 px-7 py-3 text-base font-bold text-cream-50 transition-all hover:-translate-y-0.5 hover:border-gold-400 hover:text-gold-300 active:scale-95"
-              >
-                {t.tutorial.ctaWaitlist}
               </Link>
             </div>
           </div>

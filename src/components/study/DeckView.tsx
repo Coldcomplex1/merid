@@ -67,23 +67,23 @@ export default function DeckView({ source, title, banner }: Props) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-8">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-3xl font-bold text-white">{title}</h1>
-        {words && <span className="text-sm text-navy-300">{t.deck.wordCount(words.length)}</span>}
+        <h1 className="text-3xl font-bold text-heading">{title}</h1>
+        {words && <span className="text-sm text-muted">{t.deck.wordCount(words.length)}</span>}
       </div>
       {banner && (
-        <p className="mt-3 rounded-lg border border-gold-400/30 bg-gold-400/10 px-4 py-2.5 text-sm text-gold-200">
+        <p className="mt-3 rounded-lg border border-gold-400/40 bg-gold-400/10 px-4 py-2.5 text-sm text-accent">
           {banner}
         </p>
       )}
 
-      <div className="mt-6 flex gap-2 border-b border-navy-700">
+      <div className="mt-6 flex gap-2 border-b border-line">
         {tabs.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
-              tab === id ? 'border-gold-400 text-gold-300' : 'border-transparent text-navy-300 hover:text-white'
+              tab === id ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-heading'
             }`}
           >
             {label}
@@ -93,11 +93,11 @@ export default function DeckView({ source, title, banner }: Props) {
 
       <div className="mt-6">
         {error ? (
-          <p className="rounded-xl border border-red-400/40 bg-red-400/10 p-6 text-red-200">
+          <p className="rounded-xl border border-danger/40 bg-danger/10 p-6 text-danger">
             {t.deck.auth.errors.network}
           </p>
         ) : words === null ? (
-          <p className="p-6 text-navy-300" role="status">
+          <p className="p-6 text-muted" role="status">
             {t.deck.loading}
           </p>
         ) : tab === 'words' ? (

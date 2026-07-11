@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { ThemeProvider } from './theme/ThemeContext'
 import { LanguageProvider } from './i18n/LanguageContext'
 import { AuthProvider, RequireAuth } from './auth/AuthContext'
+import AnnouncementBanner from './components/sections/AnnouncementBanner'
 import Navbar from './components/sections/Navbar'
 import Footer from './components/sections/Footer'
 import Home from './pages/Home'
@@ -30,34 +32,37 @@ function ScrollManager() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <ScrollManager />
-          <div className="min-h-screen bg-navy-900 text-white">
-            <Navbar />
-            <main>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/tutorial" element={<Tutorial />} />
-                <Route
-                  path="/my-deck"
-                  element={
-                    <RequireAuth>
-                      <MyDeck />
-                    </RequireAuth>
-                  }
-                />
-                <Route path="/demo" element={<Demo />} />
-                <Route path="/login" element={<AuthPage mode="login" />} />
-                <Route path="/signup" element={<AuthPage mode="signup" />} />
-                <Route path="*" element={<Home />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </BrowserRouter>
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ScrollManager />
+            <div className="min-h-screen bg-canvas text-body">
+              <AnnouncementBanner />
+              <Navbar />
+              <main>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/tutorial" element={<Tutorial />} />
+                  <Route
+                    path="/my-deck"
+                    element={
+                      <RequireAuth>
+                        <MyDeck />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route path="/demo" element={<Demo />} />
+                  <Route path="/login" element={<AuthPage mode="login" />} />
+                  <Route path="/signup" element={<AuthPage mode="signup" />} />
+                  <Route path="*" element={<Home />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   )
 }

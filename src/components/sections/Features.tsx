@@ -54,7 +54,7 @@ export default function Features() {
   const { t } = useLang()
 
   return (
-    <section id="features" className="scroll-mt-16 bg-navy-950/60 py-24">
+    <section id="features" className="scroll-mt-16 bg-canvas-2 py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal>
           <SectionHeading eyebrow={t.features.eyebrow} title={t.features.title} sub={t.features.sub} />
@@ -63,12 +63,12 @@ export default function Features() {
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {t.features.cards.map((feature, i) => (
             <Reveal key={feature.title} delay={i * 70}>
-              <div className="group h-full rounded-2xl bg-navy-850 p-6 ring-1 ring-navy-600/40 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift hover:ring-gold-400/50">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-navy-700 text-gold-300 transition-all duration-300 group-hover:scale-110 group-hover:bg-gold-400/20">
+              <div className="group h-full rounded-2xl bg-surface p-6 ring-1 ring-line transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift hover:ring-gold-400/50">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-surface-2 text-accent transition-all duration-300 group-hover:scale-110 group-hover:bg-gold-400/20">
                   {ICONS[i]}
                 </span>
-                <h3 className="mt-4 text-lg font-bold text-cream-50">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-navy-200">{feature.body}</p>
+                <h3 className="mt-4 text-lg font-bold text-heading">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-body">{feature.body}</p>
               </div>
             </Reveal>
           ))}

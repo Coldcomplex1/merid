@@ -9,7 +9,7 @@ export default function FlashcardMode({ words }: { words: DeckWord[] }) {
   const [flipped, setFlipped] = useState(false)
 
   if (!words.length) {
-    return <p className="rounded-xl border border-navy-700 bg-navy-850 p-6 text-navy-300">{t.deck.empty}</p>
+    return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.empty}</p>
   }
 
   const safeIndex = Math.min(index, words.length - 1) // deck may shrink under us
@@ -31,17 +31,17 @@ export default function FlashcardMode({ words }: { words: DeckWord[] }) {
           style={{ transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-navy-600 bg-navy-850 p-6 [backface-visibility:hidden]">
-            <span className="text-3xl font-bold text-white">{card.word}</span>
-            {card.pos && <span className="text-sm text-navy-300 italic">{card.pos}</span>}
-            <span className="mt-4 text-xs text-navy-400">{t.deck.flash.flipHint}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-line-strong bg-surface p-6 [backface-visibility:hidden]">
+            <span className="text-3xl font-bold text-heading">{card.word}</span>
+            {card.pos && <span className="text-sm text-muted italic">{card.pos}</span>}
+            <span className="mt-4 text-xs text-faint">{t.deck.flash.flipHint}</span>
           </div>
           {/* Back */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border border-gold-400/40 bg-navy-800 p-6 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-            {card.vietnamese && <span className="text-xl font-bold text-gold-300">{card.vietnamese}</span>}
-            {card.definition && <span className="max-w-prose text-center text-sm text-navy-100">{card.definition}</span>}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border border-gold-400/40 bg-surface-2 p-6 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            {card.vietnamese && <span className="text-xl font-bold text-accent">{card.vietnamese}</span>}
+            {card.definition && <span className="max-w-prose text-center text-sm text-body">{card.definition}</span>}
             {card.example && (
-              <span className="max-w-prose text-center font-serif text-sm text-navy-200 italic">“{card.example}”</span>
+              <span className="max-w-prose text-center font-serif text-sm text-muted italic">“{card.example}”</span>
             )}
           </div>
         </button>
@@ -51,15 +51,15 @@ export default function FlashcardMode({ words }: { words: DeckWord[] }) {
         <button
           type="button"
           onClick={() => go(-1)}
-          className="rounded-full border border-navy-600 px-4 py-2 text-sm font-semibold text-navy-200 transition-colors hover:border-gold-400 hover:text-gold-300"
+          className="rounded-full border border-line-strong px-4 py-2 text-sm font-semibold text-body transition-colors hover:border-accent hover:text-accent"
         >
           ← {t.deck.flash.prev}
         </button>
-        <span className="text-sm text-navy-300">{t.deck.flash.counter(safeIndex + 1, words.length)}</span>
+        <span className="text-sm text-muted">{t.deck.flash.counter(safeIndex + 1, words.length)}</span>
         <button
           type="button"
           onClick={() => go(1)}
-          className="rounded-full border border-navy-600 px-4 py-2 text-sm font-semibold text-navy-200 transition-colors hover:border-gold-400 hover:text-gold-300"
+          className="rounded-full border border-line-strong px-4 py-2 text-sm font-semibold text-body transition-colors hover:border-accent hover:text-accent"
         >
           {t.deck.flash.next} →
         </button>

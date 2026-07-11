@@ -5,7 +5,7 @@ export default function Benefits() {
   const { t } = useLang()
 
   return (
-    <section className="bg-cream-50 py-24 text-navy-900">
+    <section className="border-y border-line bg-band py-24 text-navy-900">
       <div className="mx-auto max-w-4xl px-5 text-center sm:px-8">
         <Reveal>
           <h2 className="text-3xl leading-snug font-extrabold tracking-tight text-balance sm:text-5xl">

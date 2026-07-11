@@ -13,7 +13,7 @@ export default function WordList({ words, onRemove, onSetStatus }: Props) {
   const { t } = useLang()
 
   if (!words.length) {
-    return <p className="rounded-xl border border-navy-700 bg-navy-850 p-6 text-navy-300">{t.deck.empty}</p>
+    return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.empty}</p>
   }
 
   return (
@@ -21,28 +21,28 @@ export default function WordList({ words, onRemove, onSetStatus }: Props) {
       {words.map((w) => (
         <li
           key={w.word}
-          className="flex flex-col gap-2 rounded-xl border border-navy-700 bg-navy-850 p-4 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <span className="text-lg font-bold text-white">{w.word}</span>
-              {w.pos && <span className="text-xs text-navy-300 italic">{w.pos}</span>}
+              <span className="text-lg font-bold text-heading">{w.word}</span>
+              {w.pos && <span className="text-xs text-muted italic">{w.pos}</span>}
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                  w.status === 'known' ? 'bg-navy-700 text-navy-200' : 'bg-gold-400/15 text-gold-300'
+                  w.status === 'known' ? 'bg-surface-2 text-muted' : 'bg-gold-400/15 text-accent'
                 }`}
               >
                 {w.status === 'known' ? t.deck.knownLabel : t.deck.savedLabel}
               </span>
             </div>
-            {w.vietnamese && <p className="mt-0.5 text-sm text-gold-200">{w.vietnamese}</p>}
-            {w.definition && <p className="mt-0.5 text-sm text-navy-200">{w.definition}</p>}
+            {w.vietnamese && <p className="mt-0.5 text-sm text-accent">{w.vietnamese}</p>}
+            {w.definition && <p className="mt-0.5 text-sm text-body">{w.definition}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => onSetStatus(w.word, w.status === 'known' ? 'saved' : 'known')}
-              className="rounded-full border border-navy-600 px-3 py-1.5 text-xs font-semibold text-navy-200 transition-colors hover:border-gold-400 hover:text-gold-300"
+              className="rounded-full border border-line-strong px-3 py-1.5 text-xs font-semibold text-body transition-colors hover:border-accent hover:text-accent"
             >
               {w.status === 'known' ? t.deck.markSaved : t.deck.markKnown}
             </button>
@@ -51,7 +51,7 @@ export default function WordList({ words, onRemove, onSetStatus }: Props) {
               onClick={() => {
                 if (window.confirm(t.deck.confirmRemove)) onRemove(w.word)
               }}
-              className="rounded-full border border-navy-600 px-3 py-1.5 text-xs font-semibold text-navy-300 transition-colors hover:border-red-400 hover:text-red-300"
+              className="rounded-full border border-line-strong px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-danger hover:text-danger"
               aria-label={`${t.deck.remove} ${w.word}`}
             >
               {t.deck.remove}
