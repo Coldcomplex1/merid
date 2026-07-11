@@ -5,8 +5,14 @@ import type { DeckWord } from '../../deck/DeckSource'
 const OPTION_COUNT = 4
 
 interface Round {
-  /** The example sentence with the target word blanked out. */
-  clozed: string
+  /** 'cloze' = fill the blank in the example sentence;
+   *  'meaning' = pick the word matching the meaning (fallback for words
+   *  saved without an example sentence). */
+  kind: 'cloze' | 'meaning'
+  /** Cloze: the example with the word blanked. Meaning: the Vietnamese meaning. */
+  prompt: string
+  /** Meaning rounds only: the English definition as a second hint. */
+  hint: string
   answer: string
   options: string[]
 }
@@ -21,24 +27,33 @@ function shuffle<T>(input: readonly T[]): T[] {
   return arr
 }
 
-/** Build one puzzle round from a word, validating every input (A08): the
- *  example must actually contain the word, and there must be enough distinct
- *  distractors to always end up with exactly OPTION_COUNT options. */
+/** Build one puzzle round from a word, validating every input (A08). Prefers
+ *  a cloze question (blank in the example sentence); falls back to a
+ *  meaning-match question when the word has no usable example, so the puzzle
+ *  works for every word regardless of how it was saved. */
 function buildRound(target: DeckWord, allWords: readonly DeckWord[]): Round | null {
-  if (!target.word || !target.example) return null
-  const re = new RegExp(target.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-  if (!re.test(target.example)) return null
+  if (!target.word) return null
 
   const distractors = shuffle(
     allWords.map((w) => w.word).filter((w) => w && w !== target.word),
   ).slice(0, OPTION_COUNT - 1)
   if (distractors.length < OPTION_COUNT - 1) return null
+  const options = shuffle([target.word, ...distractors])
 
-  return {
-    clozed: target.example.replace(re, '_____'),
-    answer: target.word,
-    options: shuffle([target.word, ...distractors]),
+  const re = new RegExp(target.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+  if (target.example && re.test(target.example)) {
+    return { kind: 'cloze', prompt: target.example.replace(re, '_____'), hint: '', answer: target.word, options }
   }
+  if (target.vietnamese || target.definition) {
+    return {
+      kind: 'meaning',
+      prompt: target.vietnamese || target.definition,
+      hint: target.vietnamese ? target.definition : '',
+      answer: target.word,
+      options,
+    }
+  }
+  return null
 }
 
 function buildRounds(words: readonly DeckWord[]): Round[] {
@@ -88,9 +103,12 @@ export default function PuzzleMode({ words }: { words: DeckWord[] }) {
   return (
     <div className="rounded-xl border border-navy-700 bg-navy-850 p-6 sm:p-8">
       <p className="text-xs font-semibold tracking-wide text-navy-300 uppercase">
-        {index + 1} / {rounds.length} · {t.deck.puzzle.prompt}
+        {index + 1} / {rounds.length} · {round.kind === 'cloze' ? t.deck.puzzle.prompt : t.deck.puzzle.promptMeaning}
       </p>
-      <p className="mt-4 font-serif text-lg leading-relaxed text-white">{round.clozed}</p>
+      <p className="mt-4 font-serif text-lg leading-relaxed text-white">
+        {round.kind === 'meaning' ? `“${round.prompt}”` : round.prompt}
+      </p>
+      {round.hint && <p className="mt-1.5 text-sm text-navy-300 italic">{round.hint}</p>}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {round.options.map((option) => {

@@ -290,6 +290,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
                 return true;
             }
+            // Single sign-on relayed from merid.site by content-bridge.js.
+            case 'MERID_ADOPT_SESSION': {
+                Sync.adoptSession(request.refreshToken, request.email)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_WEB_SIGNOUT': {
+                Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
+                return true;
+            }
             case 'MERID_SYNC_STATUS': {
                 Sync.getStatus().then(sendResponse).catch(() => sendResponse({ state: 'error' }));
                 return true;

@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -29,6 +30,15 @@ export function createFirestoreDeck(uid: string): DeckSource {
     },
     async setStatus(word: string, status: WordStatus) {
       await updateDoc(doc(words(), word), { status, updatedAt: serverTimestamp() })
+    },
+    subscribe(onWords, onError) {
+      return onSnapshot(
+        query(words(), orderBy('createdAt', 'desc')),
+        (snap) => {
+          onWords(snap.docs.map((d) => toDeckWord(d.data())).filter((w): w is DeckWord => w !== null))
+        },
+        onError,
+      )
     },
   }
 }

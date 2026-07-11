@@ -16,6 +16,7 @@ const FILES = [
     'content.css',
     'popup.html', 'popup.js', 'popup.css',
     'options.html', 'options.js', 'options.css',
+    'content-bridge.js',
     'lib/vocab-core.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',

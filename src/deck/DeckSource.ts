@@ -23,6 +23,10 @@ export interface DeckSource {
   listWords(): Promise<DeckWord[]>
   removeWord(word: string): Promise<void>
   setStatus(word: string, status: WordStatus): Promise<void>
+  /** Optional live feed: when provided, the UI subscribes instead of doing a
+   *  one-shot list, so words synced from the extension appear without a
+   *  refresh. Returns an unsubscribe function. */
+  subscribe?(onWords: (words: DeckWord[]) => void, onError: () => void): () => void
 }
 
 /** Runtime shape-check + sanitization for records arriving from outside the

@@ -20,8 +20,11 @@ device unless you explicitly sign in to the optional deck sync described below.
 
 Merid only reads a page after you explicitly activate it there (its keyboard
 shortcut or the popup's Activate button, which grant Chrome's temporary
-`activeTab` access). It is never injected automatically, and access ends when you
-navigate away or reload.
+`activeTab` access). It is never injected automatically into the pages you
+browse, and access ends when you navigate away or reload. The one exception is
+`merid.site` (our own website), where a tiny bridge script runs automatically
+for single sign-on: it reads no page content and only relays your login session
+between the website and the extension.
 
 ## What is sent off your device
 

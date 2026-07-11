@@ -84,6 +84,26 @@
         return { ok: true };
     }
 
+    /** Adopt a session handed over by merid.site (single sign-on). The token
+     *  is validated against Google before anything is stored - a forged
+     *  message can't plant a session. */
+    async function adoptSession(refreshToken, email) {
+        if (!FB.configured() || typeof refreshToken !== 'string' || !refreshToken) return { ok: false };
+        try {
+            const r = await FB.refresh(refreshToken);
+            const cur = (await storeGet([AUTH_KEY]))[AUTH_KEY];
+            token = { idToken: r.idToken, uid: r.uid, expiresAt: Date.now() + (r.expiresIn - 60) * 1000 };
+            await storeSet({ [AUTH_KEY]: { uid: r.uid, email, refreshToken: r.refreshToken || refreshToken } });
+            // New/different account: push the whole local deck up (merge).
+            if (!cur || cur.uid !== r.uid) await storeRemove([SNAPSHOT_KEY]);
+            await setStatus({ state: 'idle', errorCode: null });
+            kick();
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, code: e.code || 'UNKNOWN' };
+        }
+    }
+
     async function getStatus() {
         const r = await storeGet([AUTH_KEY, STATUS_KEY]);
         const auth = r[AUTH_KEY];
@@ -125,6 +145,7 @@
                 word,
                 vietnamese: clip(e && e.vietnamese, 128),
                 definition: clip(e && e.definition, 512),
+                example: clip(e && e.example, 1024),
                 pos: clip(e && e.type, 32),
                 status: 'saved'
             });
@@ -134,13 +155,13 @@
             if (!WORD_RE.test(word) || word.length > 64) continue;
             const existing = map.get(word);
             if (existing) existing.status = 'known';
-            else map.set(word, { word, vietnamese: '', definition: '', pos: '', status: 'known' });
+            else map.set(word, { word, vietnamese: '', definition: '', example: '', pos: '', status: 'known' });
         }
         return map;
     }
 
     function hashPayload(p) {
-        return [p.word, p.vietnamese, p.definition, p.pos, p.status].join('');
+        return [p.word, p.vietnamese, p.definition, p.example, p.pos, p.status].join('\u0001');
     }
 
     // ---------------------------------------------------------
@@ -169,6 +190,7 @@
         const data = {
             vietnamese: payload.vietnamese,
             definition: payload.definition,
+            example: payload.example,
             pos: payload.pos,
             status: payload.status
         };
@@ -295,5 +317,5 @@
         if (changes.savedWords || changes.knownWords) kick();
     }
 
-    return { kick, onStorageChanged, signIn, signOut, getStatus };
+    return { kick, onStorageChanged, signIn, signOut, adoptSession, getStatus };
 });

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { Navigate, useLocation } from 'react-router-dom'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { onAuthStateChanged, type User } from '../lib/auth'
+import { announceAuthToExtension } from '../lib/extensionBridge'
 
 interface AuthContextValue {
   user: User | null
@@ -24,6 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged((u) => {
       setUser(u)
       setLoading(false)
+      // Hand the session to the Merid extension (single sign-on) if installed.
+      announceAuthToExtension(u)
     })
   }, [configured])
 
