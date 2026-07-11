@@ -119,7 +119,7 @@ export interface Strings {
     ctaDemo: string
     privacy: string
   }
-  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; install: string }
+  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; install: string; privacy: string }
   tutorial: {
     eyebrow: string
     title: string
@@ -393,6 +393,7 @@ const vi: Strings = {
     tutorial: 'Hướng dẫn',
     faq: 'FAQ',
     install: 'Thêm vào Chrome',
+    privacy: 'Chính sách bảo mật',
   },
   tutorial: {
     eyebrow: 'Hướng dẫn',
@@ -749,6 +750,7 @@ const en: Strings = {
     tutorial: 'Tutorial',
     faq: 'FAQ',
     install: 'Add to Chrome',
+    privacy: 'Privacy Policy',
   },
   tutorial: {
     eyebrow: 'Tutorial',
