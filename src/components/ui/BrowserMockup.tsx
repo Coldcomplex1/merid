@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import VocabPopupCard from './VocabPopupCard'
+import { useDraggable } from '../../hooks/useDraggable'
 import { VOCAB } from '../../data/vocab'
 
 const FLOATING_CHIPS = [
@@ -13,10 +14,23 @@ const FLOATING_CHIPS = [
 /** Fake browser window showing the extension running on a Vietnamese Wikipedia-style page. */
 export default function BrowserMockup({ className = '' }: { className?: string }) {
   const [popupVisible, setPopupVisible] = useState(true)
+  const { ref, detached, dragging, style, onPointerDown, reset } = useDraggable()
+  const showTimer = useRef<number | null>(null)
+
+  // Clear a pending re-show when the mockup unmounts mid-cycle.
+  useEffect(
+    () => () => {
+      if (showTimer.current !== null) window.clearTimeout(showTimer.current)
+    },
+    [],
+  )
 
   const hidePopup = () => {
-    setPopupVisible(false)
-    setTimeout(() => setPopupVisible(true), 2500)
+    setPopupVisible(false) // fade out wherever the card currently sits
+    showTimer.current = window.setTimeout(() => {
+      reset() // re-dock and restore the animations…
+      setPopupVisible(true) // …then pop back in at the original spot
+    }, 2500)
   }
 
   return (
@@ -100,14 +114,29 @@ export default function BrowserMockup({ className = '' }: { className?: string }
         </div>
       </div>
 
-      {/* Floating vocab popup */}
+      {/* Floating vocab popup — grab it and drag it anywhere on the page.
+          Docked: absolutely positioned against the mockup, with the pop-in
+          and float animations. Detached (after a grab): position:fixed via
+          the hook, with every transform animation/transition stripped so
+          nothing fights the drag. */}
       <div
-        className={`absolute -bottom-28 left-0 z-30 transition-all duration-500 sm:-left-16 lg:-left-6 ${
-          popupVisible ? 'animate-pop-in' : 'pointer-events-none translate-y-4 opacity-0'
-        }`}
-        style={{ animationDelay: popupVisible ? '0.45s' : '0s' }}
+        ref={ref}
+        onPointerDown={onPointerDown}
+        style={detached ? style : { animationDelay: popupVisible ? '0.45s' : '0s' }}
+        className={
+          detached
+            ? `touch-none select-none transition-opacity duration-500 ${
+                dragging ? 'cursor-grabbing' : 'cursor-grab'
+              } ${popupVisible ? '' : 'pointer-events-none opacity-0'}`
+            : `absolute -bottom-28 left-0 z-30 touch-none cursor-grab transition-all duration-500 sm:-left-16 lg:-left-6 ${
+                popupVisible ? 'animate-pop-in' : 'pointer-events-none translate-y-4 opacity-0'
+              }`
+        }
       >
-        <div className="animate-float-slow" style={{ animationDelay: '1.5s' }}>
+        <div
+          className={detached ? undefined : 'animate-float-slow'}
+          style={detached ? undefined : { animationDelay: '1.5s' }}
+        >
           <VocabPopupCard entry={VOCAB.elaborate} onClose={hidePopup} className="-rotate-1" />
         </div>
       </div>

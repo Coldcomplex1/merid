@@ -44,7 +44,10 @@
   --animate-pop-in: pop-in 0.7s cubic-bezier(0.22, 1.1, 0.35, 1.15) both;
   --animate-pulse-soft: pulse-soft 2.8s ease-in-out infinite;
   --animate-bar-grow: bar-grow 0.9s cubic-bezier(0.3, 1.2, 0.4, 1) both;
-  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* fill-mode `backwards` (not `both`): a lingering forwards-fill transform
+     would make the hero columns the containing block for position:fixed
+     descendants — the draggable vocab card must escape to the viewport. */
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 
   @keyframes float {
     0%, 100% { transform: translateY(0); }
