@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './theme/ThemeContext'
 import { LanguageProvider } from './i18n/LanguageContext'
 import { AuthProvider, RequireAuth } from './auth/AuthContext'
@@ -29,6 +29,21 @@ function ScrollManager() {
   return null
 }
 
+/** Marketing-site chrome: banner + navbar + footer around every page except
+ *  /my-deck, which is a standalone app-like screen with its own header. */
+function SiteLayout() {
+  return (
+    <>
+      <AnnouncementBanner />
+      <Navbar />
+      <main>
+        <Outlet />
+      </main>
+      <Footer />
+    </>
+  )
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -37,26 +52,23 @@ export default function App() {
           <BrowserRouter>
             <ScrollManager />
             <div className="min-h-screen bg-canvas text-body">
-              <AnnouncementBanner />
-              <Navbar />
-              <main>
-                <Routes>
+              <Routes>
+                <Route element={<SiteLayout />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/tutorial" element={<Tutorial />} />
-                  <Route
-                    path="/my-deck"
-                    element={
-                      <RequireAuth>
-                        <MyDeck />
-                      </RequireAuth>
-                    }
-                  />
                   <Route path="/login" element={<AuthPage mode="login" />} />
                   <Route path="/signup" element={<AuthPage mode="signup" />} />
                   <Route path="*" element={<Home />} />
-                </Routes>
-              </main>
-              <Footer />
+                </Route>
+                <Route
+                  path="/my-deck"
+                  element={
+                    <RequireAuth>
+                      <MyDeck />
+                    </RequireAuth>
+                  }
+                />
+              </Routes>
             </div>
           </BrowserRouter>
         </AuthProvider>

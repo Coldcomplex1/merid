@@ -49,7 +49,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (!configured) return <Navigate to="/login" replace />
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-navy-300" role="status">
+      <div className="flex min-h-[50vh] items-center justify-center text-muted" role="status">
         <span className="animate-pulse">…</span>
       </div>
     )

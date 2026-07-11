@@ -15,6 +15,10 @@ export interface Strings {
   deck: {
     title: string
     backHome: string
+    greeting: string
+    greetingSub: string
+    statTotal: string
+    emptyTitle: string
     tabs: { words: string; puzzle: string; flashcards: string }
     loading: string
     empty: string
@@ -157,6 +161,10 @@ const vi: Strings = {
   deck: {
     title: 'Deck của tôi',
     backHome: 'Về trang chủ',
+    greeting: 'Chào mừng bạn trở lại!',
+    greetingSub: 'Ôn lại những từ bạn đã lưu trong lúc lướt web nhé.',
+    statTotal: 'Tổng số từ',
+    emptyTitle: 'Deck của bạn còn trống',
     tabs: { words: 'Từ vựng', puzzle: 'Puzzle', flashcards: 'Flashcard' },
     loading: 'Đang tải deck…',
     empty: 'Chưa có từ nào. Cài extension Merid và lưu từ trong lúc đọc web nhé.',
@@ -509,6 +517,10 @@ const en: Strings = {
   deck: {
     title: 'My Deck',
     backHome: 'Back to home',
+    greeting: 'Welcome back!',
+    greetingSub: 'Review the words you saved while browsing.',
+    statTotal: 'Total words',
+    emptyTitle: 'Your deck is empty',
     tabs: { words: 'Words', puzzle: 'Puzzle', flashcards: 'Flashcards' },
     loading: 'Loading your deck…',
     empty: 'No words yet. Install the Merid extension and save words while you browse.',
