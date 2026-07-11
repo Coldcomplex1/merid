@@ -37,7 +37,12 @@ export default function DeckView({ source, title, banner }: Props) {
     }
   }, [source])
 
-  useEffect(() => reload(), [reload])
+  useEffect(() => {
+    // Prefer a live subscription (words synced from the extension show up
+    // without a refresh); fall back to a one-shot load.
+    if (source.subscribe) return source.subscribe(setWords, () => setError(true))
+    return reload()
+  }, [source, reload])
 
   const handleRemove = (word: string) => {
     // Optimistic update; reconcile with the backend afterwards.

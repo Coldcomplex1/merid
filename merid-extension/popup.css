@@ -483,6 +483,16 @@ footer {
 }
 
 .sync-hint.warn {
-    color: var(--accent-yellow);
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border: 1px solid rgba(239, 68, 68, 0.55);
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.10);
+    color: #f87171;
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
 }
+
+.sync-hint.warn:hover { background: rgba(239, 68, 68, 0.18); }

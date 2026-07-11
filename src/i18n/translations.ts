@@ -26,6 +26,7 @@ export interface Strings {
     wordCount: (n: number) => string
     puzzle: {
       prompt: string
+      promptMeaning: string
       needMore: string
       correct: string
       wrong: (answer: string) => string
@@ -162,7 +163,8 @@ const vi: Strings = {
     wordCount: (n: number) => `${n} từ`,
     puzzle: {
       prompt: 'Chọn từ đúng để điền vào chỗ trống:',
-      needMore: 'Cần ít nhất 4 từ có câu ví dụ để chơi Puzzle. Hãy lưu thêm từ nhé!',
+      promptMeaning: 'Từ nào mang nghĩa sau đây?',
+      needMore: 'Cần ít nhất 4 từ đang học để chơi Puzzle. Hãy lưu thêm từ nhé!',
       correct: 'Chính xác! 🎉',
       wrong: (answer: string) => `Chưa đúng. Đáp án là “${answer}”.`,
       next: 'Câu tiếp theo',
@@ -507,7 +509,8 @@ const en: Strings = {
     wordCount: (n: number) => `${n} ${n === 1 ? 'word' : 'words'}`,
     puzzle: {
       prompt: 'Pick the word that completes the sentence:',
-      needMore: 'You need at least 4 words with example sentences to play Puzzle. Save a few more!',
+      promptMeaning: 'Which word matches this meaning?',
+      needMore: 'You need at least 4 words in your learning list to play Puzzle. Save a few more!',
       correct: 'Correct! 🎉',
       wrong: (answer: string) => `Not quite. The answer is “${answer}”.`,
       next: 'Next question',
