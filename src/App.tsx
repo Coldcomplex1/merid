@@ -9,7 +9,6 @@ import Footer from './components/sections/Footer'
 import Home from './pages/Home'
 import Tutorial from './pages/Tutorial'
 import MyDeck from './pages/MyDeck'
-import Demo from './pages/Demo'
 import AuthPage from './pages/AuthPage'
 
 /** Scrolls to the hash target on navigation (e.g. /#demo from the tutorial page), else to top. */
@@ -52,7 +51,6 @@ export default function App() {
                       </RequireAuth>
                     }
                   />
-                  <Route path="/demo" element={<Demo />} />
                   <Route path="/login" element={<AuthPage mode="login" />} />
                   <Route path="/signup" element={<AuthPage mode="signup" />} />
                   <Route path="*" element={<Home />} />

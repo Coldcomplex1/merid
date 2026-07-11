@@ -17,7 +17,7 @@ const REQUIRED_VARS = [
 ] as const
 
 /** True when every VITE_FIREBASE_* var is present (e.g. false on preview
- *  deploys without env config — pages then fall back to demo/mock mode). */
+ *  deploys without env config — auth UI then explains it is unavailable). */
 export function isFirebaseConfigured(): boolean {
   return REQUIRED_VARS.every((key) => Boolean(import.meta.env[key]))
 }
