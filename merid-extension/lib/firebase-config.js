@@ -16,8 +16,8 @@
     else root.VMFirebaseConfig = factory();
 })(typeof self !== 'undefined' ? self : globalThis, function () {
     return {
-        apiKey: '',      // e.g. 'AIza...'
-        projectId: '',   // e.g. 'merid-app'
+        apiKey: 'AIzaSyDTGSltJ0fWy7K-oKqDQA-N-02_B6Ys-Xg',
+        projectId: 'merid-49dd5',
         // Where the "View my deck" popup button points.
         webDeckUrl: 'https://merid.site/my-deck'
     };
