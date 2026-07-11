@@ -135,14 +135,28 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
     });
 
-    document.getElementById('deck-btn').addEventListener('click', () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL('deck.html') });
-    });
-
     // Opens the merid.site deck (cloud-synced view) in a new tab. The URL is a
     // fixed constant from lib/firebase-config.js - never user-supplied (A10).
     document.getElementById('view-deck-btn').addEventListener('click', () => {
         chrome.tabs.create({ url: window.VMFirebaseConfig.webDeckUrl });
+    });
+
+    // Saved words only reach merid.site after signing in (Settings page).
+    // Surface that loudly so nobody wonders where their words went.
+    const syncHint = document.getElementById('sync-hint');
+    chrome.runtime.sendMessage({ type: 'MERID_SYNC_STATUS' }, (status) => {
+        if (chrome.runtime.lastError || !status || status.state === 'disabled') return;
+        if (status.state === 'signed-out') {
+            syncHint.hidden = false;
+            syncHint.classList.add('warn');
+            syncHint.textContent = '⚠ Not signed in - saved words stay on this device only. Sign in via Settings.';
+            syncHint.addEventListener('click', () => {
+                if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+            });
+        } else {
+            syncHint.hidden = false;
+            syncHint.textContent = 'Syncing to your deck as ' + (status.email || 'your account');
+        }
     });
 
     document.getElementById('options-btn').addEventListener('click', () => {

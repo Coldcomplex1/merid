@@ -9,7 +9,6 @@ const files = [
     'content.js',
     'popup.js',
     'options.js',
-    'deck.js',
     'lib/vocab-core.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',

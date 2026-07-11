@@ -1,6 +1,6 @@
 // Options page controller. Uses window.VMCore for defaults/registry.
-// Local-only: no API keys, no backend URL, no AI settings. The deck lives on a
-// separate page (deck.html).
+// No API keys, no AI settings. The deck lives on merid.site/my-deck
+// (synced via the optional account below).
 const C = window.VMCore;
 
 const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey'];

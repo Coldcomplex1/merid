@@ -472,3 +472,17 @@ footer {
 }
 
 .btn-view-deck:hover { filter: brightness(1.08); }
+
+/* Sync status line under the deck button. */
+.sync-hint {
+    font-size: 10.5px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sync-hint.warn {
+    color: var(--accent-yellow);
+    cursor: pointer;
+}
