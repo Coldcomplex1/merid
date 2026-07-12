@@ -95,4 +95,107 @@ function wire() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { load(); wire(); });
+// =============================================================
+// Account & sync (optional cloud backup via the service worker).
+// The card stays hidden entirely when Firebase isn't configured, keeping the
+// extension honest about being local-only in that build.
+// =============================================================
+const account = {
+    card: document.getElementById('accountCard'),
+    signedOut: document.getElementById('signedOutView'),
+    signedIn: document.getElementById('signedInView'),
+    email: document.getElementById('authEmail'),
+    password: document.getElementById('authPassword'),
+    error: document.getElementById('authError'),
+    who: document.getElementById('authWho'),
+    syncState: document.getElementById('syncState'),
+    signInBtn: document.getElementById('signInBtn'),
+    signUpBtn: document.getElementById('signUpBtn'),
+    signOutBtn: document.getElementById('signOutBtn')
+};
+
+// Coarse error codes from the service worker -> friendly copy. Sign-in
+// failures deliberately collapse into one message so the UI never reveals
+// whether an email is registered (anti-enumeration, A07).
+const AUTH_ERRORS = {
+    EMAIL_EXISTS: 'An account with this email already exists. Try signing in.',
+    INVALID_LOGIN_CREDENTIALS: 'Email or password is incorrect.',
+    INVALID_PASSWORD: 'Email or password is incorrect.',
+    EMAIL_NOT_FOUND: 'Email or password is incorrect.',
+    INVALID_EMAIL: 'Please enter a valid email address.',
+    WEAK_PASSWORD: 'Password must be at least 8 characters.',
+    TOO_MANY_ATTEMPTS_TRY_LATER: 'Too many attempts. Please try again later.',
+    NETWORK: 'No connection. Check your internet and try again.'
+};
+
+function showAuthError(code) {
+    account.error.textContent = code ? (AUTH_ERRORS[code] || 'Something went wrong. Please try again.') : '';
+    account.error.hidden = !code;
+}
+
+function renderSyncState(status) {
+    const map = {
+        'syncing': 'Syncing your deck…',
+        'rate-limited': 'Daily sync limit reached - remaining words sync tomorrow.',
+        'error': 'Sync paused (connection issue). It retries automatically.',
+        'idle': status.lastSyncAt ? 'Deck is backed up.' : 'Ready to sync.'
+    };
+    account.syncState.textContent = map[status.state] || '';
+}
+
+function refreshAccountCard() {
+    chrome.runtime.sendMessage({ type: 'MERID_SYNC_STATUS' }, (status) => {
+        if (chrome.runtime.lastError || !status || status.state === 'disabled') {
+            if (account.card) account.card.hidden = true;
+            return;
+        }
+        account.card.hidden = false;
+        const signedIn = status.state !== 'signed-out';
+        account.signedOut.hidden = signedIn;
+        account.signedIn.hidden = !signedIn;
+        if (signedIn) {
+            account.who.textContent = status.email || '';
+            renderSyncState(status);
+        }
+    });
+}
+
+function submitAuth(isNewAccount) {
+    const email = account.email.value.trim();
+    const password = account.password.value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAuthError('INVALID_EMAIL'); return; }
+    if (password.length < 8) { showAuthError('WEAK_PASSWORD'); return; }
+    showAuthError(null);
+    account.signInBtn.disabled = account.signUpBtn.disabled = true;
+    chrome.runtime.sendMessage(
+        { type: 'MERID_SYNC_SIGN_IN', email, password, isNewAccount },
+        (res) => {
+            account.signInBtn.disabled = account.signUpBtn.disabled = false;
+            if (chrome.runtime.lastError || !res) { showAuthError('NETWORK'); return; }
+            if (!res.ok) { showAuthError(res.code); return; }
+            account.password.value = '';
+            refreshAccountCard();
+        }
+    );
+}
+
+function wireAccount() {
+    if (!account.card) return;
+    account.signInBtn.addEventListener('click', () => submitAuth(false));
+    account.signUpBtn.addEventListener('click', () => submitAuth(true));
+    account.password.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(false); });
+    account.signOutBtn.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'MERID_SYNC_SIGN_OUT' }, () => {
+            void chrome.runtime.lastError;
+            refreshAccountCard();
+        });
+    });
+    refreshAccountCard();
+    // Live-update the sync line while the page is open (storage-driven, cheap).
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && (changes.vm_sync_status || changes.vm_auth)) refreshAccountCard();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => { load(); wire(); wireAccount(); });
+

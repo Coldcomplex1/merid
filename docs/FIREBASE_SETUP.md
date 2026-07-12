@@ -45,7 +45,7 @@ quyền đọc/ghi dữ liệu. Quyền thật sự do **Firestore Security Rule
 > Lưu ý cho Extension: extension gọi Firebase qua REST nên **không** nằm trong
 > referrer restriction của key web. Nếu áp referrer restriction, tạo **API key
 > thứ hai** không giới hạn referrer nhưng chỉ bật 3 API kể trên, dùng riêng cho
-> extension (`merid-extension/lib/firebase-config.js`).
+> extension (`merid-extension-final/lib/firebase-config.js`).
 
 ## 3. Authentication hoạt động thế nào (A02, A07)
 
