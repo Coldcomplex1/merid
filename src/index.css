@@ -309,6 +309,15 @@ body {
     border: 2px solid #ffffff;
   }
 
+  /* Wikipedia's dark mode ("Màu: Tối" in the Giao diện panel), approximated
+     with a smart invert: lightness flips while the hue-rotate keeps blues
+     blue and golds gold. Photographic thumbs re-invert so they keep their
+     natural colors, like real dark-mode Wikipedia keeps its images. */
+  .wiki-dark,
+  .wiki-dark .wiki-photo {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
   /* The extension popup's exact slider (popup.css .slider): flat navy
      track, small gold thumb, no fill gradient */
   .slider-ext {
