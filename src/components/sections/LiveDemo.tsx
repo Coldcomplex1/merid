@@ -1,66 +1,168 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import {
-  DATASETS,
-  DEMO_PARAGRAPH,
-  VOCAB,
-  isVisible,
-  type Dataset,
-  type VocabEntry,
-} from '../../data/vocab'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { DATASETS, VOCAB, isVisible, type Dataset, type VocabEntry } from '../../data/vocab'
+import { ALL_VOCAB_OCCURRENCES } from '../../data/wikiContent'
+import WikiPage from '../demo/WikiPage'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import SectionHeading from '../ui/SectionHeading'
 import Toggle from '../ui/Toggle'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
 
-const POPUP_WIDTH = 320
+const CARD_WIDTH = 312
+const CARD_GAP = 10 // the extension offsets the card 10px from the word
+const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
+const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
 
-interface ActivePopup {
+/** The extension's real replacement modes (content.js applyDisplayMode). */
+type Mode = 'replace' | 'beside' | 'highlight'
+const MODES: Mode[] = ['replace', 'beside', 'highlight']
+
+/** Word geometry captured on hover; the card places itself after measuring. */
+interface Anchor {
   entry: VocabEntry
-  /** absolute position within the fake-page wrapper; flips above the word near the card bottom */
+  cardW: number
+  left: number // clamped card-left, relative to the page content
+  top: number // word top, relative to the page content
+  bottom: number // word bottom, relative to the page content
+  spaceAbove: number // room above the word inside the visible scroller
+  spaceBelow: number // room below the word inside the visible scroller
+  contentH: number
+}
+
+interface Placement {
   pos: CSSProperties
+  place: 'below' | 'above'
 }
 
 export default function LiveDemo() {
   const { t } = useLang()
   const [dataset, setDataset] = useState<Dataset>('SAT')
   const [frequency, setFrequency] = useState(3)
-  const [replaceDirectly, setReplaceDirectly] = useState(true)
+  const [mode, setMode] = useState<Mode>('replace')
   const [showPopup, setShowPopup] = useState(true)
-  const [popup, setPopup] = useState<ActivePopup | null>(null)
-  const pageRef = useRef<HTMLDivElement | null>(null)
+  const [anchor, setAnchor] = useState<Anchor | null>(null)
+  const [placement, setPlacement] = useState<Placement | null>(null)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [knownIds, setKnownIds] = useState<Set<string>>(new Set())
 
-  // A popup anchored to a word that just moved or disappeared would float wrong.
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const hideTimer = useRef<number | null>(null)
+
+  // A card anchored to a word that just moved or disappeared would float wrong.
   useEffect(() => {
-    setPopup(null)
-  }, [dataset, frequency, replaceDirectly, showPopup])
+    setAnchor(null)
+  }, [dataset, frequency, mode, showPopup])
 
-  const openPopup = (target: HTMLElement, entry: VocabEntry) => {
-    if (!showPopup || !pageRef.current) return
-    const wordRect = target.getBoundingClientRect()
-    const pageRect = pageRef.current.getBoundingClientRect()
-    const rawX = wordRect.left - pageRect.left + wordRect.width / 2 - POPUP_WIDTH / 2
-    const left = Math.max(8, Math.min(rawX, pageRect.width - POPUP_WIDTH - 8))
-    const flipAbove = wordRect.top - pageRect.top > pageRect.height * 0.5
-    const pos: CSSProperties = flipAbove
-      ? { left, bottom: pageRect.height - (wordRect.top - pageRect.top) + 12 }
-      : { left, top: wordRect.bottom - pageRect.top + 12 }
-    setPopup({ entry, pos })
+  useEffect(
+    () => () => {
+      if (hideTimer.current !== null) window.clearTimeout(hideTimer.current)
+    },
+    [],
+  )
+
+  const cancelHide = () => {
+    if (hideTimer.current !== null) {
+      window.clearTimeout(hideTimer.current)
+      hideTimer.current = null
+    }
   }
 
-  const activeWords = DEMO_PARAGRAPH.filter(
-    (token) => 'entryId' in token && isVisible(VOCAB[token.entryId], dataset, frequency),
-  ).length
+  const scheduleHide = () => {
+    cancelHide()
+    hideTimer.current = window.setTimeout(() => {
+      hideTimer.current = null
+      setAnchor(null)
+    }, HIDE_GRACE_MS)
+  }
+
+  const openPopup = (target: HTMLElement, entry: VocabEntry) => {
+    if (!showPopup || !scrollerRef.current || !contentRef.current) return
+    cancelHide()
+    const wordRect = target.getBoundingClientRect()
+    const contentRect = contentRef.current.getBoundingClientRect()
+    const scrollerRect = scrollerRef.current.getBoundingClientRect()
+    const cardW = Math.min(CARD_WIDTH, contentRect.width - 16)
+    const rawLeft = wordRect.left - contentRect.left + wordRect.width / 2 - cardW / 2
+    setAnchor({
+      entry,
+      cardW,
+      left: Math.max(8, Math.min(rawLeft, contentRect.width - cardW - 8)),
+      top: wordRect.top - contentRect.top,
+      bottom: wordRect.bottom - contentRect.top,
+      spaceAbove: wordRect.top - scrollerRect.top,
+      spaceBelow: scrollerRect.bottom - wordRect.bottom,
+      contentH: contentRect.height,
+    })
+  }
+
+  // Mirror the extension: render the card, measure it, then flip it above the
+  // word when the visible space below is too small (and above is enough).
+  useLayoutEffect(() => {
+    if (!anchor) {
+      setPlacement(null)
+      return
+    }
+    const cardH = cardRef.current?.offsetHeight ?? 400
+    const flipAbove =
+      anchor.spaceBelow < cardH + FLIP_BUFFER && anchor.spaceAbove > cardH + FLIP_BUFFER
+    setPlacement(
+      flipAbove
+        ? { place: 'above', pos: { left: anchor.left, bottom: anchor.contentH - anchor.top + CARD_GAP } }
+        : { place: 'below', pos: { left: anchor.left, top: anchor.bottom + CARD_GAP } },
+    )
+  }, [anchor])
+
+  const handleKnow = (id: string) => {
+    setKnownIds((prev) => new Set(prev).add(id))
+    setAnchor(null)
+  }
+
+  // Tapping the page background (mobile has no mouse-out) dismisses the card.
+  const handlePagePointerDown = (e: React.PointerEvent) => {
+    const el = e.target as HTMLElement
+    if (el.closest('[data-vocab-card]') || el.closest('[data-vocab-word]')) return
+    setAnchor(null)
+  }
+
+  const renderVocab = (id: string, key: string) => {
+    const entry = VOCAB[id]
+    if (!entry) return <span key={key} />
+    if (knownIds.has(id) || !isVisible(entry, dataset, frequency)) {
+      return <span key={key}>{entry.vi}</span>
+    }
+    const label =
+      mode === 'replace' ? entry.word : mode === 'beside' ? `${entry.vi} (${entry.word})` : entry.vi
+    return (
+      <button
+        key={key}
+        type="button"
+        data-vocab-word
+        className={`${mode === 'highlight' ? 'hl-vi' : 'hl-en'} text-inherit`}
+        onMouseEnter={(e) => openPopup(e.currentTarget, entry)}
+        onMouseLeave={scheduleHide}
+        onClick={(e) => openPopup(e.currentTarget, entry)}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  const activeWords = ALL_VOCAB_OCCURRENCES.filter((id) => {
+    const entry = VOCAB[id]
+    return entry !== undefined && !knownIds.has(id) && isVisible(entry, dataset, frequency)
+  }).length
 
   return (
     <section id="demo" className="relative z-10 scroll-mt-16 py-24">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <Reveal>
           <SectionHeading eyebrow={t.demo.eyebrow} title={t.demo.title} sub={t.demo.sub} />
         </Reveal>
 
         <Reveal delay={120} className="mt-14">
-          <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
+          <div className="grid items-start gap-8 lg:grid-cols-[320px_1fr]">
             {/* Controls */}
             <div className="h-fit rounded-3xl bg-navy-850 p-6 ring-1 ring-navy-600/50">
               <p className="text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
@@ -112,15 +214,29 @@ export default function LiveDemo() {
                 ))}
               </div>
 
-              <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-cream-50">{t.demo.replaceToggle}</span>
-                  <Toggle on={replaceDirectly} onChange={setReplaceDirectly} label={t.demo.replaceToggle} />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-cream-50">{t.demo.popupToggle}</span>
-                  <Toggle on={showPopup} onChange={setShowPopup} label={t.demo.popupToggle} />
-                </div>
+              <p className="mt-6 text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
+                {t.demo.modeLabel}
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-navy-700 p-1">
+                {MODES.map((m, i) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    className={`cursor-pointer rounded-lg py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 ${
+                      mode === m
+                        ? 'bg-gold-400 text-navy-900 shadow-[0_0_14px_-4px_rgb(245_197_66/0.8)]'
+                        : 'text-navy-200 hover:text-cream-50'
+                    }`}
+                  >
+                    {t.demo.modes[i]}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-3">
+                <span className="text-sm text-cream-50">{t.demo.popupToggle}</span>
+                <Toggle on={showPopup} onChange={setShowPopup} label={t.demo.popupToggle} />
               </div>
 
               <p className="mt-6 rounded-xl bg-navy-800 px-4 py-3 text-center text-xs text-navy-200 ring-1 ring-navy-600/40">
@@ -130,41 +246,95 @@ export default function LiveDemo() {
               </p>
             </div>
 
-            {/* Fake page */}
-            <div ref={pageRef} className="relative">
-              <div className="rounded-3xl bg-cream-50 p-7 text-ink shadow-card sm:p-10">
-                <div className="mb-5 flex items-center gap-2 border-b border-navy-200/60 pb-4 text-xs font-semibold text-navy-500">
-                  <span className="h-2 w-2 rounded-full bg-gold-400" />
-                  blog.hocdethi.vn · bài viết hôm nay
+            {/* Fake browser running the extension on Wikipedia */}
+            <div className="min-w-0">
+              <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
+                {/* Tab strip */}
+                <div className="flex items-end gap-2 px-3 pt-2">
+                  <div className="mr-1 flex items-center gap-2 self-center">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#f26d5f]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#f5c14e]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#5ec269]" />
+                  </div>
+                  <div className="flex min-w-0 max-w-[240px] items-center gap-2 rounded-t-lg bg-white px-3 py-1.5 text-[11px] text-[#3c4043]">
+                    <span className="font-wiki shrink-0 text-[13px] leading-none font-bold">W</span>
+                    <span className="truncate">Trang Chính – Wikipedia tiếng Việt</span>
+                    <span className="shrink-0 text-[#5f6368]">×</span>
+                  </div>
+                  <span className="pb-1.5 text-base leading-none text-[#5f6368]">+</span>
                 </div>
-                <p className="font-wiki text-xl leading-[2] font-semibold text-pretty sm:text-[22px]" lang="vi">
-                  {DEMO_PARAGRAPH.map((token, i) => {
-                    if ('text' in token) return <span key={i}>{token.text}</span>
-                    const entry = VOCAB[token.entryId]
-                    if (!isVisible(entry, dataset, frequency)) {
-                      return <span key={i}>{entry.vi}</span>
-                    }
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        className={`${replaceDirectly ? 'hl-en' : 'hl-vi'} font-wiki text-inherit`}
-                        onMouseEnter={(e) => openPopup(e.currentTarget, entry)}
-                        onClick={(e) => openPopup(e.currentTarget, entry)}
+
+                {/* Toolbar */}
+                <div className="flex items-center gap-2 border-b border-[#dadce0] bg-white px-3 py-1.5">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#5f6368" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#bdc1c6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="#5f6368" aria-hidden="true">
+                    <path d="M17.65 6.35A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.76-4.24L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full bg-[#f1f3f4] px-3 py-1.5 text-[12px] text-[#202124]">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#5f6368" aria-hidden="true" className="shrink-0">
+                      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 6a3 3 0 0 1 6 0v2H9V6z" />
+                    </svg>
+                    <span className="truncate">vi.wikipedia.org/wiki/Trang_Chính</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5f6368" strokeWidth="1.6" aria-hidden="true" className="ml-auto shrink-0">
+                      <path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8L12 3z" />
+                    </svg>
+                  </div>
+                  <span
+                    className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gold-400 text-[11px] font-extrabold text-navy-900"
+                    title="Merid"
+                  >
+                    M
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#34a853] ring-2 ring-white" />
+                  </span>
+                  <span className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-navy-400 to-navy-700" />
+                </div>
+
+                {/* Scrollable Wikipedia page */}
+                <div
+                  ref={scrollerRef}
+                  className="wiki-scroll relative h-[480px] overflow-y-auto overscroll-contain bg-white sm:h-[560px]"
+                >
+                  <div ref={contentRef} className="relative" onPointerDown={handlePagePointerDown}>
+                    <WikiPage renderVocab={renderVocab} />
+
+                    {showPopup && anchor && (
+                      <div
+                        key={anchor.entry.id}
+                        ref={cardRef}
+                        data-vocab-card
+                        onMouseEnter={cancelHide}
+                        onMouseLeave={scheduleHide}
+                        className={`absolute z-30 ${
+                          placement
+                            ? placement.place === 'above'
+                              ? 'animate-card-in-down'
+                              : 'animate-card-in'
+                            : 'invisible'
+                        }`}
+                        style={{
+                          width: anchor.cardW,
+                          ...(placement ? placement.pos : { left: anchor.left, top: anchor.bottom + CARD_GAP }),
+                        }}
                       >
-                        {replaceDirectly ? entry.word : entry.vi}
-                      </button>
-                    )
-                  })}
-                </p>
-                <p className="mt-6 text-sm text-navy-500">{showPopup ? t.demo.hintOn : t.demo.hintOff}</p>
+                        <VocabPopupCard
+                          entry={anchor.entry}
+                          saved={savedIds.has(anchor.entry.id)}
+                          onSave={() => setSavedIds((prev) => new Set(prev).add(anchor.entry.id))}
+                          onKnow={() => handleKnow(anchor.entry.id)}
+                          onClose={() => setAnchor(null)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {popup && (
-                <div className="absolute z-30 animate-pop-in" style={popup.pos}>
-                  <VocabPopupCard entry={popup.entry} onClose={() => setPopup(null)} />
-                </div>
-              )}
+              <p className="mt-4 text-sm text-muted">{showPopup ? t.demo.hintOn : t.demo.hintOff}</p>
             </div>
           </div>
         </Reveal>

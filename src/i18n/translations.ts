@@ -80,6 +80,8 @@ export interface Strings {
     dataset: string
     frequency: string
     freqLabels: [string, string, string]
+    modeLabel: string
+    modes: [string, string, string]
     replaceToggle: string
     popupToggle: string
     counterWord: string
@@ -240,18 +242,20 @@ const vi: Strings = {
   demo: {
     eyebrow: 'Demo tương tác',
     title: 'Xem Merid hoạt động ngay tại đây',
-    sub: 'Đây chính là cách extension hoạt động thật. Đổi bộ từ, chỉnh tần suất, rồi di chuột lên bất kỳ từ nào được highlight.',
+    sub: 'Đây chính là cách extension hoạt động trên trang thật. Đổi bộ từ, chỉnh tần suất, rồi cuộn trang Wikipedia bên dưới và di chuột lên bất kỳ từ nào được tô sáng.',
     dataset: 'Bộ từ vựng',
     frequency: 'Tần suất highlight',
     freqLabels: ['Ít', 'Vừa', 'Nhiều'],
+    modeLabel: 'Chế độ hiển thị',
+    modes: ['Thay thế', 'Song song', 'Tô sáng'],
     replaceToggle: 'Thay từ trực tiếp',
     popupToggle: 'Hiện popup giải thích',
     counterWord: 'từ',
     counterWords: 'từ',
     counterLink: 'thuộc bộ',
     counterTail: 'đang bật trên trang này',
-    hintOn: 'Di chuột hoặc chạm vào từ được highlight để mở popup, y như trên trang web thật.',
-    hintOff: 'Popup đang tắt. Từ vẫn được highlight để mạch đọc của bạn không bị ngắt.',
+    hintOn: 'Cuộn trang như bình thường, rồi di chuột hoặc chạm vào từ được tô sáng để mở thẻ từ vựng — y như extension thật.',
+    hintOff: 'Popup đang tắt. Từ vẫn được tô sáng để mạch đọc của bạn không bị ngắt.',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -597,17 +601,19 @@ const en: Strings = {
   demo: {
     eyebrow: 'Interactive demo',
     title: 'See it work in real time',
-    sub: 'This is the real behavior of the extension. Change the dataset, tune the frequency, and hover any highlighted word.',
+    sub: "This is the extension's real behavior. Pick a dataset, tune the frequency, then scroll the Wikipedia page below and hover any highlighted word.",
     dataset: 'Vocabulary dataset',
     frequency: 'Highlight frequency',
     freqLabels: ['Low', 'Medium', 'High'],
+    modeLabel: 'Display mode',
+    modes: ['Replace', 'Beside', 'Highlight'],
     replaceToggle: 'Replace words directly',
     popupToggle: 'Show popup explanation',
     counterWord: 'word',
     counterWords: 'words',
     counterLink: 'from the',
     counterTail: 'dataset active on this page',
-    hintOn: 'Hover or tap a highlighted word to see the popup, exactly like on a real page.',
+    hintOn: 'Scroll the page like normal, then hover or tap a highlighted word to open the learning card — exactly like the real extension.',
     hintOff: 'Popups are off. Words stay highlighted so your reading flow is never interrupted.',
   },
   features: {

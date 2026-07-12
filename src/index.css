@@ -42,6 +42,9 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-float-slow: float 8s ease-in-out infinite;
   --animate-pop-in: pop-in 0.7s cubic-bezier(0.22, 1.1, 0.35, 1.15) both;
+  /* Learning-card entrances, same timing as the extension's vm-slide-up/down */
+  --animate-card-in: card-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-card-in-down: card-in-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pulse-soft: pulse-soft 2.8s ease-in-out infinite;
   --animate-bar-grow: bar-grow 0.9s cubic-bezier(0.3, 1.2, 0.4, 1) both;
   /* fill-mode `backwards` (not `both`): a lingering forwards-fill transform
@@ -56,6 +59,14 @@
   @keyframes pop-in {
     0% { opacity: 0; transform: translateY(22px) scale(0.92); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes card-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes card-in-down {
+    0% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
   @keyframes pulse-soft {
     0%, 100% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0); }
@@ -242,6 +253,15 @@ body {
     text-decoration: underline;
   }
 
+  /* Real MediaWiki body links are plain weight, only colored */
+  .wiki-link-plain {
+    color: var(--color-wiki-blue);
+    cursor: pointer;
+  }
+  .wiki-link-plain:hover {
+    text-decoration: underline;
+  }
+
   /* Vietnamese word highlighted (not yet replaced) */
   .hl-vi {
     font-weight: 700;
@@ -256,20 +276,37 @@ body {
     filter: brightness(0.97);
   }
 
-  /* English word inserted into the page */
+  /* English word inserted into the page — the extension's exact
+     .vocab-master-highlight look (content.css), gold underline + faint wash */
   .hl-en {
-    font-weight: 700;
-    font-style: italic;
-    color: var(--color-wiki-blue-deep);
-    padding: 0 3px;
-    border-radius: 4px;
-    background: rgb(255 233 163 / 0.75);
-    box-shadow: inset 0 -0.28em 0 var(--color-gold-300);
+    font-weight: 600;
+    color: inherit;
+    padding: 0 1px;
+    border-bottom: 2px solid #f4be37;
+    background-color: rgb(244 190 55 / 0.08);
     cursor: pointer;
-    transition: filter 150ms ease;
+    transition: all 0.3s ease;
   }
   .hl-en:hover {
-    filter: brightness(0.96);
+    background-color: rgb(244 190 55 / 0.2);
+    border-bottom: 3px solid #f4be37;
+  }
+
+  /* Thin light scrollbar for the fake-browser page (always-light mockup) */
+  .wiki-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #c8ccd1 #ffffff;
+  }
+  .wiki-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+  .wiki-scroll::-webkit-scrollbar-track {
+    background: #ffffff;
+  }
+  .wiki-scroll::-webkit-scrollbar-thumb {
+    background: #c8ccd1;
+    border-radius: 8px;
+    border: 2px solid #ffffff;
   }
 
   /* Gold range slider (extension-panel style) */
