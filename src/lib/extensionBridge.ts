@@ -1,7 +1,7 @@
 // Single sign-on hand-off to the Merid Chrome extension.
 //
 // The extension injects a tiny bridge script on merid.site only. Protocol
-// (all via window.postMessage on our own origin — no page content involved):
+// (all via window.postMessage on our own origin, with no page content involved):
 //   extension -> page : { source: 'merid-ext', type: 'MERID_EXT_PING' }
 //   page -> extension : { source: 'merid-web', type: 'MERID_WEB_SESSION',
 //                         refreshToken, email }        (user signed in)

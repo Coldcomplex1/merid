@@ -1,7 +1,7 @@
 // Firebase bootstrap. All config comes from VITE_FIREBASE_* env vars so no
 // project identifiers are hardcoded in the bundle source (see .env.example).
 //
-// The web config is not a secret — Firestore security rules and API-key
+// The web config is not a secret. Firestore security rules and API-key
 // referrer restrictions are what actually protect user data (docs/FIREBASE_SETUP.md).
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
@@ -17,7 +17,7 @@ const REQUIRED_VARS = [
 ] as const
 
 /** True when every VITE_FIREBASE_* var is present (e.g. false on preview
- *  deploys without env config — auth UI then explains it is unavailable). */
+ *  deploys without env config, where the auth UI explains it is unavailable). */
 export function isFirebaseConfigured(): boolean {
   return REQUIRED_VARS.every((key) => Boolean(import.meta.env[key]))
 }
@@ -45,7 +45,7 @@ function getApp(): FirebaseApp {
 }
 
 /** Firebase Auth singleton. The SDK keeps the session in IndexedDB and
- *  refreshes the short-lived ID token (JWT) automatically — never persist
+ *  refreshes the short-lived ID token (JWT) automatically, so never persist
  *  tokens to localStorage yourself. */
 export function firebaseAuth(): Auth {
   return getAuth(getApp())

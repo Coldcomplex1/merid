@@ -3,7 +3,7 @@ import { CHROME_STORE_URL } from '../../config'
 
 /** Slim launch banner at the very top of the page. It scrolls away with the
  *  page (the navbar below it is the sticky element), so it never obstructs
- *  navigation. Non-dismissible by design — the site has no banner-dismissal
+ *  navigation. Non-dismissible by design: the site has no banner-dismissal
  *  system and this stays intentionally lightweight. */
 export default function AnnouncementBanner() {
   const { t } = useLang()

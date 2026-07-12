@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { VOCAB, type VocabEntry } from '../../data/vocab'
 import WikiPage from '../demo/WikiPage'
+import FacebookPage from '../demo/FacebookPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import SectionHeading from '../ui/SectionHeading'
@@ -11,6 +12,14 @@ const CARD_WIDTH = 312
 const CARD_GAP = 10 // the extension offsets the card 10px from the word
 const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
 const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
+
+type TabId = 'wiki' | 'fb'
+
+/** The fake browser's tabs. Each one is a full page the extension scans. */
+const TABS: { id: TabId; title: string; url: string }[] = [
+  { id: 'wiki', title: 'Trang Chính – Wikipedia tiếng Việt', url: 'vi.wikipedia.org/wiki/Trang_Chính' },
+  { id: 'fb', title: 'Facebook', url: 'www.facebook.com' },
+]
 
 /** Word geometry captured on hover; the card places itself after measuring. */
 interface Anchor {
@@ -39,6 +48,7 @@ export default function LiveDemo() {
   const [engEng, setEngEng] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [reverted, setReverted] = useState(false)
+  const [tab, setTab] = useState<TabId>('wiki')
   const [anchor, setAnchor] = useState<Anchor | null>(null)
   const [placement, setPlacement] = useState<Placement | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
@@ -124,6 +134,13 @@ export default function LiveDemo() {
     setAnchor(null)
   }
 
+  const switchTab = (next: TabId) => {
+    if (next === tab) return
+    setTab(next)
+    setAnchor(null)
+    scrollerRef.current?.scrollTo({ top: 0 })
+  }
+
   // Tapping the page background (mobile has no mouse-out) dismisses the card.
   const handlePagePointerDown = (e: React.PointerEvent) => {
     const el = e.target as HTMLElement
@@ -166,7 +183,7 @@ export default function LiveDemo() {
 
   return (
     <section id="demo" className="relative z-10 scroll-mt-16 py-24">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 xl:max-w-[90rem] 2xl:max-w-[105rem]">
         <Reveal>
           <SectionHeading eyebrow={t.demo.eyebrow} title={t.demo.title} sub={t.demo.sub} />
         </Reveal>
@@ -195,19 +212,37 @@ export default function LiveDemo() {
             {/* Fake browser running the extension on Wikipedia */}
             <div className="min-w-0">
               <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
-                {/* Tab strip */}
-                <div className="flex items-end gap-2 px-3 pt-2">
-                  <div className="mr-1 flex items-center gap-2 self-center">
+                {/* Tab strip: both tabs are live pages, click to switch */}
+                <div className="flex items-end gap-1.5 px-3 pt-2">
+                  <div className="mr-1.5 flex items-center gap-2 self-center">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#f26d5f]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#f5c14e]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#5ec269]" />
                   </div>
-                  <div className="flex min-w-0 max-w-[240px] items-center gap-2 rounded-t-lg bg-white px-3 py-1.5 text-[11px] text-[#3c4043]">
-                    <span className="font-wiki shrink-0 text-[13px] leading-none font-bold">W</span>
-                    <span className="truncate">Trang Chính – Wikipedia tiếng Việt</span>
-                    <span className="shrink-0 text-[#5f6368]">×</span>
-                  </div>
-                  <span className="pb-1.5 text-base leading-none text-[#5f6368]">+</span>
+                  {TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      aria-pressed={tab === t.id}
+                      onClick={() => switchTab(t.id)}
+                      className={`flex min-w-0 max-w-[240px] flex-1 cursor-pointer items-center gap-2 rounded-t-lg px-3 py-1.5 text-left text-[11px] transition-colors sm:flex-none sm:basis-[200px] ${
+                        tab === t.id
+                          ? 'bg-white text-[#3c4043]'
+                          : 'text-[#5f6368] hover:bg-white/50'
+                      }`}
+                    >
+                      {t.id === 'wiki' ? (
+                        <span className="font-wiki shrink-0 text-[13px] leading-none font-bold">W</span>
+                      ) : (
+                        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1877f2] pb-px text-[10px] leading-none font-bold text-white">
+                          f
+                        </span>
+                      )}
+                      <span className="truncate">{t.title}</span>
+                      <span className="ml-auto shrink-0 text-[#5f6368]">×</span>
+                    </button>
+                  ))}
+                  <span className="pb-1.5 pl-1 text-base leading-none text-[#5f6368]">+</span>
                 </div>
 
                 {/* Toolbar */}
@@ -225,7 +260,7 @@ export default function LiveDemo() {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="#5f6368" aria-hidden="true" className="shrink-0">
                       <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 6a3 3 0 0 1 6 0v2H9V6z" />
                     </svg>
-                    <span className="truncate">vi.wikipedia.org/wiki/Trang_Chính</span>
+                    <span className="truncate">{TABS.find((t) => t.id === tab)?.url}</span>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5f6368" strokeWidth="1.6" aria-hidden="true" className="ml-auto shrink-0">
                       <path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8L12 3z" />
                     </svg>
@@ -242,13 +277,19 @@ export default function LiveDemo() {
                   <span className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-navy-400 to-navy-700" />
                 </div>
 
-                {/* Scrollable Wikipedia page */}
+                {/* Scrollable page for the active tab */}
                 <div
                   ref={scrollerRef}
-                  className="wiki-scroll relative h-[480px] overflow-y-auto overscroll-contain bg-white sm:h-[560px]"
+                  className={`wiki-scroll relative h-[480px] overflow-y-auto overscroll-contain sm:h-[560px] xl:h-[min(70vh,800px)] ${
+                    tab === 'fb' ? 'bg-[#f0f2f5]' : 'bg-white'
+                  }`}
                 >
-                  <div ref={contentRef} className="relative" onPointerDown={handlePagePointerDown}>
-                    <WikiPage renderVocab={renderVocab} />
+                  <div ref={contentRef} className="relative min-h-full" onPointerDown={handlePagePointerDown}>
+                    {tab === 'wiki' ? (
+                      <WikiPage renderVocab={renderVocab} />
+                    ) : (
+                      <FacebookPage renderVocab={renderVocab} />
+                    )}
 
                     {anchor && (
                       <div

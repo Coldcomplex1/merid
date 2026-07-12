@@ -15,7 +15,7 @@ const link = (s: string): Seg => ({ t: 'link', s })
 const b = (s: string): Seg => ({ t: 'b', s })
 const vocab = (id: string): Seg => ({ t: 'vocab', id })
 
-/** "Bài viết chọn lọc" — paragraphs of the featured article. */
+/** "Bài viết chọn lọc": paragraphs of the featured article. */
 export const FEATURED_ARTICLE: Seg[][] = [
   [
     b('Vịnh Hạ Long'),
@@ -48,7 +48,7 @@ export const FEATURED_ARTICLE: Seg[][] = [
   ],
 ]
 
-/** "Bạn có biết" — each bullet is rendered after a leading ellipsis. */
+/** "Bạn có biết": each bullet is rendered after a leading ellipsis. */
 export const DID_YOU_KNOW: Seg[][] = [
   [
     text('cầu '),
@@ -73,7 +73,7 @@ export const DID_YOU_KNOW: Seg[][] = [
   [
     text('trên trang này, một vài từ tiếng Việt đã được '),
     vocab('replace'),
-    text(' bằng từ vựng tiếng Anh — hãy di chuột lên chúng để xem '),
+    text(' bằng từ vựng tiếng Anh, và bạn có thể di chuột lên chúng để xem '),
     vocab('interpret'),
     text(' chi tiết?'),
   ],
@@ -104,7 +104,7 @@ export const IN_THE_NEWS: Seg[][] = [
   ],
 ]
 
-/** "Ngày này năm xưa" — the snapshot date and its events. */
+/** "Ngày này năm xưa": the snapshot date and its events. */
 export const ON_THIS_DAY: { date: string; events: Seg[][] } = {
   date: '11 tháng 7',
   events: [
@@ -156,7 +156,7 @@ export const FEATURED_PICTURE_CAPTION: Seg[] = [
   text(' bậc nhất của vùng Tây Bắc và được xếp hạng di tích quốc gia đặc biệt.'),
 ]
 
-/** "Dự án liên quan" — sister projects with their Vietnamese taglines. */
+/** "Dự án liên quan": sister projects with their Vietnamese taglines. */
 export const SISTER_PROJECTS: { name: string; desc: string; glyph: string; color: string }[] = [
   { name: 'Commons', desc: 'Kho tư liệu chung', glyph: 'C', color: '#006699' },
   { name: 'Wiktionary', desc: 'Từ điển mở', glyph: 'W', color: '#575d63' },

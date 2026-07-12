@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { classifyAuthError, signIn, signUp, validateCredentials } from '../lib/auth'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
-/** Shared login/signup form. Error copy is intentionally coarse — invalid
+/** Shared login/signup form. Error copy is intentionally coarse: invalid
  *  email, unknown account and wrong password all read the same, so the form
  *  can't be used to probe which emails are registered (A07). */
 export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {

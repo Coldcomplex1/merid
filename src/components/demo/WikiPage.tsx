@@ -322,7 +322,7 @@ export default function WikiPage({ renderVocab }: WikiPageProps) {
             <p className="font-semibold">
               {ON_THIS_DAY.date}
               <span className="ml-1.5 text-[12px] font-normal text-[#54595d]">
-                — <span className="wiki-link-plain">Ngày Dân số Thế giới</span>
+                (<span className="wiki-link-plain">Ngày Dân số Thế giới</span>)
               </span>
             </p>
             <ul className="mt-1.5 space-y-1.5">
