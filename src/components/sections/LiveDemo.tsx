@@ -13,6 +13,10 @@ const CARD_GAP = 10 // the extension offsets the card 10px from the word
 const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
 const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
 
+const MIN_BROWSER_W = 320 // narrowest the browser can be dragged (phone-ish)
+const HANDLE_ALLOWANCE = 16 // room the resize handle + gap take inside the row
+const RESIZE_KEY_STEP = 24
+
 type TabId = 'wiki' | 'fb'
 
 /** The fake browser's tabs. Each one is a full page the extension scans. */
@@ -53,11 +57,16 @@ export default function LiveDemo() {
   const [placement, setPlacement] = useState<Placement | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [knownIds, setKnownIds] = useState<Set<string>>(new Set())
+  // null = fill the column; a number = width in px chosen by dragging the handle
+  const [browserW, setBrowserW] = useState<number | null>(null)
+  const [resizing, setResizing] = useState(false)
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const hideTimer = useRef<number | null>(null)
+  const browserBoxRef = useRef<HTMLDivElement | null>(null)
+  const resizeDrag = useRef<{ startX: number; startW: number; max: number } | null>(null)
 
   // A card anchored to a word that just moved or disappeared would float wrong.
   useEffect(() => {
@@ -141,6 +150,54 @@ export default function LiveDemo() {
     scrollerRef.current?.scrollTo({ top: 0 })
   }
 
+  const maxBrowserW = () => {
+    const row = browserBoxRef.current?.parentElement
+    return row ? row.getBoundingClientRect().width - HANDLE_ALLOWANCE : Infinity
+  }
+
+  const clampBrowserW = (w: number, max: number) =>
+    Math.round(Math.min(max, Math.max(MIN_BROWSER_W, w)))
+
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const box = browserBoxRef.current
+    if (!box) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    resizeDrag.current = {
+      startX: e.clientX,
+      startW: box.getBoundingClientRect().width,
+      max: maxBrowserW(),
+    }
+    setAnchor(null)
+    setResizing(true)
+  }
+
+  const moveResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = resizeDrag.current
+    if (!drag) return
+    setBrowserW(clampBrowserW(drag.startW + (e.clientX - drag.startX), drag.max))
+  }
+
+  const endResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeDrag.current) return
+    resizeDrag.current = null
+    setResizing(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }
+
+  const handleResizeKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    const box = browserBoxRef.current
+    if (!box) return
+    const current = browserW ?? box.getBoundingClientRect().width
+    const delta = e.key === 'ArrowRight' ? RESIZE_KEY_STEP : -RESIZE_KEY_STEP
+    setAnchor(null)
+    setBrowserW(clampBrowserW(current + delta, maxBrowserW()))
+  }
+
   // Tapping the page background (mobile has no mouse-out) dismisses the card.
   const handlePagePointerDown = (e: React.PointerEvent) => {
     const el = e.target as HTMLElement
@@ -211,6 +268,12 @@ export default function LiveDemo() {
 
             {/* Fake browser running the extension on Wikipedia */}
             <div className="min-w-0">
+              <div className={`flex items-stretch gap-2 ${resizing ? 'select-none' : ''}`}>
+                <div
+                  ref={browserBoxRef}
+                  style={{ '--demo-w': browserW === null ? '100%' : `${browserW}px` } as CSSProperties}
+                  className="w-full min-w-0 lg:w-[var(--demo-w)]"
+                >
               <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
                 {/* Tab strip: both tabs are live pages, click to switch */}
                 <div className="flex items-end gap-1.5 px-3 pt-2">
@@ -320,6 +383,30 @@ export default function LiveDemo() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+                </div>
+
+                {/* Drag to preview the extension on a narrower or wider page */}
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t.demo.resizeHandle}
+                  title={t.demo.resizeHandle}
+                  tabIndex={0}
+                  onPointerDown={startResize}
+                  onPointerMove={moveResize}
+                  onPointerUp={endResize}
+                  onPointerCancel={endResize}
+                  onDoubleClick={() => setBrowserW(null)}
+                  onKeyDown={handleResizeKey}
+                  className="group hidden shrink-0 cursor-ew-resize touch-none items-center rounded-full px-0.5 outline-none focus-visible:ring-2 focus-visible:ring-gold-400 lg:flex"
+                >
+                  <span
+                    className={`h-16 w-1.5 rounded-full transition-colors ${
+                      resizing ? 'bg-gold-400' : 'bg-line-strong group-hover:bg-gold-400'
+                    }`}
+                  />
                 </div>
               </div>
             </div>

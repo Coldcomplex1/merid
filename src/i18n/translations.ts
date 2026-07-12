@@ -77,6 +77,7 @@ export interface Strings {
     eyebrow: string
     title: string
     sub: string
+    resizeHandle: string
   }
   features: {
     eyebrow: string
@@ -230,6 +231,7 @@ const vi: Strings = {
     eyebrow: 'Demo tương tác',
     title: 'Xem Merid hoạt động ngay tại đây',
     sub: 'Đây chính là panel thật của extension. Đổi bộ từ, chỉnh cường độ, rồi cuộn trang Wikipedia hoặc mở tab Facebook bên dưới và di chuột lên bất kỳ từ nào được tô sáng.',
+    resizeHandle: 'Kéo để chỉnh độ rộng trang demo. Nhấp đúp để trở về kích thước đầy đủ.',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -577,6 +579,7 @@ const en: Strings = {
     eyebrow: 'Interactive demo',
     title: 'See it work in real time',
     sub: "This is the extension's real panel. Pick a dataset, tune the intensity, then scroll the Wikipedia page or the Facebook tab below and hover any highlighted word.",
+    resizeHandle: 'Drag to resize the demo page. Double-click to restore the full width.',
   },
   features: {
     eyebrow: 'Features',
