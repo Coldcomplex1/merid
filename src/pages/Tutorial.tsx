@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import Reveal from '../components/ui/Reveal'
 import ExtensionPanel from '../components/ui/ExtensionPanel'
 import VocabPopupCard from '../components/ui/VocabPopupCard'
-import Toggle from '../components/ui/Toggle'
 import InstallButton from '../components/ui/InstallButton'
 import { VOCAB } from '../data/vocab'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
@@ -114,21 +113,46 @@ function IntensityDemo() {
   )
 }
 
+const MODE_OPTIONS = [
+  { value: 'replace', label: 'Replace' },
+  { value: 'highlight', label: 'Highlight' },
+  { value: 'beside', label: 'Beside' },
+] as const
+
+type ModeValue = (typeof MODE_OPTIONS)[number]['value']
+
 function ModeDemo() {
-  const { t } = useLang()
-  const [replace, setReplace] = useState(true)
+  const [mode, setMode] = useState<ModeValue>('replace')
   const entry = VOCAB.significant
+  const label =
+    mode === 'replace' ? entry.word : mode === 'beside' ? `${entry.vi} (${entry.word})` : entry.vi
 
   return (
     <div className="w-full max-w-sm rounded-3xl bg-cream-50 p-6 text-ink shadow-card">
       <p className="font-wiki text-lg leading-loose font-semibold" lang="vi">
-        Một vài từ{' '}
-        <span className={replace ? 'hl-en' : 'hl-vi'}>{replace ? entry.word : entry.vi}</span> sẽ xuất
-        hiện ngay trong câu bạn đang đọc.
+        Một vài từ <span className="hl-en">{label}</span> sẽ xuất hiện ngay trong câu bạn đang đọc.
       </p>
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-navy-200/60 pt-4">
-        <span className="text-sm font-semibold text-navy-700">{t.demo.replaceToggle}</span>
-        <Toggle on={replace} onChange={setReplace} label={t.demo.replaceToggle} surface="light" />
+      <div className="mt-5 border-t border-navy-200/60 pt-4">
+        <p className="text-[11px] font-extrabold tracking-[0.14em] text-navy-500 uppercase">
+          Display mode
+        </p>
+        <div className="mt-2 grid grid-cols-3 gap-1.5">
+          {MODE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={mode === option.value}
+              onClick={() => setMode(option.value)}
+              className={`cursor-pointer rounded-[5px] border py-2 text-center text-[12px] font-semibold transition-all duration-200 active:scale-95 ${
+                mode === option.value
+                  ? 'border-[#f4be37] bg-[#f4be37] text-[#020c1b]'
+                  : 'border-navy-200/70 bg-white/70 text-navy-500 hover:border-[#f4be37] hover:text-navy-800'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
