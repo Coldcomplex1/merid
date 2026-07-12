@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merid</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Merid</div>
+        </header>
+
+        <section class="dataset-section">
+            <h3 class="section-title">Vocabulary dataset</h3>
+            <div class="dataset-btns" id="dataset-btns">
+                <button class="dataset-btn" data-key="sat">SAT</button>
+                <button class="dataset-btn" data-key="c1">C1</button>
+                <button class="dataset-btn" data-key="c2">C2</button>
+                <button class="dataset-btn" data-key="all">All</button>
+            </div>
+        </section>
+
+        <section class="settings-section">
+            <h3 class="section-title">Main settings</h3>
+
+            <div class="setting-item">
+                <label>Highlight intensity</label>
+                <div class="slider-container">
+                    <input type="range" min="0" max="100" value="70" class="slider" id="frequency-slider">
+                    <div class="slider-labels">
+                        <span>Casual</span>
+                        <span class="active">Focused</span>
+                        <span>Locked-in</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <label>Display mode</label>
+                <div class="seg" id="mode-seg">
+                    <button data-val="replace" type="button">Replace</button>
+                    <button data-val="highlight" type="button">Highlight</button>
+                    <button data-val="beside" type="button">Beside</button>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <label>Languages to scan</label>
+                <div class="mode-cards" id="mode-cards">
+                    <button class="mode-card" data-mode="vieEng" type="button" aria-pressed="false">
+                        <span class="mode-card-title">VIE → ENG</span>
+                        <span class="mode-card-sub">Replace Vietnamese words</span>
+                    </button>
+                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false">
+                        <span class="mode-card-title">ENG → ENG</span>
+                        <span class="mode-card-sub">Swap for harder synonyms</span>
+                    </button>
+                </div>
+                <p class="mode-hint">Turn on both to scan Vietnamese and English at once.</p>
+            </div>
+        </section>
+
+        <footer>
+            <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
+            <div class="footer-links">
+                <button class="link-btn" id="revert-btn" type="button">Revert this page</button>
+                <button class="link-btn" id="deck-btn" type="button">My deck</button>
+                <button class="link-btn" id="options-btn" type="button">Settings</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="lib/vocab-core.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

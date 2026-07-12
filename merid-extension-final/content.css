@@ -1,0 +1,282 @@
+.vocab-master-highlight {
+    border-bottom: 2px solid #f4be37;
+    cursor: pointer;
+    background-color: rgba(244, 190, 55, 0.08);
+    padding: 0 1px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.vocab-master-highlight:hover {
+    background-color: rgba(244, 190, 55, 0.2);
+    border-bottom: 3px solid #f4be37;
+}
+
+.vocab-master-tooltip {
+    --vm-navy: #19355d;
+    --vm-gold: #f3c94b;
+    --vm-gold-deep: #c68a00;
+    --vm-cream: #fffdf6;
+    --vm-ink: #1c2c47;
+    --vm-muted: #6c7c9c;
+    --vm-line: rgba(25, 53, 93, 0.16);
+    position: absolute;
+    z-index: 999999;
+    width: min(312px, calc(100vw - 18px));
+    font-family: "Be Vietnam Pro", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+    color: var(--vm-ink);
+}
+
+.vocab-master-tooltip,
+.vocab-master-tooltip * {
+    box-sizing: border-box;
+}
+
+/* Outer card: cream fill, thin navy outline, gentle radius, near-invisible shadow. */
+.vm-card {
+    position: relative;
+    background: var(--vm-cream);
+    border: 2px solid var(--vm-navy);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(15, 31, 61, 0.08);
+}
+
+.vm-body {
+    padding: 15px 16px 14px;
+}
+
+.vm-close {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(25, 53, 93, 0.18);
+    border-radius: 50%;
+    background: #fffef9;
+    color: #8a97ac;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.vm-close:hover {
+    background: #ffffff;
+    color: var(--vm-navy);
+}
+
+.vm-header {
+    padding-right: 30px;
+}
+
+.vm-title {
+    font-weight: 800;
+    color: var(--vm-navy);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.vm-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 5px;
+}
+
+.vm-type {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 14px;
+    font-style: italic;
+    color: var(--vm-navy);
+}
+
+.vm-audio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: var(--vm-navy);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.vm-audio:hover {
+    transform: translateY(-1px) scale(1.04);
+    background: #0f2442;
+}
+
+.vm-phon {
+    font-size: 12.5px;
+    color: var(--vm-muted);
+    letter-spacing: 0.01em;
+}
+
+.vm-definition {
+    margin-top: 11px;
+    font-size: 14px;
+    line-height: 1.32;
+    color: var(--vm-navy);
+    font-weight: 600;
+}
+
+/* Synonym / antonym groups: navy-outlined container holding bordered chips. */
+.vm-chips {
+    display: flex;
+    gap: 5px;
+    margin-top: 11px;
+    padding: 5px;
+    border: 2px solid var(--vm-navy);
+    border-radius: 11px;
+}
+
+.vm-chip {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 7px 6px;
+    border: 1.5px solid var(--vm-navy);
+    border-radius: 7px;
+    font-weight: 800;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vm-yellow {
+    background: var(--vm-gold);
+    color: var(--vm-navy);
+}
+
+.vm-dark {
+    background: #e9eef8;
+    color: var(--vm-navy);
+}
+
+.vm-example {
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--vm-ink);
+    text-align: left;
+}
+
+.vm-example strong {
+    color: var(--vm-navy);
+    font-weight: 800;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+}
+
+/* Translation box: warm beige, fixed-width uppercase labels so values align. */
+.vm-trans {
+    margin-top: 12px;
+    background: #ece4d3;
+    border-radius: 12px;
+    padding: 10px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vm-trow {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.vm-tlabel {
+    flex: none;
+    width: 84px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--vm-muted);
+}
+
+.vm-tvalue {
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--vm-navy);
+}
+
+/* Bottom action bar: flush to the card edges, divider above and between. */
+.vm-actions {
+    display: flex;
+    border-top: 1px solid var(--vm-line);
+}
+
+.vm-actions button {
+    flex: 1;
+    padding: 13px 8px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.vm-actions button + button {
+    border-left: 1px solid var(--vm-line);
+}
+
+.vm-save {
+    color: var(--vm-gold-deep);
+    font-weight: 800;
+}
+
+.vm-save:hover {
+    background: rgba(243, 201, 75, 0.14);
+}
+
+.vm-know {
+    color: var(--vm-navy);
+}
+
+.vm-know:hover {
+    background: rgba(25, 53, 93, 0.05);
+}
+
+.vm-actions button:disabled {
+    cursor: default;
+    opacity: 0.85;
+}
+
+@keyframes vm-slide-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vm-slide-down {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .vm-body { padding: 14px 14px 13px; }
+    .vm-chip { font-size: 10px; padding: 5px 4px; }
+}

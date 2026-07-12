@@ -1,0 +1,14 @@
+{
+  "name": "contextual-by-merid",
+  "version": "1.0.0",
+  "description": "Local-only Chrome extension that helps Vietnamese learners acquire English vocabulary passively while browsing. No backend, no API keys.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test",
+    "lint": "node scripts/lint.js",
+    "build": "node scripts/build.js",
+    "gen:assets": "node scripts/gen-assets.js"
+  },
+  "license": "MIT"
+}

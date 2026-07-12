@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+<!--include:_screenshot.css-->
+
+.headline { top: 210px; }
+.deckpanel {
+  position: absolute; right: 110px; top: 118px; width: 430px; z-index: 5;
+  background: #112240; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 26px 26px 28px;
+  box-shadow: 0 40px 90px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif; color: #e6f1ff;
+}
+.deckpanel h2 { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.deckpanel .hint { font-size: 13px; color: #8892b0; margin-bottom: 18px; line-height: 1.4; }
+.subhead { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 9px; margin: 16px 0 8px; }
+.cnt { background: #f4be37; color: #0a192f; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 10px; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 9px 2px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 15px; }
+.row .w { font-weight: 700; }
+.row .vn { color: #8892b0; font-size: 13px; font-weight: 400; margin-left: 8px; }
+.row .x { color: #66748f; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="brand"><div class="logo"></div><div class="name">Meri<b>d</b></div></div>
+
+  <div class="headline">
+    <h1>Từ của<br><span class="gold">riêng bạn</span>.</h1>
+    <p>“Save to Deck” lưu từ để ôn lại. “I know this” ngừng thay những từ bạn đã thuộc. Tất cả nằm trên máy bạn.</p>
+    <div class="pills">
+      <span class="pill">🔒 Không gửi dữ liệu</span>
+      <span class="pill">Không API key</span>
+    </div>
+  </div>
+
+  <div class="deckpanel">
+    <h2>My deck</h2>
+    <div class="hint">Saved from the hover card. Stored locally on this device only.</div>
+
+    <div class="subhead">Saved words <span class="cnt">4</span></div>
+    <div class="row"><span><span class="w">elaborate</span><span class="vn">công phu, tỉ mỉ</span></span><span class="x">✕</span></div>
+    <div class="row"><span><span class="w">consolidate</span><span class="vn">hợp nhất</span></span><span class="x">✕</span></div>
+    <div class="row"><span><span class="w">mitigate</span><span class="vn">giảm nhẹ</span></span><span class="x">✕</span></div>
+    <div class="row"><span><span class="w">facilitate</span><span class="vn">tạo điều kiện</span></span><span class="x">✕</span></div>
+
+    <div class="subhead">Known words <span class="cnt">2</span></div>
+    <div class="row"><span class="w">consider</span><span class="x">✕</span></div>
+    <div class="row"><span class="w">reduce</span><span class="x">✕</span></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merid - My deck</title>
+    <link rel="stylesheet" href="deck.css">
+</head>
+
+<body>
+    <main class="wrap">
+        <header class="head">
+            <h1>My <span>deck</span></h1>
+            <p class="tagline">Words you saved and words you already know. Stored locally on this device only.</p>
+        </header>
+
+        <section class="card">
+            <h2>Saved words <span class="count" id="savedCount">0</span></h2>
+            <p class="hint">Added with the "Save to Deck" button on the hover card. Review them here anytime.</p>
+            <ul class="deck" id="savedList"></ul>
+        </section>
+
+        <section class="card">
+            <h2>Known words <span class="count" id="knownCount">0</span></h2>
+            <p class="hint">Marked with "I know this". These are no longer replaced while you browse.</p>
+            <ul class="deck" id="knownList"></ul>
+            <button class="btn ghost" id="resetKnown" type="button">Reset known words</button>
+        </section>
+
+        <footer class="foot">
+            <a class="link" id="openSettings" href="options.html">Open settings</a>
+        </footer>
+    </main>
+
+    <script src="lib/vocab-core.js"></script>
+    <script src="deck.js"></script>
+</body>
+
+</html>
