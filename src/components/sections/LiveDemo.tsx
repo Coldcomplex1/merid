@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { VOCAB, type VocabEntry } from '../../data/vocab'
-import { ALL_VOCAB_OCCURRENCES } from '../../data/wikiContent'
 import WikiPage from '../demo/WikiPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import VocabPopupCard from '../ui/VocabPopupCard'
@@ -165,11 +164,6 @@ export default function LiveDemo() {
     )
   }
 
-  const activeWords = ALL_VOCAB_OCCURRENCES.filter((id) => {
-    const entry = VOCAB[id]
-    return entry !== undefined && !knownIds.has(id) && isWordVisible(entry)
-  }).length
-
   return (
     <section id="demo" className="relative z-10 scroll-mt-16 py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
@@ -196,17 +190,6 @@ export default function LiveDemo() {
                 onToggleEnabled={() => setEnabled((v) => !v)}
                 onRevert={() => setReverted(true)}
               />
-              <p className="mt-3 text-center text-xs text-muted">
-                <span className="font-bold text-accent">{activeWords}</span>{' '}
-                {activeWords === 1 ? t.demo.counterWord : t.demo.counterWords}
-                {dataset !== 'All' && (
-                  <>
-                    {' '}
-                    {t.demo.counterLink} <span className="font-bold">{dataset}</span>
-                  </>
-                )}{' '}
-                {t.demo.counterTail}
-              </p>
             </div>
 
             {/* Fake browser running the extension on Wikipedia */}
@@ -298,8 +281,6 @@ export default function LiveDemo() {
                   </div>
                 </div>
               </div>
-
-              <p className="mt-4 text-sm text-muted">{t.demo.hintOn}</p>
             </div>
           </div>
         </Reveal>

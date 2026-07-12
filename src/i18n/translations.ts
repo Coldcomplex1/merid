@@ -78,11 +78,6 @@ export interface Strings {
     title: string
     sub: string
     replaceToggle: string
-    counterWord: string
-    counterWords: string
-    counterLink: string
-    counterTail: string
-    hintOn: string
   }
   features: {
     eyebrow: string
@@ -237,11 +232,6 @@ const vi: Strings = {
     title: 'Xem Merid hoạt động ngay tại đây',
     sub: 'Đây chính là panel thật của extension. Đổi bộ từ, chỉnh cường độ, rồi cuộn trang Wikipedia bên dưới và di chuột lên bất kỳ từ nào được tô sáng.',
     replaceToggle: 'Thay từ trực tiếp',
-    counterWord: 'từ',
-    counterWords: 'từ',
-    counterLink: 'thuộc bộ',
-    counterTail: 'đang bật trên trang này',
-    hintOn: 'Cuộn trang như bình thường, rồi di chuột hoặc chạm vào từ được tô sáng để mở thẻ từ vựng — y như extension thật.',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -279,7 +269,7 @@ const vi: Strings = {
     title: 'Toàn bộ việc học, gói gọn trong một cú click.',
     body: 'Mở bảng điều khiển ngay trên thanh công cụ trình duyệt và chỉnh cách Merid hoạt động trên mọi trang. Không dashboard rườm rà, không menu cài đặt ẩn sâu ba tầng.',
     notes: [
-      { term: 'Tiến độ tuần.', body: 'Biểu đồ nhỏ đếm số từ bạn thuộc mỗi ngày. Giữ chuỗi ngày học rất cuốn.' },
+      { term: 'Hai chiều quét.', body: 'VIE → ENG thay từ tiếng Việt; ENG → ENG đổi từ tiếng Anh sang synonym khó hơn.' },
       { term: 'Đổi bộ từ.', body: 'Chuyển giữa SAT, C1, C2 hoặc tất cả, tùy từng phiên lướt web.' },
       { term: 'Thanh tần suất.', body: 'Casual cho ngày đọc chill, Locked-in cho mùa thi.' },
       { term: 'Chế độ học.', body: 'Thay từ trực tiếp, hoặc giữ tiếng Việt và học khi di chuột.' },
@@ -468,7 +458,7 @@ const vi: Strings = {
       {
         title: 'Theo dõi tiến độ',
         intro:
-          'Biểu đồ tuần trên đầu bảng điều khiển đếm số từ bạn thuộc mỗi ngày. Nhỏ thôi, nhưng chuỗi ngày học tạo động lực bất ngờ.',
+          'Biểu đồ tuần trong My Deck đếm số từ bạn thuộc mỗi ngày. Nhỏ thôi, nhưng chuỗi ngày học tạo động lực bất ngờ.',
         bullets: [],
         outro:
           'Khi một bộ từ bắt đầu thấy dễ, đó là tín hiệu: tăng tần suất, đổi sang bộ từ khó hơn, hoặc bật chế độ Eng - Eng.',
@@ -589,11 +579,6 @@ const en: Strings = {
     title: 'See it work in real time',
     sub: "This is the extension's real panel. Pick a dataset, tune the intensity, then scroll the Wikipedia page below and hover any highlighted word.",
     replaceToggle: 'Replace words directly',
-    counterWord: 'word',
-    counterWords: 'words',
-    counterLink: 'from the',
-    counterTail: 'active on this page',
-    hintOn: 'Scroll the page like normal, then hover or tap a highlighted word to open the learning card — exactly like the real extension.',
   },
   features: {
     eyebrow: 'Features',
@@ -631,7 +616,7 @@ const en: Strings = {
     title: 'Your whole learning setup, one click away.',
     body: 'Open the panel from your browser toolbar and tune how Merid behaves on every site. No account dashboards, no settings pages buried three levels deep.',
     notes: [
-      { term: 'Weekly progress.', body: 'A tiny chart tracks the words you mastered each day. Streaks feel good.' },
+      { term: 'Two scan directions.', body: 'VIE → ENG swaps Vietnamese words; ENG → ENG upgrades English words to harder synonyms.' },
       { term: 'Dataset switch.', body: 'Jump between SAT, C1, C2, or everything at once, per browsing session.' },
       { term: 'Frequency slider.', body: 'Casual for chill reading days, Locked-in for exam season.' },
       { term: 'Learning modes.', body: 'Replace words directly, or keep Vietnamese and learn on hover.' },
@@ -827,7 +812,7 @@ const en: Strings = {
       {
         title: 'Watch your progress',
         intro:
-          'The weekly chart at the top of the panel counts the words you mastered each day. It is a small thing, but streaks are surprisingly motivating.',
+          'The weekly chart in My Deck counts the words you mastered each day. It is a small thing, but streaks are surprisingly motivating.',
         bullets: [],
         outro:
           'When a dataset starts feeling easy, that is your signal: raise the frequency, switch to a harder dataset, or turn on Eng - Eng mode.',
