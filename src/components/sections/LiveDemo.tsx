@@ -4,6 +4,7 @@ import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import VocabPopupCard from '../ui/VocabPopupCard'
+import FacebookLogo from '../ui/FacebookLogo'
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
@@ -297,9 +298,7 @@ export default function LiveDemo() {
                       {t.id === 'wiki' ? (
                         <span className="font-wiki shrink-0 text-[13px] leading-none font-bold">W</span>
                       ) : (
-                        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1877f2] pb-px text-[10px] leading-none font-bold text-white">
-                          f
-                        </span>
+                        <FacebookLogo size={14} className="shrink-0" />
                       )}
                       <span className="truncate">{t.title}</span>
                       <span className="ml-auto shrink-0 text-[#5f6368]">×</span>

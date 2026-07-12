@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { FB_CONTACTS, FB_POSTS, FB_STORIES, type FbPost } from '../../data/fbContent'
 import type { Seg } from '../../data/wikiContent'
+import FacebookLogo from '../ui/FacebookLogo'
 import type { RenderVocab } from './WikiPage'
 
 interface FacebookPageProps {
@@ -256,9 +257,7 @@ export default function FacebookPage({ renderVocab }: FacebookPageProps) {
     <div className="min-h-full bg-[#f0f2f5] pb-8" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>
       {/* Top navigation */}
       <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-[#dddfe2] bg-white px-3 py-1.5 shadow-sm">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1877f2] pb-0.5 text-[22px] font-bold text-white">
-          f
-        </span>
+        <FacebookLogo size={32} className="shrink-0" />
         <div className="hidden items-center gap-1.5 rounded-full bg-[#f0f2f5] px-3 py-1.5 text-[12px] text-[#65676b] sm:flex">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#65676b" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
@@ -280,8 +279,7 @@ export default function FacebookPage({ renderVocab }: FacebookPageProps) {
           </span>
           <span className="flex h-9 w-14 items-center justify-center">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="#65676b" aria-hidden="true">
-              <path d="M4 9l8-6 8 6v11a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1zM2 9h20" stroke="#65676b" strokeWidth="0" />
-              <path d="M12 3L2 10h3v10a1 1 0 0 0 1 1h5v-6h2v6h5a1 1 0 0 0 1-1V10h3z" />
+              <path d="M21.9 8.89l-1.05-4.37c-.22-.9-1-1.52-1.91-1.52H5.05c-.9 0-1.69.63-1.9 1.52L2.1 8.89c-.24 1.02-.02 2.06.62 2.88.08.11.19.19.28.29V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-6.94c.09-.09.2-.18.28-.28.64-.82.87-1.87.62-2.89zm-2.99-3.9l1.05 4.37c.1.42.01.84-.25 1.17-.14.18-.44.47-.94.47-.61 0-1.14-.49-1.21-1.14L16.98 5l1.93-.01zM13 5h1.96l.54 4.52c.05.39-.07.78-.33 1.07-.22.26-.54.41-.95.41-.67 0-1.22-.59-1.22-1.31V5zM8.49 9.52L9.04 5H11v4.69c0 .72-.55 1.31-1.29 1.31-.34 0-.65-.15-.89-.41-.25-.29-.37-.68-.33-1.07zm-4.45-.16L5.05 5h1.97l-.58 4.86c-.08.65-.6 1.14-1.21 1.14-.49 0-.8-.29-.93-.47-.27-.32-.36-.75-.26-1.17zM5 19v-6.03c.08.01.15.03.23.03.87 0 1.66-.36 2.24-.95.6.6 1.4.95 2.31.95.87 0 1.65-.36 2.23-.93.59.57 1.39.93 2.29.93.84 0 1.64-.35 2.24-.95.58.59 1.37.95 2.24.95.08 0 .15-.02.23-.03V19H5z" />
             </svg>
           </span>
           <span className="flex h-9 w-14 items-center justify-center">
@@ -294,7 +292,7 @@ export default function FacebookPage({ renderVocab }: FacebookPageProps) {
         </div>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e4e6eb]">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="#050505" aria-hidden="true">
-            <path d="M12 2a8 8 0 0 0-8 7.7c0 4.4 3.4 7.2 8 7.2 1 0 2-.1 2.9-.4l3 1.5-.3-3A7.6 7.6 0 0 0 20 9.7 8 8 0 0 0 12 2z" />
+            <path d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.19 5.44 3.14 7.17.16.15.26.35.27.57l.05 1.78c.02.57.6.94 1.12.71l1.99-.88c.17-.07.36-.09.54-.04.91.25 1.89.39 2.89.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2zm6 7.46l-2.94 4.66c-.47.74-1.47.93-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.68-.63l2.94-4.66c.47-.74 1.47-.93 2.17-.4l2.34 1.75c.21.16.51.16.72 0l3.16-2.4c.42-.32.97.18.68.63z" />
           </svg>
         </span>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e4e6eb]">
