@@ -114,7 +114,7 @@ export default function BrowserMockup({ className = '' }: { className?: string }
         </div>
       </div>
 
-      {/* Floating vocab popup — grab it and drag it anywhere on the page.
+      {/* Floating vocab popup. Grab it and drag it anywhere on the page.
           Docked: absolutely positioned against the mockup, with the pop-in
           and float animations. Detached (after a grab): position:fixed via
           the hook, with every transform animation/transition stripped so

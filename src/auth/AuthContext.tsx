@@ -6,7 +6,7 @@ import { announceAuthToExtension } from '../lib/extensionBridge'
 
 interface AuthContextValue {
   user: User | null
-  /** True until the first auth state resolves — gate redirects on this so a
+  /** True until the first auth state resolves. Gate redirects on this so a
    *  signed-in user isn't bounced to /login during the initial handshake. */
   loading: boolean
   /** False when VITE_FIREBASE_* env vars are absent (auth UI hides itself). */

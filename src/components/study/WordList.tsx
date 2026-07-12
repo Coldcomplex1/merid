@@ -8,7 +8,7 @@ interface Props {
 }
 
 /** Plain deck listing with per-word status toggle + remove. All text renders
- *  through JSX interpolation only — never raw HTML (A03). */
+ *  through JSX interpolation only, never raw HTML (A03). */
 export default function WordList({ words, onRemove, onSetStatus }: Props) {
   const { t } = useLang()
 

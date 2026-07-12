@@ -80,13 +80,13 @@ export default function Navbar() {
 
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-60 rounded-xl border border-line bg-surface p-2 shadow-lift">
-                {/* Install CTA — the primary action, always available on mobile. */}
+                {/* Install CTA: the primary action, always available on mobile. */}
                 <div className="p-1 sm:hidden">
                   <InstallButton label={t.nav.cta} variant="menu" />
                 </div>
                 <div className="my-2 border-t border-line sm:hidden" />
 
-                {/* Main nav (small screens only — desktop shows these inline). */}
+                {/* Main nav (small screens only; desktop shows these inline). */}
                 <div className="md:hidden">
                   {links.map((link) => (
                     <Link key={link.to} to={link.to} className={menuItem}>

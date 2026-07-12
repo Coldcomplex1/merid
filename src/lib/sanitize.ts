@@ -28,7 +28,7 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// Field caps mirror firestore.rules — keep the two in sync.
+// Field caps mirror firestore.rules; keep the two in sync.
 export const LIMITS = {
   word: 64,
   vietnamese: 128,

@@ -2,7 +2,7 @@ import { sanitizeVocabText, LIMITS } from '../lib/sanitize'
 
 export type WordStatus = 'saved' | 'known'
 
-/** One word in a user's deck — the UI-side mirror of users/{uid}/words/{id}. */
+/** One word in a user's deck, the UI-side mirror of users/{uid}/words/{id}. */
 export interface DeckWord {
   word: string
   vietnamese: string
@@ -29,7 +29,7 @@ export interface DeckSource {
 }
 
 /** Runtime shape-check + sanitization for records arriving from outside the
- *  bundle (A03/A08). Returns null for anything malformed — callers drop it. */
+ *  bundle (A03/A08). Returns null for anything malformed so callers drop it. */
 export function toDeckWord(raw: unknown): DeckWord | null {
   if (typeof raw !== 'object' || raw === null) return null
   const r = raw as Record<string, unknown>
