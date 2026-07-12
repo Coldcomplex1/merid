@@ -66,15 +66,17 @@
 
         <footer>
             <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
+            <button class="btn-view-deck" id="view-deck-btn" type="button">View my deck ↗</button>
+            <p class="sync-hint" id="sync-hint" hidden></p>
             <div class="footer-links">
                 <button class="link-btn" id="revert-btn" type="button">Revert this page</button>
-                <button class="link-btn" id="deck-btn" type="button">My deck</button>
                 <button class="link-btn" id="options-btn" type="button">Settings</button>
             </div>
         </footer>
     </div>
 
     <script src="lib/vocab-core.js"></script>
+    <script src="lib/firebase-config.js"></script>
     <script src="popup.js"></script>
 </body>
 

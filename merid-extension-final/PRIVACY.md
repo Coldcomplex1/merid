@@ -4,8 +4,8 @@ _Last updated: 2026-07-10_
 
 Merid is a browser extension that helps Vietnamese speakers learn English
 vocabulary while browsing. This policy explains exactly what the extension does
-with data. Merid is **local-only**: it processes everything inside your browser
-and sends nothing off your device.
+with data. Merid processes everything inside your browser; nothing leaves your
+device unless you explicitly sign in to the optional deck sync described below.
 
 ## What the extension processes locally
 
@@ -20,10 +20,17 @@ and sends nothing off your device.
 
 ## What is sent off your device
 
-**Nothing.** The extension makes **no network requests**. It does not contact any
-backend, does not call any AI or third-party API, and does not transmit page
-content, URLs, browsing history, personal identifiers, cookies, or form/input
-contents anywhere.
+**By default, nothing.** The extension makes no network requests, does not call
+any AI or third-party API, and never transmits page content, URLs, browsing
+history, personal identifiers, cookies, or form/input contents anywhere.
+
+**Optional deck sync (off unless you sign in).** You can sign in (on merid.site
+- the login carries over automatically - or from the Settings page) to back up
+your saved deck and study it on merid.site. When signed in, the only data
+synced is your deck itself: the saved words with their dictionary info and your
+known-words list, stored in Firestore under your own account and protected by
+server-side security rules. Page content is still never sent anywhere. Signing
+out stops all syncing immediately.
 
 ## API keys
 

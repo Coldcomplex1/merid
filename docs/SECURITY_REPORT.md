@@ -36,7 +36,7 @@ Security Rules), phía client chỉ là lớp UX.
 | A06 | Vulnerable Components | `npm audit --audit-level=high` cho cả web lẫn extension, chạy tự động mỗi PR; extension **zero-dependency** (không kéo SDK 300KB vào MV3) | `.github/workflows/security.yml` job `audit` |
 | A07 | Auth Failures | Thông báo lỗi "mờ": sai email / sai mật khẩu / email không tồn tại đều hiện *"Email hoặc mật khẩu không đúng"* → chống user-enumeration; mật khẩu ≥ 8 ký tự; Firebase tự chặn brute-force (`TOO_MANY_ATTEMPTS`) | `src/lib/auth.ts` `classifyAuthError()`; `options.js` `AUTH_ERRORS` |
 | A08 | Software & Data Integrity | Validate tham số runtime ở mọi cửa vào logic: `toDeckWord()` shape-check + drop record hỏng; Puzzle/Flashcard fail-soft khi input không hợp lệ (thiếu example, <4 lựa chọn...); CI build + test là merge-gate | `src/deck/DeckSource.ts`; `PuzzleMode.tsx` `buildRound()` |
-| A09 | Logging Failures | Không log token / email / payload / nội dung trang ở bất kỳ đâu; lỗi sync chỉ log mã thô (`console.warn('[VM] sync deferred: NETWORK')`) | `merid-extension/lib/firebase-rest.js`, `lib/sync.js` |
+| A09 | Logging Failures | Không log token / email / payload / nội dung trang ở bất kỳ đâu; lỗi sync chỉ log mã thô (`console.warn('[VM] sync deferred: NETWORK')`) | `merid-extension-final/lib/firebase-rest.js`, `lib/sync.js` |
 | A10 | SSRF | Không có bất kỳ fetch nào theo URL do user nhập. Extension bị CSP `connect-src` khoá cứng vào đúng 3 endpoint Google; nút "View my deck" mở URL hằng số | `manifest.json` CSP; `popup.js` |
 
 ## 3. Thiết kế Firestore Rules (lớp phòng thủ chính)
@@ -79,7 +79,7 @@ Các lớp kiểm tra trên **mỗi** request ghi:
 |---|---|---|
 | Security rules trên Firestore Emulator thật | `npm run test:rules` | **9/9 pass** (cross-user forgery, schema, counter cheating, immutability) |
 | UI deck end-to-end trên Chromium | script Playwright (list/xoá/persist, Puzzle, Flashcard, menu, auth fallback) | **16/16 pass** |
-| Extension unit tests + syntax lint | `npm test`, `npm run lint` (trong `merid-extension/`) | **20/20 pass** |
+| Extension unit tests + syntax lint | `npm test`, `npm run lint` (trong `merid-extension-final/`) | **20/20 pass** |
 | Lỗ hổng dependency | `npm run audit` (cả 2 package) | **0 vulnerabilities** |
 | CI tự động mỗi PR vào main | `.github/workflows/security.yml` | audit + build + rules-test + **CodeQL SAST** |
 

@@ -341,6 +341,7 @@ function handleSave(btn) {
         word,
         vietnamese: tooltipElement.dataset.currentVietnamese || '',
         definition: tooltipElement.dataset.currentDefinition || '',
+        example: tooltipElement.dataset.currentExample || '',
         type: tooltipElement.dataset.currentType || ''
     };
     chrome.storage.local.get(['savedWords'], (r) => {
@@ -392,6 +393,7 @@ function showTooltip(target, item) {
     tooltipElement.dataset.currentWord = item.word || '';
     tooltipElement.dataset.currentVietnamese = item.vietnamese || '';
     tooltipElement.dataset.currentDefinition = item.definition || '';
+    tooltipElement.dataset.currentExample = item.example || '';
     tooltipElement.dataset.currentType = item.type || '';
 
     const synonyms = (item.synonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);

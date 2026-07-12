@@ -12,7 +12,9 @@ const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200
 
 export function sanitizeVocabText(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') return ''
-  return value.replace(CONTROL_CHARS, '').replace(/\s+/g, ' ').trim().slice(0, maxLength)
+  // NFC first: CSV-sourced Vietnamese often arrives decomposed (NFD), which
+  // many fonts render with misplaced diacritics ("bê`n" instead of "bền").
+  return value.normalize('NFC').replace(CONTROL_CHARS, '').replace(/\s+/g, ' ').trim().slice(0, maxLength)
 }
 
 /** Explicit escaping for the rare case where vocab text must leave React's

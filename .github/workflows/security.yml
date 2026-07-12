@@ -29,7 +29,7 @@ jobs:
           npm ci
           npm audit --audit-level=high
       - name: Audit extension dependencies
-        working-directory: merid-extension
+        working-directory: merid-extension-final
         run: |
           npm install --package-lock-only
           npm audit --audit-level=high
@@ -48,7 +48,7 @@ jobs:
           npm ci
           npm run build
       - name: Lint + test extension
-        working-directory: merid-extension
+        working-directory: merid-extension-final
         run: |
           npm run lint
           npm test
