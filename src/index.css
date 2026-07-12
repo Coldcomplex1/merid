@@ -309,6 +309,37 @@ body {
     border: 2px solid #ffffff;
   }
 
+  /* The extension popup's exact slider (popup.css .slider): flat navy
+     track, small gold thumb, no fill gradient */
+  .slider-ext {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: #1d2d50;
+    outline: none;
+    cursor: pointer;
+  }
+  .slider-ext::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #f4be37;
+    cursor: pointer;
+  }
+  .slider-ext::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: none;
+    background: #f4be37;
+    cursor: pointer;
+  }
+
   /* Gold range slider (extension-panel style) */
   .slider-gold {
     appearance: none;

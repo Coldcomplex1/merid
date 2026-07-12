@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { DATASETS, VOCAB, isVisible, type Dataset, type VocabEntry } from '../../data/vocab'
+import { VOCAB, type VocabEntry } from '../../data/vocab'
 import { ALL_VOCAB_OCCURRENCES } from '../../data/wikiContent'
 import WikiPage from '../demo/WikiPage'
+import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import SectionHeading from '../ui/SectionHeading'
-import Toggle from '../ui/Toggle'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
 
@@ -12,10 +12,6 @@ const CARD_WIDTH = 312
 const CARD_GAP = 10 // the extension offsets the card 10px from the word
 const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
 const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
-
-/** The extension's real replacement modes (content.js applyDisplayMode). */
-type Mode = 'replace' | 'beside' | 'highlight'
-const MODES: Mode[] = ['replace', 'beside', 'highlight']
 
 /** Word geometry captured on hover; the card places itself after measuring. */
 interface Anchor {
@@ -36,10 +32,14 @@ interface Placement {
 
 export default function LiveDemo() {
   const { t } = useLang()
-  const [dataset, setDataset] = useState<Dataset>('SAT')
-  const [frequency, setFrequency] = useState(3)
-  const [mode, setMode] = useState<Mode>('replace')
-  const [showPopup, setShowPopup] = useState(true)
+  // Defaults mirror a fresh install: SAT · Focused · Highlight · VIE → ENG.
+  const [dataset, setDataset] = useState<PanelDataset>('SAT')
+  const [intensity, setIntensity] = useState(2)
+  const [mode, setMode] = useState<PanelMode>('highlight')
+  const [vieEng, setVieEng] = useState(true)
+  const [engEng, setEngEng] = useState(false)
+  const [enabled, setEnabled] = useState(true)
+  const [reverted, setReverted] = useState(false)
   const [anchor, setAnchor] = useState<Anchor | null>(null)
   const [placement, setPlacement] = useState<Placement | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
@@ -53,7 +53,13 @@ export default function LiveDemo() {
   // A card anchored to a word that just moved or disappeared would float wrong.
   useEffect(() => {
     setAnchor(null)
-  }, [dataset, frequency, mode, showPopup])
+  }, [dataset, intensity, mode, vieEng, engEng, enabled, reverted])
+
+  // Like the real extension, a reverted page stays reverted only until the
+  // next settings change or on/off toggle triggers a rescan.
+  useEffect(() => {
+    setReverted(false)
+  }, [dataset, intensity, mode, vieEng, engEng, enabled])
 
   useEffect(
     () => () => {
@@ -78,7 +84,7 @@ export default function LiveDemo() {
   }
 
   const openPopup = (target: HTMLElement, entry: VocabEntry) => {
-    if (!showPopup || !scrollerRef.current || !contentRef.current) return
+    if (!scrollerRef.current || !contentRef.current) return
     cancelHide()
     const wordRect = target.getBoundingClientRect()
     const contentRect = contentRef.current.getBoundingClientRect()
@@ -126,10 +132,20 @@ export default function LiveDemo() {
     setAnchor(null)
   }
 
+  // The demo page is Vietnamese, so words light up only while VIE → ENG is
+  // scanning (ENG → ENG has no English prose here to act on) and the
+  // extension is on and un-reverted.
+  const isWordVisible = (entry: VocabEntry) =>
+    enabled &&
+    !reverted &&
+    vieEng &&
+    (dataset === 'All' || entry.datasets.includes(dataset)) &&
+    entry.tier <= intensity
+
   const renderVocab = (id: string, key: string) => {
     const entry = VOCAB[id]
     if (!entry) return <span key={key} />
-    if (knownIds.has(id) || !isVisible(entry, dataset, frequency)) {
+    if (knownIds.has(id) || !isWordVisible(entry)) {
       return <span key={key}>{entry.vi}</span>
     }
     const label =
@@ -139,7 +155,7 @@ export default function LiveDemo() {
         key={key}
         type="button"
         data-vocab-word
-        className={`${mode === 'highlight' ? 'hl-vi' : 'hl-en'} text-inherit`}
+        className="hl-en text-inherit"
         onMouseEnter={(e) => openPopup(e.currentTarget, entry)}
         onMouseLeave={scheduleHide}
         onClick={(e) => openPopup(e.currentTarget, entry)}
@@ -151,7 +167,7 @@ export default function LiveDemo() {
 
   const activeWords = ALL_VOCAB_OCCURRENCES.filter((id) => {
     const entry = VOCAB[id]
-    return entry !== undefined && !knownIds.has(id) && isVisible(entry, dataset, frequency)
+    return entry !== undefined && !knownIds.has(id) && isWordVisible(entry)
   }).length
 
   return (
@@ -162,87 +178,34 @@ export default function LiveDemo() {
         </Reveal>
 
         <Reveal delay={120} className="mt-14">
-          <div className="grid items-start gap-8 lg:grid-cols-[320px_1fr]">
-            {/* Controls */}
-            <div className="h-fit rounded-3xl bg-navy-850 p-6 ring-1 ring-navy-600/50">
-              <p className="text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-                {t.demo.dataset}
-              </p>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {DATASETS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDataset(d)}
-                    className={`cursor-pointer rounded-lg py-2 text-sm font-bold transition-all duration-200 active:scale-95 ${
-                      dataset === d
-                        ? 'bg-gold-400 text-navy-900 shadow-[0_0_18px_-4px_rgb(245_197_66/0.8)]'
-                        : 'bg-navy-700 text-navy-200 hover:bg-navy-600 hover:text-cream-50'
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-6 text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-                {t.demo.frequency}
-              </p>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={1}
-                value={frequency}
-                aria-label={t.demo.frequency}
-                onChange={(e) => setFrequency(Number(e.target.value))}
-                className="slider-gold mt-4"
-                style={{ '--slider-fill': `${((frequency - 1) / 2) * 100}%` } as CSSProperties}
+          <div className="grid items-start gap-8 lg:grid-cols-[340px_1fr]">
+            {/* The extension popup, exactly as it looks in Chrome */}
+            <div className="mx-auto w-full max-w-[360px] lg:mx-0">
+              <DemoExtensionPanel
+                dataset={dataset}
+                onDataset={setDataset}
+                intensity={intensity}
+                onIntensity={setIntensity}
+                mode={mode}
+                onMode={setMode}
+                vieEng={vieEng}
+                onVieEng={setVieEng}
+                engEng={engEng}
+                onEngEng={setEngEng}
+                enabled={enabled}
+                onToggleEnabled={() => setEnabled((v) => !v)}
+                onRevert={() => setReverted(true)}
               />
-              <div className="mt-1 flex justify-between">
-                {t.demo.freqLabels.map((label, i) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setFrequency(i + 1)}
-                    className={`cursor-pointer text-xs transition-colors ${
-                      frequency === i + 1 ? 'font-bold text-gold-400' : 'text-navy-300 hover:text-cream-50'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-6 text-[11px] font-extrabold tracking-[0.18em] text-gold-400 uppercase">
-                {t.demo.modeLabel}
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-navy-700 p-1">
-                {MODES.map((m, i) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={`cursor-pointer rounded-lg py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 ${
-                      mode === m
-                        ? 'bg-gold-400 text-navy-900 shadow-[0_0_14px_-4px_rgb(245_197_66/0.8)]'
-                        : 'text-navy-200 hover:text-cream-50'
-                    }`}
-                  >
-                    {t.demo.modes[i]}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between gap-3">
-                <span className="text-sm text-cream-50">{t.demo.popupToggle}</span>
-                <Toggle on={showPopup} onChange={setShowPopup} label={t.demo.popupToggle} />
-              </div>
-
-              <p className="mt-6 rounded-xl bg-navy-800 px-4 py-3 text-center text-xs text-navy-200 ring-1 ring-navy-600/40">
-                <span className="font-bold text-gold-300">{activeWords}</span>{' '}
-                {activeWords === 1 ? t.demo.counterWord : t.demo.counterWords} {t.demo.counterLink}{' '}
-                <span className="font-bold text-cream-50">{dataset}</span> {t.demo.counterTail}
+              <p className="mt-3 text-center text-xs text-muted">
+                <span className="font-bold text-accent">{activeWords}</span>{' '}
+                {activeWords === 1 ? t.demo.counterWord : t.demo.counterWords}
+                {dataset !== 'All' && (
+                  <>
+                    {' '}
+                    {t.demo.counterLink} <span className="font-bold">{dataset}</span>
+                  </>
+                )}{' '}
+                {t.demo.counterTail}
               </p>
             </div>
 
@@ -289,7 +252,9 @@ export default function LiveDemo() {
                     title="Merid"
                   >
                     M
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#34a853] ring-2 ring-white" />
+                    {enabled && (
+                      <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#34a853] ring-2 ring-white" />
+                    )}
                   </span>
                   <span className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-navy-400 to-navy-700" />
                 </div>
@@ -302,7 +267,7 @@ export default function LiveDemo() {
                   <div ref={contentRef} className="relative" onPointerDown={handlePagePointerDown}>
                     <WikiPage renderVocab={renderVocab} />
 
-                    {showPopup && anchor && (
+                    {anchor && (
                       <div
                         key={anchor.entry.id}
                         ref={cardRef}
@@ -334,7 +299,7 @@ export default function LiveDemo() {
                 </div>
               </div>
 
-              <p className="mt-4 text-sm text-muted">{showPopup ? t.demo.hintOn : t.demo.hintOff}</p>
+              <p className="mt-4 text-sm text-muted">{t.demo.hintOn}</p>
             </div>
           </div>
         </Reveal>
