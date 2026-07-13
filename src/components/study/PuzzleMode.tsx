@@ -105,7 +105,10 @@ export default function PuzzleMode({ words }: { words: DeckWord[] }) {
       <p className="text-xs font-semibold tracking-wide text-muted uppercase">
         {index + 1} / {rounds.length} · {round.kind === 'cloze' ? t.deck.puzzle.prompt : t.deck.puzzle.promptMeaning}
       </p>
-      <p className="mt-4 font-serif text-lg leading-relaxed text-heading">
+      <p
+        lang={round.kind === 'meaning' ? 'vi' : 'en'}
+        className="mt-4 font-display text-lg leading-relaxed text-heading"
+      >
         {round.kind === 'meaning' ? `“${round.prompt}”` : round.prompt}
       </p>
       {round.hint && <p className="mt-1.5 text-sm text-muted italic">{round.hint}</p>}
