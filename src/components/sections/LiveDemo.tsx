@@ -3,6 +3,7 @@ import { VOCAB, type VocabEntry } from '../../data/vocab'
 import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
+import DemoCursorZone from '../demo/DemoCursor'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import FacebookLogo from '../ui/FacebookLogo'
 import SectionHeading from '../ui/SectionHeading'
@@ -275,6 +276,7 @@ export default function LiveDemo() {
                   style={{ '--demo-w': browserW === null ? '100%' : `${browserW}px` } as CSSProperties}
                   className="w-full min-w-0 lg:w-[var(--demo-w)]"
                 >
+              <DemoCursorZone>
               <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
                 {/* Tab strip: both tabs are live pages, click to switch */}
                 <div className="flex items-end gap-1.5 px-3 pt-2">
@@ -384,6 +386,7 @@ export default function LiveDemo() {
                   </div>
                 </div>
               </div>
+              </DemoCursorZone>
                 </div>
 
                 {/* Drag to preview the extension on a narrower or wider page */}

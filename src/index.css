@@ -292,6 +292,50 @@ body {
     border-bottom: 3px solid #f4be37;
   }
 
+  /* ── Live-demo presence cursor ──────────────────────────────────────────
+     While the pointer is inside the fake browser, the native cursor is hidden
+     and replaced by a labelled "You" pointer (see DemoCursor.tsx), giving the
+     demo a collaborative, "someone's driving this" feel. The !important beats
+     the pointer/ew-resize cursors Tailwind utilities set on the tabs, links
+     and vocabulary words underneath, so the arrow stays consistent. */
+  .demo-cursor-zone.is-active,
+  .demo-cursor-zone.is-active * {
+    cursor: none !important;
+  }
+  .demo-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 140ms ease;
+    will-change: transform;
+  }
+  .demo-cursor.is-active {
+    opacity: 1;
+  }
+  .demo-cursor svg {
+    display: block;
+    filter: drop-shadow(0 3px 4px rgb(15 30 60 / 0.35));
+  }
+  .demo-cursor__label {
+    position: absolute;
+    top: 26px;
+    left: 15px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #ff4d97;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px -3px rgb(255 77 151 / 0.55);
+  }
+
   /* Thin light scrollbar for the fake-browser page (always-light mockup) */
   .wiki-scroll {
     scrollbar-width: thin;
