@@ -54,6 +54,8 @@ function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
     aiCheckedWords = new Set();
+    aiChecksSent = 0;
+    if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
 
     // Load the local deck/known lists first so we can honour them while scanning.
     chrome.storage.local.get(['knownWords', 'savedWords'], (local) => {
@@ -131,7 +133,7 @@ function processPage(vocabMap) {
             requestAnimationFrame(processChunk);
         } else {
             console.log('[VM] Page processing complete. Replaced:', replacedCount);
-            runAiContextCheck();
+            scheduleAiContextCheck();
         }
     }
     processChunk();
@@ -265,6 +267,7 @@ function processNodeBatch(nodes, vocabMap) {
         const end = Math.min(index + batchSize, nodes.length);
         for (; index < end; index++) processTextNode(nodes[index], vocabMap);
         if (index < nodes.length) requestAnimationFrame(run);
+        else if (nodes.length) scheduleAiContextCheck(); // dynamic content settled
     }
     run();
 }
@@ -280,12 +283,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // -------------------------------------------------------------
 // AI context check (optional feature - the background gates on the user's
 // toggle + API key, so this is a no-op unless the user set both up).
-// One batched request per page scan: unique replaced words + a short
-// sentence snippet each. Words the AI flags as out-of-context are
-// reverted (that occurrence only). All failures are silent.
+// Runs after the initial scan AND (debounced) after dynamically-added
+// content gets replaced, since modern sites render most text after load.
+// Each run sends one batched request: unique unchecked replaced words +
+// a short sentence snippet each. Words the AI flags as out-of-context are
+// reverted (that occurrence only). Failures never break the page.
 // -------------------------------------------------------------
-const AI_SNIPPET_RADIUS = 60; // chars kept around the word - keeps tokens low
+const AI_SNIPPET_RADIUS = 60;      // chars kept around the word - keeps tokens low
+const AI_CHECK_MAX_BATCHES = 3;    // max requests per page visit (cost cap)
+const AI_CHECK_DEBOUNCE_MS = 1500; // let dynamic content settle first
 let aiCheckedWords = new Set();
+let aiChecksSent = 0;
+let aiCheckTimer = null;
+
+function scheduleAiContextCheck() {
+    if (aiCheckTimer) clearTimeout(aiCheckTimer);
+    aiCheckTimer = setTimeout(runAiContextCheck, AI_CHECK_DEBOUNCE_MS);
+}
 
 function sentenceAround(span) {
     const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
@@ -306,6 +320,7 @@ function revertSpan(span) {
 }
 
 function runAiContextCheck() {
+    if (aiChecksSent >= AI_CHECK_MAX_BATCHES) return;
     const spans = [];
     const seen = new Set();
     document.querySelectorAll('.vocab-master-highlight.vocab-replaced').forEach(sp => {
@@ -323,13 +338,22 @@ function runAiContextCheck() {
         sentence: sentenceAround(sp)
     }));
 
+    aiChecksSent++;
+    console.log('[VM] AI context check: sending', items.length, 'words (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
-        if (chrome.runtime.lastError) return;
-        if (!res || !res.ok || !Array.isArray(res.verdicts)) return;
+        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
+        if (!res) { console.warn('[VM] AI check: no response.'); return; }
+        if (res.disabled) { console.log('[VM] AI check is off (toggle disabled or no API key).'); return; }
+        if (!res.ok || !Array.isArray(res.verdicts)) {
+            console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
+            return;
+        }
+        let reverted = 0;
         batch.forEach((sp, i) => {
             aiCheckedWords.add((sp.dataset.word || '').toLowerCase());
-            if (res.verdicts[i] === 0) revertSpan(sp);
+            if (res.verdicts[i] === 0) { revertSpan(sp); reverted++; }
         });
+        console.log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
     });
 }
 

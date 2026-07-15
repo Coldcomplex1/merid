@@ -396,31 +396,34 @@ footer {
     border-color: var(--accent-yellow);
 }
 
-/* AI context-checker hint - nudges the user to Settings for their API key. */
+/* AI Context Check - footer button, opens Settings. Matches the yellow
+   primary-button language of the popup (same family as .btn-view-deck). */
 .ai-hint {
     width: 100%;
     box-sizing: border-box;
-    padding: 9px 12px;
-    border: 1px dashed var(--accent-yellow);
+    padding: 11px;
+    border: 1px solid var(--accent-yellow);
     border-radius: 6px;
-    background: rgba(244, 190, 55, 0.08);
+    background: transparent;
     color: var(--accent-yellow);
-    font-size: 11.5px;
-    font-weight: 600;
-    line-height: 1.4;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.3;
     text-align: center;
     cursor: pointer;
     font-family: var(--font-main);
+    transition: all 0.2s;
 }
 
-.ai-hint:hover { background: rgba(244, 190, 55, 0.16); }
+.ai-hint:hover { background: rgba(244, 190, 55, 0.12); }
 
+/* Configured & enabled: solid yellow, same weight as the primary action. */
 .ai-hint.on {
-    border-style: solid;
-    border-color: rgba(16, 185, 129, 0.6);
-    background: rgba(16, 185, 129, 0.10);
-    color: #34d399;
+    background-color: var(--accent-yellow);
+    color: #020c1b;
 }
+
+.ai-hint.on:hover { filter: brightness(1.08); background-color: var(--accent-yellow); }
 
 .footer-links {
     display: flex;

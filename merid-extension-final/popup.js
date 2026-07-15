@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
         chrome.storage.local.get(['geminiApiKey'], (l) => {
             if (s.aiCheckEnabled && l.geminiApiKey) {
-                aiHint.textContent = '✨ AI context check is ON — manage in Settings';
+                aiHint.textContent = 'AI Context Check: ON';
                 aiHint.classList.add('on');
             }
         });
