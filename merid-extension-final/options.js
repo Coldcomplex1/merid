@@ -134,11 +134,26 @@ function wire() {
         showAiStatus('Testing key…', false);
         chrome.runtime.sendMessage({ type: 'MERID_AI_TEST_KEY', key }, res => {
             els.aiTestBtn.disabled = false;
-            if (chrome.runtime.lastError || !res) { showAiStatus('Could not test the key. Check your connection.', true); return; }
-            if (res.ok) showAiStatus('Key works ✓', false);
-            else if (res.status === 400 || res.status === 401 || res.status === 403) showAiStatus('Key was rejected by Google. Double-check it.', true);
-            else if (res.status === 429) showAiStatus('Key works but is rate-limited right now.', false);
-            else showAiStatus('Test failed (network or Google error). Try again.', true);
+            if (chrome.runtime.lastError || !res) {
+                showAiStatus('Could not reach the extension background. Reload Merid at chrome://extensions and try again.', true);
+                return;
+            }
+            if (res.ok) { showAiStatus('Key works ✓', false); return; }
+
+            const detail = res.detail ? ` Google says: “${res.detail}”` : '';
+            if (res.status === 400 || res.status === 401 || res.status === 403) {
+                showAiStatus('Key was rejected by Google. Use an API key from aistudio.google.com (with no API restrictions).' + detail, true);
+            } else if (res.status === 404) {
+                showAiStatus('The Gemini model is not available for this key/project.' + detail, true);
+            } else if (res.status === 429) {
+                showAiStatus('Key works but hit the free-tier rate limit. Wait a minute and try again.' + detail, false);
+            } else if (res.status === 500 || res.status === 503) {
+                showAiStatus('Google’s Gemini server is overloaded right now. Wait a moment and try again.' + detail, true);
+            } else if (res.status) {
+                showAiStatus(`Google returned HTTP ${res.status}.` + detail, true);
+            } else {
+                showAiStatus('Could not reach Google (' + (res.detail || 'network error') + '). If you just updated Merid, reload it at chrome://extensions → ↻ Reload, then reopen this page.', true);
+            }
         });
     });
 

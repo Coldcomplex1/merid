@@ -141,7 +141,16 @@ async function callGemini(apiKey, prompt, maxOutputTokens) {
             generationConfig: { temperature: 0, maxOutputTokens }
         })
     });
-    if (!resp.ok) return { ok: false, status: resp.status };
+    if (!resp.ok) {
+        // Surface Google's own error message so the options page can show
+        // the real cause instead of a generic failure.
+        let detail = '';
+        try {
+            const err = await resp.json();
+            detail = String((err && err.error && err.error.message) || '').slice(0, 200);
+        } catch (e) { /* non-JSON error body */ }
+        return { ok: false, status: resp.status, detail };
+    }
     const data = await resp.json();
     const text = ((((data.candidates || [])[0] || {}).content || {}).parts || [])
         .map(p => p.text || '').join('');
@@ -183,9 +192,13 @@ async function aiTestKey(key) {
     if (!k) return { ok: false, reason: 'no-key' };
     try {
         const res = await callGemini(k, 'Reply with OK', 10);
-        return { ok: res.ok, status: res.status };
+        if (res.ok) return { ok: true };
+        return { ok: false, status: res.status, detail: res.detail };
     } catch (e) {
-        return { ok: false, reason: 'network' };
+        // fetch threw before getting a response: offline, DNS, or the request
+        // was blocked (e.g. the extension still runs an old manifest whose CSP
+        // doesn't allow generativelanguage.googleapis.com).
+        return { ok: false, reason: 'network', detail: String((e && e.message) || '').slice(0, 200) };
     }
 }
 
