@@ -286,8 +286,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Runs after the initial scan AND (debounced) after dynamically-added
 // content gets replaced, since modern sites render most text after load.
 // Each run sends one batched request: unique unchecked replaced words +
-// a short sentence snippet each. Words the AI flags as out-of-context are
-// reverted (that occurrence only). Failures never break the page.
+// a short sentence snippet each. Words the AI flags as out-of-context get
+// a gray underline (vocab-ai-flagged) instead of the yellow one - nothing
+// is reverted automatically. Failures never break the page.
 // -------------------------------------------------------------
 const AI_SNIPPET_RADIUS = 60;      // chars kept around the word - keeps tokens low
 const AI_CHECK_MAX_BATCHES = 3;    // max requests per page visit (cost cap)
@@ -311,12 +312,8 @@ function sentenceAround(span) {
     return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
 }
 
-function revertSpan(span) {
-    if (!span || !span.isConnected) return;
-    const parent = span.parentNode;
-    if (span.classList.contains('vocab-replaced')) replacedCount = Math.max(0, replacedCount - 1);
-    span.replaceWith(makeTextNode(span.dataset.original || span.textContent));
-    try { if (parent) parent.normalize(); } catch (e) { /* detached */ }
+function flagSpan(span) {
+    if (span && span.isConnected) span.classList.add('vocab-ai-flagged');
 }
 
 function runAiContextCheck() {
@@ -348,12 +345,12 @@ function runAiContextCheck() {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
             return;
         }
-        let reverted = 0;
+        let flagged = 0;
         batch.forEach((sp, i) => {
             aiCheckedWords.add((sp.dataset.word || '').toLowerCase());
-            if (res.verdicts[i] === 0) { revertSpan(sp); reverted++; }
+            if (res.verdicts[i] === 0) { flagSpan(sp); flagged++; }
         });
-        console.log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
+        console.log('[VM] AI context check: verified', batch.length, 'words, flagged', flagged, '(model: ' + (res.model || '?') + ')');
     });
 }
 
