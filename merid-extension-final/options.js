@@ -138,7 +138,7 @@ function wire() {
                 showAiStatus('Could not reach the extension background. Reload Merid at chrome://extensions and try again.', true);
                 return;
             }
-            if (res.ok) { showAiStatus('Key works ✓', false); return; }
+            if (res.ok) { showAiStatus('Key works ✓' + (res.model ? ` (model: ${res.model})` : ''), false); return; }
 
             const detail = res.detail ? ` Google says: “${res.detail}”` : '';
             if (res.status === 400 || res.status === 401 || res.status === 403) {

@@ -128,12 +128,15 @@ async function signInWithEmailLink(email, link) {
 // token usage minimal. Any failure returns { ok:false } and the extension
 // behaves exactly as if the feature were off.
 // =============================================================
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// Tried in order until one works for the user's key: the "-latest" aliases
+// always point to the newest generally-available model (Google retires fixed
+// model names for new users over time). The first working model is cached in
+// storage.local and re-resolved automatically if it ever starts 404ing.
+const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 const AI_CHECK_MAX_ITEMS = 20;
 
-async function callGemini(apiKey, prompt, maxOutputTokens) {
-    const resp = await fetch(GEMINI_URL, {
+async function callGeminiModel(apiKey, model, prompt, maxOutputTokens) {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
@@ -155,6 +158,27 @@ async function callGemini(apiKey, prompt, maxOutputTokens) {
     const text = ((((data.candidates || [])[0] || {}).content || {}).parts || [])
         .map(p => p.text || '').join('');
     return { ok: true, text };
+}
+
+async function callGemini(apiKey, prompt, maxOutputTokens) {
+    const { vm_ai_model } = await chrome.storage.local.get(['vm_ai_model']);
+    const models = vm_ai_model
+        ? [vm_ai_model, ...GEMINI_MODELS.filter(m => m !== vm_ai_model)]
+        : GEMINI_MODELS;
+    let last = null;
+    for (const model of models) {
+        const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens);
+        if (res.ok) {
+            if (model !== vm_ai_model) chrome.storage.local.set({ vm_ai_model: model });
+            return Object.assign(res, { model });
+        }
+        last = Object.assign(res, { model });
+        // Only 404 means "this model doesn't exist for this key" - try the
+        // next candidate. Any other error (bad key, rate limit, outage) is
+        // real and retrying other models would just burn quota.
+        if (res.status !== 404) return last;
+    }
+    return last;
 }
 
 async function aiCheckContext(items) {
@@ -192,8 +216,8 @@ async function aiTestKey(key) {
     if (!k) return { ok: false, reason: 'no-key' };
     try {
         const res = await callGemini(k, 'Reply with OK', 10);
-        if (res.ok) return { ok: true };
-        return { ok: false, status: res.status, detail: res.detail };
+        if (res.ok) return { ok: true, model: res.model };
+        return { ok: false, status: res.status, detail: res.detail, model: res.model };
     } catch (e) {
         // fetch threw before getting a response: offline, DNS, or the request
         // was blocked (e.g. the extension still runs an old manifest whose CSP
