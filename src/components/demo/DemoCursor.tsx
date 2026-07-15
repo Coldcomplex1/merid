@@ -16,7 +16,16 @@ const HOTSPOT_Y = 3
  * <body>, so hovering vocabulary words, scrolling and clicking the demo all
  * behave exactly as before. Touch devices (no cursor) are left untouched.
  */
-export default function DemoCursorZone({ children }: { children: ReactNode }) {
+export default function DemoCursorZone({
+  children,
+  guiding = false,
+}: {
+  children: ReactNode
+  /** While the Merid guide is playing, hide the native cursor over the demo so
+   *  it never shows on top of the guide pointer, even if the visitor's mouse is
+   *  resting over the page without moving. */
+  guiding?: boolean
+}) {
   const zoneRef = useRef<HTMLDivElement | null>(null)
   const cursorRef = useRef<HTMLDivElement | null>(null)
   const [active, setActive] = useState(false)
@@ -51,7 +60,7 @@ export default function DemoCursorZone({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div ref={zoneRef} className={`demo-cursor-zone${active ? ' is-active' : ''}`}>
+    <div ref={zoneRef} className={`demo-cursor-zone${active ? ' is-active' : ''}${guiding ? ' is-guiding' : ''}`}>
       {children}
       {createPortal(
         <div ref={cursorRef} aria-hidden="true" className={`demo-cursor${active ? ' is-active' : ''}`}>

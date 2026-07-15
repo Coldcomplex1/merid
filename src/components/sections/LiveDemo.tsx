@@ -66,6 +66,8 @@ export default function LiveDemo() {
   const [resizing, setResizing] = useState(false)
   // True while the Merid guide is pointing at the Facebook tab, so it pulses.
   const [guideFbPulse, setGuideFbPulse] = useState(false)
+  // True for the whole guided tour, so the demo hides the native cursor.
+  const [guiding, setGuiding] = useState(false)
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -163,15 +165,15 @@ export default function LiveDemo() {
   // Once the fake browser scrolls into view, the "Merid" guide cursor plays a
   // short tour: it hovers a highlighted word or two (popping their cards), then
   // glides up to the Facebook tab and pulses it, so visitors notice the demo
-  // has a second page. It runs once per visit, only on the Wikipedia tab, only
-  // where a real pointer exists, and never under reduced motion. Any real
-  // interaction (moving the mouse, scrolling, clicking inside the browser)
-  // cancels it at once so it never fights the visitor.
+  // has a second page. It runs once per visit, on desktop and mobile alike, and
+  // only skips under reduced motion. It is deliberately independent of the
+  // visitor's own pointer: moving the real cursor into the page does not stop
+  // it (the visitor's "You" cursor simply appears alongside Merid's). It ends
+  // on its own, or when the visitor switches tabs.
   useEffect(() => {
     if (!browserInView || tab !== 'wiki' || guidePlayed.current) return
     if (typeof window === 'undefined') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (!window.matchMedia('(any-pointer: fine)').matches) return
     const scroller = scrollerRef.current
     const box = browserBoxRef.current
     const guide = guideRef.current
@@ -186,14 +188,10 @@ export default function LiveDemo() {
       if (timer !== null) window.clearTimeout(timer)
       timer = null
       guide.hide()
+      setGuiding(false)
       setGuideFbPulse(false)
       setAnchor(null)
       ac.abort()
-    }
-    const onUser = () => {
-      if (cancelled) return
-      cancelled = true
-      cleanup()
     }
     const sleep = (ms: number) =>
       new Promise<void>((resolve) => {
@@ -280,26 +278,25 @@ export default function LiveDemo() {
       const fbTab = box.querySelector<HTMLElement>('[data-tab="fb"]')
       // Only hover words when the page shows enough of itself for a hover card;
       // otherwise the tour just points at the Facebook tab.
-      const words = bandHeight() >= 420 ? allWords().slice(0, 2) : []
+      const words = bandHeight() >= 380 ? allWords().slice(0, 2) : []
       if (!words.length && (!fbTab || !onScreen(fbTab))) return
 
-      // Cancel the moment the visitor takes over with a real gesture. Scroll
-      // events are intentionally not watched, because the guide scrolls the
-      // page itself and that must never cancel it.
-      box.addEventListener('pointerdown', onUser, { signal: ac.signal })
-      box.addEventListener('pointermove', onUser, { signal: ac.signal })
-      box.addEventListener('wheel', onUser, { signal: ac.signal, passive: true })
-      box.addEventListener('touchstart', onUser, { signal: ac.signal, passive: true })
-
       let shown = false
+      const reveal = () => {
+        // Hide the native cursor over the demo for the length of the tour, so
+        // it never appears on top of Merid's pointer.
+        setGuiding(true)
+        guide.show()
+        shown = true
+      }
+
       for (const word of words) {
         await revealWord(word)
         if (cancelled) return
         const c = centerOf(word)
         if (!shown) {
           guide.place(c.x, c.y - 34)
-          guide.show()
-          shown = true
+          reveal()
           await sleep(280)
           if (cancelled) return
         }
@@ -320,8 +317,7 @@ export default function LiveDemo() {
         const c = centerOf(fbTab)
         if (!shown) {
           guide.place(c.x, c.y + 96)
-          guide.show()
-          shown = true
+          reveal()
           await sleep(280)
           if (cancelled) return
         }
@@ -477,7 +473,7 @@ export default function LiveDemo() {
                   style={{ '--demo-w': browserW === null ? '100%' : `${browserW}px` } as CSSProperties}
                   className="w-full min-w-0 lg:w-[var(--demo-w)]"
                 >
-              <DemoCursorZone>
+              <DemoCursorZone guiding={guiding}>
               <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
                 {/* Tab strip: both tabs are live pages, click to switch */}
                 <div className="flex items-end gap-1.5 px-3 pt-2">

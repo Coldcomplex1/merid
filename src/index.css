@@ -311,7 +311,9 @@ body {
      the pointer/ew-resize cursors Tailwind utilities set on the tabs, links
      and vocabulary words underneath, so the arrow stays consistent. */
   .demo-cursor-zone.is-active,
-  .demo-cursor-zone.is-active * {
+  .demo-cursor-zone.is-active *,
+  .demo-cursor-zone.is-guiding,
+  .demo-cursor-zone.is-guiding * {
     cursor: none !important;
   }
   .demo-cursor {
