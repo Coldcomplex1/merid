@@ -353,20 +353,26 @@ export default function LiveDemo() {
     // every card render.
   }, [browserInView, tab])
 
-  // While the guide plays, freeze scrolling over the demo. The scroller itself
-  // is set to overflow:hidden (below), and here we swallow wheel/touch so the
-  // gesture cannot scroll the page underneath either. The guide still scrolls
-  // the page programmatically, which these listeners do not affect.
+  // While the guide plays, freeze the whole page. The inner scroller is set to
+  // overflow:hidden (below); here we swallow wheel/touch and the scroll keys at
+  // the window level so nothing scrolls at all. That is what keeps the fixed
+  // guide cursor glued to its targets: if the page could scroll, the cursor
+  // (position: fixed) would stay put while the demo moved away. The guide's own
+  // programmatic scrollTo is unaffected by these listeners.
   useEffect(() => {
     if (!guiding) return
-    const box = browserBoxRef.current
-    if (!box) return
-    const block = (e: Event) => e.preventDefault()
-    box.addEventListener('wheel', block, { passive: false })
-    box.addEventListener('touchmove', block, { passive: false })
+    const stop = (e: Event) => e.preventDefault()
+    const scrollKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar'])
+    const onKey = (e: KeyboardEvent) => {
+      if (scrollKeys.has(e.key)) e.preventDefault()
+    }
+    window.addEventListener('wheel', stop, { passive: false })
+    window.addEventListener('touchmove', stop, { passive: false })
+    window.addEventListener('keydown', onKey)
     return () => {
-      box.removeEventListener('wheel', block)
-      box.removeEventListener('touchmove', block)
+      window.removeEventListener('wheel', stop)
+      window.removeEventListener('touchmove', stop)
+      window.removeEventListener('keydown', onKey)
     }
   }, [guiding])
 
@@ -634,6 +640,22 @@ export default function LiveDemo() {
                     )}
                   </div>
                 </div>
+
+                {/* While the tour plays: a glowing gold ring plus a status pill
+                    so the visitor knows Merid is driving (and not to touch). The
+                    ring is inset so the box's overflow-hidden does not clip it;
+                    the pill sits over the toolbar, clear of the cursor's path. */}
+                {guiding && (
+                  <>
+                    <div className="animate-glow pointer-events-none absolute inset-0 z-30 rounded-2xl ring-2 ring-inset ring-gold-400" />
+                    <div className="pointer-events-none absolute inset-x-0 top-[46px] z-40 flex justify-center">
+                      <span className="animate-pop-in flex items-center gap-2 rounded-full bg-navy-900/95 px-3.5 py-1.5 text-[11px] font-bold text-cream-50 shadow-pop ring-1 ring-navy-600/70">
+                        <span className="animate-glow h-2 w-2 rounded-full bg-gold-400" />
+                        {t.demo.guiding}
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 {/* Invitation shown the moment the guided tour finishes. Sits
                     in the upper third so it stays visible even when the browser

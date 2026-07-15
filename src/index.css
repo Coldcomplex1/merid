@@ -51,6 +51,8 @@
   --animate-bounce-down: bounce-down 1.8s ease-in-out infinite;
   /* Facebook tab pulse while the Merid guide points at it. */
   --animate-tab-attn: tab-attn 1s ease-in-out infinite;
+  /* Gold ring glow around the demo while the Merid guide is playing. */
+  --animate-glow: glow 1.6s ease-in-out infinite;
   /* fill-mode `backwards` (not `both`): a lingering forwards-fill transform
      would make the hero columns the containing block for position:fixed
      descendants, and the draggable vocab card must escape to the viewport. */
@@ -91,6 +93,10 @@
   @keyframes tab-attn {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
+  }
+  @keyframes glow {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
   }
 }
 
