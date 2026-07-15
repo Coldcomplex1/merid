@@ -1,6 +1,7 @@
 // Options page controller. Uses window.VMCore for defaults/registry.
-// Local-only: no API keys, no backend URL, no AI settings. The deck lives on a
-// separate page (deck.html).
+// The deck lives on a separate page (deck.html). The optional AI context
+// check uses the user's own Gemini API key, stored in chrome.storage.local
+// only (never synced).
 const C = window.VMCore;
 
 const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey'];
@@ -11,6 +12,11 @@ const els = {
     directionCards: document.getElementById('directionCards'),
     datasetSeg: document.getElementById('datasetSeg'),
     datasetInfo: document.getElementById('datasetInfo'),
+    aiSeg: document.getElementById('aiSeg'),
+    aiKey: document.getElementById('aiKey'),
+    aiSaveBtn: document.getElementById('aiSaveBtn'),
+    aiTestBtn: document.getElementById('aiTestBtn'),
+    aiStatus: document.getElementById('aiStatus'),
     clearAll: document.getElementById('clearAll'),
     savedTag: document.getElementById('savedTag')
 };
@@ -53,6 +59,19 @@ function load() {
         setActive(els.datasetSeg, s.datasetKey);
         refreshDatasetInfo();
     });
+    // AI context check: toggle lives in sync, the key stays local-only.
+    chrome.storage.sync.get(['aiCheckEnabled'], s => {
+        setActive(els.aiSeg, s.aiCheckEnabled ? 'on' : 'off');
+    });
+    chrome.storage.local.get(['geminiApiKey'], l => {
+        if (l.geminiApiKey) els.aiKey.value = l.geminiApiKey;
+    });
+}
+
+function showAiStatus(msg, isError) {
+    els.aiStatus.textContent = msg;
+    els.aiStatus.hidden = !msg;
+    els.aiStatus.classList.toggle('auth-error', !!isError);
 }
 
 function refreshDatasetInfo() {
@@ -86,6 +105,40 @@ function wire() {
             void chrome.runtime.lastError;
             flashSaved();
             refreshDatasetInfo();
+        });
+    });
+
+    els.aiSeg.addEventListener('click', e => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        setActive(els.aiSeg, btn.dataset.val);
+        saveSync({ aiCheckEnabled: btn.dataset.val === 'on' });
+        if (btn.dataset.val === 'on' && !els.aiKey.value.trim()) {
+            showAiStatus('Enabled - now paste your Gemini API key below and press "Save key".', false);
+        } else {
+            showAiStatus('', false);
+        }
+    });
+
+    els.aiSaveBtn.addEventListener('click', () => {
+        const key = els.aiKey.value.trim();
+        chrome.storage.local.set({ geminiApiKey: key }, () => {
+            flashSaved();
+            showAiStatus(key ? 'Key saved on this device.' : 'Key removed.', false);
+        });
+    });
+
+    els.aiTestBtn.addEventListener('click', () => {
+        const key = els.aiKey.value.trim();
+        if (!key) { showAiStatus('Paste an API key first.', true); return; }
+        els.aiTestBtn.disabled = true;
+        showAiStatus('Testing key…', false);
+        chrome.runtime.sendMessage({ type: 'MERID_AI_TEST_KEY', key }, res => {
+            els.aiTestBtn.disabled = false;
+            if (chrome.runtime.lastError || !res) { showAiStatus('Could not test the key. Check your connection.', true); return; }
+            if (res.ok) showAiStatus('Key works ✓', false);
+            else if (res.status === 400 || res.status === 401 || res.status === 403) showAiStatus('Key was rejected by Google. Double-check it.', true);
+            else if (res.status === 429) showAiStatus('Key works but is rate-limited right now.', false);
+            else showAiStatus('Test failed (network or Google error). Try again.', true);
         });
     });
 

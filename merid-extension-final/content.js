@@ -3,9 +3,10 @@
 // Replaces Vietnamese vocabulary on the page with the English equivalent from
 // the selected local dataset(s) and shows a learning card on hover.
 //
-// No network requests, no backend, no AI. Pure matching/normalization lives in
-// lib/vocab-core.js (VMCore). The user's deck ("Save to Deck") and known words
-// ("I know this") are stored locally in chrome.storage.local.
+// Matching/normalization is pure and local (lib/vocab-core.js, VMCore). The
+// user's deck ("Save to Deck") and known words ("I know this") are stored
+// locally in chrome.storage.local. The only network use is the optional AI
+// context check, routed through the background worker and OFF by default.
 // =============================================================
 
 const C = window.VMCore;
@@ -52,6 +53,7 @@ console.log('[VM] Content script starting…');
 function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
+    aiCheckedWords = new Set();
 
     // Load the local deck/known lists first so we can honour them while scanning.
     chrome.storage.local.get(['knownWords', 'savedWords'], (local) => {
@@ -129,6 +131,7 @@ function processPage(vocabMap) {
             requestAnimationFrame(processChunk);
         } else {
             console.log('[VM] Page processing complete. Replaced:', replacedCount);
+            runAiContextCheck();
         }
     }
     processChunk();
@@ -273,6 +276,62 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return false;
 });
+
+// -------------------------------------------------------------
+// AI context check (optional feature - the background gates on the user's
+// toggle + API key, so this is a no-op unless the user set both up).
+// One batched request per page scan: unique replaced words + a short
+// sentence snippet each. Words the AI flags as out-of-context are
+// reverted (that occurrence only). All failures are silent.
+// -------------------------------------------------------------
+const AI_SNIPPET_RADIUS = 60; // chars kept around the word - keeps tokens low
+let aiCheckedWords = new Set();
+
+function sentenceAround(span) {
+    const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
+    const text = ((block && block.textContent) || '').replace(/\s+/g, ' ').trim();
+    const needle = span.textContent;
+    const idx = text.indexOf(needle);
+    if (idx === -1) return text.slice(0, AI_SNIPPET_RADIUS * 2);
+    const start = Math.max(0, idx - AI_SNIPPET_RADIUS);
+    return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
+}
+
+function revertSpan(span) {
+    if (!span || !span.isConnected) return;
+    const parent = span.parentNode;
+    if (span.classList.contains('vocab-replaced')) replacedCount = Math.max(0, replacedCount - 1);
+    span.replaceWith(makeTextNode(span.dataset.original || span.textContent));
+    try { if (parent) parent.normalize(); } catch (e) { /* detached */ }
+}
+
+function runAiContextCheck() {
+    const spans = [];
+    const seen = new Set();
+    document.querySelectorAll('.vocab-master-highlight.vocab-replaced').forEach(sp => {
+        const key = (sp.dataset.word || '').toLowerCase();
+        if (!key || seen.has(key) || aiCheckedWords.has(key)) return;
+        seen.add(key);
+        spans.push(sp);
+    });
+    if (!spans.length) return;
+
+    const batch = spans.slice(0, 20);
+    const items = batch.map(sp => ({
+        word: sp.dataset.replacement || sp.dataset.word || '',
+        original: sp.dataset.original || '',
+        sentence: sentenceAround(sp)
+    }));
+
+    chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
+        if (chrome.runtime.lastError) return;
+        if (!res || !res.ok || !Array.isArray(res.verdicts)) return;
+        batch.forEach((sp, i) => {
+            aiCheckedWords.add((sp.dataset.word || '').toLowerCase());
+            if (res.verdicts[i] === 0) revertSpan(sp);
+        });
+    });
+}
 
 // -------------------------------------------------------------
 // Revert
