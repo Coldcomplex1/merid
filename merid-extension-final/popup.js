@@ -64,10 +64,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('revert-btn').addEventListener('click', () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs && tabs[0] && tabs[0].id != null) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: 'revertPage' }, () => void chrome.runtime.lastError);
+    // AI context-checker hint (replaces the old "Revert this page" link):
+    // points the user to Settings to add their Gemini API key, and shows the
+    // on-state once the feature is configured.
+    const aiHint = document.getElementById('ai-hint');
+    aiHint.addEventListener('click', () => {
+        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+        else window.open(chrome.runtime.getURL('options.html'));
+    });
+    chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
+        chrome.storage.local.get(['geminiApiKey'], (l) => {
+            if (s.aiCheckEnabled && l.geminiApiKey) {
+                aiHint.textContent = '✨ AI context check is ON — manage in Settings';
+                aiHint.classList.add('on');
             }
         });
     });
