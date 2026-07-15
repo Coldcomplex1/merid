@@ -16,6 +16,8 @@
 importScripts('lib/vocab-core.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
 const C = self.VMCore;
 const Sync = self.VMSync;
+const FB = self.VMFirebase;
+const FBConfig = self.VMFirebaseConfig || {};
 
 // ---- In-memory state (rehydrated on SW wake) ----
 let vocabulary = [];
@@ -87,6 +89,36 @@ Sync.kick(); // resume any sync interrupted by a service-worker teardown
 chrome.storage.onChanged.addListener((changes, area) => {
     try { Sync.onStorageChanged(changes, area); } catch (e) { /* sync must never break the extension */ }
 });
+
+// =============================================================
+// Passwordless email-link sign-in (Firebase Auth "Email link").
+// The options page asks us to email a one-time sign-in link; the user pastes
+// the link back and we exchange its oobCode for a session, which is adopted
+// through the same validated path merid.site single sign-on uses.
+// =============================================================
+async function sendSignInLink(email) {
+    if (!FB || !FB.configured()) return { ok: false, code: 'NOT_CONFIGURED' };
+    try {
+        await FB.sendSignInLink(String(email || '').trim(), FBConfig.webDeckUrl || 'https://merid.site');
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, code: e.code || 'UNKNOWN' };
+    }
+}
+
+async function signInWithEmailLink(email, link) {
+    if (!FB || !FB.configured()) return { ok: false, code: 'NOT_CONFIGURED' };
+    // Works with the raw link from the email OR the redirected URL - the
+    // one-time code is an oobCode query param either way.
+    const m = String(link || '').match(/[?&]oobCode=([^&#]+)/);
+    if (!m) return { ok: false, code: 'BAD_LINK' };
+    try {
+        const r = await FB.signInWithEmailLink(String(email || '').trim(), decodeURIComponent(m[1]));
+        return await Sync.adoptSession(r.refreshToken, r.email || String(email || '').trim());
+    } catch (e) {
+        return { ok: false, code: e.code || 'UNKNOWN' };
+    }
+}
 
 // =============================================================
 // AI context check (optional, OFF by default).
@@ -185,6 +217,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
                 return true;
             }
+            // ---- Passwordless email-link sign-in (options page) ----
+            case 'MERID_SYNC_SEND_LINK': {
+                sendSignInLink(request.email)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+                return true;
+            }
+            case 'MERID_SYNC_LINK_SIGNIN': {
+                signInWithEmailLink(request.email, request.link)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+                return true;
+            }
+
             // ---- AI context check (content script / options page) ----
             case 'MERID_AI_CHECK': {
                 aiCheckContext(request.items)

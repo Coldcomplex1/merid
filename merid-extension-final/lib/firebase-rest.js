@@ -84,6 +84,25 @@
         return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn) };
     }
 
+    /** Email a one-time passwordless sign-in link (Firebase Auth "Email link").
+     *  Requires the provider to be enabled in the Firebase console
+     *  (Authentication -> Sign-in method -> Email/Password -> Email link). */
+    function sendSignInLink(email, continueUrl) {
+        return postJson(identityUrl('sendOobCode'), {
+            requestType: 'EMAIL_SIGNIN',
+            email,
+            continueUrl,
+            canHandleCodeInApp: true
+        });
+    }
+
+    /** Exchange the oobCode from an emailed sign-in link for a session.
+     *  Creates the account automatically if the email is new. */
+    async function signInWithEmailLink(email, oobCode) {
+        const r = await postJson(identityUrl('signInWithEmailLink'), { email, oobCode });
+        return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn), email: r.email };
+    }
+
     /** Trade the long-lived refresh token for a fresh ID token (JWT, ~1h). */
     async function refresh(refreshToken) {
         const url = 'https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(cfg.apiKey);
@@ -197,6 +216,7 @@
     return {
         configured,
         signUp, signIn, refresh,
+        sendSignInLink, signInWithEmailLink,
         getDoc, commit,
         createWrite, updateWrite, deleteWrite
     };
