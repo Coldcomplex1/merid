@@ -96,11 +96,39 @@
             </div>
         </section>
 
+        <!-- AI CONTEXT CHECK -->
+        <section class="card">
+            <h2>AI context check (beta)</h2>
+            <p class="hint">Optional. After Merid replaces words on a page, Google Gemini (flash-lite) double-checks that each
+                replaced word fits its sentence - words that don't fit are reverted automatically. Uses <strong>your own free
+                API key</strong> from <strong>aistudio.google.com</strong> (create one there, then paste it below).</p>
+
+            <div class="field">
+                <label>Enable AI context check</label>
+                <div class="seg" id="aiSeg">
+                    <button data-val="on" type="button">On</button>
+                    <button data-val="off" type="button">Off</button>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="aiKey">Gemini API key</label>
+                <input type="password" id="aiKey" autocomplete="off" placeholder="AIza…">
+            </div>
+
+            <div class="auth-actions">
+                <button class="btn" id="aiSaveBtn" type="button">Save key</button>
+                <button class="btn ghost" id="aiTestBtn" type="button">Test key</button>
+            </div>
+            <p class="hint" id="aiStatus" hidden></p>
+        </section>
+
         <!-- DATA & PRIVACY -->
         <section class="card">
             <h2>Data &amp; privacy</h2>
             <ul class="privacy">
-                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches. Page content is <strong>never sent anywhere</strong> and no AI API is used.</li>
+                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches. By default page content is <strong>never sent anywhere</strong> and no AI API is used.</li>
+                <li>If you enable the optional <strong>AI context check</strong>, only short sentence snippets around replaced words are sent to Google Gemini using your own API key. Your key is stored on this device only.</li>
                 <li>Your settings and deck are stored on your device via <code>chrome.storage</code>.</li>
                 <li>If you sign in (optional), only your saved deck words are synced to your own account - protected by server-side security rules.</li>
                 <li>Turn the extension off any time from the popup.</li>

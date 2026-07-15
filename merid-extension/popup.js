@@ -159,6 +159,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // AI context-checker hint: nudges the user to Settings to add their
+    // Gemini API key; shows the on-state once configured.
+    const aiHint = document.getElementById('ai-hint');
+    aiHint.addEventListener('click', () => {
+        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+        else window.open(chrome.runtime.getURL('options.html'));
+    });
+    chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
+        chrome.storage.local.get(['geminiApiKey'], (l) => {
+            aiHint.hidden = false;
+            if (s.aiCheckEnabled && l.geminiApiKey) {
+                aiHint.textContent = '✨ AI context check is ON — manage in Settings';
+                aiHint.classList.add('on');
+            } else {
+                aiHint.textContent = '✨ AI context-checker here! Add your Gemini API key in Settings to enable it.';
+            }
+        });
+    });
+
     document.getElementById('options-btn').addEventListener('click', () => {
         if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
         else window.open(chrome.runtime.getURL('options.html'));

@@ -257,6 +257,75 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 chrome.tabs.onRemoved.addListener(() => { /* per-tab badges are cleaned up by Chrome */ });
 
 // =============================================================
+// AI context check (optional, OFF by default).
+// Uses the user's OWN Gemini API key (entered on the options page, stored in
+// chrome.storage.local - never synced). One batched request per page, capped
+// at 20 items, asking only for a compact JSON array of 0/1 verdicts to keep
+// token usage minimal. Any failure returns { ok:false } and the extension
+// behaves exactly as if the feature were off.
+// =============================================================
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const AI_CHECK_MAX_ITEMS = 20;
+
+async function callGemini(apiKey, prompt, maxOutputTokens) {
+    const resp = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0, maxOutputTokens }
+        })
+    });
+    if (!resp.ok) return { ok: false, status: resp.status };
+    const data = await resp.json();
+    const text = ((((data.candidates || [])[0] || {}).content || {}).parts || [])
+        .map(p => p.text || '').join('');
+    return { ok: true, text };
+}
+
+async function aiCheckContext(items) {
+    const sync = await chrome.storage.sync.get(['aiCheckEnabled']);
+    const local = await chrome.storage.local.get(['geminiApiKey']);
+    if (!sync.aiCheckEnabled || !local.geminiApiKey) return { ok: false, disabled: true };
+    if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [] };
+
+    const capped = items.slice(0, AI_CHECK_MAX_ITEMS).map(it => ({
+        word: String(it && it.word || '').slice(0, 60),
+        original: String(it && it.original || '').slice(0, 60),
+        sentence: String(it && it.sentence || '').slice(0, 180)
+    }));
+    const list = capped.map((it, i) =>
+        `${i + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`).join('\n');
+    const prompt =
+        'In each sentence below, one Vietnamese word/phrase was replaced by an English word. ' +
+        'For each item answer 1 if the English word correctly expresses the replaced Vietnamese meaning in that sentence context, otherwise 0. ' +
+        'Reply with ONLY a JSON array of 0/1 (one per item), nothing else.\n' + list;
+
+    try {
+        const res = await callGemini(local.geminiApiKey, prompt, 200);
+        if (!res.ok) return res;
+        const m = (res.text || '').match(/\[[\s\S]*?\]/);
+        if (!m) return { ok: false, reason: 'bad-response' };
+        const verdicts = JSON.parse(m[0]).map(v => (v ? 1 : 0));
+        return { ok: true, verdicts };
+    } catch (e) {
+        return { ok: false, reason: 'network' };
+    }
+}
+
+async function aiTestKey(key) {
+    const k = String(key || '').trim();
+    if (!k) return { ok: false, reason: 'no-key' };
+    try {
+        const res = await callGemini(k, 'Reply with OK', 10);
+        return { ok: res.ok, status: res.status };
+    } catch (e) {
+        return { ok: false, reason: 'network' };
+    }
+}
+
+// =============================================================
 // Messaging (from popup / options / content script)
 // =============================================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -301,6 +370,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
                 return true;
             }
+            // ---- AI context check (content script / options page) ----
+            case 'MERID_AI_CHECK': {
+                aiCheckContext(request.items)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_AI_TEST_KEY': {
+                aiTestKey(request.key)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+
             case 'MERID_SYNC_STATUS': {
                 Sync.getStatus().then(sendResponse).catch(() => sendResponse({ state: 'error' }));
                 return true;
