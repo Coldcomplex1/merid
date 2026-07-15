@@ -185,11 +185,14 @@ export default function LiveDemo() {
     guidePlayed.current = true
     let cancelled = false
     let timer: number | null = null
+    let rafId = 0
     const ac = new AbortController()
 
     const cleanup = () => {
       if (timer !== null) window.clearTimeout(timer)
       timer = null
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = 0
       guide.hide()
       setGuiding(false)
       setGuideFbPulse(false)
@@ -284,12 +287,43 @@ export default function LiveDemo() {
       const words = bandHeight() >= 380 ? allWords().slice(0, 2) : []
       if (!words.length && (!fbTab || !onScreen(fbTab))) return
 
-      // Lock the demo for the whole tour: hide the native cursor and freeze
-      // scrolling, so the visitor watches without fighting the guide.
+      // Freeze only the demo content and hide the native cursor for the tour.
       setGuiding(true)
 
+      // The cursor eases toward the live centre of its current target every
+      // frame, so it stays glued to the word / Facebook tab through both the
+      // guide's inner reveal-scroll and the visitor scrolling the whole page.
+      let getTarget: (() => { x: number; y: number }) | null = null
+      let curX = 0
+      let curY = 0
+      let primed = false
+      const loop = () => {
+        if (cancelled) return
+        if (getTarget) {
+          const t = getTarget()
+          if (!primed) {
+            curX = t.x
+            curY = t.y - 40 // start a touch above, then glide down onto it
+            primed = true
+          }
+          curX += (t.x - curX) * 0.16
+          curY += (t.y - curY) * 0.16
+          guide.snapTo(curX, curY)
+        }
+        rafId = requestAnimationFrame(loop)
+      }
+      rafId = requestAnimationFrame(loop)
+
       let shown = false
-      const reveal = () => {
+      const ensureShown = () => {
+        if (shown) return
+        if (getTarget) {
+          const t = getTarget()
+          curX = t.x
+          curY = t.y - 40
+          primed = true
+          guide.snapTo(curX, curY) // place before fade-in so it never flashes at (0,0)
+        }
         guide.show()
         shown = true
       }
@@ -297,20 +331,14 @@ export default function LiveDemo() {
       for (const word of words) {
         await revealWord(word)
         if (cancelled) return
-        const c = centerOf(word)
-        if (!shown) {
-          guide.place(c.x, c.y - 34)
-          reveal()
-          await sleep(280)
-          if (cancelled) return
-        }
-        guide.moveTo(c.x, c.y, 760)
-        await sleep(800)
+        getTarget = () => centerOf(word)
+        ensureShown()
+        await sleep(820) // ease onto the word
         if (cancelled) return
         const id = word.getAttribute('data-vocab-id')
         const entry = id ? VOCAB[id] : undefined
         if (entry) openPopup(word, entry)
-        await sleep(1300)
+        await sleep(1300) // dwell, following the word if the page scrolls
         if (cancelled) return
         setAnchor(null)
         await sleep(220)
@@ -318,21 +346,16 @@ export default function LiveDemo() {
       }
 
       if (fbTab && onScreen(fbTab)) {
-        const c = centerOf(fbTab)
-        if (!shown) {
-          guide.place(c.x, c.y + 96)
-          reveal()
-          await sleep(280)
-          if (cancelled) return
-        }
-        guide.moveTo(c.x, c.y, 950)
-        await sleep(560)
+        getTarget = () => centerOf(fbTab)
+        ensureShown()
+        await sleep(820) // ease onto the Facebook tab
         if (cancelled) return
         setGuideFbPulse(true)
         await sleep(1900)
         if (cancelled) return
       }
 
+      getTarget = null
       guide.hide()
       await sleep(450)
       if (cancelled) return
@@ -353,47 +376,25 @@ export default function LiveDemo() {
     // every card render.
   }, [browserInView, tab])
 
-  // While the guide plays, freeze the whole page. The inner scroller is set to
-  // overflow:hidden (below); here we swallow wheel/touch and the scroll keys at
-  // the window level so nothing scrolls at all. That is what keeps the fixed
-  // guide cursor glued to its targets: if the page could scroll, the cursor
-  // (position: fixed) would stay put while the demo moved away. The guide's own
-  // programmatic scrollTo is unaffected by these listeners.
-  useEffect(() => {
-    if (!guiding) return
-    const stop = (e: Event) => e.preventDefault()
-    const scrollKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar'])
-    const onKey = (e: KeyboardEvent) => {
-      if (scrollKeys.has(e.key)) e.preventDefault()
-    }
-    window.addEventListener('wheel', stop, { passive: false })
-    window.addEventListener('touchmove', stop, { passive: false })
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('wheel', stop)
-      window.removeEventListener('touchmove', stop)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [guiding])
+  // Only the demo itself is frozen during the tour: the inner scroller is
+  // overflow:hidden while `guiding` (below), so a wheel over it just scrolls the
+  // page. The page stays fully scrollable, and the guide cursor follows its
+  // target (via the rAF loop in the tour), so it never detaches on page scroll.
 
-  // The "try it yourself" nudge clears itself the moment the visitor engages
-  // with the demo (or after a short while), so it never lingers in the way.
+  // The "try it yourself" nudge clears itself only when the visitor deliberately
+  // engages the demo (a click/tap), or after a while. Scrolling the page does
+  // NOT dismiss it, so it stays visible while they read and scroll around.
   useEffect(() => {
     if (!showTry) return
     const box = browserBoxRef.current
-    const scroller = scrollerRef.current
     const hide = () => setShowTry(false)
-    const timer = window.setTimeout(hide, 7000)
+    const timer = window.setTimeout(hide, 9000)
     box?.addEventListener('pointerdown', hide)
-    box?.addEventListener('wheel', hide, { passive: true })
     box?.addEventListener('touchstart', hide, { passive: true })
-    scroller?.addEventListener('scroll', hide, { passive: true })
     return () => {
       window.clearTimeout(timer)
       box?.removeEventListener('pointerdown', hide)
-      box?.removeEventListener('wheel', hide)
       box?.removeEventListener('touchstart', hide)
-      scroller?.removeEventListener('scroll', hide)
     }
   }, [showTry])
 

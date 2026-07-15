@@ -11,6 +11,9 @@ export interface GuideCursorHandle {
   place: (x: number, y: number) => void
   /** Glide the arrow tip to a viewport point over `ms` milliseconds. */
   moveTo: (x: number, y: number, ms?: number) => void
+  /** Move the arrow tip to a viewport point instantly (used every frame by the
+   *  follow loop, so the cursor tracks its target as the page scrolls). */
+  snapTo: (x: number, y: number) => void
   show: () => void
   hide: () => void
 }
@@ -43,6 +46,14 @@ const DemoGuideCursor = forwardRef<GuideCursorHandle>(function DemoGuideCursor(_
       const el = elRef.current
       if (!el) return
       el.style.transition = `transform ${ms}ms cubic-bezier(0.65, 0, 0.35, 1), opacity 200ms ease`
+      el.style.transform = `translate3d(${x - HOTSPOT_X}px, ${y - HOTSPOT_Y}px, 0)`
+    },
+    snapTo(x, y) {
+      const el = elRef.current
+      if (!el) return
+      // Only opacity transitions, so show/hide still fades while the position
+      // updates immediately each frame.
+      el.style.transition = 'opacity 200ms ease'
       el.style.transform = `translate3d(${x - HOTSPOT_X}px, ${y - HOTSPOT_Y}px, 0)`
     },
     show() {
