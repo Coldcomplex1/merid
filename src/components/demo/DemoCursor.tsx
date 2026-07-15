@@ -57,10 +57,11 @@ export default function DemoCursorZone({ children }: { children: ReactNode }) {
         <div ref={cursorRef} aria-hidden="true" className={`demo-cursor${active ? ' is-active' : ''}`}>
           <svg width="26" height="34" viewBox="0 0 26 34" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g transform="rotate(11 5 3)">
+              {/* Clean arrowhead (no trailing leg), in Merid navy with a cream rim */}
               <path
-                d="M5 3 L5 22 L10.2 17.2 L13.6 24.6 L16.6 23.2 L13.2 16 L20.4 15.8 Z"
-                fill="#2E86FF"
-                stroke="#ffffff"
+                d="M5 3 L5 19.8 L8.9 16.2 L15 14.4 Z"
+                fill="#16213c"
+                stroke="#fdf9ef"
                 strokeWidth="1.6"
                 strokeLinejoin="round"
                 strokeLinecap="round"

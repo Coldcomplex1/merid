@@ -317,23 +317,23 @@ body {
   }
   .demo-cursor svg {
     display: block;
-    filter: drop-shadow(0 3px 4px rgb(15 30 60 / 0.35));
+    filter: drop-shadow(0 3px 4px rgb(10 17 34 / 0.4));
   }
   .demo-cursor__label {
     position: absolute;
-    top: 26px;
-    left: 15px;
+    top: 24px;
+    left: 14px;
     padding: 2px 9px;
     border-radius: 999px;
-    background: #ff4d97;
-    color: #fff;
+    background: #f5c542;
+    color: #0e1628;
     font-family: var(--font-display);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.4;
     letter-spacing: 0.01em;
     white-space: nowrap;
-    box-shadow: 0 4px 12px -3px rgb(255 77 151 / 0.55);
+    box-shadow: 0 4px 12px -3px rgb(245 197 66 / 0.55);
   }
 
   /* Thin light scrollbar for the fake-browser page (always-light mockup) */
