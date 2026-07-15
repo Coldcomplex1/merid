@@ -4,10 +4,12 @@ import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import DemoCursorZone from '../demo/DemoCursor'
+import DemoGuideCursor, { type GuideCursorHandle } from '../demo/DemoGuideCursor'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import FacebookLogo from '../ui/FacebookLogo'
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
+import { useInView } from '../../hooks/useInView'
 import { useLang } from '../../i18n/LanguageContext'
 
 const CARD_WIDTH = 312
@@ -62,6 +64,8 @@ export default function LiveDemo() {
   // null = fill the column; a number = width in px chosen by dragging the handle
   const [browserW, setBrowserW] = useState<number | null>(null)
   const [resizing, setResizing] = useState(false)
+  // True while the Merid guide is pointing at the Facebook tab, so it pulses.
+  const [guideFbPulse, setGuideFbPulse] = useState(false)
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -69,6 +73,10 @@ export default function LiveDemo() {
   const hideTimer = useRef<number | null>(null)
   const browserBoxRef = useRef<HTMLDivElement | null>(null)
   const resizeDrag = useRef<{ startX: number; startW: number; max: number } | null>(null)
+  const guideRef = useRef<GuideCursorHandle | null>(null)
+  const guidePlayed = useRef(false)
+  // Fires once when the fake browser scrolls into view; drives the guided tour.
+  const { ref: browserColRef, inView: browserInView } = useInView<HTMLDivElement>(0.3)
 
   // A card anchored to a word that just moved or disappeared would float wrong.
   useEffect(() => {
@@ -152,6 +160,197 @@ export default function LiveDemo() {
     scrollerRef.current?.scrollTo({ top: 0 })
   }
 
+  // Once the fake browser scrolls into view, the "Merid" guide cursor plays a
+  // short tour: it hovers a highlighted word or two (popping their cards), then
+  // glides up to the Facebook tab and pulses it, so visitors notice the demo
+  // has a second page. It runs once per visit, only on the Wikipedia tab, only
+  // where a real pointer exists, and never under reduced motion. Any real
+  // interaction (moving the mouse, scrolling, clicking inside the browser)
+  // cancels it at once so it never fights the visitor.
+  useEffect(() => {
+    if (!browserInView || tab !== 'wiki' || guidePlayed.current) return
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!window.matchMedia('(any-pointer: fine)').matches) return
+    const scroller = scrollerRef.current
+    const box = browserBoxRef.current
+    const guide = guideRef.current
+    if (!scroller || !box || !guide) return
+
+    guidePlayed.current = true
+    let cancelled = false
+    let timer: number | null = null
+    const ac = new AbortController()
+
+    const cleanup = () => {
+      if (timer !== null) window.clearTimeout(timer)
+      timer = null
+      guide.hide()
+      setGuideFbPulse(false)
+      setAnchor(null)
+      ac.abort()
+    }
+    const onUser = () => {
+      if (cancelled) return
+      cancelled = true
+      cleanup()
+    }
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        timer = window.setTimeout(resolve, ms)
+      })
+
+    // The site header (banner + navbar) is sticky, so treat the top strip of the
+    // viewport as occluded: the guide must never point at something hidden
+    // behind it.
+    const TOP_INSET = 120
+    const vw = () => window.innerWidth || document.documentElement.clientWidth
+    const vh = () => window.innerHeight || document.documentElement.clientHeight
+    const centerOf = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+    }
+    const onScreen = (el: Element) => {
+      const c = centerOf(el)
+      return c.x > 0 && c.x < vw() && c.y > TOP_INSET && c.y < vh()
+    }
+    // Height of the scroller's un-occluded slice of the viewport; the guide only
+    // hovers words when there is room here for a hover card to show.
+    const bandHeight = () => {
+      const sr = scroller.getBoundingClientRect()
+      return Math.min(sr.bottom, vh()) - Math.max(sr.top, TOP_INSET)
+    }
+    // Every highlighted word in reading order (only highlighted words render
+    // with data-vocab-word, so this is exactly what the visitor could hover).
+    const allWords = () => Array.from(scroller.querySelectorAll<HTMLElement>('[data-vocab-word]'))
+
+    // Resolve once the page has stopped scrolling (or after maxMs), so the
+    // guide measures targets at their final resting positions, not mid-scroll.
+    const waitScrollIdle = (maxMs: number) =>
+      new Promise<void>((resolve) => {
+        let last = performance.now()
+        const started = last
+        const onScroll = () => {
+          last = performance.now()
+        }
+        window.addEventListener('scroll', onScroll, { passive: true, signal: ac.signal })
+        const tick = () => {
+          const now = performance.now()
+          if (cancelled || now - last > 260 || now - started > maxMs) {
+            window.removeEventListener('scroll', onScroll)
+            resolve()
+            return
+          }
+          timer = window.setTimeout(tick, 80)
+        }
+        tick()
+      })
+    // Resolve once the inner page has settled after a programmatic scroll.
+    const waitScrollerIdle = async (maxMs: number) => {
+      const started = performance.now()
+      let last = scroller.scrollTop
+      let lastChange = started
+      while (!cancelled && performance.now() - started < maxMs) {
+        await sleep(80)
+        if (scroller.scrollTop !== last) {
+          last = scroller.scrollTop
+          lastChange = performance.now()
+        } else if (performance.now() - lastChange > 200) {
+          break
+        }
+      }
+    }
+    // Gently scroll the wiki page so `word` rests near the top of the visible
+    // band, leaving room beneath it for the hover card.
+    const revealWord = async (word: HTMLElement) => {
+      const sr = scroller.getBoundingClientRect()
+      const targetY = Math.max(sr.top, TOP_INSET) + 44
+      const delta = word.getBoundingClientRect().top - targetY
+      if (Math.abs(delta) > 10) {
+        scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: 'smooth' })
+        await waitScrollerIdle(1200)
+      }
+    }
+
+    const run = async () => {
+      await sleep(150)
+      await waitScrollIdle(2600)
+      if (cancelled) return
+
+      const fbTab = box.querySelector<HTMLElement>('[data-tab="fb"]')
+      // Only hover words when the page shows enough of itself for a hover card;
+      // otherwise the tour just points at the Facebook tab.
+      const words = bandHeight() >= 420 ? allWords().slice(0, 2) : []
+      if (!words.length && (!fbTab || !onScreen(fbTab))) return
+
+      // Cancel the moment the visitor takes over with a real gesture. Scroll
+      // events are intentionally not watched, because the guide scrolls the
+      // page itself and that must never cancel it.
+      box.addEventListener('pointerdown', onUser, { signal: ac.signal })
+      box.addEventListener('pointermove', onUser, { signal: ac.signal })
+      box.addEventListener('wheel', onUser, { signal: ac.signal, passive: true })
+      box.addEventListener('touchstart', onUser, { signal: ac.signal, passive: true })
+
+      let shown = false
+      for (const word of words) {
+        await revealWord(word)
+        if (cancelled) return
+        const c = centerOf(word)
+        if (!shown) {
+          guide.place(c.x, c.y - 34)
+          guide.show()
+          shown = true
+          await sleep(280)
+          if (cancelled) return
+        }
+        guide.moveTo(c.x, c.y, 760)
+        await sleep(800)
+        if (cancelled) return
+        const id = word.getAttribute('data-vocab-id')
+        const entry = id ? VOCAB[id] : undefined
+        if (entry) openPopup(word, entry)
+        await sleep(1300)
+        if (cancelled) return
+        setAnchor(null)
+        await sleep(220)
+        if (cancelled) return
+      }
+
+      if (fbTab && onScreen(fbTab)) {
+        const c = centerOf(fbTab)
+        if (!shown) {
+          guide.place(c.x, c.y + 96)
+          guide.show()
+          shown = true
+          await sleep(280)
+          if (cancelled) return
+        }
+        guide.moveTo(c.x, c.y, 950)
+        await sleep(560)
+        if (cancelled) return
+        setGuideFbPulse(true)
+        await sleep(1900)
+        if (cancelled) return
+      }
+
+      guide.hide()
+      await sleep(450)
+      if (cancelled) return
+      setGuideFbPulse(false)
+      cleanup()
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      cleanup()
+    }
+    // Intentionally keyed only to browserInView/tab: openPopup and setAnchor are
+    // stable closures over refs, and depending on them would restart the tour on
+    // every card render.
+  }, [browserInView, tab])
+
   const maxBrowserW = () => {
     const row = browserBoxRef.current?.parentElement
     return row ? row.getBoundingClientRect().width - HANDLE_ALLOWANCE : Infinity
@@ -230,6 +429,7 @@ export default function LiveDemo() {
         key={key}
         type="button"
         data-vocab-word
+        data-vocab-id={entry.id}
         className="hl-en text-inherit"
         onMouseEnter={(e) => openPopup(e.currentTarget, entry)}
         onMouseLeave={scheduleHide}
@@ -269,7 +469,8 @@ export default function LiveDemo() {
             </div>
 
             {/* Fake browser running the extension on Wikipedia */}
-            <div className="min-w-0">
+            <div ref={browserColRef} className="min-w-0">
+              <DemoGuideCursor ref={guideRef} />
               <div className={`flex items-stretch gap-2 ${resizing ? 'select-none' : ''}`}>
                 <div
                   ref={browserBoxRef}
@@ -285,16 +486,23 @@ export default function LiveDemo() {
                     <span className="h-2.5 w-2.5 rounded-full bg-[#f5c14e]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#5ec269]" />
                   </div>
-                  {TABS.map((t) => (
+                  {TABS.map((t) => {
+                    const isActive = tab === t.id
+                    // While the Merid guide points here, the Facebook tab pulses.
+                    const isPulse = guideFbPulse && t.id === 'fb'
+                    return (
                     <button
                       key={t.id}
                       type="button"
-                      aria-pressed={tab === t.id}
+                      data-tab={t.id}
+                      aria-pressed={isActive}
                       onClick={() => switchTab(t.id)}
                       className={`flex min-w-0 max-w-[240px] flex-1 cursor-pointer items-center gap-2 rounded-t-lg px-3 py-1.5 text-left text-[11px] transition-colors sm:flex-none sm:basis-[200px] ${
-                        tab === t.id
+                        isActive
                           ? 'bg-white text-[#3c4043]'
-                          : 'text-[#5f6368] hover:bg-white/50'
+                          : isPulse
+                            ? 'animate-tab-attn bg-gold-200 text-navy-900 ring-2 ring-inset ring-gold-400'
+                            : 'text-[#5f6368] hover:bg-white/50'
                       }`}
                     >
                       {t.id === 'wiki' ? (
@@ -305,7 +513,8 @@ export default function LiveDemo() {
                       <span className="truncate">{t.title}</span>
                       <span className="ml-auto shrink-0 text-[#5f6368]">×</span>
                     </button>
-                  ))}
+                    )
+                  })}
                   <span className="pb-1.5 pl-1 text-base leading-none text-[#5f6368]">+</span>
                 </div>
 

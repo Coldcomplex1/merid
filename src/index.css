@@ -47,6 +47,10 @@
   --animate-card-in-down: card-in-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pulse-soft: pulse-soft 2.8s ease-in-out infinite;
   --animate-bar-grow: bar-grow 0.9s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+  /* Hero "scroll down" cue: chevrons bob downward to invite scrolling. */
+  --animate-bounce-down: bounce-down 1.8s ease-in-out infinite;
+  /* Facebook tab pulse while the Merid guide points at it. */
+  --animate-tab-attn: tab-attn 1s ease-in-out infinite;
   /* fill-mode `backwards` (not `both`): a lingering forwards-fill transform
      would make the hero columns the containing block for position:fixed
      descendants, and the draggable vocab card must escape to the viewport. */
@@ -79,6 +83,14 @@
   @keyframes fade-up {
     0% { opacity: 0; transform: translateY(26px); }
     100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounce-down {
+    0%, 100% { transform: translateY(0); opacity: 0.55; }
+    50% { transform: translateY(7px); opacity: 1; }
+  }
+  @keyframes tab-attn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
   }
 }
 
@@ -334,6 +346,20 @@ body {
     letter-spacing: 0.01em;
     white-space: nowrap;
     box-shadow: 0 4px 12px -3px rgb(245 197 66 / 0.55);
+  }
+
+  /* The automated "Merid" guide cursor reuses the presence-cursor base, but it
+     glides between waypoints (transform is transitioned) and wears a navy pill
+     so it reads as Merid, not the visitor's own gold "You" pointer. */
+  .demo-cursor--guide {
+    transition:
+      transform 850ms cubic-bezier(0.65, 0, 0.35, 1),
+      opacity 200ms ease;
+  }
+  .demo-cursor--guide .demo-cursor__label {
+    background: #16213c;
+    color: #ffe9a3;
+    box-shadow: 0 6px 16px -4px rgb(10 17 34 / 0.6);
   }
 
   /* Thin light scrollbar for the fake-browser page (always-light mockup) */

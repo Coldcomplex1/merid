@@ -72,6 +72,7 @@ export interface Strings {
     ctaDemo: string
     privacy: string
     tagNote: string
+    scrollCue: string
   }
   demo: {
     eyebrow: string
@@ -226,6 +227,7 @@ const vi: Strings = {
     ctaDemo: 'Thử demo ngay',
     privacy: 'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn, không cần tài khoản và không gửi dữ liệu trang web lên máy chủ.',
     tagNote: 'Học theo ngữ cảnh · Miễn phí',
+    scrollCue: 'Cuộn xuống thử demo trực tiếp',
   },
   demo: {
     eyebrow: 'Demo tương tác',
@@ -574,6 +576,7 @@ const en: Strings = {
     ctaDemo: 'Try the Demo',
     privacy: 'Private by design. It runs locally on your device, with no account and no webpage data sent to a server.',
     tagNote: 'Context-aware learning · Free',
+    scrollCue: 'Scroll down to try the live demo',
   },
   demo: {
     eyebrow: 'Interactive demo',

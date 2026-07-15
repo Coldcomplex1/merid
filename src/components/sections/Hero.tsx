@@ -17,7 +17,7 @@ export default function Hero() {
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-16 pb-28 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-36">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-16 pb-10 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-12">
         <div className="animate-fade-up">
           <p className="text-xs font-extrabold tracking-[0.22em] text-accent uppercase">
             {t.hero.eyebrow}
@@ -59,6 +59,25 @@ export default function Hero() {
         <div className="animate-fade-up mx-auto w-full max-w-lg pb-16 lg:pb-8" style={{ animationDelay: '0.15s' }}>
           <BrowserMockup />
         </div>
+      </div>
+
+      {/* Scroll cue: bouncing chevrons that invite visitors down to the demo. */}
+      <div className="relative mx-auto flex max-w-6xl justify-center px-5 pb-16 sm:px-8 lg:pb-20">
+        <a
+          href="#demo"
+          aria-label={t.hero.scrollCue}
+          className="group flex flex-col items-center gap-2 text-muted transition-colors hover:text-accent"
+        >
+          <span className="text-sm font-bold tracking-wide">{t.hero.scrollCue}</span>
+          <span className="animate-bounce-down flex flex-col items-center">
+            <svg width="28" height="17" viewBox="0 0 28 17" fill="none" aria-hidden="true">
+              <path d="M4 4l10 9 10-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <svg width="28" height="17" viewBox="0 0 28 17" fill="none" aria-hidden="true" className="-mt-2.5 opacity-70">
+              <path d="M4 4l10 9 10-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </a>
       </div>
     </section>
   )
