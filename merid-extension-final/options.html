@@ -76,13 +76,30 @@
                     <label for="authEmail">Email</label>
                     <input type="text" id="authEmail" autocomplete="email" placeholder="you@example.com">
                 </div>
+
+                <!-- Passwordless (Firebase Auth email link) - no password to remember. -->
+                <div class="auth-actions">
+                    <button class="btn" id="sendLinkBtn" type="button">Email me a sign-in link</button>
+                </div>
+                <div id="linkWait" hidden>
+                    <p class="hint">Link sent ✓ Open the email from Merid, copy the sign-in link address (right-click the button → Copy link), and paste it here to finish:</p>
+                    <div class="field">
+                        <label for="linkInput">Paste the sign-in link</label>
+                        <input type="text" id="linkInput" autocomplete="off" placeholder="https://…oobCode=…">
+                    </div>
+                    <div class="auth-actions">
+                        <button class="btn" id="linkSignInBtn" type="button">Complete sign-in</button>
+                    </div>
+                </div>
+
+                <p class="hint">Or sign in with your password:</p>
                 <div class="field">
                     <label for="authPassword">Password (min 8 characters)</label>
                     <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
                 </div>
                 <p class="hint auth-error" id="authError" hidden></p>
                 <div class="auth-actions">
-                    <button class="btn" id="signInBtn" type="button">Sign in</button>
+                    <button class="btn ghost" id="signInBtn" type="button">Sign in</button>
                     <button class="btn ghost" id="signUpBtn" type="button">Create account</button>
                 </div>
             </div>

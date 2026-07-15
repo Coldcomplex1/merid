@@ -164,8 +164,14 @@ const account = {
     syncState: document.getElementById('syncState'),
     signInBtn: document.getElementById('signInBtn'),
     signUpBtn: document.getElementById('signUpBtn'),
-    signOutBtn: document.getElementById('signOutBtn')
+    signOutBtn: document.getElementById('signOutBtn'),
+    sendLinkBtn: document.getElementById('sendLinkBtn'),
+    linkWait: document.getElementById('linkWait'),
+    linkInput: document.getElementById('linkInput'),
+    linkSignInBtn: document.getElementById('linkSignInBtn')
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Coarse error codes from the service worker -> friendly copy. Sign-in
 // failures deliberately collapse into one message so the UI never reveals
@@ -178,7 +184,12 @@ const AUTH_ERRORS = {
     INVALID_EMAIL: 'Please enter a valid email address.',
     WEAK_PASSWORD: 'Password must be at least 8 characters.',
     TOO_MANY_ATTEMPTS_TRY_LATER: 'Too many attempts. Please try again later.',
-    NETWORK: 'No connection. Check your internet and try again.'
+    NETWORK: 'No connection. Check your internet and try again.',
+    // Email-link (passwordless) sign-in
+    OPERATION_NOT_ALLOWED: 'Email-link sign-in is not enabled for this Firebase project (console → Authentication → Sign-in method → Email link).',
+    INVALID_OOB_CODE: 'That link is invalid or was already used. Send yourself a new one.',
+    EXPIRED_OOB_CODE: 'That link has expired. Send yourself a new one.',
+    BAD_LINK: 'That doesn\'t look like the sign-in link. Paste the full link from the email (it contains "oobCode=").'
 };
 
 function showAuthError(code) {
@@ -213,10 +224,44 @@ function refreshAccountCard() {
     });
 }
 
+// --- Passwordless email-link sign-in (no password to remember) ---
+function sendSignInLink() {
+    const email = account.email.value.trim();
+    if (!EMAIL_RE.test(email)) { showAuthError('INVALID_EMAIL'); return; }
+    showAuthError(null);
+    account.sendLinkBtn.disabled = true;
+    account.sendLinkBtn.textContent = 'Sending…';
+    chrome.runtime.sendMessage({ type: 'MERID_SYNC_SEND_LINK', email }, (res) => {
+        account.sendLinkBtn.disabled = false;
+        account.sendLinkBtn.textContent = 'Email me a sign-in link';
+        if (chrome.runtime.lastError || !res) { showAuthError('NETWORK'); return; }
+        if (!res.ok) { showAuthError(res.code); return; }
+        account.linkWait.hidden = false;
+        account.linkInput.focus();
+    });
+}
+
+function completeLinkSignIn() {
+    const email = account.email.value.trim();
+    const link = account.linkInput.value.trim();
+    if (!EMAIL_RE.test(email)) { showAuthError('INVALID_EMAIL'); return; }
+    if (!link) { showAuthError('BAD_LINK'); return; }
+    showAuthError(null);
+    account.linkSignInBtn.disabled = true;
+    chrome.runtime.sendMessage({ type: 'MERID_SYNC_LINK_SIGNIN', email, link }, (res) => {
+        account.linkSignInBtn.disabled = false;
+        if (chrome.runtime.lastError || !res) { showAuthError('NETWORK'); return; }
+        if (!res.ok) { showAuthError(res.code); return; }
+        account.linkInput.value = '';
+        account.linkWait.hidden = true;
+        refreshAccountCard();
+    });
+}
+
 function submitAuth(isNewAccount) {
     const email = account.email.value.trim();
     const password = account.password.value;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAuthError('INVALID_EMAIL'); return; }
+    if (!EMAIL_RE.test(email)) { showAuthError('INVALID_EMAIL'); return; }
     if (password.length < 8) { showAuthError('WEAK_PASSWORD'); return; }
     showAuthError(null);
     account.signInBtn.disabled = account.signUpBtn.disabled = true;
@@ -237,6 +282,9 @@ function wireAccount() {
     account.signInBtn.addEventListener('click', () => submitAuth(false));
     account.signUpBtn.addEventListener('click', () => submitAuth(true));
     account.password.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(false); });
+    account.sendLinkBtn.addEventListener('click', sendSignInLink);
+    account.linkSignInBtn.addEventListener('click', completeLinkSignIn);
+    account.linkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeLinkSignIn(); });
     account.signOutBtn.addEventListener('click', () => {
         chrome.runtime.sendMessage({ type: 'MERID_SYNC_SIGN_OUT' }, () => {
             void chrome.runtime.lastError;
