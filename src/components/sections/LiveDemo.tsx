@@ -66,8 +66,11 @@ export default function LiveDemo() {
   const [resizing, setResizing] = useState(false)
   // True while the Merid guide is pointing at the Facebook tab, so it pulses.
   const [guideFbPulse, setGuideFbPulse] = useState(false)
-  // True for the whole guided tour, so the demo hides the native cursor.
+  // True for the whole guided tour, so the demo hides the native cursor and
+  // locks scrolling.
   const [guiding, setGuiding] = useState(false)
+  // True just after the tour ends, to invite the visitor to try it themselves.
+  const [showTry, setShowTry] = useState(false)
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -281,11 +284,12 @@ export default function LiveDemo() {
       const words = bandHeight() >= 380 ? allWords().slice(0, 2) : []
       if (!words.length && (!fbTab || !onScreen(fbTab))) return
 
+      // Lock the demo for the whole tour: hide the native cursor and freeze
+      // scrolling, so the visitor watches without fighting the guide.
+      setGuiding(true)
+
       let shown = false
       const reveal = () => {
-        // Hide the native cursor over the demo for the length of the tour, so
-        // it never appears on top of Merid's pointer.
-        setGuiding(true)
         guide.show()
         shown = true
       }
@@ -334,6 +338,8 @@ export default function LiveDemo() {
       if (cancelled) return
       setGuideFbPulse(false)
       cleanup()
+      // The demo is unlocked again; invite the visitor to take over.
+      if (shown) setShowTry(true)
     }
 
     void run()
@@ -346,6 +352,44 @@ export default function LiveDemo() {
     // stable closures over refs, and depending on them would restart the tour on
     // every card render.
   }, [browserInView, tab])
+
+  // While the guide plays, freeze scrolling over the demo. The scroller itself
+  // is set to overflow:hidden (below), and here we swallow wheel/touch so the
+  // gesture cannot scroll the page underneath either. The guide still scrolls
+  // the page programmatically, which these listeners do not affect.
+  useEffect(() => {
+    if (!guiding) return
+    const box = browserBoxRef.current
+    if (!box) return
+    const block = (e: Event) => e.preventDefault()
+    box.addEventListener('wheel', block, { passive: false })
+    box.addEventListener('touchmove', block, { passive: false })
+    return () => {
+      box.removeEventListener('wheel', block)
+      box.removeEventListener('touchmove', block)
+    }
+  }, [guiding])
+
+  // The "try it yourself" nudge clears itself the moment the visitor engages
+  // with the demo (or after a short while), so it never lingers in the way.
+  useEffect(() => {
+    if (!showTry) return
+    const box = browserBoxRef.current
+    const scroller = scrollerRef.current
+    const hide = () => setShowTry(false)
+    const timer = window.setTimeout(hide, 7000)
+    box?.addEventListener('pointerdown', hide)
+    box?.addEventListener('wheel', hide, { passive: true })
+    box?.addEventListener('touchstart', hide, { passive: true })
+    scroller?.addEventListener('scroll', hide, { passive: true })
+    return () => {
+      window.clearTimeout(timer)
+      box?.removeEventListener('pointerdown', hide)
+      box?.removeEventListener('wheel', hide)
+      box?.removeEventListener('touchstart', hide)
+      scroller?.removeEventListener('scroll', hide)
+    }
+  }, [showTry])
 
   const maxBrowserW = () => {
     const row = browserBoxRef.current?.parentElement
@@ -474,7 +518,7 @@ export default function LiveDemo() {
                   className="w-full min-w-0 lg:w-[var(--demo-w)]"
                 >
               <DemoCursorZone guiding={guiding}>
-              <div className="overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
+              <div className="relative overflow-hidden rounded-2xl bg-[#dee1e6] shadow-card ring-1 ring-navy-600/60">
                 {/* Tab strip: both tabs are live pages, click to switch */}
                 <div className="flex items-end gap-1.5 px-3 pt-2">
                   <div className="mr-1.5 flex items-center gap-2 self-center">
@@ -549,9 +593,9 @@ export default function LiveDemo() {
                 {/* Scrollable page for the active tab */}
                 <div
                   ref={scrollerRef}
-                  className={`wiki-scroll relative h-[480px] overflow-y-auto overscroll-contain sm:h-[560px] xl:h-[min(70vh,800px)] ${
-                    tab === 'fb' ? 'bg-[#f0f2f5]' : 'bg-white'
-                  }`}
+                  className={`wiki-scroll relative h-[480px] overscroll-contain sm:h-[560px] xl:h-[min(70vh,800px)] ${
+                    guiding ? 'overflow-hidden' : 'overflow-y-auto'
+                  } ${tab === 'fb' ? 'bg-[#f0f2f5]' : 'bg-white'}`}
                 >
                   <div ref={contentRef} className="relative min-h-full" onPointerDown={handlePagePointerDown}>
                     {tab === 'wiki' ? (
@@ -590,6 +634,29 @@ export default function LiveDemo() {
                     )}
                   </div>
                 </div>
+
+                {/* Invitation shown the moment the guided tour finishes. Sits
+                    in the upper third so it stays visible even when the browser
+                    mockup runs past the bottom of the viewport. */}
+                {showTry && (
+                  <div className="pointer-events-none absolute inset-x-0 top-1/3 z-40 flex justify-center">
+                    <span className="animate-pop-in flex items-center gap-2 rounded-full bg-gold-400 px-5 py-2.5 text-sm font-extrabold text-navy-900 shadow-pop ring-1 ring-gold-600/40">
+                      <svg width="15" height="18" viewBox="0 0 26 34" fill="none" aria-hidden="true" className="-ml-0.5">
+                        <g transform="rotate(11 5 3)">
+                          <path
+                            d="M5 3 L5 19.8 L8.9 16.2 L15 14.4 Z"
+                            fill="#16213c"
+                            stroke="#fdf9ef"
+                            strokeWidth="1.6"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
+                      {t.demo.tryIt}
+                    </span>
+                  </div>
+                )}
               </div>
               </DemoCursorZone>
                 </div>

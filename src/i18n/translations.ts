@@ -79,6 +79,7 @@ export interface Strings {
     title: string
     sub: string
     resizeHandle: string
+    tryIt: string
   }
   features: {
     eyebrow: string
@@ -234,6 +235,7 @@ const vi: Strings = {
     title: 'Xem Merid hoạt động ngay tại đây',
     sub: 'Đây chính là panel thật của extension. Đổi bộ từ, chỉnh cường độ, rồi cuộn trang Wikipedia hoặc mở tab Facebook bên dưới và di chuột lên bất kỳ từ nào được tô sáng.',
     resizeHandle: 'Kéo để chỉnh độ rộng trang demo. Nhấp đúp để trở về kích thước đầy đủ.',
+    tryIt: 'Tới lượt bạn! Tự mình thử ngay nhé.',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -583,6 +585,7 @@ const en: Strings = {
     title: 'See it work in real time',
     sub: "This is the extension's real panel. Pick a dataset, tune the intensity, then scroll the Wikipedia page or the Facebook tab below and hover any highlighted word.",
     resizeHandle: 'Drag to resize the demo page. Double-click to restore the full width.',
+    tryIt: 'Your turn! Try it yourself.',
   },
   features: {
     eyebrow: 'Features',
