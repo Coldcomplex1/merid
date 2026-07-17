@@ -41,16 +41,15 @@ src/
       Reveal.tsx             # fade-up on scroll wrapper
       SectionHeading.tsx     # eyebrow + title + subtitle block
     sections/
-      Navbar.tsx  Hero.tsx  LiveDemo.tsx  Features.tsx  PanelShowcase.tsx
-      HowItWorks.tsx  Benefits.tsx  Waitlist.tsx  Footer.tsx
+      AnnouncementBanner.tsx  Navbar.tsx  Hero.tsx  LiveDemo.tsx  Features.tsx
+      PanelShowcase.tsx  HowItWorks.tsx  Benefits.tsx  Faq.tsx  FinalCta.tsx  Footer.tsx
 ```
 
 ## Notable behavior
 
-- **Waitlist backend**: the form posts to Formspree. Paste your form endpoint into
-  `src/config.ts` (see the comment there and the setup steps in
-  [DEPLOYMENT.md](./DEPLOYMENT.md)). Until then, submissions simulate success and log a
-  console warning; no email is stored.
+- **Install links**: every "Add to Chrome" / "Install" action links to the official Chrome
+  Web Store listing. The URL is defined once in `src/config.ts` (`CHROME_STORE_URL`); change it
+  there if the listing ever moves (see the comment in that file).
 - **Languages**: Vietnamese is the default; the navbar VI/EN toggle switches all marketing
   copy and persists in `localStorage` (`merid-lang`). Strings live in
   `src/i18n/translations.ts`; the tiny provider is `src/i18n/LanguageContext.tsx`. Product
@@ -62,10 +61,10 @@ src/
 - **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
   rewrites all paths to `index.html` so deep links work in production.
-- **Live demo** (`LiveDemo.tsx`): the Vietnamese paragraph is data-driven. Each vocab entry is
-  tagged with datasets and a frequency tier, so switching SAT/B2/C1/C2 or moving the slider
-  visibly changes which words are replaced. Hovering/clicking a highlighted word opens the
-  popup card anchored to the word (it flips above the word near the card bottom).
+- **Live demo** (`LiveDemo.tsx`): the Vietnamese page is data-driven. Each vocab entry is
+  tagged with datasets and a frequency tier, so switching the dataset (SAT/C1/C2/All) or moving
+  the intensity slider visibly changes which words are replaced. Hovering/clicking a highlighted
+  word opens the popup card anchored to the word (it flips above the word near the card bottom).
 - **Extension panel** (`ExtensionPanel.tsx`): fully interactive mockup. Dataset buttons,
   frequency slider, toggles, and the Extension ON/OFF button all hold real state.
 - Reduced-motion preferences are respected (`prefers-reduced-motion` disables the loops).
