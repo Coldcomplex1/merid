@@ -14,6 +14,18 @@
             <div class="logo">Merid</div>
         </header>
 
+        <!-- Account: sign-in happens on merid.site (Google or email) and the
+             session carries into the extension automatically (SSO bridge). -->
+        <section class="account-section" id="account-section" hidden>
+            <div id="account-signed-out" hidden>
+                <button class="btn-signin" id="signin-btn" type="button">Sign in / Sign up ↗</button>
+                <p class="account-hint">One account for merid.site and this extension - sign in once on merid.site and it carries over here automatically.</p>
+            </div>
+            <div id="account-signed-in" hidden>
+                <p class="account-email">Signed in as <strong id="account-email"></strong></p>
+            </div>
+        </section>
+
         <section class="dataset-section">
             <h3 class="section-title">Vocabulary dataset</h3>
             <div class="dataset-btns" id="dataset-btns">

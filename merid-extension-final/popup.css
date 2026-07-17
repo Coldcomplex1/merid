@@ -443,6 +443,49 @@ footer {
 }
 
 .link-btn:hover { text-decoration: underline; }
+
+/* Account section (top of the popup): sign-in link-out to merid.site, or the
+   signed-in identity. Same yellow primary-button family as .btn-view-deck. */
+.account-section { margin-bottom: 14px; }
+
+.btn-signin {
+    background-color: var(--accent-yellow);
+    color: #020c1b;
+    border: 1px solid var(--accent-yellow);
+    width: 100%;
+    padding: 11px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: filter 0.2s;
+}
+
+.btn-signin:hover { filter: brightness(1.08); }
+
+.account-hint {
+    margin: 8px 0 0;
+    font-size: 10.5px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.account-email {
+    margin: 0;
+    padding: 10px;
+    border: 1px solid rgba(244, 190, 55, 0.35);
+    border-radius: 6px;
+    background: rgba(244, 190, 55, 0.08);
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.account-email strong { color: var(--accent-yellow); }
 /* "View my deck" - primary footer action, opens merid.site/my-deck. */
 .btn-view-deck {
     background-color: var(--accent-yellow);

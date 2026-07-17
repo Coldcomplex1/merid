@@ -28,6 +28,10 @@
         //      make the button explain what's missing (it is NOT a secret).
         googleClientId: '',
         // Where the "View my deck" popup button points.
-        webDeckUrl: 'https://merid.site/my-deck'
+        webDeckUrl: 'https://merid.site/my-deck',
+        // Where the popup's "Sign in / Sign up" button points. Signing in on
+        // merid.site (Google or email) carries into the extension via the
+        // content-bridge single sign-on.
+        webLoginUrl: 'https://merid.site/login'
     };
 });

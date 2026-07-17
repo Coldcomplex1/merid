@@ -87,19 +87,29 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.create({ url: window.VMFirebaseConfig.webDeckUrl });
     });
 
-    // Saved words only reach merid.site after signing in (on merid.site or in
-    // Settings). Surface that loudly so nobody wonders where their words went.
+    // Account section + footer sync hint. Sign-in happens on merid.site (the
+    // /login page has Google + email); the session carries into the extension
+    // through the content-bridge SSO, so the popup only needs to link there.
+    // The URL is a fixed constant from lib/firebase-config.js (A10).
+    const openLoginPage = () => chrome.tabs.create({ url: window.VMFirebaseConfig.webLoginUrl });
+    const accountSection = document.getElementById('account-section');
+    const accountSignedOut = document.getElementById('account-signed-out');
+    const accountSignedIn = document.getElementById('account-signed-in');
+    document.getElementById('signin-btn').addEventListener('click', openLoginPage);
+
     const syncHint = document.getElementById('sync-hint');
     chrome.runtime.sendMessage({ type: 'MERID_SYNC_STATUS' }, (status) => {
         if (chrome.runtime.lastError || !status || status.state === 'disabled') return;
+        accountSection.hidden = false;
         if (status.state === 'signed-out') {
+            accountSignedOut.hidden = false;
             syncHint.hidden = false;
             syncHint.classList.add('warn');
-            syncHint.textContent = '⚠ Not signed in - saved words stay on this device only. Sign in via Settings.';
-            syncHint.addEventListener('click', () => {
-                if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
-            });
+            syncHint.textContent = '⚠ Not signed in - saved words stay on this device only.';
+            syncHint.addEventListener('click', openLoginPage);
         } else {
+            accountSignedIn.hidden = false;
+            document.getElementById('account-email').textContent = status.email || 'your account';
             syncHint.hidden = false;
             syncHint.textContent = 'Syncing to your deck as ' + (status.email || 'your account');
         }
