@@ -22,11 +22,17 @@ let knownSet = new Set();
 let savedSet = new Set();
 
 const MAX_REPLACEMENTS_PER_PAGE = 800;   // safety cap to protect big pages
+const MAX_WORDS_PER_POST = 3;            // translate only a few words per post/article
 const MUTATION_DEBOUNCE_MS = 300;
 
 // Text nodes we've already looked at (avoids MutationObserver reprocessing loops).
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
+
+// Replacements used per "post" (feed item / article / text block), capped at
+// MAX_WORDS_PER_POST so a single post only gets a few translated words.
+// Reset on every init().
+let postWordCounts = new WeakMap();
 
 const FORBIDDEN_TAGS = new Set([
     'script', 'style', 'textarea', 'input', 'select', 'noscript', 'code', 'pre',
@@ -53,6 +59,7 @@ console.log('[VM] Content script starting…');
 function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
+    postWordCounts = new WeakMap();
     aiCheckedWords = new Set();
     aiChecksSent = 0;
     if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
@@ -139,6 +146,15 @@ function processPage(vocabMap) {
     processChunk();
 }
 
+// The nearest thing that reads as one "post": a feed item/article when the
+// site marks one up, otherwise the closest text block, otherwise the page.
+function postContainerFor(el) {
+    if (!el) return document.body;
+    return el.closest('article, [role="article"], [role="listitem"]') ||
+        el.closest('p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, section, main') ||
+        document.body;
+}
+
 function processTextNode(node, vocabMap) {
     const original = node.textContent;
     if (!original || !original.trim() || vocabMap.size === 0) { processedNodes.add(node); return; }
@@ -147,6 +163,8 @@ function processTextNode(node, vocabMap) {
     const tokens = C.tokenize(original);
     const out = [];
     let modified = false;
+    let container = null; // resolved lazily on the first eligible match
+    let postCount = 0;
 
     for (let i = 0; i < tokens.length; i++) {
         const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE
@@ -173,12 +191,26 @@ function processTextNode(node, vocabMap) {
             continue;
         }
 
+        // Per-post budget - only a few translated words per post/article.
+        if (container === null) {
+            container = postContainerFor(node.parentElement);
+            postCount = postWordCounts.get(container) || 0;
+        }
+        if (postCount >= MAX_WORDS_PER_POST) {
+            out.push(makeTextNode(matchedText));
+            i += size - 1;
+            continue;
+        }
+
         const span = document.createElement('span');
         span.className = 'vocab-master-highlight';
         span.dataset.word = item.word;
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
         applyDisplayMode(span);
+
+        postCount++;
+        postWordCounts.set(container, postCount);
 
         out.push(span);
         i += size - 1;
@@ -286,9 +318,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Runs after the initial scan AND (debounced) after dynamically-added
 // content gets replaced, since modern sites render most text after load.
 // Each run sends one batched request: unique unchecked replaced words +
-// a short sentence snippet each. Words the AI flags as out-of-context get
-// a gray underline (vocab-ai-flagged) instead of the yellow one - nothing
-// is reverted automatically. Failures never break the page.
+// a short sentence snippet each. Words the AI flags as out-of-context are
+// reverted back to the original text immediately (no gray underline, no
+// user action needed). Failures never break the page.
 // -------------------------------------------------------------
 const AI_SNIPPET_RADIUS = 60;      // chars kept around the word - keeps tokens low
 const AI_CHECK_MAX_BATCHES = 3;    // max requests per page visit (cost cap)
@@ -310,10 +342,6 @@ function sentenceAround(span) {
     if (idx === -1) return text.slice(0, AI_SNIPPET_RADIUS * 2);
     const start = Math.max(0, idx - AI_SNIPPET_RADIUS);
     return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
-}
-
-function flagSpan(span) {
-    if (span && span.isConnected) span.classList.add('vocab-ai-flagged');
 }
 
 function runAiContextCheck() {
@@ -345,12 +373,13 @@ function runAiContextCheck() {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
             return;
         }
-        let flagged = 0;
+        let reverted = 0;
         batch.forEach((sp, i) => {
-            aiCheckedWords.add((sp.dataset.word || '').toLowerCase());
-            if (res.verdicts[i] === 0) { flagSpan(sp); flagged++; }
+            const word = sp.dataset.word || '';
+            aiCheckedWords.add(word.toLowerCase());
+            if (res.verdicts[i] === 0) { revertWord(word); reverted++; }
         });
-        console.log('[VM] AI context check: verified', batch.length, 'words, flagged', flagged, '(model: ' + (res.model || '?') + ')');
+        console.log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
     });
 }
 
@@ -369,7 +398,8 @@ function revertPage() {
     replacedCount = 0;
 }
 
-// Unwrap only the spans for a single headword (used by "I know this").
+// Unwrap only the spans for a single headword (used by "I know this" and by
+// the AI context check when it rejects a replacement).
 function revertWord(word) {
     const wl = String(word).toLowerCase();
     const parents = new Set();
@@ -378,7 +408,9 @@ function revertWord(word) {
         const originalText = span.dataset.original || span.textContent;
         if (span.classList.contains('vocab-replaced')) replacedCount = Math.max(0, replacedCount - 1);
         if (span.parentNode) parents.add(span.parentNode);
-        span.replaceWith(document.createTextNode(originalText));
+        // makeTextNode marks the node processed, so the MutationObserver does
+        // not immediately re-replace the text we just put back.
+        span.replaceWith(makeTextNode(originalText));
     });
     parents.forEach(p => { try { p.normalize(); } catch (e) { /* detached */ } });
 }
