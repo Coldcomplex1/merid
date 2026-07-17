@@ -10,6 +10,8 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged as firebaseOnAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
 } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
@@ -39,6 +41,16 @@ export async function signIn(email: string, password: string): Promise<User> {
   return cred.user
 }
 
+/** One-click Google sign-in via the account picker. Firebase's popup flow
+ *  handles the whole OAuth dance (state/nonce, token verification) itself;
+ *  we only ask for the minimal default scopes (openid email profile). */
+export async function signInWithGoogle(): Promise<User> {
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  const cred = await signInWithPopup(firebaseAuth(), provider)
+  return cred.user
+}
+
 export function signOut(): Promise<void> {
   return firebaseSignOut(firebaseAuth())
 }
@@ -50,7 +62,16 @@ export function onAuthStateChanged(cb: (user: User | null) => void): () => void 
 /** Map Firebase auth errors to coarse buckets. Wrong email vs. wrong password
  *  (and unknown accounts) all collapse into 'badCredentials' so the UI never
  *  reveals whether an email is registered. */
-export type AuthErrorKind = 'badCredentials' | 'emailInUse' | 'weakPassword' | 'tooManyRequests' | 'network' | 'unknown'
+export type AuthErrorKind =
+  | 'badCredentials'
+  | 'emailInUse'
+  | 'weakPassword'
+  | 'tooManyRequests'
+  | 'network'
+  | 'unknown'
+  | 'cancelled'
+  | 'popupBlocked'
+  | 'providerDisabled'
 
 export function classifyAuthError(err: unknown): AuthErrorKind {
   if (err instanceof FirebaseError) {
@@ -70,6 +91,15 @@ export function classifyAuthError(err: unknown): AuthErrorKind {
         return 'tooManyRequests'
       case 'auth/network-request-failed':
         return 'network'
+      // Google popup flow
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+      case 'auth/user-cancelled':
+        return 'cancelled'
+      case 'auth/popup-blocked':
+        return 'popupBlocked'
+      case 'auth/operation-not-allowed':
+        return 'providerDisabled'
     }
   }
   return 'unknown'

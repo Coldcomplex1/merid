@@ -50,6 +50,8 @@ export interface Strings {
       submitSignup: string
       switchToSignup: string
       switchToLogin: string
+      googleButton: string
+      orEmail: string
       errors: {
         badCredentials: string
         emailInUse: string
@@ -59,6 +61,9 @@ export interface Strings {
         network: string
         unknown: string
         notConfigured: string
+        cancelled: string
+        popupBlocked: string
+        providerDisabled: string
       }
     }
   }
@@ -200,6 +205,8 @@ const vi: Strings = {
       submitSignup: 'Đăng ký',
       switchToSignup: 'Chưa có tài khoản? Đăng ký',
       switchToLogin: 'Đã có tài khoản? Đăng nhập',
+      googleButton: 'Đăng nhập với Google',
+      orEmail: 'hoặc dùng email',
       errors: {
         badCredentials: 'Email hoặc mật khẩu không đúng.',
         emailInUse: 'Email này đã được đăng ký. Hãy đăng nhập.',
@@ -209,6 +216,9 @@ const vi: Strings = {
         network: 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.',
         unknown: 'Có lỗi xảy ra. Vui lòng thử lại.',
         notConfigured: 'Tài khoản chưa khả dụng trên bản triển khai này.',
+        cancelled: 'Bạn đã huỷ đăng nhập.',
+        popupBlocked: 'Trình duyệt chặn cửa sổ đăng nhập. Hãy cho phép popup cho merid.site rồi thử lại.',
+        providerDisabled: 'Đăng nhập Google chưa được bật cho dự án này.',
       },
     },
   },
@@ -551,6 +561,8 @@ const en: Strings = {
       submitSignup: 'Sign up',
       switchToSignup: "Don't have an account? Sign up",
       switchToLogin: 'Already have an account? Log in',
+      googleButton: 'Sign in with Google',
+      orEmail: 'or use your email',
       errors: {
         badCredentials: 'Email or password is incorrect.',
         emailInUse: 'This email is already registered. Try logging in.',
@@ -560,6 +572,9 @@ const en: Strings = {
         network: 'No connection. Check your internet and try again.',
         unknown: 'Something went wrong. Please try again.',
         notConfigured: 'Accounts are not available on this deployment.',
+        cancelled: 'Sign-in was cancelled.',
+        popupBlocked: 'Your browser blocked the sign-in window. Allow popups for merid.site and try again.',
+        providerDisabled: 'Google sign-in is not enabled for this project.',
       },
     },
   },

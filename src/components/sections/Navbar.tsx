@@ -9,7 +9,7 @@ import InstallButton from '../ui/InstallButton'
 
 export default function Navbar() {
   const { t } = useLang()
-  const { user, configured } = useAuth()
+  const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
@@ -60,6 +60,15 @@ export default function Navbar() {
         <div className="flex items-center gap-2.5 sm:gap-3">
           <LangToggle />
           <ThemeToggle />
+          {/* Login must always be discoverable, not only inside the hamburger. */}
+          {!user && (
+            <Link
+              to="/login"
+              className="hidden text-sm font-semibold text-body transition-colors hover:text-accent md:block"
+            >
+              {t.deck.menu.login}
+            </Link>
+          )}
           <span className="hidden sm:block">
             <InstallButton label={t.nav.cta} variant="compact" />
           </span>
@@ -108,7 +117,9 @@ export default function Navbar() {
                       {t.deck.menu.logout}
                     </button>
                   </>
-                ) : configured ? (
+                ) : (
+                  // Always offered: /login itself explains the rare case where
+                  // accounts are unavailable, instead of hiding the entry point.
                   <>
                     <Link to="/login" className={menuItem}>
                       {t.deck.menu.login}
@@ -117,7 +128,7 @@ export default function Navbar() {
                       {t.deck.menu.signup}
                     </Link>
                   </>
-                ) : null}
+                )}
               </div>
             )}
           </div>
