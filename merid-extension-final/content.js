@@ -22,16 +22,15 @@ let knownSet = new Set();
 let savedSet = new Set();
 
 const MAX_REPLACEMENTS_PER_PAGE = 800;   // safety cap to protect big pages
-const MAX_WORDS_PER_POST = 3;            // translate only a few words per post/article
 const MUTATION_DEBOUNCE_MS = 300;
 
 // Text nodes we've already looked at (avoids MutationObserver reprocessing loops).
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
 
-// Replacements used per "post" (feed item / article / text block), capped at
-// MAX_WORDS_PER_POST so a single post only gets a few translated words.
-// Reset on every init().
+// Replacements used per "post" (feed item / article / text block). Each post
+// gets a word budget derived from the frequency setting (VMCore.maxWordsPerPost)
+// so the intensity control matches what actually shows up. Reset on every init().
 let postWordCounts = new WeakMap();
 
 const FORBIDDEN_TAGS = new Set([
@@ -191,12 +190,13 @@ function processTextNode(node, vocabMap) {
             continue;
         }
 
-        // Per-post budget - only a few translated words per post/article.
+        // Per-post budget - the frequency setting decides how many words a
+        // single post/article may get (light ≈ 2, medium ≈ 4, heavy ≈ 7).
         if (container === null) {
             container = postContainerFor(node.parentElement);
             postCount = postWordCounts.get(container) || 0;
         }
-        if (postCount >= MAX_WORDS_PER_POST) {
+        if (postCount >= C.maxWordsPerPost(settings.frequency)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;

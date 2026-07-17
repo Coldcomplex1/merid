@@ -6,6 +6,8 @@ rules_version = '2';
 //   users/{uid}                – profile + daily write counter (rate limit)
 //   users/{uid}/words/{wordId} – one document per saved/known word,
 //                                wordId == normalized (lowercase) word
+//   users/{uid}/settings/ai    – private per-user settings (the user's own
+//                                Gemini API key for the extension's AI check)
 //
 // Guarantees:
 //   A01 – only request.auth.uid == uid can touch anything under users/{uid};
@@ -56,6 +58,28 @@ service cloud.firestore {
           && d.wordCountToday <= dailyLimit()
           && d.countDay is int
           && d.countDay == today();
+      }
+
+      // Private per-user settings. Only the fixed 'ai' doc exists: it backs up
+      // the user's OWN Gemini API key so it follows them across devices.
+      // Owner-only (A01) with a strict schema (A03) - no other doc id, no
+      // extra fields, no oversized/binary payloads.
+      match /settings/ai {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validAiSettings();
+
+        function validAiSettings() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['geminiKey', 'updatedAt'])
+            && d.keys().hasAll(['geminiKey', 'updatedAt'])
+            && d.geminiKey is string
+            && d.geminiKey.size() >= 1
+            && d.geminiKey.size() <= 128
+            // Google API keys are URL-safe token characters only - rejects
+            // whitespace, control chars and anything markup-shaped.
+            && d.geminiKey.matches('[A-Za-z0-9_\\-]+')
+            && d.updatedAt == request.time;
+        }
       }
 
       match /words/{wordId} {

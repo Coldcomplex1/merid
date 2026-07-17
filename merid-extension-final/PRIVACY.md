@@ -25,17 +25,28 @@ any AI or third-party API, and never transmits page content, URLs, browsing
 history, personal identifiers, cookies, or form/input contents anywhere.
 
 **Optional deck sync (off unless you sign in).** You can sign in (on merid.site
-- the login carries over automatically - or from the Settings page) to back up
-your saved deck and study it on merid.site. When signed in, the only data
-synced is your deck itself: the saved words with their dictionary info and your
-known-words list, stored in Firestore under your own account and protected by
-server-side security rules. Page content is still never sent anywhere. Signing
-out stops all syncing immediately.
+- the login carries over automatically - or from the Settings page, with your
+Google account or email) to back up your saved deck and study it on merid.site.
+When signed in, the only data synced is your deck (the saved words with their
+dictionary info and your known-words list) and, if you use the AI context
+check, your own Gemini API key (see "API keys" below) - stored in Firestore
+under your own account and protected by server-side security rules. Page
+content is still never sent anywhere. Signing out stops all syncing
+immediately.
 
 ## API keys
 
-- The extension contains **no API keys** and does not ask you for one.
-- There is no backend, proxy, or external service involved at any point.
+- The extension ships with **no API keys** and works fully without one.
+- The optional **AI context check** (off by default) uses **your own** Google
+  Gemini API key, which you create yourself at aistudio.google.com and paste
+  into Settings. The key is stored on your device (`chrome.storage.local`). If
+  you sign in to the optional deck sync, the key is additionally backed up to
+  your own account's private Firestore document — protected by server-side
+  security rules so only you can read it — purely so the feature keeps working
+  when you sign in on another device. The key is only ever sent to Google
+  endpoints (Gemini, Firestore) over TLS and is deleted from both places when
+  you clear it in Settings.
+- There is no Merid backend or proxy; nothing passes through servers we run.
 
 ## Your controls
 

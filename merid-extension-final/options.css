@@ -173,3 +173,17 @@ body {
 /* Account & sync card */
 .auth-actions { display: flex; gap: 10px; margin-top: 14px; }
 .auth-error { color: var(--danger); }
+
+/* One-click Google sign-in */
+.btn.google {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    color: #1f1f1f;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.btn.google:hover { background: #f4f6fb; }
+.btn.google:disabled { opacity: 0.6; cursor: default; }
+.g-logo { flex: none; }
+.auth-divider { margin-top: 12px; }

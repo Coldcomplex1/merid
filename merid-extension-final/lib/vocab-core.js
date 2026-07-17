@@ -63,7 +63,7 @@
     // ---------------------------------------------------------------------
     const DEFAULT_SETTINGS = {
         extensionEnabled: true,
-        frequency: 40,               // 0..100 - deterministic replacement-intensity gate per phrase (kept low: a few words per post)
+        frequency: 50,               // 0..100 - drives BOTH the per-phrase gate and the per-post word budget
         replacementMode: 'highlight',// 'replace' | 'highlight' | 'beside'
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
@@ -78,15 +78,26 @@
     }
 
     // Intensity <-> frequency mapping used by the options UI.
-    // Deliberately low across the board so a post only gets a few translations.
-    const INTENSITY_TO_FREQUENCY = { light: 15, medium: 40, heavy: 70 };
+    const INTENSITY_TO_FREQUENCY = { light: 25, medium: 50, heavy: 80 };
     function intensityToFrequency(mode) {
-        return INTENSITY_TO_FREQUENCY[mode] != null ? INTENSITY_TO_FREQUENCY[mode] : 40;
+        return INTENSITY_TO_FREQUENCY[mode] != null ? INTENSITY_TO_FREQUENCY[mode] : 50;
     }
     function frequencyToIntensity(freq) {
-        if (freq <= 25) return 'light';
-        if (freq <= 55) return 'medium';
+        if (freq <= 35) return 'light';
+        if (freq <= 65) return 'medium';
         return 'heavy';
+    }
+
+    /**
+     * Word budget for a single post/article, derived from the same 0..100
+     * frequency setting so the intensity control tracks what the user
+     * actually sees on the page: light ≈ 2 words per post, medium ≈ 4,
+     * heavy ≈ 7.
+     */
+    function maxWordsPerPost(frequency) {
+        const f = Math.max(0, Math.min(100, Number(frequency)));
+        if (!(f > 0)) return 0;
+        return Math.max(1, Math.round(f / 12));
     }
 
     // ---------------------------------------------------------------------
@@ -145,10 +156,6 @@
      * (`['vieEng','engEng']`) indexes Vietnamese meanings AND English synonyms in
      * one map, so a page can be scanned in both directions at once.
      *
-     * Vietnamese meanings are only indexed when they have at least two words
-     * ("từ vựng") - single syllables ("từ", "vựng") are far too ambiguous in
-     * Vietnamese and produce nonsense replacements.
-     *
      * @param {VocabularyEntry[]} activeVocab
      * @param {("vieEng"|"engEng")|Array<"vieEng"|"engEng">} modes
      */
@@ -175,9 +182,7 @@
                 (item.synonyms || '').split(',').forEach(s => addKey(s, item));
             }
             if (modeList.includes('vieEng')) {
-                (item.vietnamese || '').split(',').forEach(s => {
-                    if (normalizeKey(s).includes(' ')) addKey(s, item);
-                });
+                (item.vietnamese || '').split(',').forEach(s => addKey(s, item));
             }
         });
         return map;
@@ -304,7 +309,7 @@
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
-        INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
+        INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity, maxWordsPerPost,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching
