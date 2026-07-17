@@ -50,6 +50,18 @@ test('buildVocabMap keeps multiple English words for the same Vietnamese key', (
     assert.deepStrictEqual(map.get('thực hiện').map(i => i.word), ['implement']);
 });
 
+test('buildVocabMap vieEng indexes only multi-word Vietnamese meanings', () => {
+    const map = C.buildVocabMap(VOCAB, 'vieEng');
+    assert.ok(map.has('cân nhắc'));
+    assert.ok(map.has('xem xét'));
+    // single syllables are too ambiguous - must never be indexed
+    assert.ok(!map.has('giảm'));
+    // engEng synonyms are unaffected: single English words still index
+    const eng = C.buildVocabMap(VOCAB, 'engEng');
+    assert.ok(eng.has('ponder'));
+    assert.ok(eng.has('lessen'));
+});
+
 test('buildVocabMap engEng mode indexes synonyms', () => {
     const map = C.buildVocabMap(VOCAB, 'engEng');
     assert.ok(map.has('ponder'));
@@ -84,7 +96,9 @@ test('findMatch is greedy longest-first and respects word boundaries', () => {
 });
 
 test('findMatch single-word policy', () => {
-    const map = C.buildVocabMap(VOCAB, 'vieEng');
+    // Hand-built map: buildVocabMap no longer indexes single-word Vietnamese
+    // meanings, but findMatch itself still supports the option for engEng keys.
+    const map = new Map([['giảm', [{ word: 'reduce' }]]]);
     const toks = C.tokenize('Chúng tôi giảm chi phí.');
     const idx = toks.findIndex(t => t === 'giảm');
     // allowed by default
@@ -171,11 +185,15 @@ test('withDefaults carries no AI/backend settings', () => {
 });
 
 test('intensity <-> frequency mapping', () => {
-    assert.strictEqual(C.intensityToFrequency('light'), 30);
-    assert.strictEqual(C.intensityToFrequency('heavy'), 95);
-    assert.strictEqual(C.frequencyToIntensity(20), 'light');
-    assert.strictEqual(C.frequencyToIntensity(70), 'medium');
-    assert.strictEqual(C.frequencyToIntensity(95), 'heavy');
+    assert.strictEqual(C.intensityToFrequency('light'), 15);
+    assert.strictEqual(C.intensityToFrequency('heavy'), 70);
+    assert.strictEqual(C.frequencyToIntensity(15), 'light');
+    assert.strictEqual(C.frequencyToIntensity(40), 'medium');
+    assert.strictEqual(C.frequencyToIntensity(70), 'heavy');
+    // each preset round-trips to itself
+    for (const mode of ['light', 'medium', 'heavy']) {
+        assert.strictEqual(C.frequencyToIntensity(C.intensityToFrequency(mode)), mode);
+    }
 });
 
 test('dataset registry resolves files and tags, falling back to sat', () => {

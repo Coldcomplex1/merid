@@ -63,7 +63,7 @@
     // ---------------------------------------------------------------------
     const DEFAULT_SETTINGS = {
         extensionEnabled: true,
-        frequency: 70,               // 0..100 - deterministic replacement-intensity gate per phrase
+        frequency: 40,               // 0..100 - deterministic replacement-intensity gate per phrase (kept low: a few words per post)
         replacementMode: 'highlight',// 'replace' | 'highlight' | 'beside'
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
@@ -78,13 +78,14 @@
     }
 
     // Intensity <-> frequency mapping used by the options UI.
-    const INTENSITY_TO_FREQUENCY = { light: 30, medium: 65, heavy: 95 };
+    // Deliberately low across the board so a post only gets a few translations.
+    const INTENSITY_TO_FREQUENCY = { light: 15, medium: 40, heavy: 70 };
     function intensityToFrequency(mode) {
-        return INTENSITY_TO_FREQUENCY[mode] != null ? INTENSITY_TO_FREQUENCY[mode] : 65;
+        return INTENSITY_TO_FREQUENCY[mode] != null ? INTENSITY_TO_FREQUENCY[mode] : 40;
     }
     function frequencyToIntensity(freq) {
-        if (freq <= 45) return 'light';
-        if (freq <= 80) return 'medium';
+        if (freq <= 25) return 'light';
+        if (freq <= 55) return 'medium';
         return 'heavy';
     }
 
@@ -144,6 +145,10 @@
      * (`['vieEng','engEng']`) indexes Vietnamese meanings AND English synonyms in
      * one map, so a page can be scanned in both directions at once.
      *
+     * Vietnamese meanings are only indexed when they have at least two words
+     * ("từ vựng") - single syllables ("từ", "vựng") are far too ambiguous in
+     * Vietnamese and produce nonsense replacements.
+     *
      * @param {VocabularyEntry[]} activeVocab
      * @param {("vieEng"|"engEng")|Array<"vieEng"|"engEng">} modes
      */
@@ -170,7 +175,9 @@
                 (item.synonyms || '').split(',').forEach(s => addKey(s, item));
             }
             if (modeList.includes('vieEng')) {
-                (item.vietnamese || '').split(',').forEach(s => addKey(s, item));
+                (item.vietnamese || '').split(',').forEach(s => {
+                    if (normalizeKey(s).includes(' ')) addKey(s, item);
+                });
             }
         });
         return map;

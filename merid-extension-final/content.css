@@ -13,18 +13,6 @@
     border-bottom: 3px solid #f4be37;
 }
 
-/* AI context check flagged this word as a doubtful fit for its sentence:
-   gray underline instead of yellow. Hover card still works as usual. */
-.vocab-master-highlight.vocab-ai-flagged {
-    border-bottom-color: #9ca3af;
-    background-color: rgba(156, 163, 175, 0.10);
-}
-
-.vocab-master-highlight.vocab-ai-flagged:hover {
-    border-bottom-color: #9ca3af;
-    background-color: rgba(156, 163, 175, 0.2);
-}
-
 .vocab-master-tooltip {
     --vm-navy: #19355d;
     --vm-gold: #f3c94b;
