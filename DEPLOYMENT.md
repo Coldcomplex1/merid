@@ -66,22 +66,13 @@ All user data lives in Firebase, not in Vercel.
 
 ---
 
-## Activating the waitlist (one time, ~3 minutes)
+## The "Add to Chrome" link
 
-The waitlist form submits to [Formspree](https://formspree.io), a free form backend.
-**Until you connect it, submissions show a success message but are NOT stored anywhere**
-(a browser console warning reminds you of this).
+Merid is published on the Chrome Web Store, so every "Add to Chrome" / "Install" button on the
+site is a plain link to the listing — there is no form or backend to activate.
 
-1. Create a free account at <https://formspree.io/register>.
-2. Click **+ New form**, name it e.g. "Merid waitlist", and create it.
-3. Copy the form's endpoint URL. It looks like `https://formspree.io/f/xyzabcde`.
-4. Open **`src/config.ts`** in this repo and replace the placeholder value of
-   `WAITLIST_FORM_ENDPOINT` with your URL (the comment in that file marks the exact spot).
-5. Commit and push to `main`. Done: every signup now appears in your Formspree
-   dashboard, with optional email notifications and CSV export.
-
-The endpoint URL is public by design (it is not a secret key), so keeping it in the
-frontend code is safe and is how Formspree is meant to be used.
+The listing URL is defined once in **`src/config.ts`** (`CHROME_STORE_URL`). If the listing ever
+moves, change it there and push to `main`; every install button updates automatically.
 
 ---
 
