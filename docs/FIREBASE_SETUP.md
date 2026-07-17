@@ -64,6 +64,36 @@ quyền đọc/ghi dữ liệu. Quyền thật sự do **Firestore Security Rule
   (chống user enumeration). Firebase cũng tự chặn brute-force
   (`auth/too-many-requests`).
 
+## 3b. Đăng nhập nhanh bằng Google (extension)
+
+Nút **Sign in with Google** trong Settings của extension dùng
+`chrome.identity.launchWebAuthFlow` để mở màn hình chọn tài khoản Google,
+lấy về một **OpenID Connect id_token** (scope tối thiểu `openid email`) rồi
+đổi lấy session Firebase qua `accounts:signInWithIdp`. Cấu hình:
+
+1. **Bật provider**: Firebase console → Authentication → Sign-in method →
+   **Google** → Enable (chọn support email) → Save.
+2. **Lấy Web client ID**: mở lại provider Google vừa bật → *Web SDK
+   configuration* → copy **Web client ID**
+   (dạng `1234567890-abc.apps.googleusercontent.com`).
+3. **Lấy extension ID**: mở `chrome://extensions` (bật Developer mode) → copy
+   ID của Merid. Lưu ý: ID của bản unpacked thay đổi theo thư mục; khi lên
+   Chrome Web Store thì ID cố định. Muốn ID ổn định khi dev, thêm trường
+   `"key"` vào `manifest.json`.
+4. **Khai báo redirect URI**: Google Cloud console → APIs & Services →
+   Credentials → chọn đúng *Web client* ở bước 2 → **Authorized redirect
+   URIs** → thêm `https://<EXTENSION_ID>.chromiumapp.org/`.
+5. **Điền config**: dán Web client ID vào `googleClientId` trong
+   `merid-extension-final/lib/firebase-config.js`. (Client ID không phải
+   secret — giống `apiKey`, quyền thật sự nằm ở rules + việc Google xác minh
+   id_token khi đổi session.)
+
+Bảo mật của flow (A01/A07): tham số `state` chống CSRF (phải quay về nguyên
+vẹn), `nonce` chống replay (phải nằm trong token **đã được Google ký**), và
+chữ ký/audience/hạn của id_token do chính Google xác minh ở bước
+`signInWithIdp` — token giả không đổi được session. Extension không bao giờ
+log token.
+
 ## 4. Cấu trúc dữ liệu Firestore
 
 ```
@@ -81,6 +111,12 @@ users/{uid}/words/{wordId}
   status      'saved' | 'known'
   datasets    array ⊆ [SAT, B2, C1, C2]
   createdAt   timestamp (server)
+  updatedAt   timestamp (server)
+
+users/{uid}/settings/ai        — cài đặt riêng tư của user (chỉ owner đọc/ghi)
+  geminiKey   string 1..128    — Gemini API key CỦA CHÍNH USER (backup để
+                                 dùng lại trên máy khác); regex chỉ cho
+                                 ký tự token URL-safe, chặn markup/khoảng trắng
   updatedAt   timestamp (server)
 ```
 

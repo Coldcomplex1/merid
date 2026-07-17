@@ -121,6 +121,76 @@ async function signInWithEmailLink(email, link) {
 }
 
 // =============================================================
+// One-click "Sign in with Google" (the account picker).
+// chrome.identity.launchWebAuthFlow opens Google's own chooser; we ask for an
+// OpenID Connect id_token only (implicit flow, minimal "openid email" scope)
+// and trade it for a Firebase session via accounts:signInWithIdp.
+//
+// Security (A01/A07):
+//   - `state` must round-trip unchanged (CSRF protection) and the `nonce` we
+//     sent must appear inside the SIGNED token (replay protection).
+//   - The token's signature/audience/expiry are verified by Google when we
+//     exchange it - a forged or expired token cannot mint a session.
+//   - The session is adopted through Sync.adoptSession, the same validated
+//     path merid.site single sign-on uses. Nothing here logs tokens.
+// =============================================================
+function base64UrlDecode(s) {
+    return atob(String(s).replace(/-/g, '+').replace(/_/g, '/'));
+}
+
+function jwtClaim(jwt, claim) {
+    try { return JSON.parse(base64UrlDecode(jwt.split('.')[1]))[claim]; }
+    catch (e) { return null; }
+}
+
+function launchAuthFlow(url) {
+    return new Promise((resolve, reject) => {
+        chrome.identity.launchWebAuthFlow({ url, interactive: true }, (responseUrl) => {
+            if (chrome.runtime.lastError || !responseUrl) reject(new Error('canceled'));
+            else resolve(responseUrl);
+        });
+    });
+}
+
+async function googleSignIn() {
+    if (!FB || !FB.configured()) return { ok: false, code: 'NOT_CONFIGURED' };
+    if (!FBConfig.googleClientId) return { ok: false, code: 'GOOGLE_NOT_CONFIGURED' };
+    if (!chrome.identity || !chrome.identity.launchWebAuthFlow) return { ok: false, code: 'GOOGLE_NOT_CONFIGURED' };
+
+    const state = crypto.randomUUID();
+    const nonce = crypto.randomUUID();
+    const url = 'https://accounts.google.com/o/oauth2/v2/auth' +
+        '?client_id=' + encodeURIComponent(FBConfig.googleClientId) +
+        '&response_type=id_token' +
+        '&redirect_uri=' + encodeURIComponent(chrome.identity.getRedirectURL()) +
+        '&scope=' + encodeURIComponent('openid email') +
+        '&state=' + state +
+        '&nonce=' + nonce +
+        '&prompt=select_account';
+
+    let responseUrl;
+    try {
+        responseUrl = await launchAuthFlow(url);
+    } catch (e) {
+        return { ok: false, code: 'GOOGLE_CANCELLED' };
+    }
+
+    const params = new URLSearchParams(String(responseUrl).split('#')[1] || '');
+    const idToken = params.get('id_token');
+    if (!idToken || params.get('state') !== state || jwtClaim(idToken, 'nonce') !== nonce) {
+        return { ok: false, code: 'GOOGLE_BAD_RESPONSE' };
+    }
+
+    try {
+        const r = await FB.signInWithGoogleIdToken(idToken);
+        const adopted = await Sync.adoptSession(r.refreshToken, r.email || '');
+        return adopted.ok ? { ok: true, email: r.email } : adopted;
+    } catch (e) {
+        return { ok: false, code: e.code || 'UNKNOWN' };
+    }
+}
+
+// =============================================================
 // AI context check (optional, OFF by default).
 // Uses the user's OWN Gemini API key (entered on the options page, stored in
 // chrome.storage.local - never synced). One batched request per page, capped
@@ -254,6 +324,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
                 return true;
             }
+            // ---- One-click Google sign-in (options page) ----
+            case 'MERID_SYNC_GOOGLE_SIGNIN': {
+                googleSignIn()
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+                return true;
+            }
             // ---- Passwordless email-link sign-in (options page) ----
             case 'MERID_SYNC_SEND_LINK': {
                 sendSignInLink(request.email)
@@ -269,6 +346,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
 
             // ---- AI context check (content script / options page) ----
+            // Save the user's Gemini key: always locally; additionally backed
+            // up to the signed-in account's private Firestore doc so it
+            // follows them across devices. An empty key removes both copies.
+            case 'MERID_AI_SAVE_KEY': {
+                const key = String(request.key || '').trim();
+                chrome.storage.local.set({ geminiApiKey: key }, () => {
+                    Sync.pushAiKey(key)
+                        .then(cloud => sendResponse({ ok: true, cloud }))
+                        .catch(() => sendResponse({ ok: true, cloud: { ok: false, code: 'UNKNOWN' } }));
+                });
+                return true;
+            }
             case 'MERID_AI_CHECK': {
                 aiCheckContext(request.items)
                     .then(sendResponse)

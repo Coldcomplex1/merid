@@ -103,6 +103,19 @@
         return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn), email: r.email };
     }
 
+    /** Exchange a Google ID token (obtained via the Chrome identity account
+     *  picker) for a Firebase session. Creates the Firebase account on first
+     *  sign-in. The token's signature, audience and expiry are verified by
+     *  Google server-side - a forged token cannot mint a session. */
+    async function signInWithGoogleIdToken(googleIdToken) {
+        const r = await postJson(identityUrl('signInWithIdp'), {
+            postBody: 'id_token=' + encodeURIComponent(googleIdToken) + '&providerId=google.com',
+            requestUri: 'http://localhost',
+            returnSecureToken: true
+        });
+        return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn), email: r.email };
+    }
+
     /** Trade the long-lived refresh token for a fresh ID token (JWT, ~1h). */
     async function refresh(refreshToken) {
         const url = 'https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(cfg.apiKey);
@@ -209,6 +222,15 @@
         };
     }
 
+    /** Create-or-replace (upsert): no precondition, the whole document is
+     *  replaced. Used for singleton docs like users/{uid}/settings/ai. */
+    function setWrite(path, data, serverTimeFields) {
+        return {
+            update: { name: docName(path), fields: encFields(data) },
+            updateTransforms: (serverTimeFields || []).map(f => ({ fieldPath: f, setToServerValue: 'REQUEST_TIME' }))
+        };
+    }
+
     function deleteWrite(path) {
         return { delete: docName(path) };
     }
@@ -216,8 +238,8 @@
     return {
         configured,
         signUp, signIn, refresh,
-        sendSignInLink, signInWithEmailLink,
+        sendSignInLink, signInWithEmailLink, signInWithGoogleIdToken,
         getDoc, commit,
-        createWrite, updateWrite, deleteWrite
+        createWrite, updateWrite, setWrite, deleteWrite
     };
 });

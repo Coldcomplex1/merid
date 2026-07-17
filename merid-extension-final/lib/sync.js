@@ -71,6 +71,7 @@
             await storeRemove([SNAPSHOT_KEY]);
             await setStatus({ state: 'idle', errorCode: null });
             kick();
+            reconcileAiKey(); // fire-and-forget: restore/back up the Gemini key
             return { ok: true, email };
         } catch (e) {
             return { ok: false, code: e.code || 'UNKNOWN' };
@@ -98,6 +99,7 @@
             if (!cur || cur.uid !== r.uid) await storeRemove([SNAPSHOT_KEY]);
             await setStatus({ state: 'idle', errorCode: null });
             kick();
+            reconcileAiKey(); // fire-and-forget: restore/back up the Gemini key
             return { ok: true };
         } catch (e) {
             return { ok: false, code: e.code || 'UNKNOWN' };
@@ -111,6 +113,60 @@
         if (!FB.configured()) return { state: 'disabled' };
         if (!auth) return { state: 'signed-out' };
         return Object.assign({ state: 'idle' }, status, { email: auth.email });
+    }
+
+    // ---------------------------------------------------------
+    // Gemini API key backup (users/{uid}/settings/ai).
+    //
+    // Security model: the key is the user's OWN Google AI Studio key. It is
+    // stored only (a) in chrome.storage.local on this device and (b) in the
+    // signed-in user's private Firestore doc, which firestore.rules restrict
+    // to request.auth.uid == uid (A01) with a strict schema (A03). It is never
+    // written to chrome.storage.sync, never logged, and only ever sent to
+    // Google endpoints over TLS.
+    // ---------------------------------------------------------
+    const AI_KEY_DOC = 'settings/ai';
+
+    function aiKeyPath(uid) { return 'users/' + uid + '/' + AI_KEY_DOC; }
+
+    /** Push (or, with an empty key, remove) the Gemini key for the signed-in
+     *  account. No-op when signed out - the local copy still works. */
+    async function pushAiKey(key) {
+        const auth = (await storeGet([AUTH_KEY]))[AUTH_KEY];
+        if (!FB.configured() || !auth) return { ok: false, code: 'SIGNED_OUT' };
+        try {
+            const idToken = await getIdToken(auth);
+            if (key) {
+                await FB.commit(idToken, [FB.setWrite(aiKeyPath(auth.uid), { geminiKey: String(key) }, ['updatedAt'])]);
+            } else {
+                await FB.commit(idToken, [FB.deleteWrite(aiKeyPath(auth.uid))]);
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, code: e.code || 'UNKNOWN' };
+        }
+    }
+
+    /** After sign-in: the account's stored key wins (restores the AI check on
+     *  a new device); if the account has none but this device does, back the
+     *  local key up. Fail-soft - sign-in never breaks on a key hiccup. */
+    async function reconcileAiKey() {
+        try {
+            const r = await storeGet([AUTH_KEY, 'geminiApiKey']);
+            const auth = r[AUTH_KEY];
+            if (!FB.configured() || !auth) return;
+            const idToken = await getIdToken(auth);
+            const cloud = await FB.getDoc(idToken, aiKeyPath(auth.uid));
+            const cloudKey = cloud && typeof cloud.geminiKey === 'string' ? cloud.geminiKey : '';
+            const localKey = typeof r.geminiApiKey === 'string' ? r.geminiApiKey : '';
+            if (cloudKey && cloudKey !== localKey) {
+                await storeSet({ geminiApiKey: cloudKey });
+            } else if (!cloudKey && localKey) {
+                await pushAiKey(localKey);
+            }
+        } catch (e) {
+            console.warn('[VM] ai-key sync skipped: ' + (e.code || 'UNKNOWN'));
+        }
     }
 
     /** Valid ID token from cache or via the refresh token. */
@@ -318,5 +374,5 @@
         if (changes.savedWords || changes.knownWords) kick();
     }
 
-    return { kick, onStorageChanged, signIn, signOut, adoptSession, getStatus };
+    return { kick, onStorageChanged, signIn, signOut, adoptSession, getStatus, pushAiKey, reconcileAiKey };
 });

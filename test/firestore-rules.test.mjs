@@ -161,3 +161,48 @@ test('owner can delete a word; user profile doc can never be deleted', async () 
   await assertSucceeds(deleteDoc(doc(alice, 'users', ALICE, 'words', 'elaborate')))
   await assertFails(deleteDoc(doc(alice, 'users', ALICE)))
 })
+
+// ---------------------------------------------------------------------------
+// users/{uid}/settings/ai – private Gemini API key backup
+// ---------------------------------------------------------------------------
+function aiKeyDoc(firestore, uid) {
+  return doc(firestore, 'users', uid, 'settings', 'ai')
+}
+
+test('owner can store, read, replace and delete their own AI key', async () => {
+  await env.clearFirestore()
+  const alice = db(ALICE)
+  await assertSucceeds(setDoc(aiKeyDoc(alice, ALICE), { geminiKey: 'AIzaFakeKey_for-tests', updatedAt: serverTimestamp() }))
+  await assertSucceeds(getDoc(aiKeyDoc(alice, ALICE)))
+  await assertSucceeds(setDoc(aiKeyDoc(alice, ALICE), { geminiKey: 'AIzaReplacedKey', updatedAt: serverTimestamp() }))
+  await assertSucceeds(deleteDoc(aiKeyDoc(alice, ALICE)))
+})
+
+test('another user (or anonymous) can never touch someone\'s AI key', async () => {
+  await env.clearFirestore()
+  await assertSucceeds(setDoc(aiKeyDoc(db(ALICE), ALICE), { geminiKey: 'AIzaFakeKey', updatedAt: serverTimestamp() }))
+  for (const stranger of [db(BOB), db(null)]) {
+    await assertFails(getDoc(aiKeyDoc(stranger, ALICE)))
+    await assertFails(setDoc(aiKeyDoc(stranger, ALICE), { geminiKey: 'AIzaPlanted', updatedAt: serverTimestamp() }))
+    await assertFails(deleteDoc(aiKeyDoc(stranger, ALICE)))
+  }
+})
+
+test('AI key doc schema is enforced at the DB boundary', async () => {
+  await env.clearFirestore()
+  const alice = db(ALICE)
+  const cases = [
+    { geminiKey: '', updatedAt: serverTimestamp() },                       // empty
+    { geminiKey: 'x'.repeat(129), updatedAt: serverTimestamp() },          // too long
+    { geminiKey: 'has space', updatedAt: serverTimestamp() },              // whitespace
+    { geminiKey: '<script>alert(1)</script>', updatedAt: serverTimestamp() }, // markup
+    { geminiKey: 123, updatedAt: serverTimestamp() },                      // wrong type
+    { geminiKey: 'AIzaOk', updatedAt: serverTimestamp(), extra: true },    // extra field
+    { geminiKey: 'AIzaOk', updatedAt: new Date() },                        // client-set time
+  ]
+  for (const payload of cases) {
+    await assertFails(setDoc(aiKeyDoc(alice, ALICE), payload))
+  }
+  // Only the fixed 'ai' doc id is allowed under settings/.
+  await assertFails(setDoc(doc(alice, 'users', ALICE, 'settings', 'other'), { geminiKey: 'AIzaOk', updatedAt: serverTimestamp() }))
+})

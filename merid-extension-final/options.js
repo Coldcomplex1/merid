@@ -121,9 +121,26 @@ function wire() {
 
     els.aiSaveBtn.addEventListener('click', () => {
         const key = els.aiKey.value.trim();
-        chrome.storage.local.set({ geminiApiKey: key }, () => {
+        els.aiSaveBtn.disabled = true;
+        // The background saves locally AND backs the key up to the signed-in
+        // account (users/{uid}/settings/ai) so it follows the user across devices.
+        chrome.runtime.sendMessage({ type: 'MERID_AI_SAVE_KEY', key }, res => {
+            els.aiSaveBtn.disabled = false;
+            if (chrome.runtime.lastError || !res || !res.ok) {
+                showAiStatus('Could not save the key. Reload Merid at chrome://extensions and try again.', true);
+                return;
+            }
             flashSaved();
-            showAiStatus(key ? 'Key saved on this device.' : 'Key removed.', false);
+            const cloud = res.cloud || {};
+            if (!key) {
+                showAiStatus('Key removed' + (cloud.ok ? ' (here and from your account).' : '.'), false);
+            } else if (cloud.ok) {
+                showAiStatus('Key saved on this device and backed up to your account.', false);
+            } else if (cloud.code === 'SIGNED_OUT') {
+                showAiStatus('Key saved on this device. Sign in above to keep it with your account across devices.', false);
+            } else {
+                showAiStatus('Key saved on this device. Account backup will retry after your next sign-in.', false);
+            }
         });
     });
 
@@ -183,7 +200,8 @@ const account = {
     sendLinkBtn: document.getElementById('sendLinkBtn'),
     linkWait: document.getElementById('linkWait'),
     linkInput: document.getElementById('linkInput'),
-    linkSignInBtn: document.getElementById('linkSignInBtn')
+    linkSignInBtn: document.getElementById('linkSignInBtn'),
+    googleBtn: document.getElementById('googleSignInBtn')
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -200,6 +218,10 @@ const AUTH_ERRORS = {
     WEAK_PASSWORD: 'Password must be at least 8 characters.',
     TOO_MANY_ATTEMPTS_TRY_LATER: 'Too many attempts. Please try again later.',
     NETWORK: 'No connection. Check your internet and try again.',
+    // One-click Google sign-in
+    GOOGLE_NOT_CONFIGURED: 'Google sign-in isn\'t set up for this build yet: add the OAuth Web client ID as googleClientId in lib/firebase-config.js (see docs/FIREBASE_SETUP.md).',
+    GOOGLE_CANCELLED: 'Google sign-in was cancelled.',
+    GOOGLE_BAD_RESPONSE: 'Google sign-in failed. Please try again.',
     // Email-link (passwordless) sign-in
     OPERATION_NOT_ALLOWED: 'Email-link sign-in is not enabled for this Firebase project (console → Authentication → Sign-in method → Email link).',
     INVALID_OOB_CODE: 'That link is invalid or was already used. Send yourself a new one.',
@@ -292,8 +314,21 @@ function submitAuth(isNewAccount) {
     );
 }
 
+// --- One-click Google sign-in (account picker via chrome.identity) ---
+function googleSignIn() {
+    showAuthError(null);
+    account.googleBtn.disabled = true;
+    chrome.runtime.sendMessage({ type: 'MERID_SYNC_GOOGLE_SIGNIN' }, (res) => {
+        account.googleBtn.disabled = false;
+        if (chrome.runtime.lastError || !res) { showAuthError('NETWORK'); return; }
+        if (!res.ok) { if (res.code !== 'GOOGLE_CANCELLED') showAuthError(res.code); return; }
+        refreshAccountCard();
+    });
+}
+
 function wireAccount() {
     if (!account.card) return;
+    account.googleBtn.addEventListener('click', googleSignIn);
     account.signInBtn.addEventListener('click', () => submitAuth(false));
     account.signUpBtn.addEventListener('click', () => submitAuth(true));
     account.password.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(false); });
@@ -309,7 +344,12 @@ function wireAccount() {
     refreshAccountCard();
     // Live-update the sync line while the page is open (storage-driven, cheap).
     chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && (changes.vm_sync_status || changes.vm_auth)) refreshAccountCard();
+        if (area !== 'local') return;
+        if (changes.vm_sync_status || changes.vm_auth) refreshAccountCard();
+        // Key restored from the account after sign-in: reflect it in the field.
+        if (changes.geminiApiKey && document.activeElement !== els.aiKey) {
+            els.aiKey.value = changes.geminiApiKey.newValue || '';
+        }
     });
 }
 
