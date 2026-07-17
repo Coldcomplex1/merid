@@ -28,9 +28,11 @@ const MUTATION_DEBOUNCE_MS = 300;
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
 
-// Replacements used per "post" (feed item / article / text block). Each post
-// gets a word budget derived from the frequency setting (VMCore.maxWordsPerPost)
-// so the intensity control matches what actually shows up. Reset on every init().
+// Per-"post" (feed item / article / text block) scan stats:
+// { seen: words scanned so far, used: translations made so far }. The budget
+// scales with `seen` (VMCore.postWordBudget - roughly frequency/15 words per
+// 100 words of text), so long articles get translations spread all the way
+// through instead of only in the opening paragraph. Reset on every init().
 let postWordCounts = new WeakMap();
 
 const FORBIDDEN_TAGS = new Set([
@@ -160,12 +162,16 @@ function processTextNode(node, vocabMap) {
     if (replacedCount >= MAX_REPLACEMENTS_PER_PAGE) { processedNodes.add(node); return; }
 
     const tokens = C.tokenize(original);
+    const container = postContainerFor(node.parentElement);
+    let stats = postWordCounts.get(container);
+    if (!stats) { stats = { seen: 0, used: 0 }; postWordCounts.set(container, stats); }
+
     const out = [];
     let modified = false;
-    let container = null; // resolved lazily on the first eligible match
-    let postCount = 0;
 
     for (let i = 0; i < tokens.length; i++) {
+        if (C.isWordToken(tokens[i])) stats.seen++;
+
         const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE
             ? C.findMatch(tokens, i, vocabMap, { allowSingleWord: true, minSingleWordLen: 2 })
             : null;
@@ -173,6 +179,10 @@ function processTextNode(node, vocabMap) {
         if (!match) { out.push(makeTextNode(tokens[i])); continue; }
 
         const { size, matchedText, items } = match;
+        // The rest of the matched tokens also count as scanned words.
+        for (let k = i + 1; k < i + size; k++) {
+            if (C.isWordToken(tokens[k])) stats.seen++;
+        }
         const item = items[0]; // deterministic pick from the dataset
         const replaceWith = item.word;
 
@@ -190,13 +200,10 @@ function processTextNode(node, vocabMap) {
             continue;
         }
 
-        // Per-post budget - the frequency setting decides how many words a
-        // single post/article may get (light ≈ 2, medium ≈ 4, heavy ≈ 7).
-        if (container === null) {
-            container = postContainerFor(node.parentElement);
-            postCount = postWordCounts.get(container) || 0;
-        }
-        if (postCount >= C.maxWordsPerPost(settings.frequency)) {
+        // Density budget - at most ~frequency/15 translations per 100 words
+        // scanned in this post so far, so translations spread through the
+        // whole article instead of clustering in the first paragraph.
+        if (stats.used >= C.postWordBudget(settings.frequency, stats.seen)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -209,8 +216,7 @@ function processTextNode(node, vocabMap) {
         span.dataset.replacement = replaceWith;
         applyDisplayMode(span);
 
-        postCount++;
-        postWordCounts.set(container, postCount);
+        stats.used++;
 
         out.push(span);
         i += size - 1;

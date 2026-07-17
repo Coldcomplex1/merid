@@ -89,15 +89,19 @@
     }
 
     /**
-     * Word budget for a single post/article, derived from the same 0..100
-     * frequency setting so the intensity control tracks what the user
-     * actually sees on the page: light ≈ 2 words per post, medium ≈ 4,
-     * heavy ≈ 7.
+     * Streaming word budget for a post/article: how many translations are
+     * allowed once `wordsSeen` words of the post have been scanned. Density
+     * scales with the post's LENGTH - roughly `frequency / 15` translations
+     * per 100 words (light ≈ 2/100, medium ≈ 3/100, heavy ≈ 5/100) - so a
+     * long article keeps getting translations all the way through instead of
+     * burning a flat cap in the first paragraph. The floor of 2 is a head
+     * start so short feed posts still get a couple of words.
      */
-    function maxWordsPerPost(frequency) {
+    function postWordBudget(frequency, wordsSeen) {
         const f = Math.max(0, Math.min(100, Number(frequency)));
         if (!(f > 0)) return 0;
-        return Math.max(1, Math.round(f / 12));
+        const perHundred = Math.max(1, Math.round(f / 15));
+        return Math.max(2, Math.ceil((Math.max(0, wordsSeen) / 100) * perHundred));
     }
 
     // ---------------------------------------------------------------------
@@ -309,7 +313,7 @@
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
-        INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity, maxWordsPerPost,
+        INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity, postWordBudget,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching

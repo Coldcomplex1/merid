@@ -182,18 +182,28 @@ test('intensity <-> frequency mapping', () => {
     }
 });
 
-test('maxWordsPerPost scales with frequency and honors bounds', () => {
-    assert.strictEqual(C.maxWordsPerPost(0), 0);
-    assert.strictEqual(C.maxWordsPerPost(25), 2);   // light
-    assert.strictEqual(C.maxWordsPerPost(50), 4);   // medium
-    assert.strictEqual(C.maxWordsPerPost(80), 7);   // heavy
-    assert.ok(C.maxWordsPerPost(5) >= 1, 'any non-zero frequency allows at least one word');
-    // monotonic: raising the frequency never shrinks the budget
+test('postWordBudget scales with post length (per-100-words density)', () => {
+    // frequency 0 = feature off, no budget at any length
+    assert.strictEqual(C.postWordBudget(0, 1000), 0);
+    // head start: short posts still get a couple of words
+    assert.strictEqual(C.postWordBudget(50, 0), 2);
+    assert.strictEqual(C.postWordBudget(50, 30), 2);
+    // density per 100 words: light ≈ 2, medium ≈ 3, heavy ≈ 5
+    assert.strictEqual(C.postWordBudget(25, 1000), 20);
+    assert.strictEqual(C.postWordBudget(50, 100), 3);
+    assert.strictEqual(C.postWordBudget(50, 1000), 30);
+    assert.strictEqual(C.postWordBudget(80, 1000), 50);
+    // monotonic in BOTH frequency and length - a long article keeps earning
+    // budget all the way through instead of stalling after the first paragraph
     let prev = 0;
-    for (let f = 0; f <= 100; f += 5) {
-        const now = C.maxWordsPerPost(f);
-        assert.ok(now >= prev, `budget must not shrink as frequency rises (f=${f})`);
+    for (let seen = 0; seen <= 2000; seen += 100) {
+        const now = C.postWordBudget(50, seen);
+        assert.ok(now >= prev, `budget must grow with length (seen=${seen})`);
         prev = now;
+    }
+    for (let f = 5; f <= 100; f += 5) {
+        assert.ok(C.postWordBudget(f, 500) >= C.postWordBudget(f - 5, 500) || f === 5,
+            `budget must not shrink as frequency rises (f=${f})`);
     }
 });
 
