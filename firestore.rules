@@ -156,6 +156,33 @@ service cloud.firestore {
       }
     }
 
+    // Write-only feedback mailbox for the uninstall exit survey on
+    // merid.site/goodbye. Anonymous create is intentional (the extension is
+    // already gone, so there is no session): abuse is bounded by the strict
+    // schema below, by never allowing read/list (nothing to scrape), and by
+    // never allowing update/delete (nothing to vandalize). Only the project
+    // owner reads these, via the Firebase console.
+    match /feedback/{feedbackId} {
+      allow read, list, update, delete: if false;
+      allow create: if validFeedback();
+
+      function validFeedback() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['source', 'reasons', 'comment', 'lang', 'createdAt'])
+          && d.keys().hasAll(['source', 'reasons', 'createdAt'])
+          && d.source == 'uninstall'
+          && d.reasons is list
+          && d.reasons.size() <= 8
+          && d.reasons.hasOnly(['too-many', 'wrong-sites', 'not-useful', 'performance',
+                                'privacy', 'switched', 'testing', 'other'])
+          // An empty submission carries no signal - require a reason or a comment.
+          && (d.reasons.size() >= 1 || (('comment' in d) && d.comment.size() >= 1))
+          && (!('comment' in d) || (d.comment is string && d.comment.size() <= 500))
+          && (!('lang' in d) || d.lang in ['en', 'vi'])
+          && d.createdAt == request.time;
+      }
+    }
+
     // Default deny: anything not explicitly matched above is unreachable.
     match /{document=**} {
       allow read, write: if false;
