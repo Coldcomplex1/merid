@@ -77,8 +77,378 @@ function showAiStatus(msg, isError) {
 function refreshDatasetInfo() {
     chrome.runtime.sendMessage({ action: 'getStatus' }, res => {
         if (chrome.runtime.lastError || !res) { els.datasetInfo.textContent = ''; return; }
-        els.datasetInfo.textContent = `Loaded: ${res.vocabCount} words (${(C.DATASET_REGISTRY[res.datasetKey] || {}).label || res.datasetKey}).`;
+        const label = res.datasetLabel || (C.DATASET_REGISTRY[res.datasetKey] || {}).label || res.datasetKey;
+        els.datasetInfo.textContent = `Loaded: ${res.vocabCount} words (${label}).`;
     });
+}
+
+// =============================================================
+// My datasets (user-uploaded CSVs). All storage writes happen in the
+// background service worker via messages; this page only previews files with
+// the shared validator and renders state. Every user-derived string is
+// rendered with textContent - never innerHTML.
+// =============================================================
+const custom = {
+    notice: document.getElementById('customNotice'),
+    empty: document.getElementById('customEmpty'),
+    list: document.getElementById('customList'),
+    uploadFile: document.getElementById('uploadFile'),
+    uploadName: document.getElementById('uploadName'),
+    uploadBtn: document.getElementById('uploadBtn'),
+    report: document.getElementById('importReport'),
+    replaceFile: document.getElementById('replaceFile')
+};
+
+let pendingCsvText = null; // validated preview waiting for "Save dataset"
+let replaceTargetId = null;
+
+const FILE_ERRORS = {
+    EMPTY_FILE: 'The file is empty.',
+    TOO_LARGE: `The file is too large (limit ${Math.round(C.CUSTOM_LIMITS.MAX_FILE_CHARS / (1024 * 1024))} MB).`,
+    MALFORMED_CSV: 'The file is not valid CSV.',
+    MISSING_HEADER: 'The first line must be a header row (e.g. word,type,…,vietnamese,…).',
+    MISSING_COLUMNS: 'Required column(s) missing from the header: ',
+    TOO_MANY_ROWS: `Too many rows (limit ${C.CUSTOM_LIMITS.MAX_ROWS}). Split the file into smaller datasets.`,
+    NO_VALID_ROWS: 'No usable rows - every row needs an English word and a Vietnamese meaning.',
+    LIMIT_DATASETS: `You already have ${C.CUSTOM_LIMITS.MAX_DATASETS} datasets. Delete one before adding another.`,
+    STORAGE_FULL: 'Extension storage is full. Delete a dataset or upload a smaller file.',
+    BAD_NAME: 'Please give the dataset a name.',
+    NOT_FOUND: 'That dataset no longer exists.',
+    UNKNOWN: 'Something went wrong. Reload Merid at chrome://extensions and try again.'
+};
+
+function describeFailure(report) {
+    if (!report) return FILE_ERRORS.UNKNOWN;
+    let msg = FILE_ERRORS[report.errorCode] || FILE_ERRORS.UNKNOWN;
+    if (report.errorCode === 'MISSING_COLUMNS') msg += (report.missingColumns || []).join(', ') + '.';
+    return msg;
+}
+
+function showReportMessage(message, isError) {
+    custom.report.hidden = false;
+    custom.report.classList.toggle('err', !!isError);
+    custom.report.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'report-head';
+    p.textContent = message;
+    custom.report.appendChild(p);
+}
+
+/** Render a validation report (preview or final) as safe DOM nodes. */
+function renderReport(report, mode) {
+    const box = custom.report;
+    box.hidden = false;
+    box.textContent = '';
+    box.classList.toggle('err', !report.ok);
+
+    const head = document.createElement('p');
+    head.className = 'report-head';
+    if (report.ok) {
+        const s = report.stats;
+        const bits = [`${s.valid} word${s.valid === 1 ? '' : 's'}`];
+        if (s.invalid) bits.push(`${s.invalid} row${s.invalid === 1 ? '' : 's'} skipped`);
+        if (s.duplicates) bits.push(`${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} removed (first row kept)`);
+        head.textContent = mode === 'preview'
+            ? `File looks good ✓ ${bits.join(' · ')}. Press "Save dataset" to import.`
+            : `Saved ✓ ${bits.join(' · ')}.`;
+    } else {
+        head.textContent = '✗ ' + describeFailure(report);
+    }
+    box.appendChild(head);
+
+    for (const w of report.warnings || []) {
+        const p = document.createElement('p');
+        p.className = 'report-warn';
+        p.textContent = '⚠ ' + w.message;
+        box.appendChild(p);
+    }
+
+    const errs = report.errors || [];
+    if (errs.length) {
+        const list = document.createElement('ul');
+        list.className = 'report-rows';
+        for (const e of errs) {
+            const li = document.createElement('li');
+            li.textContent = `Row ${e.row}: ${e.message}` + (e.sample ? ` — ${e.sample}` : '');
+            list.appendChild(li);
+        }
+        const hidden = (report.stats ? report.stats.invalid : 0) - errs.length;
+        if (hidden > 0) {
+            const li = document.createElement('li');
+            li.textContent = `…and ${hidden} more skipped row${hidden === 1 ? '' : 's'}.`;
+            list.appendChild(li);
+        }
+        box.appendChild(list);
+    }
+
+    const dups = report.duplicates || [];
+    if (dups.length) {
+        const p = document.createElement('p');
+        p.className = 'report-warn';
+        const shown = dups.slice(0, 8).map(d => d.word).join(', ');
+        const extra = (report.stats ? report.stats.duplicates : dups.length) - Math.min(dups.length, 8);
+        p.textContent = `Duplicates skipped: ${shown}${extra > 0 ? ` (+${extra} more)` : ''}.`;
+        box.appendChild(p);
+    }
+}
+
+function resetUploadForm() {
+    pendingCsvText = null;
+    custom.uploadBtn.disabled = true;
+    custom.uploadFile.value = '';
+    custom.uploadName.value = '';
+}
+
+function fmtDate(ts) {
+    try { return new Date(ts).toLocaleDateString(); } catch (e) { return ''; }
+}
+
+function miniBtn(label, cls) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn mini ' + (cls || 'ghost');
+    b.textContent = label;
+    return b;
+}
+
+function refreshCustomUI() {
+    chrome.runtime.sendMessage({ action: 'listCustomDatasets' }, res => {
+        if (chrome.runtime.lastError || !res || !res.ok) return;
+        renderCustomList(res.datasets, res.activeKey);
+    });
+}
+
+function renderCustomList(datasets, activeKey) {
+    custom.list.textContent = '';
+    custom.empty.hidden = datasets.length > 0;
+    for (const d of datasets) custom.list.appendChild(customRowEl(d, activeKey));
+}
+
+function customRowEl(d, activeKey) {
+    const li = document.createElement('li');
+    li.className = 'custom-row-item';
+    const isActive = activeKey === C.customKeyFor(d.id);
+
+    const info = document.createElement('div');
+    info.className = 'custom-info';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'custom-name';
+    nameEl.textContent = d.name;
+    nameEl.title = d.name;
+    const metaEl = document.createElement('span');
+    metaEl.className = 'custom-meta';
+    metaEl.textContent = `${d.count} words · updated ${fmtDate(d.updatedAt)}`;
+    info.append(nameEl, metaEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+
+    let useBtn;
+    if (isActive) {
+        useBtn = document.createElement('span');
+        useBtn.className = 'badge-active';
+        useBtn.textContent = 'Active';
+    } else {
+        useBtn = miniBtn('Use');
+        useBtn.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: C.customKeyFor(d.id) }, () => {
+                void chrome.runtime.lastError;
+                flashSaved();
+                refreshDatasetInfo();
+                refreshCustomUI();
+            });
+        });
+    }
+
+    const renameBtn = miniBtn('Rename');
+    renameBtn.addEventListener('click', () => startRename(li, d));
+    const replaceBtn = miniBtn('Replace');
+    replaceBtn.addEventListener('click', () => {
+        replaceTargetId = d.id;
+        custom.replaceFile.click();
+    });
+    const deleteBtn = miniBtn('Delete', 'danger');
+    deleteBtn.addEventListener('click', () => startDelete(li, d, isActive));
+
+    actions.append(useBtn, renameBtn, replaceBtn, deleteBtn);
+    li.append(info, actions);
+    return li;
+}
+
+function startRename(li, d) {
+    li.textContent = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'rename-wrap';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = C.CUSTOM_LIMITS.MAX_NAME_LEN;
+    input.value = d.name;
+    input.className = 'rename-input';
+    input.setAttribute('aria-label', 'New dataset name');
+    const save = miniBtn('Save');
+    const cancel = miniBtn('Cancel');
+    save.addEventListener('click', () => {
+        const name = input.value.trim();
+        if (!name) { input.focus(); return; }
+        chrome.runtime.sendMessage({ action: 'renameCustomDataset', id: d.id, name }, () => {
+            void chrome.runtime.lastError;
+            flashSaved();
+            refreshDatasetInfo();
+            refreshCustomUI();
+        });
+    });
+    cancel.addEventListener('click', refreshCustomUI);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') save.click();
+        else if (e.key === 'Escape') refreshCustomUI();
+    });
+    wrap.append(input, save, cancel);
+    li.appendChild(wrap);
+    input.focus();
+    input.select();
+}
+
+function startDelete(li, d, isActive) {
+    li.textContent = '';
+    const strip = document.createElement('div');
+    strip.className = 'inline-confirm';
+    strip.setAttribute('aria-live', 'assertive');
+    const msg = document.createElement('p');
+    msg.className = 'confirm-msg';
+    msg.textContent = `Delete "${d.name}"? This cannot be undone.`
+        + (isActive ? ' This is your active dataset - Merid will switch back to SAT.' : '');
+    const btns = document.createElement('div');
+    btns.className = 'row-actions';
+    const del = miniBtn('Delete', 'danger');
+    const cancel = miniBtn('Cancel');
+    del.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ action: 'deleteCustomDataset', id: d.id }, () => {
+            void chrome.runtime.lastError;
+            flashSaved();
+            refreshDatasetInfo();
+            refreshCustomUI();
+        });
+    });
+    cancel.addEventListener('click', refreshCustomUI);
+    strip.addEventListener('keydown', e => { if (e.key === 'Escape') refreshCustomUI(); });
+    btns.append(del, cancel);
+    strip.append(msg, btns);
+    li.appendChild(strip);
+    cancel.focus();
+}
+
+/** Shared pre-checks + read for the upload and replace pickers. */
+function readCsvFile(file, onText) {
+    if (!file) return;
+    if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
+        showReportMessage('✗ Please choose a .csv file (a plain-text CSV, not Excel .xlsx).', true);
+        return;
+    }
+    if (file.size > C.CUSTOM_LIMITS.MAX_FILE_CHARS * 4) {
+        showReportMessage('✗ ' + FILE_ERRORS.TOO_LARGE, true);
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onText(String(reader.result || ''));
+    reader.onerror = () => showReportMessage('✗ Could not read the file.', true);
+    reader.readAsText(file, 'utf-8');
+}
+
+function wireCustom() {
+    // Point every "create a dataset" link at the fixed merid.site URL (A10).
+    document.querySelectorAll('a.create-dataset-url').forEach(a => {
+        a.href = window.VMFirebaseConfig.webCreateDatasetUrl;
+    });
+
+    // Upload flow: validate locally for an instant preview; the background
+    // re-runs the same validator on save and stores the result.
+    custom.uploadFile.addEventListener('change', () => {
+        pendingCsvText = null;
+        custom.uploadBtn.disabled = true;
+        const file = custom.uploadFile.files[0];
+        readCsvFile(file, text => {
+            const report = C.validateDatasetCsv(text);
+            renderReport(report, 'preview');
+            if (report.ok) {
+                pendingCsvText = text;
+                custom.uploadBtn.disabled = false;
+                if (!custom.uploadName.value.trim()) {
+                    custom.uploadName.value = file.name.replace(/\.csv$/i, '')
+                        .slice(0, C.CUSTOM_LIMITS.MAX_NAME_LEN);
+                }
+            }
+        });
+    });
+
+    custom.uploadBtn.addEventListener('click', () => {
+        if (!pendingCsvText) return;
+        const name = custom.uploadName.value.trim() || 'My dataset';
+        custom.uploadBtn.disabled = true;
+        chrome.runtime.sendMessage({ action: 'importCustomDataset', name, csvText: pendingCsvText }, res => {
+            if (chrome.runtime.lastError || !res) {
+                showReportMessage('✗ ' + FILE_ERRORS.UNKNOWN, true);
+                custom.uploadBtn.disabled = false;
+                return;
+            }
+            if (!res.ok) {
+                if (res.report) renderReport(res.report, 'saved');
+                else showReportMessage('✗ ' + (FILE_ERRORS[res.code] || FILE_ERRORS.UNKNOWN), true);
+                custom.uploadBtn.disabled = false;
+                return;
+            }
+            renderReport(res.report, 'saved');
+            resetUploadForm();
+            refreshCustomUI();
+            flashSaved();
+        });
+    });
+
+    // Replace flow: the row's Replace button stamps the target id, then this
+    // shared hidden picker sends the file straight to the background.
+    custom.replaceFile.addEventListener('change', () => {
+        const file = custom.replaceFile.files[0];
+        const id = replaceTargetId;
+        replaceTargetId = null;
+        custom.replaceFile.value = '';
+        if (!file || !id) return;
+        readCsvFile(file, text => {
+            chrome.runtime.sendMessage({ action: 'replaceCustomDataset', id, csvText: text }, res => {
+                if (chrome.runtime.lastError || !res) { showReportMessage('✗ ' + FILE_ERRORS.UNKNOWN, true); return; }
+                if (!res.ok) {
+                    if (res.report) renderReport(res.report, 'saved');
+                    else showReportMessage('✗ ' + (FILE_ERRORS[res.code] || FILE_ERRORS.UNKNOWN), true);
+                    return;
+                }
+                renderReport(res.report, 'saved');
+                refreshCustomUI();
+                refreshDatasetInfo();
+                flashSaved();
+            });
+        });
+    });
+
+    // One-shot fallback notice written by the background when the selected
+    // custom dataset went missing.
+    chrome.storage.local.get(['vm_dataset_notice'], l => {
+        if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
+            custom.notice.textContent = 'Your custom dataset could not be found on this device, so Merid switched back to SAT.';
+            custom.notice.hidden = false;
+            chrome.storage.local.remove('vm_dataset_notice');
+        }
+    });
+
+    // Keep the list and seg in step with changes made elsewhere (popup,
+    // background fallback, another options tab).
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.vm_custom_index) refreshCustomUI();
+        if (area === 'sync' && changes.datasetKey) {
+            setActive(els.datasetSeg, changes.datasetKey.newValue);
+            refreshDatasetInfo();
+            refreshCustomUI();
+        }
+    });
+
+    refreshCustomUI();
 }
 
 // ---- Wire up ----
@@ -353,5 +723,5 @@ function wireAccount() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { load(); wire(); wireAccount(); });
+document.addEventListener('DOMContentLoaded', () => { load(); wire(); wireAccount(); wireCustom(); });
 

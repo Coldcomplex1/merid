@@ -34,6 +34,14 @@
                 <button class="dataset-btn" data-key="c2">C2</button>
                 <button class="dataset-btn" data-key="all">All</button>
             </div>
+            <!-- Shown only when the user has uploaded custom datasets. -->
+            <div class="custom-row" id="custom-row" hidden>
+                <select id="custom-select" aria-label="My datasets">
+                    <option value="">My datasets…</option>
+                </select>
+            </div>
+            <p class="dataset-notice" id="dataset-notice" role="status" hidden></p>
+            <button class="create-link" id="create-dataset-link" type="button">＋ Create your own dataset ↗</button>
         </section>
 
         <section class="settings-section">
