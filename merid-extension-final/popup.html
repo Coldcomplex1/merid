@@ -19,7 +19,6 @@
         <section class="account-section" id="account-section" hidden>
             <div id="account-signed-out" hidden>
                 <button class="btn-signin" id="signin-btn" type="button">Sign in / Sign up ↗</button>
-                <p class="account-hint">One account for merid.site and this extension - sign in once on merid.site and it carries over here automatically.</p>
             </div>
             <div id="account-signed-in" hidden>
                 <p class="account-email">Signed in as <strong id="account-email"></strong></p>
@@ -88,11 +87,30 @@
             <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
             <button class="btn-view-deck" id="view-deck-btn" type="button">View my deck ↗</button>
             <p class="sync-hint" id="sync-hint" hidden></p>
-            <button class="ai-hint" id="ai-hint" type="button">AI Context Check · Set up in Settings</button>
+            <button class="ai-hint" id="ai-hint" type="button">AI Context Check</button>
             <div class="footer-links">
                 <button class="link-btn" id="options-btn" type="button">Settings</button>
             </div>
         </footer>
+    </div>
+
+    <!-- AI Context Check onboarding: shown every time the popup opens until the
+         user has saved their own Gemini API key (see popup.js). -->
+    <div class="modal-overlay" id="ai-key-modal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+            <h2 class="modal-title" id="ai-modal-title">Get the most out of Merid ✨</h2>
+            <p class="modal-sub">Turn on <strong>AI Context Check</strong> and Merid double-checks every replaced
+                word against its sentence - words that don't fit are reverted automatically. It runs on
+                <strong>your own free Gemini API key</strong>, pasted once:</p>
+            <ol class="modal-steps">
+                <li>Open <strong>aistudio.google.com/apikey</strong> and sign in with Google.</li>
+                <li>Click <strong>Create API key</strong>, then copy the key (it starts with "AIza…").</li>
+                <li>In Merid <strong>Settings → AI context check</strong>, paste the key and press <strong>Save key</strong>.</li>
+            </ol>
+            <button class="modal-primary" id="ai-modal-settings" type="button">Paste my key in Settings</button>
+            <button class="modal-link" id="ai-modal-guide" type="button">Full step-by-step guide on merid.site ↗</button>
+            <button class="modal-dismiss" id="ai-modal-later" type="button">Not now</button>
+        </div>
     </div>
 
     <script src="lib/vocab-core.js"></script>

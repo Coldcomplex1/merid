@@ -10,7 +10,7 @@ export interface Segment {
 }
 
 export interface Strings {
-  meta: { title: string; tutorialTitle: string; createDatasetTitle: string }
+  meta: { title: string; tutorialTitle: string; createDatasetTitle: string; apiKeyGuideTitle: string }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
   nav: { demo: string; features: string; how: string; tutorial: string; createDataset: string; cta: string }
@@ -119,7 +119,7 @@ export interface Strings {
     ctaDemo: string
     privacy: string
   }
-  footer: { tagline: string; demo: string; features: string; tutorial: string; createDataset: string; faq: string; install: string; privacy: string }
+  footer: { tagline: string; demo: string; features: string; tutorial: string; createDataset: string; apiKeyGuide: string; faq: string; install: string; privacy: string }
   tutorial: {
     eyebrow: string
     title: string
@@ -186,6 +186,34 @@ export interface Strings {
     ctaTutorial: string
     ctaInstall: string
   }
+  apiKeyGuide: {
+    eyebrow: string
+    title: string
+    sub: string
+    whatTitle: string
+    whatIntro: string
+    whatBullets: { term: string; text: string }[]
+    getTitle: string
+    getIntro: string
+    getSteps: string[]
+    getCta: string
+    getNote: string
+    openTitle: string
+    openIntro: string
+    openSteps: string[]
+    pasteTitle: string
+    pasteIntro: string
+    pasteSteps: string[]
+    pasteNote: string
+    privacyTitle: string
+    privacyBullets: string[]
+    troubleTitle: string
+    troubles: { term: string; text: string }[]
+    outroTitle: string
+    outroSub: string
+    ctaTutorial: string
+    ctaInstall: string
+  }
 }
 
 const vi: Strings = {
@@ -193,6 +221,7 @@ const vi: Strings = {
     title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
     createDatasetTitle: 'Tạo bộ từ vựng riêng với AI - Merid',
+    apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -436,6 +465,7 @@ const vi: Strings = {
     features: 'Tính năng',
     tutorial: 'Hướng dẫn',
     createDataset: 'Tạo bộ từ',
+    apiKeyGuide: 'Hướng dẫn API key',
     faq: 'FAQ',
     install: 'Thêm vào Chrome',
     privacy: 'Chính sách bảo mật',
@@ -626,6 +656,59 @@ const vi: Strings = {
     ctaTutorial: 'Xem hướng dẫn dùng Merid',
     ctaInstall: 'Thêm Merid vào Chrome',
   },
+  apiKeyGuide: {
+    eyebrow: 'AI Context Check',
+    title: 'Dán API key của riêng bạn',
+    sub: 'AI Context Check giúp Merid thông minh hơn hẳn: Google Gemini kiểm tra lại từng từ đã thay xem có hợp với câu không, từ nào không hợp sẽ tự động được trả về như cũ. Tính năng chạy bằng API key Gemini miễn phí của riêng bạn - dưới đây là cách tạo và dán key, chưa đến hai phút.',
+    whatTitle: 'Vì sao nên dán API key?',
+    whatIntro: 'Mặc định Merid ghép từ hoàn toàn ngoại tuyến. Khi bật AI Context Check, sau khi Merid thay từ trên trang, Google Gemini (flash-lite) sẽ soát lại từng từ trong ngữ cảnh:',
+    whatBullets: [
+      { term: 'Ít từ sai hơn.', text: 'Từ thay thế không hợp với câu sẽ tự động được trả về nguyên bản.' },
+      { term: 'Miễn phí.', text: 'Google AI Studio cấp cho mỗi tài khoản Google một API key miễn phí với hạn mức hào phóng - quá đủ cho việc lướt web hằng ngày.' },
+      { term: 'Của riêng bạn.', text: 'Key thuộc về bạn và đi theo bạn - Merid không dùng chung một key cho nhiều người, nhờ vậy tính năng luôn nhanh và miễn phí.' },
+    ],
+    getTitle: 'Tạo API key Gemini miễn phí',
+    getIntro: 'Key được tạo trên Google AI Studio - mất khoảng một phút:',
+    getSteps: [
+      'Mở aistudio.google.com/apikey trong thẻ mới.',
+      'Đăng nhập bằng tài khoản Google bất kỳ.',
+      'Bấm "Create API key" (chọn project bất kỳ nếu được hỏi).',
+      'Sao chép key - một chuỗi dài bắt đầu bằng "AIza…". Hãy giữ nó như mật khẩu.',
+    ],
+    getCta: 'Mở Google AI Studio',
+    getNote: 'Giữ key thật kín: ai có key đều dùng được hạn mức của bạn. Bạn có thể xóa và tạo key mới bất cứ lúc nào ngay trên trang đó.',
+    openTitle: 'Mở phần cài đặt AI trong Merid',
+    openIntro: 'Quay lại Chrome:',
+    openSteps: [
+      'Bấm biểu tượng Merid trên thanh công cụ Chrome để mở popup.',
+      'Bấm nút "AI Context Check" (hoặc "Settings") - trang cài đặt của Merid sẽ mở ra.',
+      'Kéo xuống thẻ "AI context check (beta)".',
+    ],
+    pasteTitle: 'Dán key, lưu và bật lên',
+    pasteIntro: 'Chỉ còn ba cú bấm:',
+    pasteSteps: [
+      'Dán key vào ô "Gemini API key".',
+      'Bấm "Save key", rồi "Test key" để chắc chắn key hoạt động.',
+      'Chuyển "Enable AI context check" sang On.',
+    ],
+    pasteNote: 'Xong - popup giờ hiển thị "AI Context Check: ON", và từ nay những từ thay thế đáng ngờ trên trang bạn đọc sẽ lặng lẽ được trả về như cũ.',
+    privacyTitle: 'Key của bạn nằm ở đâu',
+    privacyBullets: [
+      'Key được lưu trên thiết bị của bạn. Nếu đăng nhập Merid, key còn được sao lưu riêng tư vào tài khoản của bạn (chỉ mình bạn đọc được) để dùng trên nhiều thiết bị.',
+      'Chỉ những đoạn câu ngắn quanh từ được thay mới được gửi tới Google Gemini - không bao giờ gửi cả trang, và không bao giờ gửi về máy chủ Merid.',
+      'Bạn có thể tắt tính năng hoặc xóa key bất cứ lúc nào trong Settings.',
+    ],
+    troubleTitle: 'Nếu có gì đó không ổn',
+    troubles: [
+      { term: '"Test key" báo lỗi.', text: 'Sao chép lại key, tránh khoảng trắng hay xuống dòng - key phải là một chuỗi liền mạch bắt đầu bằng "AIza".' },
+      { term: 'Dùng nhiều thì từ ngừng được kiểm tra.', text: 'Có thể bạn đã chạm hạn mức miễn phí trong ngày; hạn mức tự đặt lại. Merid vẫn hoạt động bình thường khi không có bước kiểm tra.' },
+      { term: 'Không thấy nút "Create API key".', text: 'Một số tài khoản Google của công ty/trường học chặn AI Studio. Hãy tạo key bằng tài khoản Google cá nhân.' },
+    ],
+    outroTitle: 'Vậy là Merid đã chạy hết công suất',
+    outroSub: 'Một chiếc key, dán một lần - từ nay mọi từ được thay đều được kiểm tra lại trong ngữ cảnh.',
+    ctaTutorial: 'Xem hướng dẫn dùng Merid',
+    ctaInstall: 'Thêm Merid vào Chrome',
+  },
 }
 
 const en: Strings = {
@@ -633,6 +716,7 @@ const en: Strings = {
     title: 'Merid: Learn English while browsing Vietnamese websites',
     tutorialTitle: 'Tutorial: How to use Merid',
     createDatasetTitle: 'Create your own vocabulary dataset with AI - Merid',
+    apiKeyGuideTitle: 'Paste your own API key for the best Merid - Merid',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -876,6 +960,7 @@ const en: Strings = {
     features: 'Features',
     tutorial: 'Tutorial',
     createDataset: 'Create dataset',
+    apiKeyGuide: 'API key guide',
     faq: 'FAQ',
     install: 'Add to Chrome',
     privacy: 'Privacy Policy',
@@ -1064,6 +1149,59 @@ const en: Strings = {
     privacyNote: 'Your file is validated and stored on your device only. Merid never uploads your dataset to any server.',
     outroTitle: 'Ready to learn from your own words?',
     outroSub: 'Install Merid, upload the dataset you just created, and browse like you always do - the vocabulary will find you.',
+    ctaTutorial: 'See how to use Merid',
+    ctaInstall: 'Add Merid to Chrome',
+  },
+  apiKeyGuide: {
+    eyebrow: 'AI Context Check',
+    title: 'Paste your own API key',
+    sub: 'AI Context Check makes Merid noticeably smarter: Google Gemini double-checks every replaced word against its sentence and reverts the ones that do not fit. It runs on your own free Gemini API key - here is how to create it and paste it in, in under two minutes.',
+    whatTitle: 'Why paste an API key?',
+    whatIntro: 'Out of the box, Merid matches words fully offline. With AI Context Check on, after Merid replaces words on a page, Google Gemini (flash-lite) reviews each one in context:',
+    whatBullets: [
+      { term: 'Fewer wrong words.', text: 'A replacement that does not fit its sentence is reverted back to the original text automatically.' },
+      { term: 'Free.', text: 'Google AI Studio gives every Google account a free API key with a generous quota - more than enough for everyday browsing.' },
+      { term: 'Yours.', text: 'The key belongs to you and travels with you - Merid never shares one key between users, which keeps the feature fast and free.' },
+    ],
+    getTitle: 'Create your free Gemini API key',
+    getIntro: 'The key is created on Google AI Studio - it takes about a minute:',
+    getSteps: [
+      'Open aistudio.google.com/apikey in a new tab.',
+      'Sign in with any Google account.',
+      'Click "Create API key" (pick any project if asked).',
+      'Copy the key - a long string starting with "AIza…". Treat it like a password.',
+    ],
+    getCta: 'Open Google AI Studio',
+    getNote: 'Keep the key private: anyone who has it can spend your quota. You can delete it and create a new one at any time on that same page.',
+    openTitle: 'Open the AI settings in Merid',
+    openIntro: 'Back in Chrome:',
+    openSteps: [
+      'Click the Merid icon in the Chrome toolbar to open the popup.',
+      'Click the "AI Context Check" button (or "Settings") - the Merid settings page opens.',
+      'Scroll down to the "AI context check (beta)" card.',
+    ],
+    pasteTitle: 'Paste the key, save it, turn it on',
+    pasteIntro: 'Three clicks left:',
+    pasteSteps: [
+      'Paste your key into the "Gemini API key" field.',
+      'Press "Save key", then "Test key" to make sure it works.',
+      'Switch "Enable AI context check" to On.',
+    ],
+    pasteNote: 'Done - the popup now shows "AI Context Check: ON", and from now on doubtful replacements on the pages you read are quietly reverted.',
+    privacyTitle: 'Where your key lives',
+    privacyBullets: [
+      'The key is stored on your device. If you sign in to Merid it is also backed up privately to your account (readable only by you) so it follows you across devices.',
+      'Only short sentence snippets around replaced words are sent to Google Gemini - never whole pages, and never to Merid servers.',
+      'You can turn the feature off or delete the key at any time in Settings.',
+    ],
+    troubleTitle: 'If something does not work',
+    troubles: [
+      { term: '"Test key" fails.', text: 'Re-copy the key without spaces or line breaks - it must be one unbroken string starting with "AIza".' },
+      { term: 'Checking stops after heavy use.', text: 'You may have hit the free daily quota; it resets automatically. Merid keeps working normally without the check.' },
+      { term: 'No "Create API key" button.', text: 'Some work or school Google accounts block AI Studio. Create the key with a personal Google account instead.' },
+    ],
+    outroTitle: 'That is Merid at full strength',
+    outroSub: 'One key, pasted once - every replaced word gets double-checked in context from now on.',
     ctaTutorial: 'See how to use Merid',
     ctaInstall: 'Add Merid to Chrome',
   },

@@ -35,6 +35,10 @@
         webLoginUrl: 'https://merid.site/login',
         // Guided "generate a CSV with AI" page for custom datasets, linked
         // from the popup and the options page.
-        webCreateDatasetUrl: 'https://merid.site/create-dataset'
+        webCreateDatasetUrl: 'https://merid.site/create-dataset',
+        // Step-by-step guide for creating and pasting your own Gemini API key
+        // (AI context check), linked from the popup onboarding modal and the
+        // options page.
+        webApiKeyGuideUrl: 'https://merid.site/api-key-guide'
     };
 });
