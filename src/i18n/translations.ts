@@ -264,7 +264,7 @@ const vi: Strings = {
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
     createDatasetTitle: 'Tạo bộ từ vựng riêng với AI - Merid',
     apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
-    welcomeTitle: 'Merid đã sẵn sàng - bắt đầu trong 2 phút',
+    welcomeTitle: 'Merid đã sẵn sàng: bắt đầu trong 2 phút',
     goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
   },
   theme: {
@@ -755,7 +755,7 @@ const vi: Strings = {
   },
   welcome: {
     eyebrow: 'Cài đặt thành công',
-    title: 'Merid đã sẵn sàng 🎉',
+    title: 'Merid đã sẵn sàng',
     sub: 'Hai phút thiết lập là bạn bắt đầu học từ vựng ngay trong lúc đọc báo. Làm theo ba bước dưới đây.',
     steps: [
       {
@@ -764,11 +764,11 @@ const vi: Strings = {
       },
       {
         title: 'Chọn bộ từ và kiểu hiển thị',
-        body: 'Mở Merid, chọn bộ từ (SAT, C1, C2 hoặc Tất cả), chỉnh mật độ thay từ và kiểu hiển thị: Thay từ, Tô sáng, hoặc Bên cạnh. Cài đặt lưu tự động.',
+        body: 'Mở Merid, chọn bộ từ (SAT, C1, C2 hoặc Tất cả), chỉnh số từ được thay và kiểu hiển thị: Thay từ, Tô sáng, hoặc Bên cạnh. Merid tự động lưu cài đặt của bạn.',
       },
       {
         title: 'Đọc báo như bình thường',
-        body: 'Mở một trang tiếng Việt bất kỳ - vài từ sẽ được thay bằng tiếng Anh kèm gạch chân vàng. Di chuột lên từ để xem nghĩa, phát âm, ví dụ, rồi nhấn "Save to Deck" để lưu lại ôn tập.',
+        body: 'Mở một trang tiếng Việt bất kỳ. Vài từ sẽ được thay bằng tiếng Anh kèm gạch chân vàng. Di chuột lên từ để xem nghĩa, phát âm, ví dụ, rồi nhấn "Save to Deck" để lưu lại ôn tập.',
       },
     ],
     trySitesLabel: 'Thử ngay với:',
@@ -794,7 +794,7 @@ const vi: Strings = {
       },
     ],
     outroTitle: 'Mẹo nhỏ trước khi bắt đầu',
-    outroSub: 'Gặp trang không muốn thay từ (ngân hàng, công việc)? Mở Merid và nhấn "Tắt trên trang này" - Merid sẽ chừa riêng trang đó ra.',
+    outroSub: 'Gặp trang không muốn thay từ, như ngân hàng hay công việc? Mở Merid và nhấn "Tắt trên trang này". Merid sẽ chừa riêng trang đó ra.',
     ctaDemo: 'Xem demo tương tác',
     ctaTutorial: 'Hướng dẫn chi tiết',
   },
@@ -840,7 +840,7 @@ const en: Strings = {
     tutorialTitle: 'Tutorial: How to use Merid',
     createDatasetTitle: 'Create your own vocabulary dataset with AI - Merid',
     apiKeyGuideTitle: 'Paste your own API key for the best Merid - Merid',
-    welcomeTitle: 'Merid is ready - start in 2 minutes',
+    welcomeTitle: 'Merid is ready: start in 2 minutes',
     goodbyeTitle: 'Goodbye - help make Merid better',
   },
   theme: {
@@ -1332,20 +1332,20 @@ const en: Strings = {
   },
   welcome: {
     eyebrow: 'Installed successfully',
-    title: 'Merid is ready 🎉',
-    sub: 'Two minutes of setup and you are learning vocabulary while you read. Three steps:',
+    title: 'Merid is ready',
+    sub: 'Two minutes of setup and you are learning vocabulary while you read. Here are the three steps.',
     steps: [
       {
         title: 'Pin Merid to your toolbar',
-        body: 'Click the puzzle icon 🧩 in the top-right of your browser, find Merid and press the pin. From now on, the control panel is one click away.',
+        body: 'Click the puzzle icon 🧩 in the top-right of your browser, find Merid, and press the pin. After that, the control panel is one click away.',
       },
       {
         title: 'Pick a dataset and display mode',
-        body: 'Open Merid, choose a dataset (SAT, C1, C2 or All), set the replacement intensity and pick a display mode: Replace, Highlight, or Beside. Settings save automatically.',
+        body: 'Open Merid, choose a dataset (SAT, C1, C2, or All), set how many words Merid replaces, and pick a display mode: Replace, Highlight, or Beside. Merid saves your settings automatically.',
       },
       {
         title: 'Read like you always do',
-        body: 'Open any Vietnamese site - a few words will appear in English with a gold underline. Hover a word for its meaning, pronunciation and example, then hit "Save to Deck" to keep it for review.',
+        body: 'Open any Vietnamese site. A few words appear in English with a gold underline. Hover a word to see its meaning, pronunciation, and an example, then hit "Save to Deck" to keep it for review.',
       },
     ],
     trySitesLabel: 'Try it now on:',
@@ -1353,25 +1353,25 @@ const en: Strings = {
     extras: [
       {
         term: 'Deck sync',
-        text: 'Sign in so your saved words follow you across devices and are ready to study on merid.site.',
+        text: 'Sign in and your saved words follow you across devices, ready to study on merid.site.',
         to: '/login',
         cta: 'Sign in',
       },
       {
         term: 'AI context check',
-        text: 'Paste your own free Gemini API key and every replaced word gets checked in its sentence.',
+        text: 'Paste your own free Gemini API key and Merid checks every replaced word against its sentence.',
         to: '/api-key-guide',
         cta: 'Read the guide',
       },
       {
         term: 'Your own dataset',
-        text: 'Build a vocabulary set for any topic you like with AI and upload it to Merid.',
+        text: 'Use AI to build a vocabulary set for any topic you like, then upload it to Merid.',
         to: '/create-dataset',
         cta: 'Create a dataset',
       },
     ],
-    outroTitle: 'One tip before you go',
-    outroSub: 'On a site where you don\'t want replacements (banking, work tools)? Open Merid and press "Turn off on this site" - Merid will leave that site alone.',
+    outroTitle: 'One tip before you start',
+    outroSub: 'On a site where you don\'t want replacements, like banking or work tools, open Merid and press "Turn off on this site." Merid then leaves that site alone.',
     ctaDemo: 'Try the interactive demo',
     ctaTutorial: 'Full tutorial',
   },
