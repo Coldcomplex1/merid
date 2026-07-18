@@ -237,7 +237,7 @@ function customRowEl(d, activeKey) {
     nameEl.title = d.name;
     const metaEl = document.createElement('span');
     metaEl.className = 'custom-meta';
-    metaEl.textContent = `${d.count} words · updated ${fmtDate(d.updatedAt)}`;
+    metaEl.textContent = `${d.count} ${d.count === 1 ? 'word' : 'words'} · updated ${fmtDate(d.updatedAt)}`;
     info.append(nameEl, metaEl);
 
     const actions = document.createElement('div');

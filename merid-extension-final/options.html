@@ -191,6 +191,7 @@
                 <li>By default the extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
                 <li>If you enable the optional <strong>AI context check</strong>, only short sentence snippets around replaced words are sent to Google Gemini using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (readable only by you) so it follows you across devices.</li>
                 <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li>Turn the extension off any time from the popup.</li>
             </ul>
             <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>

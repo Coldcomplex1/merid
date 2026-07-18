@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const d of index) {
                 const opt = document.createElement('option');
                 opt.value = C.customKeyFor(d.id);
-                opt.textContent = `${d.name} (${d.count} words)`;
+                opt.textContent = `${d.name} (${d.count} ${d.count === 1 ? 'word' : 'words'})`;
                 customSelect.appendChild(opt);
             }
             customRow.hidden = false;
