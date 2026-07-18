@@ -8,8 +8,8 @@
  *   - As a CommonJS module in `node --test` (`require('../lib/vocab-core.js')`).
  *
  * Keep this file free of `chrome.*`, `window`, `document` and any DOM access so
- * it stays unit-testable. It performs NO network access - the extension is
- * fully local (no backend, no API keys, no AI calls).
+ * it stays unit-testable. This file performs NO network access - all matching
+ * and CSV handling is pure and local.
  *
  * @typedef {Object} VocabularyEntry
  * @property {string}  id           Stable id: `${dataset}:${word}`.
@@ -109,8 +109,34 @@
         replacementMode: 'highlight',// 'replace' | 'highlight' | 'beside'
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
-        datasetKey: 'sat'
+        datasetKey: 'sat',
+        disabledSites: []            // canonical hostnames the user paused Merid on
     };
+
+    // ---------------------------------------------------------------------
+    // Per-site pause list ("Turn off on this site" in the popup).
+    // Stored in chrome.storage.sync as canonical hostnames.
+    // ---------------------------------------------------------------------
+
+    /** Canonical form used for storing/comparing sites: lowercase, no "www." */
+    function canonicalHost(hostname) {
+        const h = String(hostname || '').toLowerCase().trim();
+        return h.indexOf('www.') === 0 ? h.slice(4) : h;
+    }
+
+    /**
+     * True when `hostname` is covered by the pause list. An entry covers its
+     * exact host and every subdomain (news.example.com matches example.com),
+     * so pausing a site holds across its www/mobile/amp variants.
+     */
+    function isSiteDisabled(hostname, disabledSites) {
+        const host = canonicalHost(hostname);
+        if (!host || !Array.isArray(disabledSites)) return false;
+        return disabledSites.some(site => {
+            const s = canonicalHost(site);
+            return s && (host === s || host.endsWith('.' + s));
+        });
+    }
 
     const REPLACEMENT_MODES = ['replace', 'highlight', 'beside'];
 
@@ -566,6 +592,7 @@
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
+        canonicalHost, isSiteDisabled,
         INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity, postWordBudget,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,

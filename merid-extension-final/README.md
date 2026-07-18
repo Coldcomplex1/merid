@@ -1,60 +1,72 @@
 # Merid
 
-A **local-only** Chrome extension (Manifest V3) that helps **Vietnamese learners
-pick up English vocabulary passively** while they browse Vietnamese websites. It
-detects selected Vietnamese words/phrases from bundled SAT / CEFR datasets and
-swaps or annotates them with the English equivalent.
+A Chrome extension (Manifest V3) that helps **Vietnamese learners pick up
+English vocabulary passively** while they browse. It detects Vietnamese
+words/phrases from bundled SAT / CEFR datasets (or your own uploaded CSV) and
+swaps or annotates them with the English equivalent, with a learning card on
+hover.
 
-Everything runs **inside your browser**. There is **no backend, no API key, and
-no network request to any server** - the extension never sends page content
-anywhere.
+**The core experience is local:** page scanning, matching and replacement all
+run inside your browser, and the default install makes **no network requests**.
+Two **optional, off-by-default** features use the network once the user opts in:
+
+- **Deck sync** - sign in (on merid.site or in Settings) to back up your saved
+  words to your own Firebase account and study them on merid.site/my-deck.
+- **AI context check** - paste **your own** Gemini API key and Merid verifies
+  each replaced word fits its sentence (short sentence snippets are sent to
+  Google's Gemini API; bad fits revert automatically).
 
 ---
 
 ## Features
 
-- Detects Vietnamese vocabulary from bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
+- Vietnamese → English and English → English scanning (independently toggleable).
+- Bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
 - **Custom datasets:** upload your own vocabulary CSV in Settings ("My datasets"),
   then select it from the popup or Settings. A guided builder at
   [merid.site/create-dataset](https://merid.site/create-dataset) helps you generate
   a compatible CSV with an AI of your choice. Custom datasets are stored **only on
   your device**.
-- Replaces / highlights / annotates matches with the English word.
 - **Three display modes:** Replace directly · Highlight only (hover for meaning) · Show beside (`từ (word)`).
-- **Adjustable intensity** (Light / Medium / Heavy) so you control how aggressive it is.
-- **Two scan directions** - Vietnamese → English and English → English - that toggle
-  independently; enable both to scan Vietnamese and English on the same page.
+- **Adjustable intensity** so you control how aggressive replacement is.
 - Learning card on hover: definition, pronunciation (browser TTS), phonetics,
   synonyms/antonyms, example.
-- **Personal deck (local):** *Save to Deck* keeps a word for review; *I know this*
-  stops replacing words you already know. Both lists are managed on a dedicated
-  **My deck** page (`deck.html`), opened from the popup.
-- Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off, instant revert.
-- **Fully local:** settings and your deck stay on your device; nothing ever leaves the browser.
+- **Personal deck:** *Save to Deck* keeps a word for review; *I know this*
+  stops replacing words you already know. Optional cloud backup via sign-in.
+- **Per-site pause:** "Turn off on this site" in the popup keeps Merid away from
+  sites where replacement is unwanted (banking, work tools…). Covers the site's
+  subdomains too.
+- **Revert this page** button restores the original text with one click.
+- Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
+- **Localized UI:** English + Vietnamese (`_locales/`), following the browser language.
+- First-run onboarding tour (merid.site/welcome) and an uninstall exit survey.
 
 ---
 
 ## Architecture
 
 ```
-Chrome Extension (local only - no network, no secrets)
- ├─ lib/vocab-core.js   Pure, DOM-free logic (matching, normalization, CSV) - also unit-tested
- ├─ content.js          Scans visible text, replaces matches, tooltip, revert
- ├─ background.js       Loads bundled CSV datasets, serves settings/vocabulary to the UI + content script
- ├─ popup.*             Quick controls (dataset, intensity, mode, on/off, revert)
- └─ options.*           Full config: replacement mode / intensity / direction / dataset / privacy
+Chrome Extension
+ ├─ lib/vocab-core.js   Pure, DOM-free logic (matching, normalization, CSV, per-site rules) - unit-tested
+ ├─ content.js          Scans visible text, replaces matches, tooltip, revert, AI-check batching
+ ├─ background.js       Loads bundled CSV datasets, serves settings/vocabulary, optional sync + Gemini calls
+ ├─ popup.*             Quick controls (dataset, intensity, mode, on/off, per-site pause, revert)
+ └─ options.*           Full config: replacement, datasets, account & sync, AI check, privacy
 ```
 
 | File | Role |
 |---|---|
-| `manifest.json` | MV3 manifest - minimal permissions, options page, CSP |
+| `manifest.json` | MV3 manifest - minimal permissions (`storage`, `activeTab`), options page, CSP |
+| `_locales/en`, `_locales/vi` | UI strings (manifest + popup + learning card) |
 | `lib/vocab-core.js` | Shared pure functions (works in the content script **and** in Node tests) |
 | `lib/custom-datasets.js` | `chrome.storage.local` persistence for user-uploaded datasets (background only) |
+| `lib/firebase-config.js` | Firebase project identifiers + merid.site URLs (not secrets) |
+| `lib/firebase-rest.js`, `lib/sync.js` | Optional deck sync over Firebase REST (no SDK, no remote code) |
 | `content.js` | DOM scanning, replacement, tooltip, live re-processing, revert |
-| `background.js` | Loads bundled CSV datasets, answers settings/vocabulary requests (no network) |
-| `popup.html/js/css` | Toolbar popup: dataset, intensity, mode, toggles, revert, deck + settings links |
-| `options.html/js/css` | Settings page: replacement options, dataset, data controls |
-| `deck.html/js/css` | Dedicated "My deck" page: saved + known words (local) |
+| `content-bridge.js` | merid.site single sign-on relay (session carries into the extension) |
+| `background.js` | Datasets, settings, optional sync + AI-check requests |
+| `popup.html/js/css` | Toolbar popup |
+| `options.html/js/css` | Settings page |
 | `dataset-*.csv` | Bundled vocabulary (SAT / C1 / C2) |
 | `fonts/` | Self-hosted Outfit + Inter woff2 (no remote font requests) |
 | `test/`, `scripts/` | Node test suite + zero-dep lint/build scripts |
@@ -68,18 +80,19 @@ Chrome Extension (local only - no network, no secrets)
 3. Click **Load unpacked** and select the repo folder (or the `dist/` folder after `npm run build`).
 4. Pin the extension and open a Vietnamese site (e.g. vnexpress.net, tuoitre.vn).
 
-That's it - there is no setup, no account, and no configuration required. Open
-the popup to pick a dataset and toggle the extension on.
+No account or API key is required for the core experience - open the popup,
+pick a dataset and browse.
 
 ---
 
 ## Using it
 
-- **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All), set the
-  highlight intensity, choose a display mode, toggle Vietnamese→English or
-  English→English, turn the extension on/off, or revert the current page.
-- **Settings** (options page): the same replacement/intensity/direction/dataset
-  controls plus a **Delete all stored data** button.
+- **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All / your own), set
+  the intensity, choose a display mode, toggle Vietnamese→English /
+  English→English, turn the extension on/off, pause it on the current site, or
+  revert the current page.
+- **Settings** (options page): the same replacement controls plus custom dataset
+  upload, account & sync, the AI context check, and **Delete all stored data**.
 - Hover any replaced/highlighted word to see its definition, example,
   synonyms/antonyms and to hear it pronounced (browser text-to-speech).
 
@@ -90,12 +103,16 @@ the popup to pick a dataset and toggle the extension on.
 Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
 
 - Page text is scanned **locally** in your browser to find vocabulary matches.
-- The extension **does not send webpage content to any server** and **uses no AI API**.
-- The extension **does not require or store any API key**.
-- Only your **settings** (selected dataset, display mode, intensity, on/off) are
-  stored locally via `chrome.storage`.
-- You can **disable the extension anytime** from the popup, and **Delete all
-  stored data** from the Settings page.
+- **By default the extension makes no network requests** - no account, no key,
+  nothing sent anywhere.
+- If you **sign in** (optional), your email + deck (saved/known words) are stored
+  in your own Firebase account for backup/study on merid.site. Signing out stops
+  syncing.
+- If you enable the **AI context check** (optional, needs your own Gemini key),
+  short sentence snippets around replaced words are sent to Google Gemini to
+  verify fit. Nothing is proxied through Merid servers - there are none.
+- You can **pause Merid per site**, **turn it off**, and **Delete all stored
+  data** from Settings.
 
 ---
 
@@ -103,12 +120,15 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
 
 | Permission | Why |
 |---|---|
-| `storage` | Save your settings and deck locally (selected dataset, display mode, intensity, scan direction, on/off, saved words, known words). |
-| `activeTab` | Lets the popup talk to the current tab (e.g. "revert this page"). |
-| `content_scripts: <all_urls>` | The core feature is passive replacement **while you browse any Vietnamese site**, so the content script must run on the pages you visit. It only reads text locally to match vocabulary; nothing is sent anywhere. |
+| `storage` | Save your settings, per-site pause list and deck locally; hold the optional sign-in session. |
+| `activeTab` | The popup's current-tab actions: read the active tab's hostname for "Turn off on this site" and message the page for "Revert this page". Only on user action. |
+| `content_scripts: <all_urls>` | The core feature is passive replacement **while you browse**, so the content script must run on the pages you visit. Matching is local; page snippets leave the browser only via the opt-in AI check. |
 
-No host permissions, no optional permissions, no external domains - the
-extension makes zero network requests.
+No `host_permissions`, no optional permissions, no remote code. The `identity`
+permission is **not** requested: in-extension Google sign-in stays dormant until
+`googleClientId` is configured in `lib/firebase-config.js` **and** `identity` is
+added back to the manifest (see the comments there). Users still get Google
+sign-in on merid.site - the session carries into the extension automatically.
 
 ---
 
@@ -131,7 +151,7 @@ My datasets**. The guided page at
 [merid.site/create-dataset](https://merid.site/create-dataset) generates an AI
 prompt that produces a compatible file.
 
-- **Format:** same header as the bundled files - 
+- **Format:** same header as the bundled files -
   `word,type,phon_br,phon_n_am,definition,example,vietnamese,synonyms,antonyms`.
   Only `word` and `vietnamese` are required per row; other fields may be empty.
   A `cefr` column (as in the bundled C1/C2 files) is also accepted. Column order
@@ -171,6 +191,9 @@ npm run build     # copy shippable files to dist/ (+ dist.zip) and fail if a sec
 npm run gen:assets # re-render the icons + store images from assets/ (needs a Chromium binary)
 ```
 
+Routine console logging is compiled out of release builds: flip the `DEBUG`
+flag at the top of `content.js` / `background.js` while developing.
+
 The build **whitelists** only the files the extension needs - `assets/`,
 `store-assets/`, `test/`, `scripts/`, docs, and `node_modules/` never ship.
 
@@ -180,7 +203,12 @@ Branded PNGs are generated from the HTML sources in [`assets/`](assets) by
 `scripts/gen-assets.js` (via a headless Chromium; set `CHROME_BIN` if it can't be
 found automatically). Outputs: the extension icons (`icon16/48/128.png`) and the
 Chrome Web Store images in [`store-assets/`](store-assets) (screenshots 1280×800,
-promo tile 440×280, marquee 1400×560). Copy-paste listing text lives in
+promo tile 440×280, marquee 1400×560).
+
+`store-assets/screenshot-5-realpage.png` is different: it shows the REAL content
+script running over a fictional Vietnamese article (`assets/realpage.html`) with
+the learning card open - regenerate it with `node scripts/gen-real-screenshot.js`
+(needs Playwright, dev-only). Copy-paste listing text lives in
 [`STORE_LISTING.md`](STORE_LISTING.md).
 
 ---
@@ -190,15 +218,24 @@ promo tile 440×280, marquee 1400×560). Copy-paste listing text lives in
 1. `npm test && npm run lint && npm run build` → produces `dist/` and `dist.zip`.
 2. Load `dist/` unpacked in Chrome (`chrome://extensions` → Developer mode → Load unpacked).
 3. Test on several real Vietnamese sites (e.g. vnexpress.net, tuoitre.vn).
-4. Confirm word replacement works.
-5. Confirm the on/off toggle works.
-6. Confirm the dataset selector works (SAT / C1 / C2 / All).
-7. Confirm **no API key** exists in the built files (the build fails if a key-shaped string is found).
-8. Confirm **no backend / API call** is made (open DevTools → Network on a test page; there should be no external requests from the extension).
-9. Confirm permissions are minimal (`storage`, `activeTab`).
-10. Store assets are ready: icons `icon16/48/128.png`, screenshots + promo images in
-    [`store-assets/`](store-assets). Copy the listing text from [`STORE_LISTING.md`](STORE_LISTING.md).
-11. Zip the production build (`dist.zip` is created for you).
-12. Create/sign in to a Chrome Web Store developer account ($5 one-time), upload `dist.zip`,
-    fill the data-use form ("does not collect or transmit user data"), add a public URL for
-    [`PRIVACY.md`](PRIVACY.md), then submit for review.
+4. Confirm word replacement, the on/off toggle, the dataset selector, per-site
+   pause and "Revert this page" all work.
+5. Confirm the UI shows Vietnamese when Chrome's language is Vietnamese
+   (`chrome://settings/languages`) and English otherwise.
+6. Confirm **no API key ships** in the built files (the build fails if a
+   key-shaped secret is found; the Firebase project identifiers in
+   `lib/firebase-config.js` are public identifiers, not secrets).
+7. Confirm the **default build makes no network requests** (DevTools → Network on
+   a test page while signed out with no Gemini key). Then confirm the only
+   requests after opting in are to the four Google endpoints in the manifest CSP
+   (identitytoolkit / securetoken / firestore / generativelanguage).
+8. Confirm permissions are exactly `storage` + `activeTab`.
+9. Host [`PRIVACY.md`](PRIVACY.md) at a public URL (e.g. merid.site/privacy).
+10. Store assets ready: icons `icon16/48/128.png`, screenshots + promo images in
+    [`store-assets/`](store-assets). Copy listing text, the single-purpose
+    statement, permission justifications, **and the data-safety answers** from
+    [`STORE_LISTING.md`](STORE_LISTING.md) - they must match actual behavior.
+11. Upload `dist.zip` in the developer dashboard ($5 one-time registration),
+    fill the data-use form per STORE_LISTING §6, add the privacy policy URL and
+    a support email, then submit for review. Expect a longer first review
+    because of the all-sites content script.

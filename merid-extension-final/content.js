@@ -11,6 +11,21 @@
 
 const C = window.VMCore;
 
+// Release builds stay silent on users' pages; flip DEBUG on while developing.
+// console.warn/error still fire (failures only), routine logs go through log().
+const DEBUG = false;
+const log = DEBUG ? console.log.bind(console) : () => { };
+
+// UI strings via chrome.i18n (_locales/en + _locales/vi), with English
+// fallbacks so a missing message can never blank the tooltip.
+function t(key, fallback) {
+    try {
+        const msg = chrome.i18n.getMessage(key);
+        if (msg) return msg;
+    } catch (e) { /* i18n unavailable (e.g. harness) */ }
+    return fallback;
+}
+
 let settings = {};
 let vocabulary = [];
 let tooltipElement = null;
@@ -52,7 +67,7 @@ const SPEAKER_SVG =
     '<path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M15.2 9.4a3.6 3.6 0 0 1 0 5.2"/>' +
     '</svg>';
 
-console.log('[VM] Content script starting…');
+log('[VM] Content script starting…');
 
 // -------------------------------------------------------------
 // Init / teardown
@@ -75,13 +90,19 @@ function init() {
             settings = C.withDefaults(response);
 
             if (settings.extensionEnabled === false) {
-                console.log('[VM] Extension disabled - not processing.');
+                log('[VM] Extension disabled - not processing.');
+                return;
+            }
+
+            // Per-site pause ("Turn off on this site" in the popup).
+            if (C.isSiteDisabled(location.hostname, settings.disabledSites)) {
+                log('[VM] Paused on this site - not processing.');
                 return;
             }
 
             const modes = [settings.vieEngMode && 'vieEng', settings.engEngMode && 'engEng'].filter(Boolean);
             if (modes.length === 0) {
-                console.log('[VM] No scan direction enabled - nothing to do.');
+                log('[VM] No scan direction enabled - nothing to do.');
                 return;
             }
 
@@ -140,7 +161,7 @@ function processPage(vocabMap) {
         if (index < textNodes.length) {
             requestAnimationFrame(processChunk);
         } else {
-            console.log('[VM] Page processing complete. Replaced:', replacedCount);
+            log('[VM] Page processing complete. Replaced:', replacedCount);
             scheduleAiContextCheck();
         }
     }
@@ -370,11 +391,11 @@ function runAiContextCheck() {
     }));
 
     aiChecksSent++;
-    console.log('[VM] AI context check: sending', items.length, 'words (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
+    log('[VM] AI context check: sending', items.length, 'words (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
         if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
         if (!res) { console.warn('[VM] AI check: no response.'); return; }
-        if (res.disabled) { console.log('[VM] AI check is off (toggle disabled or no API key).'); return; }
+        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); return; }
         if (!res.ok || !Array.isArray(res.verdicts)) {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
             return;
@@ -385,7 +406,7 @@ function runAiContextCheck() {
             aiCheckedWords.add(word.toLowerCase());
             if (res.verdicts[i] === 0) { revertWord(word); reverted++; }
         });
-        console.log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
+        log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
     });
 }
 
@@ -467,7 +488,7 @@ function handleSave(btn) {
         if (!list.some(e => (e.word || '').toLowerCase() === word.toLowerCase())) list.push(entry);
         chrome.storage.local.set({ savedWords: list });
         savedSet.add(word.toLowerCase());
-        if (btn) { btn.textContent = 'Saved ✓'; btn.disabled = true; }
+        if (btn) { btn.textContent = t('tooltipSaved', 'Saved ✓'); btn.disabled = true; }
     });
 }
 
@@ -518,33 +539,33 @@ function showTooltip(target, item) {
     const antonyms = (item.antonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
     const example = item.example
         ? esc(item.example).replace(new RegExp('(' + C.escapeRegExp(esc(item.word)) + ')', 'gi'), '<strong>$1</strong>')
-        : 'No example available.';
+        : esc(t('tooltipNoExample', 'No example available.'));
     const titleFontSize = Math.max(18, 28 - Math.max(0, (item.word || '').length - 9) * 1.2);
 
     tooltipElement.innerHTML = `
         <div class="vm-card">
-            <button class="vm-close" type="button" aria-label="Close">&times;</button>
+            <button class="vm-close" type="button" aria-label="${esc(t('tooltipClose', 'Close'))}">&times;</button>
             <div class="vm-body">
                 <div class="vm-header">
                     <div class="vm-title vm-word" style="font-size:${titleFontSize.toFixed(1)}px">${esc((item.word || '').toUpperCase())}</div>
                     <div class="vm-meta">
                         <span class="vm-type">(${esc(item.type || '')})</span>
-                        <button class="vm-audio" type="button" aria-label="Play pronunciation">${SPEAKER_SVG}</button>
+                        <button class="vm-audio" type="button" aria-label="${esc(t('tooltipPlay', 'Play pronunciation'))}">${SPEAKER_SVG}</button>
                         ${phon ? `<span class="vm-phon">${esc(phon)}</span>` : ''}
                     </div>
                 </div>
-                <div class="vm-definition">${esc(item.definition || 'No definition available.')}</div>
+                <div class="vm-definition">${esc(item.definition || t('tooltipNoDefinition', 'No definition available.'))}</div>
                 ${synonyms.length ? `<div class="vm-chips">${synonyms.map(s => `<span class="vm-chip vm-yellow">${esc(s)}</span>`).join('')}</div>` : ''}
                 ${antonyms.length ? `<div class="vm-chips">${antonyms.map(s => `<span class="vm-chip vm-dark">${esc(s)}</span>`).join('')}</div>` : ''}
                 <div class="vm-example">${example}</div>
                 <div class="vm-trans">
-                    <div class="vm-trow"><span class="vm-tlabel">Vietnamese</span><span class="vm-tvalue">${esc(item.vietnamese || 'N/A')}</span></div>
-                    ${originalText ? `<div class="vm-trow"><span class="vm-tlabel">Replaced</span><span class="vm-tvalue">${esc(originalText)}</span></div>` : ''}
+                    <div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipVietnamese', 'Vietnamese'))}</span><span class="vm-tvalue">${esc(item.vietnamese || 'N/A')}</span></div>
+                    ${originalText ? `<div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipReplaced', 'Replaced'))}</span><span class="vm-tvalue">${esc(originalText)}</span></div>` : ''}
                 </div>
             </div>
             <div class="vm-actions">
-                <button class="vm-save" type="button" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved ✓' : 'Save to Deck'}</button>
-                <button class="vm-know" type="button">I know this</button>
+                <button class="vm-save" type="button" ${isSaved ? 'disabled' : ''}>${esc(isSaved ? t('tooltipSaved', 'Saved ✓') : t('tooltipSave', 'Save to Deck'))}</button>
+                <button class="vm-know" type="button">${esc(t('tooltipKnow', 'I know this'))}</button>
             </div>
         </div>`;
 

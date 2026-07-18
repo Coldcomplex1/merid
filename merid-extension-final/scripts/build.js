@@ -11,6 +11,8 @@ const dist = path.join(root, 'dist');
 // Explicit whitelist - only these ship.
 const FILES = [
     'manifest.json',
+    '_locales/en/messages.json',
+    '_locales/vi/messages.json',
     'background.js',
     'content.js',
     'content.css',

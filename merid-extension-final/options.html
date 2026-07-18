@@ -12,7 +12,7 @@
     <main class="wrap">
         <header class="head">
             <h1>Merid</h1>
-            <p class="tagline">Passive English vocabulary learning while you browse Vietnamese websites. Works fully offline - no account, no setup.</p>
+            <p class="tagline">Passive English vocabulary learning while you browse Vietnamese websites. Works out of the box with no account - sign-in and AI checks are optional extras.</p>
         </header>
 
         <!-- REPLACEMENT -->
@@ -101,8 +101,10 @@
             <div id="signedOutView">
                 <p class="hint">Sign in to back up your deck and study it on <strong>merid.site/my-deck</strong>. Optional - everything keeps working locally without an account.</p>
 
-                <!-- One-click Google sign-in (account picker). -->
-                <div class="auth-actions">
+                <!-- One-click Google sign-in (account picker). Hidden unless
+                     googleClientId is configured in lib/firebase-config.js
+                     (which also requires the "identity" permission). -->
+                <div class="auth-actions" id="googleRow" hidden>
                     <button class="btn google" id="googleSignInBtn" type="button">
                         <svg class="g-logo" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true" focusable="false">
                             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -113,7 +115,7 @@
                         Sign in with Google
                     </button>
                 </div>
-                <p class="hint auth-divider">or use your email</p>
+                <p class="hint auth-divider" id="authDivider" hidden>or use your email</p>
 
                 <div class="field">
                     <label for="authEmail">Email</label>
@@ -189,11 +191,12 @@
             <h2>Data &amp; privacy</h2>
             <ul class="privacy">
                 <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
-                <li>By default the extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
-                <li>If you turn on the optional <strong>AI context check</strong>, only short pieces of the sentence around each replaced word are sent to Google Gemini, using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (only you can read it) so it works on all your devices.</li>
-                <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below.</li>
+                <li>If you turn on the optional <strong>AI context check</strong>, short pieces of the sentence around each replaced word are sent to Google Gemini, using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (only you can read it) so it works on all your devices.</li>
+                <li>If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
+                <li>Your settings (selected dataset, display mode, intensity, on/off, paused sites) are stored on your device via <code>chrome.storage</code>.</li>
                 <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
-                <li>Turn the extension off any time from the popup.</li>
+                <li>Turn the extension off any time from the popup - globally, or just for one site.</li>
             </ul>
             <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>
         </section>
