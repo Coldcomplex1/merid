@@ -48,14 +48,56 @@
     };
 
     function getDatasetFiles(key) {
+        if (isCustomKey(key)) return []; // custom datasets load from storage, not bundled files
         const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY.sat;
         return entry.files;
     }
 
     function datasetTagFor(key) {
+        if (isCustomKey(key)) return 'CUSTOM';
         const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY.sat;
         return entry.tag;
     }
+
+    // ---------------------------------------------------------------------
+    // Custom (user-uploaded) datasets - key format and limits.
+    //
+    // A custom dataset is selected with datasetKey = `custom:<stable-id>`;
+    // its validated entries live in chrome.storage.local (see
+    // lib/custom-datasets.js), never in bundled files and never in
+    // chrome.storage.sync.
+    // ---------------------------------------------------------------------
+    const CUSTOM_KEY_PREFIX = 'custom:';
+
+    function isCustomKey(key) {
+        return typeof key === 'string' && key.indexOf(CUSTOM_KEY_PREFIX) === 0;
+    }
+
+    function customIdFromKey(key) {
+        return isCustomKey(key) ? key.slice(CUSTOM_KEY_PREFIX.length) : null;
+    }
+
+    function customKeyFor(id) {
+        return CUSTOM_KEY_PREFIX + id;
+    }
+
+    // Shared by the options page (preview), the service worker (import) and
+    // the docs, so the numbers can never drift apart.
+    const CUSTOM_LIMITS = {
+        MAX_FILE_CHARS: 2 * 1024 * 1024, // ~2 MB of CSV text
+        MAX_ROWS: 5000,                  // data rows per dataset (excluding header)
+        MAX_DATASETS: 10,
+        MAX_NAME_LEN: 40,
+        MAX_ERRORS_REPORTED: 20,         // sample size; stats still count everything
+        FIELD_MAX: {
+            word: 64, type: 32, cefr: 16, phon_br: 64, phon_n_am: 64,
+            definition: 512, example: 1024, vietnamese: 256, synonyms: 256, antonyms: 256
+        }
+    };
+
+    const CUSTOM_REQUIRED_COLUMNS = ['word', 'vietnamese'];
+    const CUSTOM_KNOWN_COLUMNS = ['word', 'type', 'cefr', 'phon_br', 'phon_n_am',
+        'definition', 'example', 'vietnamese', 'synonyms', 'antonyms'];
 
     // ---------------------------------------------------------------------
     // Settings model + defaults (single source of truth for both UIs).
@@ -309,6 +351,217 @@
         });
     }
 
+    // ---------------------------------------------------------------------
+    // Custom-dataset import: robust CSV parsing + validation.
+    //
+    // `parseCSV` above splits on newlines first, which is fine for the bundled
+    // datasets (curated, single-line records) but breaks on user files where a
+    // quoted field legitimately contains a line break. Uploads therefore go
+    // through this character-level RFC-4180 parser instead. Everything here is
+    // pure and synchronous so the options page (preview) and the service
+    // worker (authoritative import) run the exact same code, and node:test
+    // can cover it directly.
+    // ---------------------------------------------------------------------
+
+    /**
+     * Parse CSV text into records. Quoted fields may contain commas, escaped
+     * quotes ("") and embedded line breaks. Tolerates BOM, CRLF/LF and a
+     * missing trailing newline; blank records are dropped.
+     *
+     * @returns {{records: Array<{fields:string[], line:number}>,
+     *            error: null|{line:number, code:'UNTERMINATED_QUOTE'}}}
+     */
+    function parseCsvRecords(text) {
+        const src = (text || '').replace(/^﻿/, '');
+        const records = [];
+        let field = '';
+        let record = [];
+        let inQuotes = false;
+        let line = 1;       // physical line being read (1-based, for messages)
+        let recordLine = 1; // line where the current record started
+
+        const endField = () => { record.push(field); field = ''; };
+        const endRecord = () => {
+            endField();
+            if (record.some(f => f.trim() !== '')) records.push({ fields: record, line: recordLine });
+            record = [];
+        };
+
+        for (let i = 0; i < src.length; i++) {
+            const ch = src[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (src[i + 1] === '"') { field += '"'; i++; }
+                    else inQuotes = false;
+                } else {
+                    if (ch === '\n') line++;
+                    field += ch;
+                }
+                continue;
+            }
+            if (ch === '"') { inQuotes = true; continue; }
+            if (ch === ',') { endField(); continue; }
+            if (ch === '\r' && src[i + 1] === '\n') continue; // CRLF: the \n ends the record
+            if (ch === '\n' || ch === '\r') {
+                endRecord();
+                line++;
+                recordLine = line;
+                continue;
+            }
+            field += ch;
+        }
+        if (inQuotes) return { records: [], error: { line: recordLine, code: 'UNTERMINATED_QUOTE' } };
+        endRecord(); // file may lack a trailing newline
+        return { records, error: null };
+    }
+
+    /**
+     * Clean one uploaded field: NFC-normalize (CSV-sourced Vietnamese often
+     * arrives decomposed), strip control/zero-width characters, collapse
+     * whitespace (this also flattens embedded line breaks), trim, and cap the
+     * length. Returns { value, truncated }.
+     */
+    function sanitizeFieldText(value, maxLen) {
+        let v = String(value == null ? '' : value);
+        if (typeof v.normalize === 'function') v = v.normalize('NFC');
+        v = v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200D\u2060\uFEFF]/g, '');
+        v = v.replace(/\s+/g, ' ').trim();
+        const truncated = maxLen > 0 && v.length > maxLen;
+        if (truncated) v = v.slice(0, maxLen).trim();
+        return { value: v, truncated };
+    }
+
+    /** Clean a user-supplied dataset name. Returns '' when nothing usable remains. */
+    function sanitizeDatasetName(name) {
+        return sanitizeFieldText(name, CUSTOM_LIMITS.MAX_NAME_LEN).value;
+    }
+
+    /**
+     * Validate and sanitize an uploaded CSV into storable row objects.
+     *
+     * Dedupe rule (documented in the UI, README and merid.site/create-dataset):
+     * when the same English headword appears more than once, the FIRST row
+     * wins - the same rule the bundled "All" dataset uses for overlaps.
+     *
+     * @returns {{
+     *   ok: boolean,
+     *   errorCode: null|'EMPTY_FILE'|'TOO_LARGE'|'MALFORMED_CSV'|'MISSING_HEADER'
+     *             |'MISSING_COLUMNS'|'TOO_MANY_ROWS'|'NO_VALID_ROWS',
+     *   missingColumns: string[],
+     *   entries: Object[],   // sanitized, deduped rows (recognized columns only)
+     *   stats: {totalRows:number, valid:number, invalid:number, duplicates:number},
+     *   errors: Array<{row:number, code:'MISSING_WORD'|'MISSING_VIETNAMESE'|'UNTERMINATED_QUOTE', message:string, sample?:string}>,
+     *   duplicates: Array<{row:number, word:string}>,
+     *   warnings: Array<{code:'UNKNOWN_COLUMNS'|'TRUNCATED_FIELDS', message:string}>
+     * }}
+     */
+    function validateDatasetCsv(text) {
+        const report = {
+            ok: false,
+            errorCode: null,
+            missingColumns: [],
+            entries: [],
+            stats: { totalRows: 0, valid: 0, invalid: 0, duplicates: 0 },
+            errors: [],
+            duplicates: [],
+            warnings: []
+        };
+        const raw = String(text == null ? '' : text);
+        if (!raw.trim()) { report.errorCode = 'EMPTY_FILE'; return report; }
+        if (raw.length > CUSTOM_LIMITS.MAX_FILE_CHARS) { report.errorCode = 'TOO_LARGE'; return report; }
+
+        const parsed = parseCsvRecords(raw);
+        if (parsed.error) {
+            report.errorCode = 'MALFORMED_CSV';
+            report.errors.push({
+                row: parsed.error.line,
+                code: parsed.error.code,
+                message: 'A double quote opened near line ' + parsed.error.line + ' is never closed.'
+            });
+            return report;
+        }
+        if (!parsed.records.length) { report.errorCode = 'EMPTY_FILE'; return report; }
+
+        // Header: trim + lowercase so " Word ,VIETNAMESE" still matches.
+        const headers = parsed.records[0].fields.map(h => h.trim().toLowerCase());
+        if (!headers.some(h => CUSTOM_KNOWN_COLUMNS.includes(h))) {
+            report.errorCode = 'MISSING_HEADER';
+            return report;
+        }
+        report.missingColumns = CUSTOM_REQUIRED_COLUMNS.filter(c => !headers.includes(c));
+        if (report.missingColumns.length) { report.errorCode = 'MISSING_COLUMNS'; return report; }
+        const unknown = headers.filter(h => h && !CUSTOM_KNOWN_COLUMNS.includes(h));
+        if (unknown.length) {
+            report.warnings.push({
+                code: 'UNKNOWN_COLUMNS',
+                message: 'Ignored unrecognized column(s): ' + unknown.join(', ')
+            });
+        }
+
+        const dataRecords = parsed.records.slice(1);
+        report.stats.totalRows = dataRecords.length;
+        if (dataRecords.length > CUSTOM_LIMITS.MAX_ROWS) { report.errorCode = 'TOO_MANY_ROWS'; return report; }
+
+        const byWord = new Map();
+        let truncatedFields = 0;
+        const rowError = (row, code, message, sample) => {
+            report.stats.invalid++;
+            if (report.errors.length < CUSTOM_LIMITS.MAX_ERRORS_REPORTED) {
+                report.errors.push({ row, code, message, sample });
+            }
+        };
+
+        for (const rec of dataRecords) {
+            const entry = {};
+            headers.forEach((header, idx) => {
+                if (!CUSTOM_KNOWN_COLUMNS.includes(header)) return;
+                const cleaned = sanitizeFieldText(
+                    rec.fields[idx] != null ? rec.fields[idx] : '',
+                    CUSTOM_LIMITS.FIELD_MAX[header] || 256
+                );
+                if (cleaned.truncated) truncatedFields++;
+                entry[header] = cleaned.value;
+            });
+            const sample = rec.fields.join(',').slice(0, 60);
+            if (!entry.word) { rowError(rec.line, 'MISSING_WORD', 'Missing the English word.', sample); continue; }
+            if (!entry.vietnamese) { rowError(rec.line, 'MISSING_VIETNAMESE', 'Missing the Vietnamese meaning.', sample); continue; }
+            const wordKey = entry.word.toLowerCase();
+            if (byWord.has(wordKey)) {
+                report.stats.duplicates++;
+                if (report.duplicates.length < CUSTOM_LIMITS.MAX_ERRORS_REPORTED) {
+                    report.duplicates.push({ row: rec.line, word: entry.word });
+                }
+                continue;
+            }
+            byWord.set(wordKey, entry);
+        }
+
+        if (truncatedFields) {
+            report.warnings.push({
+                code: 'TRUNCATED_FIELDS',
+                message: truncatedFields + ' overlong field value(s) were shortened.'
+            });
+        }
+        report.entries = Array.from(byWord.values());
+        report.stats.valid = report.entries.length;
+        if (!report.entries.length) { report.errorCode = 'NO_VALID_ROWS'; return report; }
+        report.ok = true;
+        return report;
+    }
+
+    /**
+     * Map a validated custom row onto the VocabularyEntry shape. The id embeds
+     * the dataset's stable id so entries stay unique across custom datasets.
+     */
+    function normalizeCustomEntry(entry, datasetId) {
+        const word = (entry.word || '').trim();
+        return Object.assign({}, entry, {
+            id: CUSTOM_KEY_PREFIX + datasetId + ':' + word.toLowerCase(),
+            word,
+            dataset: 'CUSTOM'
+        });
+    }
+
     return {
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
@@ -321,6 +574,11 @@
         // intensity gate
         hashToInt, gateByFrequency,
         // csv
-        splitCsvLine, parseCSV, validateEntry, normalizeEntry
+        splitCsvLine, parseCSV, validateEntry, normalizeEntry,
+        // custom datasets
+        CUSTOM_KEY_PREFIX, CUSTOM_LIMITS, CUSTOM_REQUIRED_COLUMNS, CUSTOM_KNOWN_COLUMNS,
+        isCustomKey, customIdFromKey, customKeyFor,
+        parseCsvRecords, sanitizeFieldText, sanitizeDatasetName,
+        validateDatasetCsv, normalizeCustomEntry
     };
 });

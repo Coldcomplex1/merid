@@ -596,8 +596,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
         return;
     }
-    // Dataset change requires fresh vocab from the background.
-    if (changes.datasetKey) {
+    // Dataset change requires fresh vocab from the background. datasetRev
+    // bumps when the ACTIVE custom dataset is replaced in place (same key,
+    // new entries), so it needs the same refetch.
+    if (changes.datasetKey || changes.datasetRev) {
         chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
             if (chrome.runtime.lastError) return;
             vocabulary = (resp && resp.vocabulary) || vocabulary;

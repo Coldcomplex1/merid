@@ -1,6 +1,6 @@
 # Privacy Policy - Merid
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-18_
 
 Merid is a browser extension that helps Vietnamese speakers learn English
 vocabulary while browsing. This policy explains exactly what the extension does
@@ -17,6 +17,13 @@ device unless you explicitly sign in to the optional deck sync described below.
   your device using `chrome.storage`. If you enable Chrome Sync, your *settings*
   may sync across your own Chrome profiles via Google - the extension itself runs
   no account server.
+- **Custom datasets you upload.** Vocabulary CSV files you import in Settings →
+  "My datasets" are validated and stored **only on your device**
+  (`chrome.storage.local`). They are never uploaded to Merid, Firebase, any AI
+  service, or anywhere else, and they are **not** included in the optional deck
+  sync - which also means they do not follow you to other devices. You can delete
+  any dataset individually from Settings, or remove everything with **Delete all
+  stored data**; uninstalling the extension also removes them.
 
 ## What is sent off your device
 

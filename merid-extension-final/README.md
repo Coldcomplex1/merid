@@ -14,6 +14,11 @@ anywhere.
 ## Features
 
 - Detects Vietnamese vocabulary from bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
+- **Custom datasets:** upload your own vocabulary CSV in Settings ("My datasets"),
+  then select it from the popup or Settings. A guided builder at
+  [merid.site/create-dataset](https://merid.site/create-dataset) helps you generate
+  a compatible CSV with an AI of your choice. Custom datasets are stored **only on
+  your device**.
 - Replaces / highlights / annotates matches with the English word.
 - **Three display modes:** Replace directly · Highlight only (hover for meaning) · Show beside (`từ (word)`).
 - **Adjustable intensity** (Light / Medium / Heavy) so you control how aggressive it is.
@@ -44,6 +49,7 @@ Chrome Extension (local only - no network, no secrets)
 |---|---|
 | `manifest.json` | MV3 manifest - minimal permissions, options page, CSP |
 | `lib/vocab-core.js` | Shared pure functions (works in the content script **and** in Node tests) |
+| `lib/custom-datasets.js` | `chrome.storage.local` persistence for user-uploaded datasets (background only) |
 | `content.js` | DOM scanning, replacement, tooltip, live re-processing, revert |
 | `background.js` | Loads bundled CSV datasets, answers settings/vocabulary requests (no network) |
 | `popup.html/js/css` | Toolbar popup: dataset, intensity, mode, toggles, revert, deck + settings links |
@@ -112,10 +118,44 @@ CSV files bundled with the extension. Columns: `word, type, phon_br, phon_n_am,
 definition, example, vietnamese, synonyms, antonyms`. Loading is lazy, deduped by
 word, validated, and cached for fast service-worker wake-ups.
 
-**Adding CEFR B2** (or any dataset): drop `dataset-B2.csv` (same columns) in the
-repo, add a one-line entry to `DATASET_REGISTRY` in `lib/vocab-core.js`, and add a
-button in `popup.html` / `options.html`. No other code changes needed. B2 is not
-included because we don't ship fabricated vocabulary data.
+**Adding CEFR B2** (or any bundled dataset): drop `dataset-B2.csv` (same columns)
+in the repo, add a one-line entry to `DATASET_REGISTRY` in `lib/vocab-core.js`, and
+add a button in `popup.html` / `options.html`. No other code changes needed. B2 is
+not included because we don't ship fabricated vocabulary data — but users can build
+their own B2 list as a custom dataset (below) without rebuilding the extension.
+
+### Custom datasets (user-uploaded)
+
+Users can upload their own vocabulary CSVs from **Settings → Vocabulary dataset →
+My datasets**. The guided page at
+[merid.site/create-dataset](https://merid.site/create-dataset) generates an AI
+prompt that produces a compatible file.
+
+- **Format:** same header as the bundled files —
+  `word,type,phon_br,phon_n_am,definition,example,vietnamese,synonyms,antonyms`.
+  Only `word` and `vietnamese` are required per row; other fields may be empty.
+  A `cefr` column (as in the bundled C1/C2 files) is also accepted. Column order
+  doesn't matter; headers are matched case-insensitively. Quoted fields (commas,
+  escaped `""` quotes, even line breaks), UTF-8 Vietnamese, BOM and CRLF are all
+  handled.
+- **Validation:** files are checked before import (`validateDatasetCsv` in
+  `lib/vocab-core.js`); the UI shows how many rows are valid, which rows were
+  skipped and why, and which duplicates were removed. **Duplicate headwords keep
+  the first row** (same rule the bundled "All" dataset uses). Broken rows are
+  never imported silently.
+- **Limits:** 2 MB per file, 5,000 rows per dataset, 10 datasets, name ≤ 40
+  characters. Clear errors are shown instead of truncating silently.
+- **Storage & privacy:** validated entries are stored in `chrome.storage.local`
+  (`vm_custom_index` + `vm_custom_data_<id>`) on the device only. They are never
+  uploaded anywhere, never sent to any AI, and are **not** part of the optional
+  deck sync — which also means custom datasets do **not** follow you to another
+  computer; re-upload the CSV there. Deleting a dataset (or Settings → Delete all
+  stored data) removes it completely.
+- **Selection:** a custom dataset is selected with `datasetKey = custom:<id>`
+  (popup "My datasets" dropdown or the Use button in Settings). "All" covers only
+  the bundled datasets and never mixes in custom entries. If the selected custom
+  dataset is missing (e.g. deleted, or the setting synced to another device),
+  Merid falls back to SAT and shows a notice.
 
 ---
 

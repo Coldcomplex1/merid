@@ -15,3 +15,6 @@ npm-debug.log*
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Extension build artifact (rebuilt by merid-extension-final `npm run build`)
+dist.zip

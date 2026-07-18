@@ -1,3 +1,5 @@
+import type { TopicPresetId } from '../lib/datasetPrompt'
+
 export type Lang = 'vi' | 'en'
 
 /* Text fragments that render with inline styling (gold marks, bold). */
@@ -8,10 +10,10 @@ export interface Segment {
 }
 
 export interface Strings {
-  meta: { title: string; tutorialTitle: string }
+  meta: { title: string; tutorialTitle: string; createDatasetTitle: string }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
-  nav: { demo: string; features: string; how: string; tutorial: string; cta: string }
+  nav: { demo: string; features: string; how: string; tutorial: string; createDataset: string; cta: string }
   deck: {
     title: string
     backHome: string
@@ -117,7 +119,7 @@ export interface Strings {
     ctaDemo: string
     privacy: string
   }
-  footer: { tagline: string; demo: string; features: string; tutorial: string; faq: string; install: string; privacy: string }
+  footer: { tagline: string; demo: string; features: string; tutorial: string; createDataset: string; faq: string; install: string; privacy: string }
   tutorial: {
     eyebrow: string
     title: string
@@ -140,12 +142,57 @@ export interface Strings {
     ctaDemo: string
     ctaInstall: string
   }
+  createDataset: {
+    eyebrow: string
+    title: string
+    sub: string
+    chooseTitle: string
+    levelLabel: string
+    levelHint: string
+    topicLabel: string
+    topicPlaceholder: string
+    presetLabels: Record<TopicPresetId, string>
+    countLabel: string
+    countHint: string
+    copyTitle: string
+    copyIntro: string
+    promptLabel: string
+    copy: string
+    copied: string
+    pasteTitle: string
+    pasteIntro: string
+    accuracyNote: string
+    saveTitle: string
+    saveIntro: string
+    saveOptions: { term: string; text: string }[]
+    templateButton: string
+    templateHint: string
+    uploadTitle: string
+    uploadIntro: string
+    uploadSteps: string[]
+    schemaTitle: string
+    schemaIntro: string
+    schemaColHeaders: [string, string, string]
+    schemaRequired: string
+    schemaOptional: string
+    columns: { name: string; required: boolean; desc: string }[]
+    exampleTitle: string
+    errorsTitle: string
+    errors: string[]
+    limitsNote: string
+    privacyNote: string
+    outroTitle: string
+    outroSub: string
+    ctaTutorial: string
+    ctaInstall: string
+  }
 }
 
 const vi: Strings = {
   meta: {
     title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
+    createDatasetTitle: 'Tạo bộ từ vựng riêng với AI - Merid',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -227,6 +274,7 @@ const vi: Strings = {
     features: 'Tính năng',
     how: 'Cách hoạt động',
     tutorial: 'Hướng dẫn',
+    createDataset: 'Tạo bộ từ',
     cta: 'Thêm vào Chrome',
   },
   hero: {
@@ -260,7 +308,7 @@ const vi: Strings = {
       },
       {
         title: 'Nhiều bộ từ vựng',
-        body: 'SAT, B2, C1 và C2 đã sẵn sàng, các bộ từ theo chủ đề và tự tạo đang trong kế hoạch. Bạn chọn mục tiêu, Merid chọn từ đáng học.',
+        body: 'SAT, C1 và C2 có sẵn trong tiện ích - và giờ bạn có thể tự tạo bộ từ theo trình độ, chủ đề riêng bằng AI tại trang "Tạo bộ từ" rồi tải lên trong Cài đặt. Bạn chọn mục tiêu, Merid chọn từ đáng học.',
       },
       {
         title: 'Tần suất tùy chỉnh',
@@ -351,7 +399,7 @@ const vi: Strings = {
       },
       {
         q: 'Có những bộ từ vựng nào?',
-        a: 'Hiện tại có SAT, B2, C1 và C2. Các bộ từ theo chủ đề và bộ từ tự tạo đang nằm trong kế hoạch, nhưng chưa ra mắt.',
+        a: 'Có sẵn SAT, C1 và C2 (hoặc "All" để gộp cả ba). Bạn cũng có thể tự tạo bộ từ theo chủ đề riêng: mở trang "Tạo bộ từ" trên merid.site, dùng AI tạo file CSV rồi tải lên trong phần Cài đặt của tiện ích.',
       },
       {
         q: 'Extension có miễn phí không?',
@@ -387,6 +435,7 @@ const vi: Strings = {
     demo: 'Demo',
     features: 'Tính năng',
     tutorial: 'Hướng dẫn',
+    createDataset: 'Tạo bộ từ',
     faq: 'FAQ',
     install: 'Thêm vào Chrome',
     privacy: 'Chính sách bảo mật',
@@ -496,12 +545,94 @@ const vi: Strings = {
     ctaDemo: 'Thử demo tương tác',
     ctaInstall: 'Thêm Merid vào Chrome',
   },
+  createDataset: {
+    eyebrow: 'Bộ từ tự tạo',
+    title: 'Tạo bộ từ vựng của riêng bạn',
+    sub: 'Chọn trình độ và chủ đề, sao chép câu lệnh được tạo sẵn, dán vào một AI như ChatGPT, Claude hay Gemini, rồi tải file CSV nhận được lên tiện ích Merid. Không cần biết kỹ thuật.',
+    chooseTitle: 'Chọn bộ từ của bạn',
+    levelLabel: 'Trình độ tiếng Anh (CEFR)',
+    levelHint: 'B2: nền tảng vững · C1: nâng cao · C2: thành thạo',
+    topicLabel: 'Chủ đề',
+    topicPlaceholder: 'Nhập chủ đề của bạn, ví dụ: bóng đá, marketing…',
+    presetLabels: {
+      business: 'Kinh doanh & tài chính',
+      technology: 'Công nghệ',
+      science: 'Khoa học',
+      environment: 'Môi trường',
+      academic: 'Viết học thuật',
+      economics: 'Kinh tế học',
+      medicine: 'Y tế & sức khỏe',
+      travel: 'Du lịch',
+      everyday: 'Giao tiếp hằng ngày',
+      custom: 'Chủ đề khác…',
+    },
+    countLabel: 'Số lượng từ',
+    countHint: '100 từ là lựa chọn cân bằng: đủ phong phú mà trang web vẫn mượt.',
+    copyTitle: 'Sao chép câu lệnh',
+    copyIntro: 'Câu lệnh dưới đây được tạo theo lựa chọn của bạn ở bước 1. Nó yêu cầu AI trả về đúng định dạng CSV mà Merid đọc được.',
+    promptLabel: 'Câu lệnh cho AI',
+    copy: 'Sao chép câu lệnh',
+    copied: 'Đã sao chép ✓',
+    pasteTitle: 'Dán vào một AI',
+    pasteIntro: 'Mở ChatGPT, Claude, Gemini hoặc một AI khác mà bạn tin dùng, dán toàn bộ câu lệnh rồi gửi. AI sẽ trả về nội dung CSV, hoặc một file .csv tải về được.',
+    accuracyNote: 'Lưu ý: từ vựng do AI tạo ra không phải lúc nào cũng chính xác. Hãy đọc lướt lại nghĩa tiếng Việt trước khi dùng và xóa những dòng bạn thấy sai.',
+    saveTitle: 'Lưu kết quả thành file .csv',
+    saveIntro: 'Bạn cần một file .csv (mã hóa UTF-8) để tải lên Merid. Chọn một trong hai cách:',
+    saveOptions: [
+      { term: 'Cách dễ nhất.', text: 'Nhờ AI "xuất kết quả thành file .csv tải về". Nhiều AI có thể đính kèm file trực tiếp trong câu trả lời.' },
+      { term: 'Tự lưu.', text: 'Sao chép toàn bộ CSV vào một trình soạn thảo văn bản thuần (Notepad trên Windows, TextEdit ở chế độ plain text trên Mac…), rồi lưu file với đuôi .csv.' },
+    ],
+    templateButton: 'Tải file CSV mẫu (trống)',
+    templateHint: 'File mẫu chỉ chứa dòng tiêu đề đúng chuẩn - hữu ích nếu bạn muốn tự điền từ vựng bằng tay.',
+    uploadTitle: 'Tải lên Merid',
+    uploadIntro: 'Bước cuối diễn ra ngay trong tiện ích:',
+    uploadSteps: [
+      'Mở tiện ích Merid trên thanh công cụ Chrome.',
+      'Bấm "Settings" để mở trang cài đặt.',
+      'Tìm mục "My datasets" trong thẻ Vocabulary dataset.',
+      'Chọn file .csv vừa lưu ở ô "Upload a CSV file".',
+      'Xem kết quả kiểm tra: bao nhiêu từ hợp lệ, dòng nào bị bỏ qua và vì sao.',
+      'Bấm "Save dataset", rồi bấm "Use" để bắt đầu học với bộ từ của bạn.',
+    ],
+    schemaTitle: 'Định dạng file CSV',
+    schemaIntro: 'Dòng đầu tiên phải là dòng tiêu đề với đúng các cột sau. Chỉ word và vietnamese là bắt buộc, các cột khác có thể để trống.',
+    schemaColHeaders: ['Cột', 'Bắt buộc?', 'Ý nghĩa'],
+    schemaRequired: 'Bắt buộc',
+    schemaOptional: 'Tùy chọn',
+    columns: [
+      { name: 'word', required: true, desc: 'Từ tiếng Anh (mỗi từ chỉ xuất hiện một lần)' },
+      { name: 'type', required: false, desc: 'Từ loại: n, v, adj, adv…' },
+      { name: 'phon_br', required: false, desc: 'Phiên âm IPA giọng Anh, ví dụ /kənˈsɪd.ər/' },
+      { name: 'phon_n_am', required: false, desc: 'Phiên âm IPA giọng Mỹ' },
+      { name: 'definition', required: false, desc: 'Định nghĩa tiếng Anh ngắn gọn' },
+      { name: 'example', required: false, desc: 'Một câu ví dụ tự nhiên' },
+      { name: 'vietnamese', required: true, desc: 'Nghĩa tiếng Việt; nhiều nghĩa cách nhau bằng dấu phẩy, đặt cả ô trong ngoặc kép' },
+      { name: 'synonyms', required: false, desc: 'Từ đồng nghĩa, cách nhau bằng dấu phẩy' },
+      { name: 'antonyms', required: false, desc: 'Từ trái nghĩa, cách nhau bằng dấu phẩy' },
+    ],
+    exampleTitle: 'Một dòng hợp lệ trông như sau',
+    errorsTitle: 'Lỗi thường gặp',
+    errors: [
+      'Thiếu dòng tiêu đề, hoặc thiếu cột word / vietnamese.',
+      'Ô chứa dấu phẩy nhưng không được đặt trong ngoặc kép.',
+      'AI trả về bảng Markdown hoặc kèm lời giải thích thay vì CSV thuần.',
+      'Lưu bằng Excel thành .xlsx thay vì .csv - Merid chỉ đọc file .csv.',
+      'Trùng từ tiếng Anh: Merid giữ dòng xuất hiện trước và bỏ các dòng sau.',
+    ],
+    limitsNote: 'Giới hạn: tối đa 2 MB mỗi file, 5.000 dòng mỗi bộ từ và 10 bộ từ. Nếu vượt quá, Merid sẽ báo lỗi rõ ràng thay vì tự cắt bớt.',
+    privacyNote: 'File của bạn được kiểm tra và lưu ngay trên máy bạn. Merid không tải bộ từ của bạn lên bất kỳ máy chủ nào.',
+    outroTitle: 'Sẵn sàng học bằng bộ từ của bạn?',
+    outroSub: 'Cài Merid, tải bộ từ vừa tạo lên và duyệt web như mọi ngày - từ vựng sẽ tự tìm đến bạn.',
+    ctaTutorial: 'Xem hướng dẫn dùng Merid',
+    ctaInstall: 'Thêm Merid vào Chrome',
+  },
 }
 
 const en: Strings = {
   meta: {
     title: 'Merid: Learn English while browsing Vietnamese websites',
     tutorialTitle: 'Tutorial: How to use Merid',
+    createDatasetTitle: 'Create your own vocabulary dataset with AI - Merid',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -583,6 +714,7 @@ const en: Strings = {
     features: 'Features',
     how: 'How it works',
     tutorial: 'Tutorial',
+    createDataset: 'Create dataset',
     cta: 'Add to Chrome',
   },
   hero: {
@@ -616,7 +748,7 @@ const en: Strings = {
       },
       {
         title: 'Multiple vocab datasets',
-        body: 'SAT, B2, C1, and C2 today, with themed and custom datasets on the roadmap. Pick your goal, and Merid picks the words worth learning.',
+        body: 'SAT, C1, and C2 are built in - and you can now create your own dataset for any level and topic with AI on the "Create dataset" page, then upload it in Settings. Pick your goal, and Merid picks the words worth learning.',
       },
       {
         title: 'Adjustable frequency',
@@ -707,7 +839,7 @@ const en: Strings = {
       },
       {
         q: 'What vocabulary sets are available?',
-        a: 'SAT, B2, C1, and C2 today. Themed and custom datasets are on the roadmap, but not released yet.',
+        a: 'SAT, C1, and C2 are built in (or "All" to combine them). You can also create your own topic dataset: open the "Create dataset" page on merid.site, generate a CSV with AI, and upload it in the extension Settings.',
       },
       {
         q: 'Is the extension free?',
@@ -743,6 +875,7 @@ const en: Strings = {
     demo: 'Demo',
     features: 'Features',
     tutorial: 'Tutorial',
+    createDataset: 'Create dataset',
     faq: 'FAQ',
     install: 'Add to Chrome',
     privacy: 'Privacy Policy',
@@ -851,6 +984,87 @@ const en: Strings = {
     outroTitle: 'That is the whole workflow.',
     outroSub: 'Reading is the habit you already have. Merid just upgrades it.',
     ctaDemo: 'Try the interactive demo',
+    ctaInstall: 'Add Merid to Chrome',
+  },
+  createDataset: {
+    eyebrow: 'Custom datasets',
+    title: 'Create your own vocabulary dataset',
+    sub: 'Pick a level and a topic, copy the generated prompt, paste it into an AI like ChatGPT, Claude or Gemini, then upload the resulting CSV into the Merid extension. No technical skills needed.',
+    chooseTitle: 'Choose your dataset',
+    levelLabel: 'English level (CEFR)',
+    levelHint: 'B2: solid foundation · C1: advanced · C2: mastery',
+    topicLabel: 'Topic',
+    topicPlaceholder: 'Type your own topic, e.g. football, marketing…',
+    presetLabels: {
+      business: 'Business & finance',
+      technology: 'Technology',
+      science: 'Science',
+      environment: 'Environment',
+      academic: 'Academic writing',
+      economics: 'Economics',
+      medicine: 'Medicine & health',
+      travel: 'Travel',
+      everyday: 'Everyday conversation',
+      custom: 'Custom topic…',
+    },
+    countLabel: 'Number of words',
+    countHint: '100 words is the sweet spot: plenty of variety while pages stay fast.',
+    copyTitle: 'Copy the prompt',
+    copyIntro: 'The prompt below is generated from your choices in step 1. It instructs the AI to return exactly the CSV format Merid understands.',
+    promptLabel: 'Prompt for the AI',
+    copy: 'Copy prompt',
+    copied: 'Copied ✓',
+    pasteTitle: 'Paste it into an AI',
+    pasteIntro: 'Open ChatGPT, Claude, Gemini or another capable AI, paste the complete prompt and send it. The AI will reply with CSV content, or a downloadable .csv file.',
+    accuracyNote: 'Note: AI-generated vocabulary is not always correct. Skim the Vietnamese meanings before using the dataset and delete any rows that look wrong.',
+    saveTitle: 'Save the result as a .csv file',
+    saveIntro: 'You need a .csv file (UTF-8) to upload into Merid. Pick whichever way is easier:',
+    saveOptions: [
+      { term: 'Easiest.', text: 'Ask the AI to "provide the result as a downloadable .csv file". Many AIs can attach the file directly in their reply.' },
+      { term: 'Do it yourself.', text: 'Copy the whole CSV into a plain-text editor (Notepad on Windows, TextEdit in plain-text mode on Mac…) and save the file with a .csv extension.' },
+    ],
+    templateButton: 'Download blank CSV template',
+    templateHint: 'The template contains just the correct header row - handy if you want to fill in words by hand.',
+    uploadTitle: 'Upload it to Merid',
+    uploadIntro: 'The last step happens right inside the extension:',
+    uploadSteps: [
+      'Open the Merid extension from the Chrome toolbar.',
+      'Click "Settings" to open the settings page.',
+      'Find "My datasets" inside the Vocabulary dataset card.',
+      'Choose your saved .csv in "Upload a CSV file".',
+      'Review the validation result: how many words are valid, which rows were skipped and why.',
+      'Click "Save dataset", then "Use" to start learning with your own words.',
+    ],
+    schemaTitle: 'CSV file format',
+    schemaIntro: 'The first line must be a header row with these columns. Only word and vietnamese are required; every other column may be empty.',
+    schemaColHeaders: ['Column', 'Required?', 'Meaning'],
+    schemaRequired: 'Required',
+    schemaOptional: 'Optional',
+    columns: [
+      { name: 'word', required: true, desc: 'The English headword (each word may appear only once)' },
+      { name: 'type', required: false, desc: 'Part of speech: n, v, adj, adv…' },
+      { name: 'phon_br', required: false, desc: 'British IPA, e.g. /kənˈsɪd.ər/' },
+      { name: 'phon_n_am', required: false, desc: 'North American IPA' },
+      { name: 'definition', required: false, desc: 'A concise English definition' },
+      { name: 'example', required: false, desc: 'One natural example sentence' },
+      { name: 'vietnamese', required: true, desc: 'Vietnamese meaning(s); separate several with commas inside one quoted field' },
+      { name: 'synonyms', required: false, desc: 'Comma-separated synonyms' },
+      { name: 'antonyms', required: false, desc: 'Comma-separated antonyms' },
+    ],
+    exampleTitle: 'A valid row looks like this',
+    errorsTitle: 'Common mistakes',
+    errors: [
+      'Missing the header row, or missing the word / vietnamese columns.',
+      'A field contains a comma but is not wrapped in double quotes.',
+      'The AI returned a Markdown table or added explanations instead of raw CSV.',
+      'Saving from Excel as .xlsx instead of .csv - Merid only reads .csv files.',
+      'Duplicate English headwords: Merid keeps the first row and skips the rest.',
+    ],
+    limitsNote: 'Limits: at most 2 MB per file, 5,000 rows per dataset and 10 datasets. Beyond that, Merid shows a clear error instead of silently truncating.',
+    privacyNote: 'Your file is validated and stored on your device only. Merid never uploads your dataset to any server.',
+    outroTitle: 'Ready to learn from your own words?',
+    outroSub: 'Install Merid, upload the dataset you just created, and browse like you always do - the vocabulary will find you.',
+    ctaTutorial: 'See how to use Merid',
     ctaInstall: 'Add Merid to Chrome',
   },
 }

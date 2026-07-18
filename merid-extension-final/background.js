@@ -13,8 +13,9 @@
 // (lib/sync.js). No page content is ever sent anywhere.
 // =============================================================
 
-importScripts('lib/vocab-core.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
+importScripts('lib/vocab-core.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
 const C = self.VMCore;
+const Custom = self.VMCustom;
 const Sync = self.VMSync;
 const FB = self.VMFirebase;
 const FBConfig = self.VMFirebaseConfig || {};
@@ -27,6 +28,20 @@ let vocabulary = [];
 // =============================================================
 async function loadVocabulary(datasetKey) {
     const key = datasetKey || 'sat';
+
+    // Custom datasets load their pre-validated entries from
+    // chrome.storage.local instead of bundled files. A missing dataset
+    // (deleted here, or the setting synced to a device that never had the
+    // file) falls back to the built-in default with a one-shot notice.
+    if (C.isCustomKey(key)) {
+        const entries = await Custom.getEntries(C.customIdFromKey(key));
+        if (!entries || !entries.length) return fallbackToDefault();
+        vocabulary = entries;
+        chrome.storage.local.set({ vm_vocab_cache: { key, count: vocabulary.length, data: vocabulary } });
+        console.log(`[VM] Loaded custom dataset (${key}):`, vocabulary.length);
+        return vocabulary;
+    }
+
     const files = C.getDatasetFiles(key);
     const byWord = new Map(); // dedupe by normalized English word
 
@@ -72,6 +87,102 @@ function initVocabulary() {
             });
         });
     });
+}
+
+// The selected custom dataset is gone. Switch back to the built-in default
+// (the sync write makes every open tab revert + re-scan) and leave a one-shot
+// notice that the popup/options page shows once and clears.
+async function fallbackToDefault() {
+    chrome.storage.sync.set({ datasetKey: 'sat' });
+    chrome.storage.local.set({ vm_dataset_notice: { code: 'CUSTOM_MISSING', at: Date.now() } });
+    return loadVocabulary('sat');
+}
+
+// =============================================================
+// Custom datasets (user-uploaded CSVs). Validation runs here so the stored
+// entries are exactly what the report said; the options page runs the same
+// validateDatasetCsv beforehand purely as a preview. Nothing in this section
+// touches the network - datasets stay in chrome.storage.local.
+// =============================================================
+
+/** Strip the (potentially large) entries array before answering the UI. */
+function publicReport(report) {
+    return {
+        ok: report.ok,
+        errorCode: report.errorCode,
+        missingColumns: report.missingColumns,
+        stats: report.stats,
+        errors: report.errors,
+        duplicates: report.duplicates,
+        warnings: report.warnings
+    };
+}
+
+async function importCustomDataset(name, csvText) {
+    const cleanName = C.sanitizeDatasetName(name);
+    if (!cleanName) return { ok: false, code: 'BAD_NAME' };
+    const index = await Custom.list();
+    if (index.length >= C.CUSTOM_LIMITS.MAX_DATASETS) return { ok: false, code: 'LIMIT_DATASETS' };
+    const report = C.validateDatasetCsv(csvText);
+    if (!report.ok) return { ok: false, code: 'INVALID_CSV', report: publicReport(report) };
+    const id = Custom.newId();
+    const entries = report.entries.map(e => C.normalizeCustomEntry(e, id));
+    try {
+        const meta = await Custom.create(id, cleanName, entries);
+        return { ok: true, id: meta.id, name: meta.name, count: meta.count, report: publicReport(report) };
+    } catch (e) {
+        return { ok: false, code: e.code === 'STORAGE_FULL' ? 'STORAGE_FULL' : 'UNKNOWN' };
+    }
+}
+
+async function replaceCustomDataset(id, csvText) {
+    const meta = await Custom.getMeta(id);
+    if (!meta) return { ok: false, code: 'NOT_FOUND' };
+    const report = C.validateDatasetCsv(csvText);
+    if (!report.ok) return { ok: false, code: 'INVALID_CSV', report: publicReport(report) };
+    const entries = report.entries.map(e => C.normalizeCustomEntry(e, id));
+    try {
+        await Custom.replace(id, entries);
+    } catch (e) {
+        return { ok: false, code: e.code === 'STORAGE_FULL' ? 'STORAGE_FULL' : 'UNKNOWN' };
+    }
+    // If this dataset is active, reload it and bump datasetRev so open tabs
+    // re-scan (datasetKey itself did not change, so the usual trigger is silent).
+    const s = await chrome.storage.sync.get(['datasetKey']);
+    if (s.datasetKey === C.customKeyFor(id)) {
+        await loadVocabulary(s.datasetKey);
+        chrome.storage.sync.set({ datasetRev: Date.now() });
+    }
+    return { ok: true, count: entries.length, report: publicReport(report) };
+}
+
+async function renameCustomDataset(id, name) {
+    const cleanName = C.sanitizeDatasetName(name);
+    if (!cleanName) return { ok: false, code: 'BAD_NAME' };
+    const meta = await Custom.rename(id, cleanName);
+    return meta ? { ok: true, name: meta.name } : { ok: false, code: 'NOT_FOUND' };
+}
+
+async function deleteCustomDataset(id) {
+    await Custom.remove(id);
+    const s = await chrome.storage.sync.get(['datasetKey']);
+    const wasActive = s.datasetKey === C.customKeyFor(id);
+    if (wasActive) {
+        // Deliberate user action: switch back without the "missing" notice
+        // (the options UI already spelled out the consequence in its confirm).
+        chrome.storage.sync.set({ datasetKey: 'sat' });
+        await loadVocabulary('sat');
+    }
+    return { ok: true, wasActive };
+}
+
+/** Registry label for bundled keys, the user's name for custom keys. */
+async function resolveDatasetLabel(key) {
+    if (C.isCustomKey(key)) {
+        const meta = await Custom.getMeta(C.customIdFromKey(key));
+        return meta ? meta.name : 'Custom (missing)';
+    }
+    return (C.DATASET_REGISTRY[key] || {}).label || key;
 }
 
 // =============================================================
@@ -407,13 +518,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'getStatus': {
             // Used by the options page to show how many words are loaded.
-            chrome.storage.sync.get(['extensionEnabled', 'datasetKey'], s => {
+            chrome.storage.sync.get(['extensionEnabled', 'datasetKey'], async s => {
+                const key = s.datasetKey || 'sat';
                 sendResponse({
                     enabled: s.extensionEnabled !== false,
-                    datasetKey: s.datasetKey || 'sat',
-                    vocabCount: vocabulary.length
+                    datasetKey: key,
+                    vocabCount: vocabulary.length,
+                    datasetLabel: await resolveDatasetLabel(key)
                 });
             });
+            return true;
+        }
+
+        // ---- Custom datasets (options page + popup) ----
+        case 'listCustomDatasets': {
+            (async () => {
+                const datasets = await Custom.list();
+                const s = await chrome.storage.sync.get(['datasetKey']);
+                sendResponse({ ok: true, datasets, activeKey: s.datasetKey || 'sat' });
+            })().catch(() => sendResponse({ ok: false }));
+            return true;
+        }
+
+        case 'importCustomDataset': {
+            importCustomDataset(request.name, request.csvText)
+                .then(sendResponse)
+                .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+            return true;
+        }
+
+        case 'replaceCustomDataset': {
+            replaceCustomDataset(request.id, request.csvText)
+                .then(sendResponse)
+                .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+            return true;
+        }
+
+        case 'renameCustomDataset': {
+            renameCustomDataset(request.id, request.name)
+                .then(sendResponse)
+                .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
+            return true;
+        }
+
+        case 'deleteCustomDataset': {
+            deleteCustomDataset(request.id)
+                .then(sendResponse)
+                .catch(() => sendResponse({ ok: false, code: 'UNKNOWN' }));
             return true;
         }
 

@@ -8,6 +8,7 @@ import Navbar from './components/sections/Navbar'
 import Footer from './components/sections/Footer'
 import Home from './pages/Home'
 import Tutorial from './pages/Tutorial'
+import CreateDataset from './pages/CreateDataset'
 import MyDeck from './pages/MyDeck'
 import AuthPage from './pages/AuthPage'
 
@@ -56,6 +57,7 @@ export default function App() {
                 <Route element={<SiteLayout />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/tutorial" element={<Tutorial />} />
+                  <Route path="/create-dataset" element={<CreateDataset />} />
                   <Route path="/login" element={<AuthPage mode="login" />} />
                   <Route path="/signup" element={<AuthPage mode="signup" />} />
                   <Route path="*" element={<Home />} />

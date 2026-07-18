@@ -57,6 +57,7 @@
         <!-- DATASET -->
         <section class="card">
             <h2>Vocabulary dataset</h2>
+            <p class="hint notice-warn" id="customNotice" role="status" hidden></p>
             <div class="seg" id="datasetSeg">
                 <button data-val="sat" type="button">SAT</button>
                 <button data-val="c1" type="button">C1</button>
@@ -64,6 +65,33 @@
                 <button data-val="all" type="button">All</button>
             </div>
             <p class="hint" id="datasetInfo">Loaded: …</p>
+
+            <!-- MY DATASETS (user-uploaded CSVs - stored only on this device) -->
+            <div class="subsection">
+                <h3 class="subhead">My datasets</h3>
+                <p class="hint" id="customEmpty" hidden>
+                    No custom datasets yet.
+                    <a class="create-dataset-url" href="https://merid.site/create-dataset" target="_blank" rel="noopener">Generate one with AI on merid.site</a>,
+                    then upload the CSV file below.
+                </p>
+                <ul class="custom-list" id="customList"></ul>
+
+                <div class="field">
+                    <label for="uploadFile">Upload a CSV file</label>
+                    <input type="file" id="uploadFile" accept=".csv,text/csv">
+                    <p class="hint">Needs a header row with at least <code>word</code> and <code>vietnamese</code> columns.
+                        <a class="create-dataset-url" href="https://merid.site/create-dataset" target="_blank" rel="noopener">How to create a dataset ↗</a></p>
+                </div>
+                <div class="field">
+                    <label for="uploadName">Dataset name</label>
+                    <input type="text" id="uploadName" maxlength="40" placeholder="e.g. Finance C1" autocomplete="off">
+                </div>
+                <div class="auth-actions">
+                    <button class="btn" id="uploadBtn" type="button" disabled>Save dataset</button>
+                </div>
+                <div class="import-report" id="importReport" role="status" aria-live="polite" hidden></div>
+                <input type="file" id="replaceFile" accept=".csv,text/csv" hidden aria-hidden="true" tabindex="-1">
+            </div>
         </section>
 
         <!-- ACCOUNT & SYNC -->
@@ -163,6 +191,7 @@
                 <li>By default the extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
                 <li>If you enable the optional <strong>AI context check</strong>, only short sentence snippets around replaced words are sent to Google Gemini using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (readable only by you) so it follows you across devices.</li>
                 <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li>Turn the extension off any time from the popup.</li>
             </ul>
             <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>

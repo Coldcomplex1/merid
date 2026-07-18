@@ -32,6 +32,9 @@
         // Where the popup's "Sign in / Sign up" button points. Signing in on
         // merid.site (Google or email) carries into the extension via the
         // content-bridge single sign-on.
-        webLoginUrl: 'https://merid.site/login'
+        webLoginUrl: 'https://merid.site/login',
+        // Guided "generate a CSV with AI" page for custom datasets, linked
+        // from the popup and the options page.
+        webCreateDatasetUrl: 'https://merid.site/create-dataset'
     };
 });

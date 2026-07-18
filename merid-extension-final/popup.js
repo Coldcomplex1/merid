@@ -38,10 +38,60 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             datasetBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            customSelect.value = '';
+            customSelect.classList.remove('active');
             chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: btn.dataset.key }, () => {
                 void chrome.runtime.lastError;
             });
         });
+    });
+
+    // ---- Custom datasets (uploaded on the Settings page, stored locally) ----
+    const customRow = document.getElementById('custom-row');
+    const customSelect = document.getElementById('custom-select');
+    const datasetNotice = document.getElementById('dataset-notice');
+
+    chrome.storage.local.get(['vm_custom_index', 'vm_dataset_notice'], (l) => {
+        const index = Array.isArray(l.vm_custom_index) ? l.vm_custom_index : [];
+        if (index.length) {
+            for (const d of index) {
+                const opt = document.createElement('option');
+                opt.value = C.customKeyFor(d.id);
+                opt.textContent = `${d.name} (${d.count} ${d.count === 1 ? 'word' : 'words'})`;
+                customSelect.appendChild(opt);
+            }
+            customRow.hidden = false;
+        }
+        // Highlight the active custom dataset (the 4 built-in buttons simply
+        // find no matching data-key and stay unlit).
+        chrome.storage.sync.get(['datasetKey'], (s) => {
+            if (C.isCustomKey(s.datasetKey)) {
+                customSelect.value = s.datasetKey;
+                if (customSelect.value === s.datasetKey) customSelect.classList.add('active');
+            }
+        });
+        // One-shot fallback notice written by the background when the selected
+        // custom dataset went missing.
+        if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
+            datasetNotice.textContent = 'Your custom dataset could not be found, so Merid switched back to SAT.';
+            datasetNotice.hidden = false;
+            chrome.storage.local.remove('vm_dataset_notice');
+        }
+    });
+
+    customSelect.addEventListener('change', () => {
+        if (!customSelect.value) return;
+        datasetBtns.forEach(b => b.classList.remove('active'));
+        customSelect.classList.add('active');
+        chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: customSelect.value }, () => {
+            void chrome.runtime.lastError;
+        });
+    });
+
+    // Opens the guided AI dataset builder on merid.site. Fixed constant from
+    // lib/firebase-config.js - never user-supplied (A10).
+    document.getElementById('create-dataset-link').addEventListener('click', () => {
+        chrome.tabs.create({ url: window.VMFirebaseConfig.webCreateDatasetUrl });
     });
 
     // Scan-direction cards toggle independently - both can be on at once.

@@ -242,6 +242,70 @@ header {
     border-color: var(--accent-yellow);
 }
 
+/* "My datasets" selector - hidden until the user has uploaded a dataset. */
+.custom-row {
+    margin-bottom: 8px;
+}
+
+.custom-row select {
+    width: 100%;
+    background-color: #1d2d50;
+    color: var(--text-secondary);
+    border: 1px solid #1d2d50;
+    padding: 8px 6px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-overflow: ellipsis;
+}
+
+.custom-row select:hover {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+}
+
+.custom-row select:focus-visible {
+    outline: 2px solid var(--accent-yellow);
+    outline-offset: 1px;
+}
+
+.custom-row select.active {
+    background-color: var(--accent-yellow);
+    color: #020c1b;
+    border-color: var(--accent-yellow);
+}
+
+.create-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.create-link:hover {
+    color: var(--accent-yellow);
+    text-decoration: underline;
+}
+
+.create-link:focus-visible {
+    outline: 2px solid var(--accent-yellow);
+    outline-offset: 2px;
+}
+
+.dataset-notice {
+    margin: 0 0 8px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--warn);
+}
+
 .setting-item {
     margin-bottom: 15px;
 }
