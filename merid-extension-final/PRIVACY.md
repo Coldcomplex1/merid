@@ -48,8 +48,8 @@ immediately.
   Gemini API key, which you create yourself at aistudio.google.com and paste
   into Settings. The key is stored on your device (`chrome.storage.local`). If
   you sign in to the optional deck sync, the key is additionally backed up to
-  your own account's private Firestore document — protected by server-side
-  security rules so only you can read it — purely so the feature keeps working
+  your own account's private Firestore document - protected by server-side
+  security rules so only you can read it - purely so the feature keeps working
   when you sign in on another device. The key is only ever sent to Google
   endpoints (Gemini, Firestore) over TLS and is deleted from both places when
   you clear it in Settings.

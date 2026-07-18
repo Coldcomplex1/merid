@@ -169,7 +169,7 @@ function renderReport(report, mode) {
         list.className = 'report-rows';
         for (const e of errs) {
             const li = document.createElement('li');
-            li.textContent = `Row ${e.row}: ${e.message}` + (e.sample ? ` — ${e.sample}` : '');
+            li.textContent = `Row ${e.row}: ${e.message}` + (e.sample ? ` - ${e.sample}` : '');
             list.appendChild(li);
         }
         const hidden = (report.stats ? report.stats.invalid : 0) - errs.length;

@@ -25,7 +25,7 @@ type TabId = 'wiki' | 'fb'
 
 /** The fake browser's tabs. Each one is a full page the extension scans. */
 const TABS: { id: TabId; title: string; url: string }[] = [
-  { id: 'wiki', title: 'Trang Chính – Wikipedia tiếng Việt', url: 'vi.wikipedia.org/wiki/Trang_Chính' },
+  { id: 'wiki', title: 'Trang Chính - Wikipedia tiếng Việt', url: 'vi.wikipedia.org/wiki/Trang_Chính' },
   { id: 'fb', title: 'Facebook', url: 'www.facebook.com' },
 ]
 

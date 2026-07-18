@@ -14,7 +14,7 @@ You only ever do this once.
    Log in with the GitHub account that owns this repo (`Coldcomplex1`) and click **Authorize**.
    Choose the free **Hobby** plan if asked.
 
-2. **Give Vercel access to the repo.** On the Vercel dashboard, click **Add Newâ€¦ â†’ Project**.
+2. **Give Vercel access to the repo.** On the Vercel dashboard, click **Add New -  - ¦ - †’ Project**.
    Under *Import Git Repository*, if you don't see `merid` listed, click
    **Install GitHub App / Adjust GitHub App Permissions** and grant Vercel access to the
    `merid` repository (or to all your repositories, your choice).
@@ -29,8 +29,8 @@ You only ever do this once.
    - Install Command: `npm install`
 
    Then open the **Environment Variables** section and add the six
-   `VITE_FIREBASE_*` variables (values come from Firebase Console â†’
-   Project settings â†’ Your apps â†’ SDK setup; see `.env.example` for the
+   `VITE_FIREBASE_*` variables (values come from Firebase Console - †’
+   Project settings - †’ Your apps - †’ SDK setup; see `.env.example` for the
    exact names). Without them the site still works, but accounts/My Deck
    stay disabled.
 
@@ -38,9 +38,9 @@ You only ever do this once.
 
 5. **Wait ~1 minute.** When the confetti screen appears, your site is live. The URL looks like
    `https://merid.vercel.app` (or `merid-xxxx.vercel.app` if the name is taken). Click
-   **Continue to Dashboard** â†’ the URL is shown under *Domains*.
+   **Continue to Dashboard** - †’ the URL is shown under *Domains*.
 
-6. *(Optional)* **Nicer address:** Project â†’ **Settings â†’ Domains** lets you rename the free
+6. *(Optional)* **Nicer address:** Project - †’ **Settings - †’ Domains** lets you rename the free
    `*.vercel.app` subdomain or attach a custom domain you own (e.g. `merid.vn`).
 
 ---
@@ -50,15 +50,15 @@ You only ever do this once.
 The deck/auth features need a Firebase project. Full guide with security notes:
 **`docs/FIREBASE_SETUP.md`**. Short version:
 
-1. Firebase Console â†’ **Authentication â†’ Sign-in method** â†’ enable **Email/Password**.
-2. **Firestore Database â†’ Create database** (Production mode).
-3. Firestore â†’ **Rules** tab â†’ paste the contents of `firestore.rules` from this
-   repo â†’ **Publish**. (Nothing works until the rules are published â€” the
+1. Firebase Console - †’ **Authentication - †’ Sign-in method** - †’ enable **Email/Password**.
+2. **Firestore Database - †’ Create database** (Production mode).
+3. Firestore - †’ **Rules** tab - †’ paste the contents of `firestore.rules` from this
+   repo - †’ **Publish**. (Nothing works until the rules are published -  -  - the
    database starts locked.)
-4. **Authentication â†’ Settings â†’ Authorized domains** â†’ add every domain that
+4. **Authentication - †’ Settings - †’ Authorized domains** - †’ add every domain that
    serves the site (your `*.vercel.app` URL, `merid.site`, plus `localhost` for
    dev). Sign-in is blocked from any domain not on this list.
-5. Vercel â†’ Environment Variables â†’ the six `VITE_FIREBASE_*` values â†’ Redeploy.
+5. Vercel - †’ Environment Variables - †’ the six `VITE_FIREBASE_*` values - †’ Redeploy.
 
 Moving the site to a different Vercel account later needs **no code changes**:
 repeat step 5 on the new project and make sure its domain is in step 4's list.
@@ -69,7 +69,7 @@ All user data lives in Firebase, not in Vercel.
 ## The "Add to Chrome" link
 
 Merid is published on the Chrome Web Store, so every "Add to Chrome" / "Install" button on the
-site is a plain link to the listing â€” there is no form or backend to activate.
+site is a plain link to the listing -  -  - there is no form or backend to activate.
 
 The listing URL is defined once in **`src/config.ts`** (`CHROME_STORE_URL`). If the listing ever
 moves, change it there and push to `main`; every install button updates automatically.
@@ -108,8 +108,8 @@ make the change, and click **Commit changes** (directly to `main`). Vercel redep
 automatically.
 
 ### Checking a deploy
-The Vercel dashboard â†’ your project â†’ **Deployments** shows every publish with a
-âœ… Ready / âŒ Error status and full build logs. If a deploy fails, the live site keeps
+The Vercel dashboard - †’ your project - †’ **Deployments** shows every publish with a
+ - œ… Ready / - Œ Error status and full build logs. If a deploy fails, the live site keeps
 serving the previous good version. Broken code never replaces the working site.
 
 ### Bonus: preview before publishing
@@ -123,7 +123,7 @@ look at the result online before merging it into the live site.
 
 | What | Where |
 |---|---|
-| Page sections (hero, demo, featuresâ€¦) | `src/components/sections/` |
+| Page sections (hero, demo, features -  - ¦) | `src/components/sections/` |
 | Popup card / extension panel / browser mockup | `src/components/ui/` |
 | Vocabulary words & demo sentence | `src/data/vocab.ts` |
 | Colors, fonts, animations | `src/index.css` |

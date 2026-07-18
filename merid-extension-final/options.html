@@ -159,8 +159,8 @@
         <!-- AI CONTEXT CHECK -->
         <section class="card">
             <h2>AI context check (beta)</h2>
-            <p class="hint">Optional. After Merid replaces words on a page, Google Gemini (flash-lite) double-checks that each
-                replaced word fits its sentence - doubtful words are <strong>reverted back to the original text</strong> automatically.
+            <p class="hint">Optional. After Merid replaces words on a page, Google Gemini (flash-lite) checks that each
+                new word fits its sentence. Words that do not fit are <strong>changed back to the original text</strong> on their own.
                 Uses <strong>your own free API key</strong> from <strong>aistudio.google.com</strong> (create one there, then paste it below).
                 <a class="create-dataset-url" href="https://merid.site/api-key-guide" target="_blank" rel="noopener">Full step-by-step guide ↗</a></p>
 
@@ -190,7 +190,7 @@
             <ul class="privacy">
                 <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
                 <li>By default the extension makes <strong>no network requests</strong> - it never sends page content anywhere and uses no AI API.</li>
-                <li>If you enable the optional <strong>AI context check</strong>, only short sentence snippets around replaced words are sent to Google Gemini using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (readable only by you) so it follows you across devices.</li>
+                <li>If you turn on the optional <strong>AI context check</strong>, only short pieces of the sentence around each replaced word are sent to Google Gemini, using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (only you can read it) so it works on all your devices.</li>
                 <li>Only your settings (selected dataset, display mode, intensity, on/off) are stored on your device via <code>chrome.storage</code>.</li>
                 <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li>Turn the extension off any time from the popup.</li>

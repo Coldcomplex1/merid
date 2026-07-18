@@ -55,10 +55,10 @@ export const DID_YOU_KNOW: Seg[][] = [
     link('Long Biên'),
     text(' do công ty Daydé & Pillé thiết kế và được '),
     vocab('construct'),
-    text(' trong giai đoạn 1898–1902?'),
+    text(' trong giai đoạn 1898-1902?'),
   ],
   [
-    link('Văn Miếu – Quốc Tử Giám'),
+    link('Văn Miếu - Quốc Tử Giám'),
     text(', trường đại học đầu tiên của Việt Nam, được '),
     vocab('establish'),
     text(' từ năm 1076?'),
@@ -110,7 +110,7 @@ export const ON_THIS_DAY: { date: string; events: Seg[][] } = {
   events: [
     [
       b('1405'),
-      text(' – '),
+      text(' - '),
       link('Trịnh Hòa'),
       text(' dẫn đầu hạm đội nhà '),
       link('Minh'),
@@ -120,7 +120,7 @@ export const ON_THIS_DAY: { date: string; events: Seg[][] } = {
     ],
     [
       b('1962'),
-      text(' – Vệ tinh '),
+      text(' - Vệ tinh '),
       link('Telstar'),
       text(' thực hiện buổi truyền hình trực tiếp xuyên '),
       link('Đại Tây Dương'),
@@ -130,13 +130,13 @@ export const ON_THIS_DAY: { date: string; events: Seg[][] } = {
     ],
     [
       b('1987'),
-      text(' – Dân số thế giới đạt mốc 5 tỷ người; ngày này về sau được chọn làm '),
+      text(' - Dân số thế giới đạt mốc 5 tỷ người; ngày này về sau được chọn làm '),
       link('Ngày Dân số Thế giới'),
       text('.'),
     ],
     [
       b('1995'),
-      text(' – '),
+      text(' - '),
       link('Việt Nam'),
       text(' và '),
       link('Hoa Kỳ'),
