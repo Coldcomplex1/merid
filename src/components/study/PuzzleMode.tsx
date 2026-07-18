@@ -17,7 +17,7 @@ interface Round {
   options: string[]
 }
 
-/** Unbiased Fisher–Yates shuffle (returns a new array). */
+/** Unbiased Fisher-Yates shuffle (returns a new array). */
 function shuffle<T>(input: readonly T[]): T[] {
   const arr = [...input]
   for (let i = arr.length - 1; i > 0; i--) {

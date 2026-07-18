@@ -8,7 +8,7 @@ const HOTSPOT_Y = 3
 
 /**
  * Wraps the fake browser so that, on pointer devices, the visitor's cursor
- * turns into a labelled "You" pointer — the collaborative-presence style you
+ * turns into a labelled "You" pointer - the collaborative-presence style you
  * see when a teammate shares a live session (and the same look Claude uses
  * when it's driving a page for you).
  *

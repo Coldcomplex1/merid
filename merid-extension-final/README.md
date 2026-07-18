@@ -121,7 +121,7 @@ word, validated, and cached for fast service-worker wake-ups.
 **Adding CEFR B2** (or any bundled dataset): drop `dataset-B2.csv` (same columns)
 in the repo, add a one-line entry to `DATASET_REGISTRY` in `lib/vocab-core.js`, and
 add a button in `popup.html` / `options.html`. No other code changes needed. B2 is
-not included because we don't ship fabricated vocabulary data — but users can build
+not included because we don't ship fabricated vocabulary data - but users can build
 their own B2 list as a custom dataset (below) without rebuilding the extension.
 
 ### Custom datasets (user-uploaded)
@@ -131,7 +131,7 @@ My datasets**. The guided page at
 [merid.site/create-dataset](https://merid.site/create-dataset) generates an AI
 prompt that produces a compatible file.
 
-- **Format:** same header as the bundled files —
+- **Format:** same header as the bundled files - 
   `word,type,phon_br,phon_n_am,definition,example,vietnamese,synonyms,antonyms`.
   Only `word` and `vietnamese` are required per row; other fields may be empty.
   A `cefr` column (as in the bundled C1/C2 files) is also accepted. Column order
@@ -148,7 +148,7 @@ prompt that produces a compatible file.
 - **Storage & privacy:** validated entries are stored in `chrome.storage.local`
   (`vm_custom_index` + `vm_custom_data_<id>`) on the device only. They are never
   uploaded anywhere, never sent to any AI, and are **not** part of the optional
-  deck sync — which also means custom datasets do **not** follow you to another
+  deck sync - which also means custom datasets do **not** follow you to another
   computer; re-upload the CSV there. Deleting a dataset (or Settings → Delete all
   stored data) removes it completely.
 - **Selection:** a custom dataset is selected with `datasetKey = custom:<id>`

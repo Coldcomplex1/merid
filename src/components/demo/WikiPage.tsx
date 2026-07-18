@@ -563,7 +563,7 @@ export default function WikiPage({ renderVocab }: WikiPageProps) {
               <footer className="mt-4 border-t border-[#eaecf0] pt-3 pb-1 text-[11px] leading-relaxed text-[#54595d]">
                 <p>Trang này được sửa đổi lần cuối vào ngày 11 tháng 7 năm 2026, lúc 09:14.</p>
                 <p className="mt-1">
-                  Văn bản được phát hành theo <span className="wiki-link-plain">Giấy phép Creative Commons Ghi công – Chia sẻ
+                  Văn bản được phát hành theo <span className="wiki-link-plain">Giấy phép Creative Commons Ghi công - Chia sẻ
                   tương tự</span>; các điều khoản bổ sung có thể được áp dụng.
                 </p>
                 <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
