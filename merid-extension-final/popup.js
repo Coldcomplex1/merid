@@ -114,21 +114,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // AI context-checker hint (replaces the old "Revert this page" link):
-    // points the user to Settings to add their Gemini API key, and shows the
-    // on-state once the feature is configured.
+    // AI Context Check: shows the on-state once configured. Until the user has
+    // saved their own Gemini API key, every popup open also shows the
+    // onboarding modal that teaches how to create and paste the key.
     const aiHint = document.getElementById('ai-hint');
-    aiHint.addEventListener('click', () => {
+    const aiModal = document.getElementById('ai-key-modal');
+    const openOptions = () => {
         if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
         else window.open(chrome.runtime.getURL('options.html'));
-    });
+    };
+    let aiKeyConfigured = false;
     chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
         chrome.storage.local.get(['geminiApiKey'], (l) => {
-            if (s.aiCheckEnabled && l.geminiApiKey) {
+            aiKeyConfigured = !!l.geminiApiKey;
+            if (s.aiCheckEnabled && aiKeyConfigured) {
                 aiHint.textContent = 'AI Context Check: ON';
                 aiHint.classList.add('on');
             }
+            if (!aiKeyConfigured) aiModal.hidden = false;
         });
+    });
+    aiHint.addEventListener('click', () => {
+        if (aiKeyConfigured) openOptions();
+        else aiModal.hidden = false;
+    });
+    document.getElementById('ai-modal-settings').addEventListener('click', openOptions);
+    // Guide URL is a fixed constant from lib/firebase-config.js - never
+    // user-supplied (A10).
+    document.getElementById('ai-modal-guide').addEventListener('click', () => {
+        chrome.tabs.create({ url: window.VMFirebaseConfig.webApiKeyGuideUrl });
+    });
+    document.getElementById('ai-modal-later').addEventListener('click', () => {
+        aiModal.hidden = true;
     });
 
     // Opens the merid.site deck (cloud-synced view) in a new tab. The URL is a
@@ -165,10 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('options-btn').addEventListener('click', () => {
-        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
-        else window.open(chrome.runtime.getURL('options.html'));
-    });
+    document.getElementById('options-btn').addEventListener('click', openOptions);
 
     // ---- helpers ----
     function setModeCard(mode, on) {

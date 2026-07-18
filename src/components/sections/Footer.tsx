@@ -11,6 +11,7 @@ export default function Footer() {
     { label: t.footer.faq, to: '/#faq' },
     { label: t.footer.tutorial, to: '/tutorial' },
     { label: t.footer.createDataset, to: '/create-dataset' },
+    { label: t.footer.apiKeyGuide, to: '/api-key-guide' },
   ]
 
   return (
