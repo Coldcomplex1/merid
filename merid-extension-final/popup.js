@@ -115,8 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // AI Context Check: shows the on-state once configured. Until the user has
-    // saved their own Gemini API key, every popup open also shows the
-    // onboarding modal that teaches how to create and paste the key.
+    // saved their own Gemini API key, the onboarding modal that teaches how to
+    // create and paste the key auto-opens at most once per day - only on the
+    // first popup open of that day (it can still be opened any time from the
+    // AI Context Check button).
     const aiHint = document.getElementById('ai-hint');
     const aiModal = document.getElementById('ai-key-modal');
     const openOptions = () => {
@@ -125,13 +127,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let aiKeyConfigured = false;
     chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
-        chrome.storage.local.get(['geminiApiKey'], (l) => {
+        chrome.storage.local.get(['geminiApiKey', 'vm_ai_modal_day'], (l) => {
             aiKeyConfigured = !!l.geminiApiKey;
             if (s.aiCheckEnabled && aiKeyConfigured) {
                 aiHint.textContent = 'AI Context Check: ON';
                 aiHint.classList.add('on');
             }
-            if (!aiKeyConfigured) aiModal.hidden = false;
+            const today = new Date().toDateString();
+            if (!aiKeyConfigured && l.vm_ai_modal_day !== today) {
+                aiModal.hidden = false;
+                chrome.storage.local.set({ vm_ai_modal_day: today });
+            }
         });
     });
     aiHint.addEventListener('click', () => {
@@ -158,25 +164,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // /login page has Google + email); the session carries into the extension
     // through the content-bridge SSO, so the popup only needs to link there.
     // The URL is a fixed constant from lib/firebase-config.js (A10).
+    // While signed in the account section stays hidden - the sync line above
+    // Settings already carries the identity.
     const openLoginPage = () => chrome.tabs.create({ url: window.VMFirebaseConfig.webLoginUrl });
     const accountSection = document.getElementById('account-section');
-    const accountSignedOut = document.getElementById('account-signed-out');
-    const accountSignedIn = document.getElementById('account-signed-in');
     document.getElementById('signin-btn').addEventListener('click', openLoginPage);
 
     const syncHint = document.getElementById('sync-hint');
     chrome.runtime.sendMessage({ type: 'MERID_SYNC_STATUS' }, (status) => {
         if (chrome.runtime.lastError || !status || status.state === 'disabled') return;
-        accountSection.hidden = false;
         if (status.state === 'signed-out') {
-            accountSignedOut.hidden = false;
+            accountSection.hidden = false;
             syncHint.hidden = false;
             syncHint.classList.add('warn');
             syncHint.textContent = '⚠ Not signed in - saved words stay on this device only.';
             syncHint.addEventListener('click', openLoginPage);
         } else {
-            accountSignedIn.hidden = false;
-            document.getElementById('account-email').textContent = status.email || 'your account';
             syncHint.hidden = false;
             syncHint.textContent = 'Syncing to your deck as ' + (status.email || 'your account');
         }

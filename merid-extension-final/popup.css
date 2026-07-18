@@ -422,13 +422,6 @@ header {
     box-shadow: inset 0 0 0 3px #112240;
 }
 
-.mode-hint {
-    margin-top: 8px;
-    font-size: 9.5px;
-    line-height: 1.3;
-    color: var(--text-secondary);
-}
-
 footer {
     display: flex;
     flex-direction: column;
@@ -516,8 +509,8 @@ footer {
 
 .link-btn:hover { text-decoration: underline; }
 
-/* Account section (top of the popup): sign-in link-out to merid.site, or the
-   signed-in identity. Same yellow primary-button family as .btn-view-deck. */
+/* Account section (top of the popup): sign-in link-out to merid.site, shown
+   only while signed out. Same yellow primary-button family as .btn-view-deck. */
 .account-section { margin-bottom: 14px; }
 
 .btn-signin {
@@ -536,20 +529,6 @@ footer {
 
 .btn-signin:hover { filter: brightness(1.08); }
 
-.account-email {
-    margin: 0;
-    padding: 10px;
-    border: 1px solid rgba(244, 190, 55, 0.35);
-    border-radius: 6px;
-    background: rgba(244, 190, 55, 0.08);
-    font-size: 12px;
-    line-height: 1.4;
-    text-align: center;
-    color: var(--text-secondary);
-    overflow-wrap: anywhere;
-}
-
-.account-email strong { color: var(--accent-yellow); }
 /* "View my deck" - secondary link-out to merid.site/my-deck. Deliberately
    quieter than the extension toggle above it. */
 .btn-view-deck {
@@ -568,7 +547,7 @@ footer {
 
 .btn-view-deck:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
 
-/* Sync status line under the deck button. */
+/* Sync status line, sits directly above the Settings link. */
 .sync-hint {
     font-size: 10.5px;
     line-height: 1.4;
@@ -593,7 +572,7 @@ footer {
 .sync-hint.warn:hover { background: rgba(239, 68, 68, 0.18); }
 
 /* AI Context Check onboarding modal - teaches pasting your own Gemini API key.
-   Shown on every popup open until a key is saved (popup.js). */
+   Auto-opens at most once per day until a key is saved (popup.js). */
 .modal-overlay {
     position: fixed;
     inset: 0;

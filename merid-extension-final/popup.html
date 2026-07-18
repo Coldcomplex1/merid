@@ -15,14 +15,11 @@
         </header>
 
         <!-- Account: sign-in happens on merid.site (Google or email) and the
-             session carries into the extension automatically (SSO bridge). -->
+             session carries into the extension automatically (SSO bridge).
+             Shown only while signed out - once signed in, the footer sync
+             line carries the identity. -->
         <section class="account-section" id="account-section" hidden>
-            <div id="account-signed-out" hidden>
-                <button class="btn-signin" id="signin-btn" type="button">Sign in / Sign up ↗</button>
-            </div>
-            <div id="account-signed-in" hidden>
-                <p class="account-email">Signed in as <strong id="account-email"></strong></p>
-            </div>
+            <button class="btn-signin" id="signin-btn" type="button">Sign in / Sign up ↗</button>
         </section>
 
         <section class="dataset-section">
@@ -79,23 +76,23 @@
                         <span class="mode-card-sub">Swap for harder synonyms</span>
                     </button>
                 </div>
-                <p class="mode-hint">Turn on both to scan Vietnamese and English at once.</p>
             </div>
         </section>
 
         <footer>
             <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
             <button class="btn-view-deck" id="view-deck-btn" type="button">View my deck ↗</button>
-            <p class="sync-hint" id="sync-hint" hidden></p>
             <button class="ai-hint" id="ai-hint" type="button">AI Context Check</button>
+            <p class="sync-hint" id="sync-hint" hidden></p>
             <div class="footer-links">
                 <button class="link-btn" id="options-btn" type="button">Settings</button>
             </div>
         </footer>
     </div>
 
-    <!-- AI Context Check onboarding: shown every time the popup opens until the
-         user has saved their own Gemini API key (see popup.js). -->
+    <!-- AI Context Check onboarding: until the user has saved their own Gemini
+         API key, shown at most once per day - on the first popup open of the
+         day (see popup.js). -->
     <div class="modal-overlay" id="ai-key-modal" hidden>
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
             <h2 class="modal-title" id="ai-modal-title">Get the most out of Merid ✨</h2>
