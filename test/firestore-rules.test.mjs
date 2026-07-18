@@ -206,3 +206,58 @@ test('AI key doc schema is enforced at the DB boundary', async () => {
   // Only the fixed 'ai' doc id is allowed under settings/.
   await assertFails(setDoc(doc(alice, 'users', ALICE, 'settings', 'other'), { geminiKey: 'AIzaOk', updatedAt: serverTimestamp() }))
 })
+
+// ---------------------------------------------------------------------------
+// feedback/{id} – anonymous, write-only uninstall-survey mailbox (/goodbye)
+// ---------------------------------------------------------------------------
+function feedbackPayload(extra = {}) {
+  return {
+    source: 'uninstall',
+    reasons: ['too-many', 'other'],
+    comment: 'Quá nhiều từ bị thay.',
+    lang: 'vi',
+    createdAt: serverTimestamp(),
+    ...extra,
+  }
+}
+
+test('anyone can submit a valid uninstall survey (anonymous or signed in)', async () => {
+  await env.clearFirestore()
+  await assertSucceeds(setDoc(doc(db(null), 'feedback', 'fb1'), feedbackPayload()))
+  // A comment alone (no reason ticked) is still signal.
+  await assertSucceeds(
+    setDoc(doc(db(null), 'feedback', 'fb2'), feedbackPayload({ reasons: [], comment: 'ghi chú' })),
+  )
+  // Reasons alone (no comment field at all) works too.
+  const { comment: _omit, ...noComment } = feedbackPayload()
+  await assertSucceeds(setDoc(doc(db(null), 'feedback', 'fb3'), noComment))
+  await assertSucceeds(setDoc(doc(db(ALICE), 'feedback', 'fb4'), feedbackPayload()))
+})
+
+test('feedback is write-only: no read, overwrite or delete - even by authors', async () => {
+  await env.clearFirestore()
+  await assertSucceeds(setDoc(doc(db(null), 'feedback', 'fb1'), feedbackPayload()))
+  await assertFails(getDoc(doc(db(null), 'feedback', 'fb1')))
+  await assertFails(getDoc(doc(db(ALICE), 'feedback', 'fb1')))
+  await assertFails(setDoc(doc(db(null), 'feedback', 'fb1'), feedbackPayload({ comment: 'edited' })))
+  await assertFails(deleteDoc(doc(db(ALICE), 'feedback', 'fb1')))
+})
+
+test('feedback schema is enforced at the DB boundary', async () => {
+  await env.clearFirestore()
+  const cases = [
+    feedbackPayload({ source: 'spam' }),                   // wrong source tag
+    feedbackPayload({ reasons: ['made-up-slug'] }),        // reason outside the allowlist
+    feedbackPayload({ reasons: [], comment: '' }),         // carries no signal at all
+    feedbackPayload({ comment: 'x'.repeat(501) }),         // oversized comment
+    feedbackPayload({ comment: 42 }),                      // wrong comment type
+    feedbackPayload({ lang: 'fr' }),                       // unsupported lang
+    feedbackPayload({ email: 'p@example.com' }),           // unknown extra field (no PII fields)
+    feedbackPayload({ createdAt: new Date() }),            // client-chosen timestamp
+    { source: 'uninstall', createdAt: serverTimestamp() }, // reasons list missing entirely
+  ]
+  let i = 0
+  for (const payload of cases) {
+    await assertFails(setDoc(doc(db(null), 'feedback', `bad${i++}`), payload))
+  }
+})

@@ -1,4 +1,5 @@
 import type { TopicPresetId } from '../lib/datasetPrompt'
+import type { FeedbackReason } from '../lib/feedback'
 
 export type Lang = 'vi' | 'en'
 
@@ -10,7 +11,14 @@ export interface Segment {
 }
 
 export interface Strings {
-  meta: { title: string; tutorialTitle: string; createDatasetTitle: string; apiKeyGuideTitle: string }
+  meta: {
+    title: string
+    tutorialTitle: string
+    createDatasetTitle: string
+    apiKeyGuideTitle: string
+    welcomeTitle: string
+    goodbyeTitle: string
+  }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
   nav: { demo: string; features: string; how: string; tutorial: string; createDataset: string; cta: string }
@@ -214,6 +222,40 @@ export interface Strings {
     ctaTutorial: string
     ctaInstall: string
   }
+  welcome: {
+    eyebrow: string
+    title: string
+    sub: string
+    steps: { title: string; body: string }[]
+    trySitesLabel: string
+    extrasTitle: string
+    extras: { term: string; text: string; to: string; cta: string }[]
+    outroTitle: string
+    outroSub: string
+    ctaDemo: string
+    ctaTutorial: string
+  }
+  goodbye: {
+    eyebrow: string
+    title: string
+    sub: string
+    surveyTitle: string
+    surveyIntro: string
+    reasons: { id: FeedbackReason; label: string }[]
+    commentLabel: string
+    commentPlaceholder: string
+    submit: string
+    submitting: string
+    pickOne: string
+    thanksTitle: string
+    thanksBody: string
+    error: string
+    tipsTitle: string
+    tips: { term: string; text: string }[]
+    reinstallTitle: string
+    reinstallBody: string
+    ctaReinstall: string
+  }
 }
 
 const vi: Strings = {
@@ -222,6 +264,8 @@ const vi: Strings = {
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
     createDatasetTitle: 'Tạo bộ từ vựng riêng với AI - Merid',
     apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
+    welcomeTitle: 'Merid đã sẵn sàng - bắt đầu trong 2 phút',
+    goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -709,6 +753,85 @@ const vi: Strings = {
     ctaTutorial: 'Xem hướng dẫn dùng Merid',
     ctaInstall: 'Thêm Merid vào Chrome',
   },
+  welcome: {
+    eyebrow: 'Cài đặt thành công',
+    title: 'Merid đã sẵn sàng 🎉',
+    sub: 'Hai phút thiết lập là bạn bắt đầu học từ vựng ngay trong lúc đọc báo. Làm theo ba bước dưới đây.',
+    steps: [
+      {
+        title: 'Ghim Merid lên thanh công cụ',
+        body: 'Nhấn biểu tượng mảnh ghép 🧩 ở góc phải trình duyệt, tìm Merid và nhấn hình đinh ghim. Từ giờ chỉ cần một cú nhấp là mở được bảng điều khiển.',
+      },
+      {
+        title: 'Chọn bộ từ và kiểu hiển thị',
+        body: 'Mở Merid, chọn bộ từ (SAT, C1, C2 hoặc Tất cả), chỉnh mật độ thay từ và kiểu hiển thị: Thay từ, Tô sáng, hoặc Bên cạnh. Cài đặt lưu tự động.',
+      },
+      {
+        title: 'Đọc báo như bình thường',
+        body: 'Mở một trang tiếng Việt bất kỳ - vài từ sẽ được thay bằng tiếng Anh kèm gạch chân vàng. Di chuột lên từ để xem nghĩa, phát âm, ví dụ, rồi nhấn "Save to Deck" để lưu lại ôn tập.',
+      },
+    ],
+    trySitesLabel: 'Thử ngay với:',
+    extrasTitle: 'Khi đã quen, mở khóa thêm',
+    extras: [
+      {
+        term: 'Đồng bộ bộ thẻ',
+        text: 'Đăng nhập để từ đã lưu theo bạn trên mọi máy và ôn tập ngay trên merid.site.',
+        to: '/login',
+        cta: 'Đăng nhập',
+      },
+      {
+        term: 'AI kiểm tra ngữ cảnh',
+        text: 'Dán API key Gemini miễn phí của riêng bạn để mọi từ được thay đều được kiểm tra trong câu.',
+        to: '/api-key-guide',
+        cta: 'Xem hướng dẫn',
+      },
+      {
+        term: 'Bộ từ của riêng bạn',
+        text: 'Tạo bộ từ vựng theo chủ đề bạn thích bằng AI rồi tải lên Merid.',
+        to: '/create-dataset',
+        cta: 'Tạo bộ từ',
+      },
+    ],
+    outroTitle: 'Mẹo nhỏ trước khi bắt đầu',
+    outroSub: 'Gặp trang không muốn thay từ (ngân hàng, công việc)? Mở Merid và nhấn "Tắt trên trang này" - Merid sẽ chừa riêng trang đó ra.',
+    ctaDemo: 'Xem demo tương tác',
+    ctaTutorial: 'Hướng dẫn chi tiết',
+  },
+  goodbye: {
+    eyebrow: 'Tạm biệt',
+    title: 'Merid đã được gỡ khỏi trình duyệt',
+    sub: 'Cảm ơn bạn đã dùng thử. Nếu bạn dành 30 giây cho biết lý do, bản sau sẽ tốt hơn cho những người học khác.',
+    surveyTitle: 'Vì sao bạn gỡ Merid?',
+    surveyIntro: 'Chọn mọi lý do đúng với bạn - khảo sát ẩn danh, không thu thập thông tin cá nhân.',
+    reasons: [
+      { id: 'too-many', label: 'Thay quá nhiều từ, gây rối trang' },
+      { id: 'wrong-sites', label: 'Chạy ở trang tôi không muốn (ngân hàng, công việc…)' },
+      { id: 'not-useful', label: 'Từ vựng chưa phù hợp hoặc chưa hữu ích với tôi' },
+      { id: 'performance', label: 'Làm trang chậm hoặc vỡ giao diện' },
+      { id: 'privacy', label: 'Lo ngại về quyền riêng tư' },
+      { id: 'switched', label: 'Tôi chuyển sang công cụ khác' },
+      { id: 'testing', label: 'Tôi chỉ cài dùng thử' },
+      { id: 'other', label: 'Lý do khác' },
+    ],
+    commentLabel: 'Bạn muốn nhắn gì thêm? (không bắt buộc)',
+    commentPlaceholder: 'Điều gì sẽ khiến bạn quay lại với Merid?',
+    submit: 'Gửi góp ý',
+    submitting: 'Đang gửi…',
+    pickOne: 'Chọn ít nhất một lý do hoặc viết vài dòng góp ý nhé.',
+    thanksTitle: 'Cảm ơn bạn! 💛',
+    thanksBody: 'Góp ý đã được ghi nhận. Chúc bạn học tốt - và hẹn gặp lại ở một phiên bản Merid đáng cài hơn.',
+    error: 'Không gửi được góp ý. Kiểm tra kết nối mạng rồi thử lại giúp mình nhé.',
+    tipsTitle: 'Có thể bạn chưa biết',
+    tips: [
+      { term: '"Tắt trên trang này".', text: 'Mở Merid trên trang bạn không muốn thay từ và nhấn nút này - Merid sẽ bỏ qua riêng trang đó, kể cả tên miền phụ.' },
+      { term: 'Kéo mật độ xuống "Nhẹ nhàng".', text: 'Ít từ được thay hơn hẳn, trang đọc thoải mái hơn nhiều.' },
+      { term: 'Chế độ "Tô sáng".', text: 'Giữ nguyên chữ tiếng Việt, chỉ tô sáng - di chuột mới hiện nghĩa tiếng Anh.' },
+    ],
+    reinstallTitle: 'Đổi ý rồi?',
+    reinstallBody: 'Cài lại chỉ mất vài giây - bộ thẻ đã đồng bộ của bạn vẫn còn nguyên trong tài khoản.',
+    ctaReinstall: 'Cài lại Merid',
+  },
 }
 
 const en: Strings = {
@@ -717,6 +840,8 @@ const en: Strings = {
     tutorialTitle: 'Tutorial: How to use Merid',
     createDatasetTitle: 'Create your own vocabulary dataset with AI - Merid',
     apiKeyGuideTitle: 'Paste your own API key for the best Merid - Merid',
+    welcomeTitle: 'Merid is ready - start in 2 minutes',
+    goodbyeTitle: 'Goodbye - help make Merid better',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -1204,6 +1329,85 @@ const en: Strings = {
     outroSub: 'One key, pasted once. From now on, every replaced word is checked in its sentence.',
     ctaTutorial: 'See how to use Merid',
     ctaInstall: 'Add Merid to Chrome',
+  },
+  welcome: {
+    eyebrow: 'Installed successfully',
+    title: 'Merid is ready 🎉',
+    sub: 'Two minutes of setup and you are learning vocabulary while you read. Three steps:',
+    steps: [
+      {
+        title: 'Pin Merid to your toolbar',
+        body: 'Click the puzzle icon 🧩 in the top-right of your browser, find Merid and press the pin. From now on, the control panel is one click away.',
+      },
+      {
+        title: 'Pick a dataset and display mode',
+        body: 'Open Merid, choose a dataset (SAT, C1, C2 or All), set the replacement intensity and pick a display mode: Replace, Highlight, or Beside. Settings save automatically.',
+      },
+      {
+        title: 'Read like you always do',
+        body: 'Open any Vietnamese site - a few words will appear in English with a gold underline. Hover a word for its meaning, pronunciation and example, then hit "Save to Deck" to keep it for review.',
+      },
+    ],
+    trySitesLabel: 'Try it now on:',
+    extrasTitle: 'When you are settled in, unlock more',
+    extras: [
+      {
+        term: 'Deck sync',
+        text: 'Sign in so your saved words follow you across devices and are ready to study on merid.site.',
+        to: '/login',
+        cta: 'Sign in',
+      },
+      {
+        term: 'AI context check',
+        text: 'Paste your own free Gemini API key and every replaced word gets checked in its sentence.',
+        to: '/api-key-guide',
+        cta: 'Read the guide',
+      },
+      {
+        term: 'Your own dataset',
+        text: 'Build a vocabulary set for any topic you like with AI and upload it to Merid.',
+        to: '/create-dataset',
+        cta: 'Create a dataset',
+      },
+    ],
+    outroTitle: 'One tip before you go',
+    outroSub: 'On a site where you don\'t want replacements (banking, work tools)? Open Merid and press "Turn off on this site" - Merid will leave that site alone.',
+    ctaDemo: 'Try the interactive demo',
+    ctaTutorial: 'Full tutorial',
+  },
+  goodbye: {
+    eyebrow: 'Goodbye',
+    title: 'Merid has been uninstalled',
+    sub: 'Thanks for giving it a try. If you can spare 30 seconds, telling us why makes the next version better for other learners.',
+    surveyTitle: 'Why did you remove Merid?',
+    surveyIntro: 'Tick everything that applies - the survey is anonymous and collects no personal information.',
+    reasons: [
+      { id: 'too-many', label: 'Too many replacements, pages felt cluttered' },
+      { id: 'wrong-sites', label: 'It ran on sites where I didn\'t want it (banking, work…)' },
+      { id: 'not-useful', label: 'The vocabulary wasn\'t right or useful for me' },
+      { id: 'performance', label: 'It slowed pages down or broke layouts' },
+      { id: 'privacy', label: 'Privacy concerns' },
+      { id: 'switched', label: 'I switched to another tool' },
+      { id: 'testing', label: 'I was just trying it out' },
+      { id: 'other', label: 'Something else' },
+    ],
+    commentLabel: 'Anything else you want to tell us? (optional)',
+    commentPlaceholder: 'What would bring you back to Merid?',
+    submit: 'Send feedback',
+    submitting: 'Sending…',
+    pickOne: 'Pick at least one reason or write a short note first.',
+    thanksTitle: 'Thank you! 💛',
+    thanksBody: 'Your feedback has been recorded. Happy studying - and see you in a version of Merid worth reinstalling.',
+    error: 'Could not send your feedback. Please check your connection and try again.',
+    tipsTitle: 'In case you missed it',
+    tips: [
+      { term: '"Turn off on this site".', text: 'Open Merid on any site where replacements are unwelcome and press this - Merid skips that site (subdomains included) from then on.' },
+      { term: 'Drop the intensity to "Casual".', text: 'Far fewer words get replaced and pages read much more comfortably.' },
+      { term: '"Highlight" mode.', text: 'Keeps the Vietnamese text untouched and only highlights - the English appears when you hover.' },
+    ],
+    reinstallTitle: 'Changed your mind?',
+    reinstallBody: 'Reinstalling takes seconds - your synced deck is still safe in your account.',
+    ctaReinstall: 'Reinstall Merid',
   },
 }
 
