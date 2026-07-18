@@ -213,3 +213,28 @@ test('dataset registry resolves files and tags, falling back to sat', () => {
     assert.deepStrictEqual(C.getDatasetFiles('nonsense'), ['dataset-SAT.csv']);
     assert.strictEqual(C.datasetTagFor('c1'), 'C1');
 });
+
+test('canonicalHost lowercases and strips www', () => {
+    assert.strictEqual(C.canonicalHost('WWW.VnExpress.net'), 'vnexpress.net');
+    assert.strictEqual(C.canonicalHost('news.zing.vn'), 'news.zing.vn');
+    assert.strictEqual(C.canonicalHost('  tuoitre.vn '), 'tuoitre.vn');
+    assert.strictEqual(C.canonicalHost(''), '');
+    assert.strictEqual(C.canonicalHost(null), '');
+});
+
+test('isSiteDisabled matches exact hosts, www variants and subdomains', () => {
+    const sites = ['vnexpress.net', 'www.tuoitre.vn'];
+    assert.strictEqual(C.isSiteDisabled('vnexpress.net', sites), true);
+    assert.strictEqual(C.isSiteDisabled('www.vnexpress.net', sites), true);
+    assert.strictEqual(C.isSiteDisabled('video.vnexpress.net', sites), true);
+    assert.strictEqual(C.isSiteDisabled('tuoitre.vn', sites), true);       // stored with www, page without
+    assert.strictEqual(C.isSiteDisabled('notvnexpress.net', sites), false); // suffix must be a label boundary
+    assert.strictEqual(C.isSiteDisabled('zingnews.vn', sites), false);
+    assert.strictEqual(C.isSiteDisabled('vnexpress.net', []), false);
+    assert.strictEqual(C.isSiteDisabled('vnexpress.net', undefined), false);
+});
+
+test('withDefaults supplies an empty disabledSites list', () => {
+    assert.deepStrictEqual(C.withDefaults({}).disabledSites, []);
+    assert.deepStrictEqual(C.withDefaults({ disabledSites: ['a.com'] }).disabledSites, ['a.com']);
+});

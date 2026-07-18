@@ -1,6 +1,31 @@
 const C = window.VMCore;
 
+// UI strings via chrome.i18n (_locales/en + _locales/vi). Every call carries
+// an English fallback so a missing message can never blank the UI.
+function t(key, fallback, subs) {
+    try {
+        const msg = chrome.i18n.getMessage(key, subs);
+        if (msg) return msg;
+    } catch (e) { /* i18n unavailable (e.g. test harness) */ }
+    return fallback;
+}
+
+// Static labels are marked with data-i18n (textContent) or data-i18n-html
+// (innerHTML - trusted extension strings only, never user or page content).
+function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const msg = t(el.dataset.i18n, '');
+        if (msg) el.textContent = msg;
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const msg = t(el.dataset.i18nHtml, '');
+        if (msg) el.innerHTML = msg;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    applyI18n();
+
     const frequencySlider = document.getElementById('frequency-slider');
     const modeCards = document.getElementById('mode-cards');
     const extensionToggle = document.getElementById('extension-toggle');
@@ -73,7 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // One-shot fallback notice written by the background when the selected
         // custom dataset went missing.
         if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
-            datasetNotice.textContent = 'Your custom dataset could not be found, so Merid switched back to SAT.';
+            datasetNotice.textContent = t('popupCustomMissing',
+                'Your custom dataset could not be found, so Merid switched back to SAT.');
             datasetNotice.hidden = false;
             chrome.storage.local.remove('vm_dataset_notice');
         }
@@ -114,9 +140,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ---- Current-tab actions: revert + per-site pause ----
+    // Runs on the activeTab grant from opening the popup: the tab's URL is
+    // readable for the active tab only, and only while the popup is open.
+    // Hidden entirely on non-web pages (chrome://, the Web Store, PDFs...).
+    const pageActions = document.getElementById('page-actions');
+    const revertBtn = document.getElementById('revert-btn');
+    const siteToggle = document.getElementById('site-toggle');
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs && tabs[0];
+        let host = '';
+        try {
+            const u = new URL(tab.url);
+            if (u.protocol === 'http:' || u.protocol === 'https:') host = C.canonicalHost(u.hostname);
+        } catch (e) { /* no URL access or non-web page */ }
+        if (!tab || !host) return;
+        pageActions.hidden = false;
+        siteToggle.title = host;
+
+        let disabledSites = [];
+        const renderSiteToggle = () => {
+            const off = C.isSiteDisabled(host, disabledSites);
+            siteToggle.textContent = off
+                ? t('popupSiteOn', 'Turn back on for this site')
+                : t('popupSiteOff', 'Turn off on this site');
+            siteToggle.classList.toggle('off', off);
+        };
+        chrome.storage.sync.get(['disabledSites'], (s) => {
+            disabledSites = Array.isArray(s.disabledSites) ? s.disabledSites : [];
+            renderSiteToggle();
+        });
+
+        siteToggle.addEventListener('click', () => {
+            if (C.isSiteDisabled(host, disabledSites)) {
+                // Drop every entry that covers this host (an apex entry also
+                // covers its subdomains, so removing it re-enables all of them).
+                disabledSites = disabledSites.filter(site => {
+                    const cs = C.canonicalHost(site);
+                    return !(host === cs || host.endsWith('.' + cs));
+                });
+            } else {
+                disabledSites = disabledSites.concat(host);
+            }
+            // Open tabs revert/re-scan on their own via storage.onChanged.
+            chrome.storage.sync.set({ disabledSites }, renderSiteToggle);
+        });
+
+        revertBtn.addEventListener('click', () => {
+            chrome.tabs.sendMessage(tab.id, { action: 'revertPage' }, () => {
+                void chrome.runtime.lastError; // no content script on this page
+            });
+        });
+    });
+
     // AI Context Check: shows the on-state once configured. Until the user has
-    // saved their own Gemini API key, every popup open also shows the
-    // onboarding modal that teaches how to create and paste the key.
+    // saved their own Gemini API key, the onboarding modal that teaches how to
+    // create and paste the key auto-opens at most once per day - never on the
+    // user's first day with the popup, and never again once they pick "Don't
+    // show again". It can still be opened any time from the AI Context Check
+    // button.
     const aiHint = document.getElementById('ai-hint');
     const aiModal = document.getElementById('ai-key-modal');
     const openOptions = () => {
@@ -125,13 +207,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let aiKeyConfigured = false;
     chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
-        chrome.storage.local.get(['geminiApiKey'], (l) => {
+        chrome.storage.local.get(['geminiApiKey', 'vm_ai_modal_day', 'vm_ai_modal_optout', 'vm_first_day'], (l) => {
             aiKeyConfigured = !!l.geminiApiKey;
             if (s.aiCheckEnabled && aiKeyConfigured) {
-                aiHint.textContent = 'AI Context Check: ON';
+                aiHint.textContent = t('popupAiCheckOn', 'AI Context Check: ON');
                 aiHint.classList.add('on');
             }
-            if (!aiKeyConfigured) aiModal.hidden = false;
+            const today = new Date().toDateString();
+            if (!l.vm_first_day) chrome.storage.local.set({ vm_first_day: today });
+            const isFirstDay = !l.vm_first_day || l.vm_first_day === today;
+            if (!aiKeyConfigured && !l.vm_ai_modal_optout && !isFirstDay && l.vm_ai_modal_day !== today) {
+                aiModal.hidden = false;
+                chrome.storage.local.set({ vm_ai_modal_day: today });
+            }
         });
     });
     aiHint.addEventListener('click', () => {
@@ -147,6 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ai-modal-later').addEventListener('click', () => {
         aiModal.hidden = true;
     });
+    document.getElementById('ai-modal-never').addEventListener('click', () => {
+        aiModal.hidden = true;
+        chrome.storage.local.set({ vm_ai_modal_optout: true });
+    });
 
     // Opens the merid.site deck (cloud-synced view) in a new tab. The URL is a
     // fixed constant from lib/firebase-config.js - never user-supplied (A10).
@@ -158,27 +250,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // /login page has Google + email); the session carries into the extension
     // through the content-bridge SSO, so the popup only needs to link there.
     // The URL is a fixed constant from lib/firebase-config.js (A10).
+    // While signed in the account section stays hidden - the sync line above
+    // Settings already carries the identity.
     const openLoginPage = () => chrome.tabs.create({ url: window.VMFirebaseConfig.webLoginUrl });
     const accountSection = document.getElementById('account-section');
-    const accountSignedOut = document.getElementById('account-signed-out');
-    const accountSignedIn = document.getElementById('account-signed-in');
     document.getElementById('signin-btn').addEventListener('click', openLoginPage);
 
     const syncHint = document.getElementById('sync-hint');
     chrome.runtime.sendMessage({ type: 'MERID_SYNC_STATUS' }, (status) => {
         if (chrome.runtime.lastError || !status || status.state === 'disabled') return;
-        accountSection.hidden = false;
         if (status.state === 'signed-out') {
-            accountSignedOut.hidden = false;
+            accountSection.hidden = false;
             syncHint.hidden = false;
             syncHint.classList.add('warn');
-            syncHint.textContent = '⚠ Not signed in - saved words stay on this device only.';
+            syncHint.textContent = t('popupNotSignedIn', '⚠ Not signed in - saved words stay on this device only.');
             syncHint.addEventListener('click', openLoginPage);
         } else {
-            accountSignedIn.hidden = false;
-            document.getElementById('account-email').textContent = status.email || 'your account';
+            const email = status.email || t('popupYourAccount', 'your account');
             syncHint.hidden = false;
-            syncHint.textContent = 'Syncing to your deck as ' + (status.email || 'your account');
+            syncHint.textContent = t('popupSyncingAs', 'Syncing to your deck as ' + email, [email]);
         }
     });
 
@@ -209,7 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateExtensionToggleButton(enabled) {
-        extensionToggle.textContent = enabled ? 'Extension is ON' : 'Extension is OFF';
+        extensionToggle.textContent = enabled
+            ? t('popupExtensionOn', 'Extension is ON')
+            : t('popupExtensionOff', 'Extension is OFF');
         extensionToggle.classList.toggle('active', enabled);
     }
 });

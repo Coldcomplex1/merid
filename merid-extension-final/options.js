@@ -698,6 +698,15 @@ function googleSignIn() {
 
 function wireAccount() {
     if (!account.card) return;
+    // One-click Google sign-in stays hidden until googleClientId is set in
+    // lib/firebase-config.js (and "identity" is restored in manifest.json).
+    // Users still sign in with Google on merid.site - the SSO bridge carries
+    // the session into the extension.
+    const googleConfigured = !!(window.VMFirebaseConfig && window.VMFirebaseConfig.googleClientId);
+    const googleRow = document.getElementById('googleRow');
+    const authDivider = document.getElementById('authDivider');
+    if (googleRow) googleRow.hidden = !googleConfigured;
+    if (authDivider) authDivider.hidden = !googleConfigured;
     account.googleBtn.addEventListener('click', googleSignIn);
     account.signInBtn.addEventListener('click', () => submitAuth(false));
     account.signUpBtn.addEventListener('click', () => submitAuth(true));

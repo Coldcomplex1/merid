@@ -19,13 +19,17 @@
         apiKey: 'AIzaSyDTGSltJ0fWy7K-oKqDQA-N-02_B6Ys-Xg',
         projectId: 'merid-49dd5',
         // OAuth 2.0 **Web** client ID for one-click "Sign in with Google"
-        // (the Google account picker). Setup - see docs/FIREBASE_SETUP.md:
+        // (the Google account picker). While EMPTY the options page hides the
+        // button entirely - users still get Google sign-in on merid.site and
+        // the session carries into the extension (SSO bridge).
+        // To enable the in-extension picker (see docs/FIREBASE_SETUP.md):
         //   1. Firebase console -> Authentication -> Sign-in method -> enable Google.
         //   2. Google Cloud console -> APIs & Services -> Credentials -> the
         //      auto-created "Web client" -> add this extension's redirect URI
         //      https://<EXTENSION_ID>.chromiumapp.org/ to "Authorized redirect URIs".
-        //   3. Paste that Web client ID here. Leave EMPTY to hide nothing but
-        //      make the button explain what's missing (it is NOT a secret).
+        //   3. Paste that Web client ID here (it is NOT a secret), AND add
+        //      "identity" back to "permissions" in manifest.json - it was
+        //      removed so store review never sees an unused permission.
         googleClientId: '',
         // Where the "View my deck" popup button points.
         webDeckUrl: 'https://merid.site/my-deck',
@@ -39,6 +43,10 @@
         // Step-by-step guide for creating and pasting your own Gemini API key
         // (AI context check), linked from the popup onboarding modal and the
         // options page.
-        webApiKeyGuideUrl: 'https://merid.site/api-key-guide'
+        webApiKeyGuideUrl: 'https://merid.site/api-key-guide',
+        // First-run onboarding tour, opened once right after install.
+        webWelcomeUrl: 'https://merid.site/welcome',
+        // Post-uninstall exit survey (chrome.runtime.setUninstallURL).
+        webUninstallUrl: 'https://merid.site/goodbye'
     };
 });

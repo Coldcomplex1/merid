@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Merid",
-  "version": "1.3",
-  "description": "Learn English while browsing Vietnamese websites: swaps Vietnamese words for SAT/CEFR English vocabulary.",
+  "name": "__MSG_appName__",
+  "version": "1.4",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
+  "homepage_url": "https://merid.site",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -10,8 +12,7 @@
   },
   "permissions": [
     "storage",
-    "activeTab",
-    "identity"
+    "activeTab"
   ],
   "background": {
     "service_worker": "background.js"
@@ -41,13 +42,17 @@
   ],
   "action": {
     "default_popup": "popup.html",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
       "128": "icon128.png"
     }
   },
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://generativelanguage.googleapis.com"
   }

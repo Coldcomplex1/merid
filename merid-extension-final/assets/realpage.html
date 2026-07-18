@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+    <title>Doanh nghiệp trẻ tìm hướng đi giữa thị trường nhiều biến động - Nhật Báo Mới</title>
+    <!--
+      Test fixture / screenshot source: a fictional Vietnamese news article
+      (invented "Nhật Báo Mới" masthead - deliberately NOT a real site) that
+      runs the REAL content script over real dataset entries via a small
+      chrome.* stub. Used by scripts/gen-real-screenshot.js to produce the
+      "product in use" store screenshot, and by the Playwright verification
+      harness. Never shipped (assets/ is outside the build whitelist).
+    -->
+    <link rel="stylesheet" href="../content.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f4f5f7; font-family: Georgia, 'Times New Roman', serif; color: #222; }
+        .masthead { background: #fff; border-bottom: 3px solid #b01f24; }
+        .masthead-inner { max-width: 1180px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: baseline; gap: 26px; }
+        .brand { font-family: 'Times New Roman', serif; font-size: 30px; font-weight: 700; color: #b01f24; letter-spacing: 0.5px; }
+        .navlinks { display: flex; gap: 18px; font-family: Arial, sans-serif; font-size: 13.5px; color: #555; }
+        .navlinks span { cursor: pointer; }
+        .navlinks .on { color: #b01f24; font-weight: 700; }
+        .layout { max-width: 1180px; margin: 22px auto 0; padding: 0 20px; display: grid; grid-template-columns: 1fr 320px; gap: 36px; }
+        .article h1 { font-size: 30px; line-height: 1.3; margin-bottom: 10px; color: #111; }
+        .byline { font-family: Arial, sans-serif; font-size: 12.5px; color: #888; margin-bottom: 18px; }
+        .article p { font-size: 17.5px; line-height: 1.75; margin-bottom: 16px; }
+        .article p.lede { font-weight: 700; }
+        .sidebar { font-family: Arial, sans-serif; }
+        .sidebar h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #b01f24; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 12px; }
+        .sidebar li { list-style: none; font-size: 14.5px; line-height: 1.5; padding: 9px 0; border-bottom: 1px solid #eee; color: #333; cursor: pointer; }
+        .sidebar li:hover { color: #b01f24; }
+    </style>
+</head>
+
+<body>
+    <div class="masthead">
+        <div class="masthead-inner">
+            <div class="brand">Nhật Báo Mới</div>
+            <div class="navlinks">
+                <span>Thời sự</span><span class="on">Kinh doanh</span><span>Công nghệ</span>
+                <span>Giáo dục</span><span>Thể thao</span><span>Đời sống</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="layout">
+        <article class="article">
+            <h1>Doanh nghiệp trẻ tìm hướng đi giữa thị trường nhiều biến động</h1>
+            <div class="byline">Thứ Bảy, 18/7/2026 · Kinh doanh</div>
+
+            <p class="lede">Sau hai năm nhiều biến động, áp lực chi phí đối với các doanh nghiệp trẻ
+                đã giảm bớt, nhưng bài toán tăng trưởng vẫn đòi hỏi một cách tiếp cận thực dụng
+                hơn bao giờ hết.</p>
+
+            <p>Tại buổi tọa đàm cuối tuần, nhiều nhà sáng lập kiên cường đã chia sẻ hành trình vượt
+                khó của mình. Họ phân tích thị trường một cách sắc sảo, đồng thời trình bày kế hoạch
+                kinh doanh rõ ràng để thuyết phục nhà đầu tư ở lại lâu dài.</p>
+
+            <p>Giới chuyên môn đánh giá cao đội ngũ kỹ sư thành thạo công nghệ mới, làm việc tỉ mỉ
+                trong từng chi tiết sản phẩm. Chính tinh thần nhiệt huyết ấy đang giúp nhiều sản phẩm
+                Việt từng bước chinh phục người dùng trong khu vực.</p>
+
+            <p>Chương trình năm nay cũng dành thời gian tôn vinh những người thầy đầu tiên của phong
+                trào khởi nghiệp - các cố vấn khôn ngoan đã âm thầm đứng sau nhiều thế hệ nhà sáng lập.</p>
+
+            <p>Đại diện ban tổ chức cho biết chuỗi sự kiện sẽ tiếp tục được mở rộng ra các thành phố
+                lớn trong quý tới, với kỳ vọng kết nối thêm hàng trăm nhóm khởi nghiệp trẻ.</p>
+        </article>
+
+        <aside class="sidebar">
+            <h3>Tin liên quan</h3>
+            <ul>
+                <li>Quỹ đầu tư ngoại quay lại thị trường Đông Nam Á</li>
+                <li>Startup giáo dục công bố vòng gọi vốn mới</li>
+                <li>Nhân lực ngành chip: cuộc đua đào tạo bắt đầu</li>
+                <li>Chuyển đổi số ở doanh nghiệp gia đình</li>
+                <li>Người trẻ học ngoại ngữ qua thói quen đọc báo</li>
+            </ul>
+        </aside>
+    </div>
+
+    <script>
+        // ---- chrome.* stub so the REAL content script runs on this page ----
+        // Settings can be overridden by the harness via window.__MERID_TEST__.
+        (function () {
+            const SETTINGS = Object.assign({
+                extensionEnabled: true,
+                frequency: 100,          // replace everything the budget allows
+                replacementMode: 'replace',
+                vieEngMode: true,
+                engEngMode: false,
+                datasetKey: 'sat',
+                disabledSites: []
+            }, (window.__MERID_TEST__ && window.__MERID_TEST__.settings) || {});
+
+            // Real rows from dataset-SAT.csv (verbatim), pre-normalized shape.
+            const VOCAB = [
+                { id: 'SAT:abate', dataset: 'SAT', word: 'abate', type: 'verb', phon_br: '/əˈbeɪt/', phon_n_am: '/əˈbeɪt/', definition: 'to reduce, lessen', example: 'The rain poured down for a while, then abated.', vietnamese: 'ngớt, giảm bớt, dịu đi', synonyms: 'subside, diminish, wane', antonyms: 'intensify, augment, escalate' },
+                { id: 'SAT:adept', dataset: 'SAT', word: 'adept', type: 'adjective', phon_br: '/əˈdɛpt/', phon_n_am: '/əˈdɛpt/', definition: 'extremely skilled', example: 'Tarzan was adept at jumping from tree to tree like a monkey.', vietnamese: 'thành thạo, tinh thông, nhuần nhuyễn', synonyms: 'dexterous, consummate, proficient', antonyms: 'maladroit, inept, bungling' },
+                { id: 'SAT:astute', dataset: 'SAT', word: 'astute', type: 'adjective', phon_br: '/əˈstjuːt/', phon_n_am: '/əˈstuːt/', definition: 'very clever, crafty', example: "Much of Roger's success in politics results from his ability to provide astute answers to reporters' questions.", vietnamese: 'Sắc sảo, khôn ngoan, lanh lợi', synonyms: 'sagacious, perspicacious, shrewd', antonyms: 'obtuse, credulous, naive' },
+                { id: 'SAT:lucid', dataset: 'SAT', word: 'lucid', type: 'adjective', phon_br: '/ˈluːsɪd/', phon_n_am: '/ˈluːsɪd/', definition: 'clear, easily understandable', example: "Because Guenevere's essay was so lucid, I only had to read it once to understand her reasoning.", vietnamese: 'Rõ ràng, mạch lạc, dễ hiểu', synonyms: 'coherent, perspicuous, articulate', antonyms: 'abstruse, opaque, convoluted' },
+                { id: 'SAT:meticulous', dataset: 'SAT', word: 'meticulous', type: 'adjective', phon_br: '/mɪˈtɪkjələs/', phon_n_am: '/məˈtɪkjələs/', definition: 'extremely careful with details', example: "The ornate needlework in the bride's gown was a product of meticulous handiwork.", vietnamese: 'Tỉ mỉ, kỹ lưỡng, công phu', synonyms: 'fastidious, scrupulous, punctilious', antonyms: 'negligent, haphazard, perfunctory' },
+                { id: 'SAT:pragmatic', dataset: 'SAT', word: 'pragmatic', type: 'adjective', phon_br: '/præɡˈmætɪk/', phon_n_am: '/præɡˈmætɪk/', definition: 'practical', example: 'The politician argued that while increased security measures might not fit with the lofty ideals of the nation, they were a pragmatic necessity to ensure everyone\'s safety.', vietnamese: 'Thực dụng, thực tế, thiết thực', synonyms: 'practical, realistic, utilitarian', antonyms: 'idealistic, theoretical, quixotic' },
+                { id: 'SAT:resilient', dataset: 'SAT', word: 'resilient', type: 'adjective', phon_br: '/rɪˈzɪliənt/', phon_n_am: '/rɪˈzɪliənt/', definition: 'able to recover from misfortune; able to withstand adversity', example: 'The resilient ballplayer quickly recovered from his wrist injury.', vietnamese: 'Kiên cường, Bền bỉ, Có sức bật', synonyms: 'buoyant, elastic, pliable', antonyms: 'fragile, brittle, delicate' },
+                { id: 'SAT:venerate', dataset: 'SAT', word: 'venerate', type: 'verb', phon_br: '/ˈvɛnəreɪt/', phon_n_am: '/ˈvɛnəreɪt/', definition: 'to regard with respect or to honor', example: 'The tribute to John Lennon sought to venerate his music, his words, and his legend.', vietnamese: 'Tôn vinh, Tôn kính, Kính trọng', synonyms: 'revere, idolize, hallow', antonyms: 'scorn, disdain, execrate' },
+                { id: 'SAT:zealous', dataset: 'SAT', word: 'zealous', type: 'adjective', phon_br: '/ˈzeləs/', phon_n_am: '/ˈzɛləs/', definition: 'fervent, filled with eagerness in pursuit of something', example: "If he were any more zealous about getting his promotion, he'd practically live at the office.", vietnamese: 'Nhiệt huyết, Hăng hái, Say mê', synonyms: 'fervent, ardent, passionate', antonyms: 'apathetic, indifferent, dispassionate' }
+            ];
+
+            window.chrome = {
+                storage: {
+                    local: {
+                        get: (keys, cb) => cb({}),
+                        set: (obj, cb) => { cb && cb(); },
+                        remove: () => { }
+                    },
+                    sync: {
+                        get: (keys, cb) => cb(SETTINGS),
+                        set: (obj, cb) => { Object.assign(SETTINGS, obj); cb && cb(); }
+                    },
+                    onChanged: { addListener: () => { } }
+                },
+                runtime: {
+                    lastError: undefined,
+                    sendMessage: (msg, cb) => {
+                        if (msg && msg.action === 'getSettings') cb(SETTINGS);
+                        else if (msg && msg.action === 'getVocabulary') cb({ vocabulary: VOCAB });
+                        else if (msg && msg.type === 'MERID_AI_CHECK') cb({ ok: false, disabled: true });
+                        else cb && cb({});
+                    },
+                    onMessage: { addListener: () => { } }
+                }
+            };
+        })();
+    </script>
+    <script src="../lib/vocab-core.js"></script>
+    <script src="../content.js"></script>
+</body>
+
+</html>

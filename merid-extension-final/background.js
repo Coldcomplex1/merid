@@ -1,5 +1,5 @@
 // =============================================================
-// Merid - background service worker (LOCAL-ONLY)
+// Merid - background service worker
 //
 // Responsibilities:
 //   - Load & cache the vocabulary datasets (CSV files bundled in the extension).
@@ -7,13 +7,20 @@
 //     page and content script.
 //
 // The core experience is fully local: vocabulary datasets are bundled CSV
-// files read via chrome.runtime.getURL(). Optionally, when Firebase is
-// configured (lib/firebase-config.js) AND the user signs in (on merid.site or
-// in the options page), the saved deck syncs to their own Firestore account
-// (lib/sync.js). No page content is ever sent anywhere.
+// files read via chrome.runtime.getURL(). Two OPTIONAL features touch the
+// network, both off until the user opts in: deck sync to the user's own
+// Firestore account after sign-in (lib/sync.js), and the AI context check,
+// which sends short sentence snippets to Gemini using the user's own key.
+// Page content is never sent anywhere else.
 // =============================================================
 
 importScripts('lib/vocab-core.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
+
+// Release builds keep the console quiet; flip DEBUG on while developing.
+// console.warn/error still fire (failures only), routine logs go through log().
+const DEBUG = false;
+const log = DEBUG ? console.log.bind(console) : () => { };
+
 const C = self.VMCore;
 const Custom = self.VMCustom;
 const Sync = self.VMSync;
@@ -38,7 +45,7 @@ async function loadVocabulary(datasetKey) {
         if (!entries || !entries.length) return fallbackToDefault();
         vocabulary = entries;
         chrome.storage.local.set({ vm_vocab_cache: { key, count: vocabulary.length, data: vocabulary } });
-        console.log(`[VM] Loaded custom dataset (${key}):`, vocabulary.length);
+        log(`[VM] Loaded custom dataset (${key}):`, vocabulary.length);
         return vocabulary;
     }
 
@@ -56,7 +63,7 @@ async function loadVocabulary(datasetKey) {
                 const wordKey = entry.word.toLowerCase();
                 if (wordKey && !byWord.has(wordKey)) byWord.set(wordKey, entry);
             }
-            console.log(`[VM] Loaded ${rows.length} rows from ${file}`);
+            log(`[VM] Loaded ${rows.length} rows from ${file}`);
         } catch (err) {
             console.error(`[VM] Failed to load ${file}:`, err.message);
         }
@@ -65,7 +72,7 @@ async function loadVocabulary(datasetKey) {
     vocabulary = Array.from(byWord.values());
     // Persist so a SW restart can rehydrate without re-parsing on the hot path.
     chrome.storage.local.set({ vm_vocab_cache: { key, count: vocabulary.length, data: vocabulary } });
-    console.log(`[VM] Total vocabulary (${key}):`, vocabulary.length);
+    log(`[VM] Total vocabulary (${key}):`, vocabulary.length);
     return vocabulary;
 }
 
@@ -78,7 +85,7 @@ function initVocabulary() {
                 const c = cache.vm_vocab_cache;
                 if (c && c.key === key && Array.isArray(c.data) && c.data.length) {
                     vocabulary = c.data;
-                    console.log(`[VM] Rehydrated ${vocabulary.length} words from cache (${key})`);
+                    log(`[VM] Rehydrated ${vocabulary.length} words from cache (${key})`);
                     resolve(vocabulary);
                 } else {
                     await loadVocabulary(key);
@@ -188,10 +195,25 @@ async function resolveDatasetLabel(key) {
 // =============================================================
 // Lifecycle
 // =============================================================
-chrome.runtime.onInstalled.addListener(() => { console.log('[VM] Installed/updated.'); initVocabulary(); Sync.kick(); });
-chrome.runtime.onStartup.addListener(() => { console.log('[VM] Startup.'); initVocabulary(); Sync.kick(); });
+chrome.runtime.onInstalled.addListener((details) => {
+    log('[VM] Installed/updated.');
+    initVocabulary();
+    Sync.kick();
+    // First-run onboarding: a short tour on merid.site (pick a dataset, open a
+    // Vietnamese site, hover a word). Fresh installs only - never on updates.
+    if (details && details.reason === 'install' && FBConfig.webWelcomeUrl) {
+        chrome.tabs.create({ url: FBConfig.webWelcomeUrl });
+    }
+});
+chrome.runtime.onStartup.addListener(() => { log('[VM] Startup.'); initVocabulary(); Sync.kick(); });
 initVocabulary();
 Sync.kick(); // resume any sync interrupted by a service-worker teardown
+
+// Exit survey - the cheapest signal for why users leave. No data is attached
+// to the URL; it is a plain page on merid.site.
+if (chrome.runtime.setUninstallURL && FBConfig.webUninstallUrl) {
+    chrome.runtime.setUninstallURL(FBConfig.webUninstallUrl);
+}
 
 // =============================================================
 // Cloud deck sync: mirror local deck changes to Firestore (lib/sync.js).
@@ -233,6 +255,11 @@ async function signInWithEmailLink(email, link) {
 
 // =============================================================
 // One-click "Sign in with Google" (the account picker).
+// DORMANT in store builds: it needs BOTH googleClientId in
+// lib/firebase-config.js AND the "identity" permission restored in
+// manifest.json (removed while unused so the store review sees no unused
+// permission). Until then the options page hides the button and users sign in
+// with Google on merid.site instead (SSO carries the session over).
 // chrome.identity.launchWebAuthFlow opens Google's own chooser; we ask for an
 // OpenID Connect id_token only (implicit flow, minimal "openid email" scope)
 // and trade it for a Firebase session via accounts:signInWithIdp.
@@ -511,7 +538,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'getSettings': {
             chrome.storage.sync.get(
-                ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey'],
+                ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey', 'disabledSites'],
                 settings => sendResponse(C.withDefaults(settings)));
             return true;
         }

@@ -422,13 +422,6 @@ header {
     box-shadow: inset 0 0 0 3px #112240;
 }
 
-.mode-hint {
-    margin-top: 8px;
-    font-size: 9.5px;
-    line-height: 1.3;
-    color: var(--text-secondary);
-}
-
 footer {
     display: flex;
     flex-direction: column;
@@ -516,8 +509,8 @@ footer {
 
 .link-btn:hover { text-decoration: underline; }
 
-/* Account section (top of the popup): sign-in link-out to merid.site, or the
-   signed-in identity. Same yellow primary-button family as .btn-view-deck. */
+/* Account section (top of the popup): sign-in link-out to merid.site, shown
+   only while signed out. Same yellow primary-button family as .btn-view-deck. */
 .account-section { margin-bottom: 14px; }
 
 .btn-signin {
@@ -536,20 +529,40 @@ footer {
 
 .btn-signin:hover { filter: brightness(1.08); }
 
-.account-email {
-    margin: 0;
-    padding: 10px;
-    border: 1px solid rgba(244, 190, 55, 0.35);
-    border-radius: 6px;
-    background: rgba(244, 190, 55, 0.08);
-    font-size: 12px;
-    line-height: 1.4;
-    text-align: center;
-    color: var(--text-secondary);
-    overflow-wrap: anywhere;
+/* Current-tab actions: "Revert this page" + "Turn off on this site". Two
+   compact buttons on one row, quieter than the main toggle above them. */
+.page-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
-.account-email strong { color: var(--accent-yellow); }
+.page-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid #2a3d63;
+    padding: 8px 4px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1.25;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: all 0.2s;
+}
+
+.page-btn:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
+
+/* Site currently paused: the toggle reads as a warning state. */
+.page-btn.off {
+    border-color: rgba(239, 68, 68, 0.55);
+    background: rgba(239, 68, 68, 0.10);
+    color: #f87171;
+}
+
+.page-btn.off:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; border-color: rgba(239, 68, 68, 0.75); }
+
 /* "View my deck" - secondary link-out to merid.site/my-deck. Deliberately
    quieter than the extension toggle above it. */
 .btn-view-deck {
@@ -568,7 +581,7 @@ footer {
 
 .btn-view-deck:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
 
-/* Sync status line under the deck button. */
+/* Sync status line, sits directly above the Settings link. */
 .sync-hint {
     font-size: 10.5px;
     line-height: 1.4;
@@ -593,7 +606,8 @@ footer {
 .sync-hint.warn:hover { background: rgba(239, 68, 68, 0.18); }
 
 /* AI Context Check onboarding modal - teaches pasting your own Gemini API key.
-   Shown on every popup open until a key is saved (popup.js). */
+   Auto-opens at most once per day (never on the first day, never after
+   "Don't show again") until a key is saved (popup.js). */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -691,3 +705,19 @@ footer {
 }
 
 .modal-dismiss:hover { color: var(--text-primary); }
+
+/* Permanent opt-out - the quietest action in the modal. */
+.modal-never {
+    background: none;
+    border: none;
+    width: 100%;
+    margin-top: 8px;
+    padding: 0;
+    color: var(--off);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-never:hover { color: var(--text-secondary); text-decoration: underline; }
