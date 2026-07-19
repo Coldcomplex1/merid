@@ -1,5 +1,86 @@
+import { useState, type CSSProperties } from 'react'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
+
+const INTENSITIES = [
+  { label: 'Casual', rate: 0.012 },
+  { label: 'Focused', rate: 0.025 },
+  { label: 'Locked-in', rate: 0.045 },
+]
+const WORDS_PER_MINUTE = 180 // average silent reading speed
+const UNIQUE_SHARE = 0.12 // rough share of encounters that are new headwords
+
+/** "Your browsing → vocabulary" calculator: drag your daily minutes and see
+ *  the passive-learning claim as your own numbers. Estimates derive from the
+ *  extension's replacement density, not marketing invention. */
+function ExposureCalculator() {
+  const { t } = useLang()
+  const s = t.benefits.calc
+  const [minutes, setMinutes] = useState(30)
+  const [intensity, setIntensity] = useState(1)
+
+  const perDay = Math.round((minutes * WORDS_PER_MINUTE * INTENSITIES[intensity].rate) / 5) * 5
+  const perWeek = Math.round((perDay * UNIQUE_SHARE * 7) / 5) * 5
+  const perMonth = Math.round((perWeek * 4.3) / 10) * 10
+
+  return (
+    <div className="mx-auto mt-12 max-w-2xl rounded-3xl border-2 border-navy-700 bg-cream-100 p-6 text-left sm:p-8">
+      <h3 className="text-center text-xl font-extrabold tracking-tight text-navy-900 sm:text-2xl">
+        {s.title}
+      </h3>
+
+      <div className="mt-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-sm font-semibold text-navy-700">{s.minutesLabel}</span>
+          <span className="text-lg font-extrabold text-navy-900">{s.minutesValue(minutes)}</span>
+        </div>
+        <input
+          type="range"
+          min={10}
+          max={120}
+          step={5}
+          value={minutes}
+          aria-label={s.minutesLabel}
+          onChange={(e) => setMinutes(Number(e.target.value))}
+          className="slider-gold mt-3"
+          style={{ '--slider-fill': `${((minutes - 10) / 110) * 100}%` } as CSSProperties}
+        />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-sm font-semibold text-navy-700">{s.intensityLabel}:</span>
+        {INTENSITIES.map((opt, i) => (
+          <button
+            key={opt.label}
+            type="button"
+            aria-pressed={intensity === i}
+            onClick={() => setIntensity(i)}
+            className={`cursor-pointer rounded-full border-2 px-3.5 py-1 text-xs font-bold transition-all active:scale-95 ${
+              intensity === i
+                ? 'border-navy-800 bg-gold-300 text-navy-900'
+                : 'border-navy-300 bg-white/60 text-navy-600 hover:border-navy-700'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {[s.perDay(perDay), s.perWeek(perWeek), s.perMonth(perMonth)].map((line) => (
+          <p
+            key={line}
+            className="rounded-2xl bg-white/70 px-4 py-3 text-center text-sm leading-snug font-extrabold text-navy-900"
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+
+      <p className="mt-4 text-center text-xs leading-relaxed text-navy-600">{s.note}</p>
+    </div>
+  )
+}
 
 export default function Benefits() {
   const { t } = useLang()
@@ -54,6 +135,10 @@ export default function Benefits() {
               </span>
             ))}
           </div>
+        </Reveal>
+
+        <Reveal delay={460}>
+          <ExposureCalculator />
         </Reveal>
       </div>
     </section>

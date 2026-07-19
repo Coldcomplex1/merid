@@ -307,11 +307,26 @@ function DotLinks({ label, links }: { label?: string; links: readonly string[] }
  * interactive English vocabulary. Breakpoints are container queries, so the
  * layout responds to the fake browser being drag-resized, like a real page.
  */
+/** Articles the fake search box "knows about" (all appear on this page). */
+const SEARCH_SUGGESTIONS = [
+  'Vịnh Hạ Long',
+  'Văn Miếu - Quốc Tử Giám',
+  'Sơn Đoòng',
+  'Hội An',
+  'Việt Nam',
+  'Long Biên (cầu)',
+]
+
 export default function WikiPage({ renderVocab }: WikiPageProps) {
   const [textSize, setTextSize] = useState<TextSize>('standard')
   const [pageWidth, setPageWidth] = useState<PageWidth>('standard')
   const [colorMode, setColorMode] = useState<ColorMode>('light')
   const [appearanceHidden, setAppearanceHidden] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const suggestions = search.trim()
+    ? SEARCH_SUGGESTIONS.filter((sug) => sug.toLowerCase().includes(search.trim().toLowerCase()))
+    : []
 
   const dark =
     colorMode === 'dark' ||
@@ -333,19 +348,40 @@ export default function WikiPage({ renderVocab }: WikiPageProps) {
             <span className="block text-[9px] text-[#54595d]">Bách khoa toàn thư mở</span>
           </span>
         </span>
-        <div className="flex min-w-0 flex-1 items-center">
-          <div className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-l-sm border border-[#a2a9b1] px-2.5">
+        <div className="relative flex min-w-0 flex-1 items-center">
+          <div className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-l-sm border border-[#a2a9b1] px-2.5 focus-within:border-[#36c] focus-within:ring-1 focus-within:ring-[#36c]">
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#54595d" strokeWidth="1.8" aria-hidden="true">
               <circle cx="8.5" cy="8.5" r="5.5" />
               <path d="M13 13l4.5 4.5" strokeLinecap="round" />
             </svg>
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm trên Wikipedia"
               aria-label="Tìm kiếm trên Wikipedia"
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#72777d]"
             />
           </div>
+          {/* Live search suggestions, like the real Vector 2022 header */}
+          {suggestions.length > 0 && (
+            <div className="absolute top-9 right-0 left-0 z-30 overflow-hidden rounded-sm border border-[#a2a9b1] bg-white shadow-lg">
+              {suggestions.map((sug) => (
+                <button
+                  key={sug}
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-[13px] text-[#202122] hover:bg-[#eaf3ff]"
+                >
+                  <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="#72777d" strokeWidth="1.8" aria-hidden="true" className="shrink-0">
+                    <circle cx="8.5" cy="8.5" r="5.5" />
+                    <path d="M13 13l4.5 4.5" strokeLinecap="round" />
+                  </svg>
+                  {sug}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             className="hidden h-8 shrink-0 cursor-pointer rounded-r-sm border border-l-0 border-[#a2a9b1] bg-[#f8f9fa] px-3 text-[13px] font-semibold hover:bg-[#eaecf0] @2xl:block"

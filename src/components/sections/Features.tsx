@@ -1,7 +1,80 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
+
+/** Loop through values on a timer, pausing under prefers-reduced-motion. */
+function useCycle(length: number, ms: number) {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => setIndex((i) => (i + 1) % length), ms)
+    return () => window.clearInterval(timer)
+  }, [length, ms])
+  return index
+}
+
+/** "Context-aware replacement" card: the same sentence cycling through the
+ *  three display modes, so the feature demonstrates itself. */
+function ModesMicroDemo() {
+  const MODES = ['Replace', 'Highlight', 'Beside'] as const
+  const mode = useCycle(MODES.length, 2400)
+
+  return (
+    <div className="mt-5 rounded-xl bg-cream-50 p-4 ring-1 ring-navy-200/50" aria-hidden="true">
+      <p className="font-wiki text-[14px] leading-relaxed text-ink" lang="vi">
+        …nhằm{' '}
+        {mode === 0 && <span className="hl-en animate-word-swap inline-block font-semibold">preserve</span>}
+        {mode === 1 && <span className="hl-vi animate-word-swap inline-block">bảo tồn</span>}
+        {mode === 2 && (
+          <span className="hl-en animate-word-swap inline-block font-semibold">bảo tồn (preserve)</span>
+        )}{' '}
+        khu phố cổ…
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-1">
+        {MODES.map((m, i) => (
+          <span
+            key={m}
+            className={`rounded-[4px] border py-1 text-center text-[10px] font-bold transition-colors duration-300 ${
+              mode === i
+                ? 'border-[#f4be37] bg-[#f4be37] text-[#020c1b]'
+                : 'border-navy-200/70 bg-white/70 text-navy-500'
+            }`}
+          >
+            {m}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** "Save to deck" card: a tiny flashcard flipping on loop. */
+function FlashMicroDemo() {
+  const side = useCycle(2, 2600)
+
+  return (
+    <div className="mt-5 flex justify-center rounded-xl bg-cream-50 p-4 ring-1 ring-navy-200/50" aria-hidden="true">
+      <div className="w-40 [perspective:700px]">
+        <div
+          className="relative h-20 w-full transition-transform duration-500 [transform-style:preserve-3d]"
+          style={{ transform: side === 1 ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+        >
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-[#112240] ring-1 ring-navy-600/60 [backface-visibility:hidden]">
+            <span className="text-sm font-extrabold text-cream-50">solitude</span>
+            <span className="mt-0.5 text-[9px] text-navy-300 italic">noun</span>
+          </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-[#112240] px-3 ring-1 ring-gold-400/50 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <span className="text-[12px] font-extrabold text-gold-300">sự cô đơn</span>
+            <span className="mt-0.5 text-center text-[8.5px] leading-snug text-navy-200">
+              the state of being alone
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -69,6 +142,9 @@ export default function Features() {
                 </span>
                 <h3 className="mt-4 text-lg font-bold text-heading">{feature.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-body">{feature.body}</p>
+                {/* Two cards demo themselves: display modes + the deck flashcard. */}
+                {i === 0 && <ModesMicroDemo />}
+                {i === 3 && <FlashMicroDemo />}
               </div>
             </Reveal>
           ))}

@@ -98,6 +98,43 @@
     0%, 100% { opacity: 0.35; }
     50% { opacity: 1; }
   }
+
+  /* ── Micro-demo loops (HowItWorks / Features cards) ─────────── */
+  /* The hero's rotating vocabulary word entering. */
+  --animate-word-swap: word-swap 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* A small element (panel stub, mini card) popping in, dwelling, leaving. */
+  --animate-micro-pop: micro-pop 4s ease-in-out infinite;
+  /* A click ripple on the toolbar M. */
+  --animate-micro-click: micro-click 4s ease-in-out infinite;
+  /* Two stacked words crossfading (Vietnamese ↔ English). */
+  --animate-micro-swap-a: micro-swap-a 4s ease-in-out infinite;
+  --animate-micro-swap-b: micro-swap-b 4s ease-in-out infinite;
+
+  @keyframes word-swap {
+    0% { opacity: 0; transform: translateY(7px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes micro-pop {
+    0%, 8% { opacity: 0; transform: translateY(7px) scale(0.92); }
+    18%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+    90%, 100% { opacity: 0; transform: translateY(5px) scale(0.95); }
+  }
+  @keyframes micro-click {
+    0%, 6% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0); transform: scale(1); }
+    10% { transform: scale(0.88); }
+    14% { box-shadow: 0 0 0 6px rgb(245 197 66 / 0.35); transform: scale(1); }
+    24%, 100% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0); transform: scale(1); }
+  }
+  @keyframes micro-swap-a {
+    0%, 42% { opacity: 1; }
+    50%, 92% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes micro-swap-b {
+    0%, 42% { opacity: 0; }
+    50%, 92% { opacity: 1; }
+    100% { opacity: 0; }
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

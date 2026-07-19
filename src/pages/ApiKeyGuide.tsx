@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
+import AiStudioSimulator from '../components/demo/AiStudioSimulator'
+import AiCheckBeforeAfter from '../components/demo/AiCheckBeforeAfter'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
 const AI_STUDIO_URL = 'https://aistudio.google.com/apikey'
@@ -87,6 +89,30 @@ export default function ApiKeyGuide() {
                     </Bullet>
                   ))}
                 </ul>
+              </div>
+
+              {/* Live before/after: what the check actually fixes */}
+              <div className="mt-8 border-t border-line pt-8">
+                <h3 className="text-xl font-extrabold tracking-tight text-heading">
+                  {s.beforeAfter.title}
+                </h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-body">{s.beforeAfter.intro}</p>
+                <div className="mt-5 max-w-xl">
+                  <AiCheckBeforeAfter />
+                </div>
+              </div>
+            </section>
+          </Reveal>
+
+          {/* Rehearse the whole flow, safely */}
+          <Reveal>
+            <section className="rounded-3xl bg-surface p-6 ring-1 ring-line sm:p-10">
+              <h2 className="text-2xl font-extrabold tracking-tight text-heading sm:text-3xl">
+                {s.sim.title}
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-body">{s.sim.intro}</p>
+              <div className="mt-6 max-w-xl">
+                <AiStudioSimulator />
               </div>
             </section>
           </Reveal>

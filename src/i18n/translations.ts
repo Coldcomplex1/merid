@@ -18,10 +18,11 @@ export interface Strings {
     apiKeyGuideTitle: string
     welcomeTitle: string
     goodbyeTitle: string
+    tryTitle: string
   }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
-  nav: { demo: string; features: string; how: string; tutorial: string; createDataset: string; cta: string }
+  nav: { demo: string; features: string; how: string; tutorial: string; tryIt: string; createDataset: string; cta: string }
   deck: {
     title: string
     backHome: string
@@ -88,6 +89,7 @@ export interface Strings {
     privacy: string
     tagNote: string
     scrollCue: string
+    liveHint: string
   }
   demo: {
     eyebrow: string
@@ -96,6 +98,9 @@ export interface Strings {
     resizeHandle: string
     tryIt: string
     guiding: string
+    ownTextTitle: string
+    ownTextBody: string
+    ownTextCta: string
   }
   features: {
     eyebrow: string
@@ -116,6 +121,16 @@ export interface Strings {
     title2: string
     lead: Segment[]
     support: Segment[]
+    calc: {
+      title: string
+      minutesLabel: string
+      minutesValue: (m: number) => string
+      intensityLabel: string
+      perDay: (n: number) => string
+      perWeek: (n: number) => string
+      perMonth: (n: number) => string
+      note: string
+    }
   }
   faq: { eyebrow: string; title: string; sub: string; items: { q: string; a: string }[] }
   finalCta: {
@@ -149,6 +164,19 @@ export interface Strings {
     outroSub: string
     ctaDemo: string
     ctaInstall: string
+    scrolly: {
+      browserTitle: string
+      articleNote: string
+      deckChip: (n: number) => string
+      panelHint: string
+      modeLabel: string
+      yourTurn: string
+      watching: string
+      finaleTitleSaved: (n: number) => string
+      finaleTitleNone: string
+      finaleBodySaved: string
+      finaleBodyNone: string
+    }
   }
   createDataset: {
     eyebrow: string
@@ -217,6 +245,21 @@ export interface Strings {
     privacyBullets: string[]
     troubleTitle: string
     troubles: { term: string; text: string }[]
+    sim: {
+      title: string
+      intro: string
+      step1Hint: string
+      step2Hint: string
+      step3Hint: string
+      done: string
+      replay: string
+    }
+    beforeAfter: {
+      title: string
+      intro: string
+      wrongNote: string
+      fixedNote: string
+    }
     outroTitle: string
     outroSub: string
     ctaTutorial: string
@@ -226,14 +269,63 @@ export interface Strings {
     eyebrow: string
     title: string
     sub: string
-    steps: { title: string; body: string }[]
-    trySitesLabel: string
+    checklist: {
+      title: string
+      progress: (done: number, total: number) => string
+      installed: string
+      pinned: string
+      hovered: string
+      saved: string
+      signedIn: string
+      signedInAs: (email: string) => string
+      signInCta: string
+      allDone: string
+    }
+    practice: {
+      title: string
+      intro: string
+      hint: string
+      savedNote: (n: number) => string
+    }
+    pin: {
+      title: string
+      intro: string
+      watch: string
+      yourTurn: string
+      menuTitle: string
+      pinnedNote: string
+      replay: string
+    }
+    mission: {
+      title: string
+      body: string
+      sitesLabel: string
+    }
     extrasTitle: string
     extras: { term: string; text: string; to: string; cta: string }[]
     outroTitle: string
     outroSub: string
     ctaDemo: string
     ctaTutorial: string
+  }
+  try: {
+    eyebrow: string
+    title: string
+    sub: string
+    inputLabel: string
+    placeholder: string
+    sampleBtn: string
+    clearBtn: string
+    datasetLabel: string
+    intensityLabel: string
+    modeLabel: string
+    loading: string
+    loadError: string
+    outputLabel: string
+    emptyOutput: string
+    matches: (n: number) => string
+    hoverHint: string
+    privacyNote: string
   }
   goodbye: {
     eyebrow: string
@@ -252,6 +344,12 @@ export interface Strings {
     error: string
     tipsTitle: string
     tips: { term: string; text: string }[]
+    rescue: {
+      tryLabel: string
+      tooMany: { title: string; body: string }
+      wrongSites: { title: string; body: string; siteBtn: string; siteBtnOff: string }
+      notUseful: { title: string; body: string; cta: string }
+    }
     reinstallTitle: string
     reinstallBody: string
     ctaReinstall: string
@@ -266,6 +364,7 @@ const vi: Strings = {
     apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
     welcomeTitle: 'Merid đã sẵn sàng: bắt đầu trong 2 phút',
     goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
+    tryTitle: 'Thử Merid với văn bản của bạn - Merid',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -347,6 +446,7 @@ const vi: Strings = {
     features: 'Tính năng',
     how: 'Cách hoạt động',
     tutorial: 'Hướng dẫn',
+    tryIt: 'Thử văn bản',
     createDataset: 'Tạo bộ từ',
     cta: 'Thêm vào Chrome',
   },
@@ -361,6 +461,7 @@ const vi: Strings = {
     privacy: 'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn, không cần tài khoản và không gửi dữ liệu trang web lên máy chủ.',
     tagNote: 'Học theo ngữ cảnh · Miễn phí',
     scrollCue: 'Cuộn xuống thử demo trực tiếp',
+    liveHint: 'Di chuột lên từ vàng thử xem',
   },
   demo: {
     eyebrow: 'Demo tương tác',
@@ -369,6 +470,9 @@ const vi: Strings = {
     resizeHandle: 'Kéo để chỉnh độ rộng trang demo. Nhấp đúp để trở về kích thước đầy đủ.',
     tryIt: 'Tới lượt bạn! Tự mình thử ngay nhé.',
     guiding: 'Merid đang hướng dẫn cho bạn',
+    ownTextTitle: 'Muốn thử với văn bản của riêng bạn?',
+    ownTextBody: 'Dán một đoạn email, bài báo hay bài đọc trên lớp và xem Merid xử lý bằng bộ từ vựng thật, hơn 3.300 từ.',
+    ownTextCta: 'Thử với văn bản của bạn',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -452,6 +556,16 @@ const vi: Strings = {
       { text: 'từ vựng học thuật', strong: true },
       { text: ', từng trang một.' },
     ],
+    calc: {
+      title: 'Bạn sẽ gặp bao nhiêu từ mới?',
+      minutesLabel: 'Mỗi ngày bạn lướt web khoảng',
+      minutesValue: (m: number) => `${m} phút`,
+      intensityLabel: 'Cường độ',
+      perDay: (n: number) => `≈ ${n} lượt gặp từ vựng mỗi ngày`,
+      perWeek: (n: number) => `≈ ${n} từ mới mỗi tuần`,
+      perMonth: (n: number) => `≈ ${n} từ mới mỗi tháng`,
+      note: 'Ước tính dựa trên tốc độ đọc trung bình và mật độ thay từ của Merid. Con số thật phụ thuộc trang bạn đọc.',
+    },
   },
   faq: {
     eyebrow: 'FAQ',
@@ -618,6 +732,19 @@ const vi: Strings = {
     outroSub: 'Đọc web là thói quen bạn đã có sẵn. Merid chỉ nâng cấp nó.',
     ctaDemo: 'Thử demo tương tác',
     ctaInstall: 'Thêm Merid vào Chrome',
+    scrolly: {
+      browserTitle: 'Bài đọc mẫu - baomau.vn',
+      articleNote: 'Trang mẫu thu nhỏ - mọi từ vàng đều bấm được',
+      deckChip: (n: number) => `Deck: ${n} từ`,
+      panelHint: 'Chọn bộ từ ngay tại đây',
+      modeLabel: 'Display mode',
+      yourTurn: 'Tới lượt bạn! Di chuột lên một từ vàng.',
+      watching: 'Merid đang chỉ cho bạn',
+      finaleTitleSaved: (n: number) => `Bạn vừa lưu ${n} từ 🎉`,
+      finaleTitleNone: 'Deck của bạn đang chờ',
+      finaleBodySaved: 'Đây chính là cách deck của bạn lớn lên mỗi ngày: đọc, di chuột, lưu lại. Lật thử thẻ đầu tiên xem sao.',
+      finaleBodyNone: 'Cuộn lại lên, di chuột lên một từ vàng trong bài đọc và bấm "Save to Deck" - từ đó sẽ xuất hiện ở đây thành flashcard.',
+    },
   },
   createDataset: {
     eyebrow: 'Bộ từ tự tạo',
@@ -748,6 +875,21 @@ const vi: Strings = {
       { term: 'Dùng nhiều thì từ ngừng được kiểm tra.', text: 'Có thể bạn đã dùng hết hạn mức miễn phí trong ngày. Hạn mức sẽ tự đặt lại. Merid vẫn hoạt động bình thường khi không có bước kiểm tra.' },
       { term: 'Không thấy nút "Create API key".', text: 'Một số tài khoản Google của công ty/trường học chặn AI Studio. Hãy dùng tài khoản Google cá nhân.' },
     ],
+    sim: {
+      title: 'Tập trước tại đây, 30 giây',
+      intro: 'Đây là mô phỏng đúng các bước bạn sắp làm trên Google AI Studio và trong Merid. Bấm thử cho quen tay - không có gì được tạo thật cả.',
+      step1Hint: 'Bấm "Create API key"',
+      step2Hint: 'Sao chép key vừa tạo',
+      step3Hint: 'Dán vào Merid rồi bấm Save',
+      done: 'Xong! Ngoài đời cũng đúng ba cú bấm như vậy.',
+      replay: 'Làm lại từ đầu',
+    },
+    beforeAfter: {
+      title: 'AI Context Check sửa được gì?',
+      intro: 'Tiếng Việt nhiều từ đồng âm: "đá" trong "đá bóng" không phải viên đá. Gạt công tắc để xem AI phát hiện từ thay sai ngữ cảnh và tự trả lại như cũ.',
+      wrongNote: 'Không có AI: "đá" (sút bóng) bị thay nhầm thành "rock" (hòn đá).',
+      fixedNote: 'AI nhận ra "rock" không hợp câu này và tự trả lại "đá". Từ đúng ngữ cảnh vẫn giữ nguyên.',
+    },
     outroTitle: 'Vậy là Merid đã chạy hết công suất',
     outroSub: 'Một chiếc key, dán một lần. Từ nay, mọi từ được thay đều được kiểm tra trong câu.',
     ctaTutorial: 'Xem hướng dẫn dùng Merid',
@@ -756,22 +898,39 @@ const vi: Strings = {
   welcome: {
     eyebrow: 'Cài đặt thành công',
     title: 'Merid đã sẵn sàng',
-    sub: 'Hai phút thiết lập là bạn bắt đầu học từ vựng ngay trong lúc đọc báo. Làm theo ba bước dưới đây.',
-    steps: [
-      {
-        title: 'Ghim Merid lên thanh công cụ',
-        body: 'Nhấn biểu tượng mảnh ghép 🧩 ở góc phải trình duyệt, tìm Merid và nhấn hình đinh ghim. Từ giờ chỉ cần một cú nhấp là mở được bảng điều khiển.',
-      },
-      {
-        title: 'Chọn bộ từ và kiểu hiển thị',
-        body: 'Mở Merid, chọn bộ từ (SAT, C1, C2 hoặc Tất cả), chỉnh số từ được thay và kiểu hiển thị: Thay từ, Tô sáng, hoặc Bên cạnh. Merid tự động lưu cài đặt của bạn.',
-      },
-      {
-        title: 'Đọc báo như bình thường',
-        body: 'Mở một trang tiếng Việt bất kỳ. Vài từ sẽ được thay bằng tiếng Anh kèm gạch chân vàng. Di chuột lên từ để xem nghĩa, phát âm, ví dụ, rồi nhấn "Save to Deck" để lưu lại ôn tập.',
-      },
-    ],
-    trySitesLabel: 'Thử ngay với:',
+    sub: 'Đừng chỉ đọc hướng dẫn - làm thử ngay trên trang này. Mỗi việc bạn hoàn thành sẽ tự được đánh dấu ở danh sách bên dưới.',
+    checklist: {
+      title: 'Khởi động cùng Merid',
+      progress: (done: number, total: number) => `${done}/${total} bước`,
+      installed: 'Cài Merid vào Chrome',
+      pinned: 'Tập ghim Merid lên thanh công cụ',
+      hovered: 'Mở thẻ học đầu tiên (di chuột lên từ vàng)',
+      saved: 'Lưu từ đầu tiên vào deck',
+      signedIn: 'Đăng nhập để đồng bộ deck (không bắt buộc)',
+      signedInAs: (email: string) => `Đã đăng nhập: ${email}`,
+      signInCta: 'Đăng nhập',
+      allDone: 'Tuyệt vời! Giờ mở một trang báo thật và để Merid làm việc của nó.',
+    },
+    practice: {
+      title: 'Đây chính là Merid',
+      intro: 'Đoạn bài đọc dưới đây đang chạy Merid thật: vài từ tiếng Việt đã được thay bằng từ vựng tiếng Anh có gạch chân vàng.',
+      hint: 'Di chuột (hoặc chạm) lên một từ vàng ngay bây giờ, rồi bấm "Save to Deck" thử xem.',
+      savedNote: (n: number) => `Bạn đã lưu ${n} từ ở ngay trang chào mừng này 🎉`,
+    },
+    pin: {
+      title: 'Tập ghim Merid, ngay tại đây',
+      intro: 'Để mở Merid nhanh, bạn cần ghim nó lên thanh công cụ. Thanh công cụ giả bên dưới hoạt động y hệt Chrome thật - thử luôn cho quen tay:',
+      watch: 'Xem Merid làm mẫu…',
+      yourTurn: 'Tới lượt bạn: bấm biểu tượng mảnh ghép 🧩',
+      menuTitle: 'Tiện ích',
+      pinnedNote: 'Đẹp! Chữ M vàng đã nằm cạnh thanh địa chỉ. Trong Chrome thật, hãy làm đúng như vậy.',
+      replay: 'Xem lại hướng dẫn',
+    },
+    mission: {
+      title: 'Nhiệm vụ đầu tiên của bạn',
+      body: 'Mở một trang báo tiếng Việt, tìm 3 từ vàng và lưu ít nhất 1 từ vào deck. Merid đang bật sẵn - chỉ cần đọc như bình thường.',
+      sitesLabel: 'Chọn một trang để bắt đầu:',
+    },
     extrasTitle: 'Khi đã quen, mở khóa thêm',
     extras: [
       {
@@ -797,6 +956,25 @@ const vi: Strings = {
     outroSub: 'Gặp trang không muốn thay từ, như ngân hàng hay công việc? Mở Merid và nhấn "Tắt trên trang này". Merid sẽ chừa riêng trang đó ra.',
     ctaDemo: 'Xem demo tương tác',
     ctaTutorial: 'Hướng dẫn chi tiết',
+  },
+  try: {
+    eyebrow: 'Thử với văn bản của bạn',
+    title: 'Dán bất kỳ đoạn tiếng Việt nào vào đây',
+    sub: 'Một email, một bài báo, bài đọc trên lớp… Merid sẽ xử lý ngay trong trình duyệt của bạn bằng bộ từ vựng thật của extension - hơn 3.300 từ SAT, C1 và C2.',
+    inputLabel: 'Văn bản của bạn',
+    placeholder: 'Dán một đoạn văn tiếng Việt vào đây…',
+    sampleBtn: 'Dùng đoạn văn mẫu',
+    clearBtn: 'Xoá',
+    datasetLabel: 'Bộ từ vựng',
+    intensityLabel: 'Cường độ',
+    modeLabel: 'Kiểu hiển thị',
+    loading: 'Đang tải bộ từ vựng…',
+    loadError: 'Không tải được bộ từ vựng. Kiểm tra kết nối mạng rồi thử lại nhé.',
+    outputLabel: 'Kết quả - đúng như Merid hiển thị trên trang thật',
+    emptyOutput: 'Chưa tìm thấy từ nào để thay trong đoạn này. Thử một đoạn dài hơn, tăng cường độ, hoặc chuyển bộ từ "All" xem sao.',
+    matches: (n: number) => `${n} từ được thay`,
+    hoverHint: 'Di chuột lên từ vàng để mở thẻ học, y như trên trang thật.',
+    privacyNote: 'Văn bản của bạn được xử lý ngay trong trình duyệt và không được gửi đi đâu cả.',
   },
   goodbye: {
     eyebrow: 'Tạm biệt',
@@ -828,6 +1006,24 @@ const vi: Strings = {
       { term: 'Kéo mật độ xuống "Nhẹ nhàng".', text: 'Ít từ được thay hơn hẳn, trang đọc thoải mái hơn nhiều.' },
       { term: 'Chế độ "Tô sáng".', text: 'Giữ nguyên chữ tiếng Việt, chỉ tô sáng - di chuột mới hiện nghĩa tiếng Anh.' },
     ],
+    rescue: {
+      tryLabel: 'Thử ngay tại đây:',
+      tooMany: {
+        title: 'Cái này sửa được trong 5 giây',
+        body: 'Kéo thanh cường độ xuống và xem cùng một đoạn văn thay đổi. Ở mức Nhẹ nhàng, Merid chỉ chạm vào 2-3 từ mỗi trang.',
+      },
+      wrongSites: {
+        title: 'Merid có nút dành riêng cho việc này',
+        body: 'Trên trang bạn không muốn thay từ (ngân hàng, công việc…), mở popup Merid và bấm nút này - trang đó sẽ được chừa ra vĩnh viễn:',
+        siteBtn: 'Tắt trên trang này',
+        siteBtnOff: 'Đã tắt trên trang này ✓',
+      },
+      notUseful: {
+        title: 'Từ vựng chưa đúng thứ bạn cần?',
+        body: 'Ngoài SAT/C1/C2, bạn có thể tự tạo bộ từ theo đúng chủ đề mình quan tâm (marketing, y khoa, bóng đá…) bằng AI rồi tải lên Merid.',
+        cta: 'Tạo bộ từ của riêng bạn',
+      },
+    },
     reinstallTitle: 'Đổi ý rồi?',
     reinstallBody: 'Cài lại chỉ mất vài giây - bộ thẻ đã đồng bộ của bạn vẫn còn nguyên trong tài khoản.',
     ctaReinstall: 'Cài lại Merid',
@@ -842,6 +1038,7 @@ const en: Strings = {
     apiKeyGuideTitle: 'Paste your own API key for the best Merid - Merid',
     welcomeTitle: 'Merid is ready: start in 2 minutes',
     goodbyeTitle: 'Goodbye - help make Merid better',
+    tryTitle: 'Try Merid on your own text - Merid',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -923,6 +1120,7 @@ const en: Strings = {
     features: 'Features',
     how: 'How it works',
     tutorial: 'Tutorial',
+    tryIt: 'Try your text',
     createDataset: 'Create dataset',
     cta: 'Add to Chrome',
   },
@@ -937,6 +1135,7 @@ const en: Strings = {
     privacy: 'Private by design. It runs locally on your device, with no account and no webpage data sent to a server.',
     tagNote: 'Context-aware learning · Free',
     scrollCue: 'Scroll down to try the live demo',
+    liveHint: 'Hover the gold word',
   },
   demo: {
     eyebrow: 'Interactive demo',
@@ -945,6 +1144,9 @@ const en: Strings = {
     resizeHandle: 'Drag to resize the demo page. Double-click to restore the full width.',
     tryIt: 'Your turn! Try it yourself.',
     guiding: 'Merid is showing you around',
+    ownTextTitle: 'Want to try it on your own text?',
+    ownTextBody: "Paste an email, a news article, or your class reading and watch Merid work through it with the extension's real datasets - 3,300+ words.",
+    ownTextCta: 'Try it on your text',
   },
   features: {
     eyebrow: 'Features',
@@ -1028,6 +1230,16 @@ const en: Strings = {
       { text: 'academic vocabulary', strong: true },
       { text: ', one page at a time.' },
     ],
+    calc: {
+      title: 'How many new words would you meet?',
+      minutesLabel: 'You browse about',
+      minutesValue: (m: number) => `${m} minutes a day`,
+      intensityLabel: 'Intensity',
+      perDay: (n: number) => `≈ ${n} vocabulary encounters per day`,
+      perWeek: (n: number) => `≈ ${n} new words per week`,
+      perMonth: (n: number) => `≈ ${n} new words per month`,
+      note: "An estimate based on average reading speed and Merid's replacement density. Real numbers depend on what you read.",
+    },
   },
   faq: {
     eyebrow: 'FAQ',
@@ -1195,6 +1407,19 @@ const en: Strings = {
     outroSub: 'Reading is the habit you already have. Merid just upgrades it.',
     ctaDemo: 'Try the interactive demo',
     ctaInstall: 'Add Merid to Chrome',
+    scrolly: {
+      browserTitle: 'Sample article - baomau.vn',
+      articleNote: 'A miniature sample page - every gold word is clickable',
+      deckChip: (n: number) => `Deck: ${n} ${n === 1 ? 'word' : 'words'}`,
+      panelHint: 'Pick a dataset right here',
+      modeLabel: 'Display mode',
+      yourTurn: 'Your turn! Hover a gold word.',
+      watching: 'Merid is showing you',
+      finaleTitleSaved: (n: number) => `You just saved ${n} ${n === 1 ? 'word' : 'words'} 🎉`,
+      finaleTitleNone: 'Your deck is waiting',
+      finaleBodySaved: 'This is exactly how your deck grows every day: read, hover, save. Flip your first card below.',
+      finaleBodyNone: 'Scroll back up, hover a gold word in the article and press "Save to Deck" - it will appear here as a flashcard.',
+    },
   },
   createDataset: {
     eyebrow: 'Custom datasets',
@@ -1325,6 +1550,21 @@ const en: Strings = {
       { term: 'Checking stops after heavy use.', text: 'You may have reached the free daily limit. It resets on its own. Merid keeps working normally without the check.' },
       { term: 'No "Create API key" button.', text: 'Some work or school Google accounts block AI Studio. Use a personal Google account instead.' },
     ],
+    sim: {
+      title: 'Practice here first, 30 seconds',
+      intro: 'This is a simulation of the exact steps you are about to do on Google AI Studio and inside Merid. Click through it - nothing real is created.',
+      step1Hint: 'Click "Create API key"',
+      step2Hint: 'Copy the new key',
+      step3Hint: 'Paste it into Merid and press Save',
+      done: 'Done! The real thing is the same three clicks.',
+      replay: 'Start over',
+    },
+    beforeAfter: {
+      title: 'What does the AI Context Check fix?',
+      intro: 'Vietnamese is full of homonyms: the "đá" in "đá bóng" (kick a ball) is not a rock. Flip the switch and watch the AI catch an out-of-context replacement and quietly undo it.',
+      wrongNote: 'Without AI: "đá" (to kick) is wrongly replaced with "rock" (a stone).',
+      fixedNote: 'The AI notices "rock" does not fit this sentence and restores "đá". The correct replacement stays.',
+    },
     outroTitle: 'That is Merid at full strength',
     outroSub: 'One key, pasted once. From now on, every replaced word is checked in its sentence.',
     ctaTutorial: 'See how to use Merid',
@@ -1333,22 +1573,39 @@ const en: Strings = {
   welcome: {
     eyebrow: 'Installed successfully',
     title: 'Merid is ready',
-    sub: 'Two minutes of setup and you are learning vocabulary while you read. Here are the three steps.',
-    steps: [
-      {
-        title: 'Pin Merid to your toolbar',
-        body: 'Click the puzzle icon 🧩 in the top-right of your browser, find Merid, and press the pin. After that, the control panel is one click away.',
-      },
-      {
-        title: 'Pick a dataset and display mode',
-        body: 'Open Merid, choose a dataset (SAT, C1, C2, or All), set how many words Merid replaces, and pick a display mode: Replace, Highlight, or Beside. Merid saves your settings automatically.',
-      },
-      {
-        title: 'Read like you always do',
-        body: 'Open any Vietnamese site. A few words appear in English with a gold underline. Hover a word to see its meaning, pronunciation, and an example, then hit "Save to Deck" to keep it for review.',
-      },
-    ],
-    trySitesLabel: 'Try it now on:',
+    sub: 'Don\'t just read the instructions - do them, right on this page. Everything you complete ticks itself off in the checklist below.',
+    checklist: {
+      title: 'Getting started with Merid',
+      progress: (done: number, total: number) => `${done}/${total} steps`,
+      installed: 'Install Merid in Chrome',
+      pinned: 'Practice pinning Merid to the toolbar',
+      hovered: 'Open your first learning card (hover a gold word)',
+      saved: 'Save your first word to the deck',
+      signedIn: 'Sign in to sync your deck (optional)',
+      signedInAs: (email: string) => `Signed in as ${email}`,
+      signInCta: 'Sign in',
+      allDone: 'Beautiful! Now open a real news site and let Merid do its thing.',
+    },
+    practice: {
+      title: 'This is Merid',
+      intro: 'The passage below is running the real thing: a few Vietnamese words have been swapped for English vocabulary with a gold underline.',
+      hint: 'Hover (or tap) a gold word right now, then try pressing "Save to Deck".',
+      savedNote: (n: number) => `You already saved ${n} ${n === 1 ? 'word' : 'words'} on this welcome page 🎉`,
+    },
+    pin: {
+      title: 'Practice pinning Merid, right here',
+      intro: 'To open Merid quickly you will want it pinned to the toolbar. The fake toolbar below works exactly like real Chrome - try it now:',
+      watch: 'Watch Merid demonstrate…',
+      yourTurn: 'Your turn: click the puzzle icon 🧩',
+      menuTitle: 'Extensions',
+      pinnedNote: 'Nice! The gold M now sits next to the address bar. Do exactly this in your real Chrome.',
+      replay: 'Replay the demo',
+    },
+    mission: {
+      title: 'Your first mission',
+      body: 'Open a Vietnamese news site, find 3 gold words, and save at least 1 to your deck. Merid is already on - just read like you always do.',
+      sitesLabel: 'Pick a site to start:',
+    },
     extrasTitle: 'When you are settled in, unlock more',
     extras: [
       {
@@ -1374,6 +1631,25 @@ const en: Strings = {
     outroSub: 'On a site where you don\'t want replacements, like banking or work tools, open Merid and press "Turn off on this site." Merid then leaves that site alone.',
     ctaDemo: 'Try the interactive demo',
     ctaTutorial: 'Full tutorial',
+  },
+  try: {
+    eyebrow: 'Try it on your text',
+    title: 'Paste any Vietnamese text here',
+    sub: "An email, a news story, your class reading… Merid processes it right in your browser using the extension's real datasets - 3,300+ SAT, C1 and C2 words.",
+    inputLabel: 'Your text',
+    placeholder: 'Paste a Vietnamese passage here…',
+    sampleBtn: 'Use a sample passage',
+    clearBtn: 'Clear',
+    datasetLabel: 'Dataset',
+    intensityLabel: 'Intensity',
+    modeLabel: 'Display mode',
+    loading: 'Loading the dataset…',
+    loadError: 'Could not load the dataset. Check your connection and try again.',
+    outputLabel: 'Result - exactly what Merid shows on a real page',
+    emptyOutput: 'No replaceable words found in this passage. Try a longer text, raise the intensity, or switch to the "All" dataset.',
+    matches: (n: number) => `${n} ${n === 1 ? 'word' : 'words'} replaced`,
+    hoverHint: 'Hover a gold word to open the learning card, just like on a real page.',
+    privacyNote: 'Your text is processed in your browser and never sent anywhere.',
   },
   goodbye: {
     eyebrow: 'Goodbye',
@@ -1405,6 +1681,24 @@ const en: Strings = {
       { term: 'Drop the intensity to "Casual".', text: 'Far fewer words get replaced and pages read much more comfortably.' },
       { term: '"Highlight" mode.', text: 'Keeps the Vietnamese text untouched and only highlights - the English appears when you hover.' },
     ],
+    rescue: {
+      tryLabel: 'Try it right here:',
+      tooMany: {
+        title: 'This one is a 5-second fix',
+        body: 'Drag the intensity down and watch the same passage change. On Casual, Merid touches only 2-3 words per page.',
+      },
+      wrongSites: {
+        title: 'Merid has a button exactly for this',
+        body: 'On any site where replacements are unwelcome (banking, work…), open the Merid popup and press this - that site is skipped for good:',
+        siteBtn: 'Turn off on this site',
+        siteBtnOff: 'Turned off on this site ✓',
+      },
+      notUseful: {
+        title: 'Vocabulary not quite right for you?',
+        body: 'Beyond SAT/C1/C2, you can build a dataset for exactly the topics you care about (marketing, medicine, football…) with AI and upload it to Merid.',
+        cta: 'Create your own dataset',
+      },
+    },
     reinstallTitle: 'Changed your mind?',
     reinstallBody: 'Reinstalling takes seconds - your synced deck is still safe in your account.',
     ctaReinstall: 'Reinstall Merid',
