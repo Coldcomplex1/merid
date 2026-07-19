@@ -50,10 +50,13 @@ function MorphMicroDemo() {
     <div className="mt-5 flex h-24 items-center justify-center rounded-xl bg-cream-50 px-4 ring-1 ring-navy-200/50" aria-hidden="true">
       <p className="font-wiki text-[15px] leading-relaxed text-ink" lang="vi">
         …được công nhận là{' '}
-        <span className="relative inline-block align-baseline font-semibold whitespace-nowrap">
-          {/* The two states sit on top of each other and crossfade */}
-          <span className="animate-micro-swap-a hl-vi">di sản</span>
-          <span className="animate-micro-swap-b hl-en absolute left-0" style={{ animationDelay: '0s' }}>
+        {/* Both states share one grid cell, so the slot is as wide as the
+            longer word and the surrounding text never shifts or overlaps. */}
+        <span className="inline-grid align-baseline font-semibold whitespace-nowrap">
+          <span className="animate-micro-swap-a hl-vi col-start-1 row-start-1 justify-self-center">
+            di sản
+          </span>
+          <span className="animate-micro-swap-b hl-en col-start-1 row-start-1 justify-self-center">
             heritage
           </span>
         </span>{' '}

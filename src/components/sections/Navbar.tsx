@@ -47,12 +47,16 @@ export default function Navbar() {
           <span className="text-lg font-bold text-heading">Merid</span>
         </Link>
 
-        <div className="hidden items-center gap-7 md:flex">
+        {/* Six links (in both languages) fit on one line only once the nav
+            container reaches its full max-w-6xl width (1152px), each label
+            kept on a single line via nowrap; below that they live in the
+            hamburger. Measured against the longer Vietnamese labels. */}
+        <div className="hidden items-center gap-4 min-[1152px]:flex">
           {links.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className="text-sm font-semibold text-body transition-colors hover:text-accent"
+              className="text-sm font-semibold whitespace-nowrap text-body transition-colors hover:text-accent"
             >
               {link.label}
             </Link>
@@ -63,10 +67,13 @@ export default function Navbar() {
           <LangToggle />
           <ThemeToggle />
           {/* Login must always be discoverable, not only inside the hamburger. */}
+          {/* Inline "Log in" only while the nav links are folded away - with
+              all six links inline the Vietnamese labels leave no slack for it.
+              The hamburger always carries login/signup at every width. */}
           {!user && (
             <Link
               to="/login"
-              className="hidden text-sm font-semibold text-body transition-colors hover:text-accent md:block"
+              className="hidden text-sm font-semibold whitespace-nowrap text-body transition-colors hover:text-accent md:block min-[1152px]:hidden"
             >
               {t.deck.menu.login}
             </Link>
@@ -97,8 +104,8 @@ export default function Navbar() {
                 </div>
                 <div className="my-2 border-t border-line sm:hidden" />
 
-                {/* Main nav (small screens only; desktop shows these inline). */}
-                <div className="md:hidden">
+                {/* Main nav (below 1152px; desktop shows these inline). */}
+                <div className="min-[1152px]:hidden">
                   {links.map((link) => (
                     <Link key={link.to} to={link.to} className={menuItem}>
                       {link.label}
