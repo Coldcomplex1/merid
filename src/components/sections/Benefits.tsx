@@ -2,13 +2,17 @@ import { useState, type CSSProperties } from 'react'
 import Reveal from '../ui/Reveal'
 import { useLang } from '../../i18n/LanguageContext'
 
+// Deliberately conservative estimates: browsing is skimming as much as
+// reading, most encounters repeat words already met, and later weeks repeat
+// earlier ones. Better to undersell than to promise inflated numbers.
 const INTENSITIES = [
-  { label: 'Casual', rate: 0.012 },
-  { label: 'Focused', rate: 0.025 },
-  { label: 'Locked-in', rate: 0.045 },
+  { label: 'Casual', rate: 0.006 },
+  { label: 'Focused', rate: 0.013 },
+  { label: 'Locked-in', rate: 0.022 },
 ]
-const WORDS_PER_MINUTE = 180 // average silent reading speed
-const UNIQUE_SHARE = 0.12 // rough share of encounters that are new headwords
+const WORDS_PER_MINUTE = 140 // effective reading pace while browsing
+const UNIQUE_SHARE = 0.08 // share of encounters that are new headwords
+const MONTH_FACTOR = 3.2 // < 4.3 weeks: later weeks re-meet earlier words
 
 /** "Your browsing → vocabulary" calculator: drag your daily minutes and see
  *  the passive-learning claim as your own numbers. Estimates derive from the
@@ -21,7 +25,7 @@ function ExposureCalculator() {
 
   const perDay = Math.round((minutes * WORDS_PER_MINUTE * INTENSITIES[intensity].rate) / 5) * 5
   const perWeek = Math.round((perDay * UNIQUE_SHARE * 7) / 5) * 5
-  const perMonth = Math.round((perWeek * 4.3) / 10) * 10
+  const perMonth = Math.round((perWeek * MONTH_FACTOR) / 10) * 10
 
   return (
     <div className="mx-auto mt-12 max-w-2xl rounded-3xl border-2 border-navy-700 bg-cream-100 p-6 text-left sm:p-8">
