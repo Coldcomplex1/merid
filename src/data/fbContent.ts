@@ -20,6 +20,9 @@ export interface FbPost {
   time: string
   /** Paragraphs of the post body. */
   body: Seg[][]
+  /** Extra paragraphs behind a working "Xem thêm" - more text to expand
+   *  means more gold words to discover. */
+  more?: Seg[][]
   /** Key of the inline SVG illustration rendered under the text, if any. */
   image?: 'cave' | 'coffee' | 'lanterns'
   likes: string
@@ -73,6 +76,15 @@ export const FB_POSTS: FbPost[] = [
         text('Hệ thạch nhũ '),
         vocab('ancient'),
         text(' ở đây đã hơn 3 triệu năm tuổi. Ai từng ước một lần được đứng dưới "bức tường Việt Nam" huyền thoại thì để lại một like nhé! 🇻🇳'),
+      ],
+    ],
+    more: [
+      [
+        text('Đoàn cũng cho biết dữ liệu thu thập được sẽ giúp các nhà khoa học '),
+        vocab('interpret'),
+        text(' quá trình hình thành của cả hệ thống hang, và là cơ sở để '),
+        vocab('preserve'),
+        text(' khu vực này trước áp lực du lịch ngày càng lớn.'),
       ],
     ],
     image: 'cave',
@@ -152,6 +164,15 @@ export const FB_POSTS: FbPost[] = [
         text('Ví dụ "break the ice" chẳng liên quan gì tới nước đá. Người bản xứ dùng nó để nói về việc mở đầu câu chuyện, và chính những cách diễn đạt '),
         vocab('elaborate'),
         text(' kiểu này làm tiếng Anh của bạn tự nhiên hơn. Lưu lại để học dần nha! 📚'),
+      ],
+    ],
+    more: [
+      [
+        text('Bonus: cách học '),
+        vocab('significant'),
+        text(' nhất vẫn là gặp từ trong ngữ cảnh thật. Đọc nhiều, '),
+        vocab('discover'),
+        text(' từ mới ngay trong bài viết bạn đang đọc, rồi ôn lại sau - nhẹ nhàng mà nhớ lâu hơn hẳn ngồi "cày" list từ.'),
       ],
     ],
     likes: '2,3K',

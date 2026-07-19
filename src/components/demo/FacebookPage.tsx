@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { FB_CONTACTS, FB_POSTS, FB_STORIES, type FbPost } from '../../data/fbContent'
 import type { Seg } from '../../data/wikiContent'
 import FacebookLogo from '../ui/FacebookLogo'
@@ -151,11 +151,25 @@ function HeartChip() {
   )
 }
 
-function ActionButton({ children, icon }: { children: ReactNode; icon: ReactNode }) {
+function ActionButton({
+  children,
+  icon,
+  active = false,
+  onClick,
+}: {
+  children: ReactNode
+  icon: ReactNode
+  active?: boolean
+  onClick?: () => void
+}) {
   return (
     <button
       type="button"
-      className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-1.5 text-[13px] font-semibold text-[#65676b] transition-colors hover:bg-[#f2f2f2]"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-1.5 text-[13px] font-semibold transition-colors hover:bg-[#f2f2f2] ${
+        active ? 'text-[#1877f2]' : 'text-[#65676b]'
+      }`}
     >
       {icon}
       {children}
@@ -165,6 +179,22 @@ function ActionButton({ children, icon }: { children: ReactNode; icon: ReactNode
 
 function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVocab }) {
   const Illustration = post.image ? POST_IMAGES[post.image] : null
+  // Small local touches that make the mockup feel alive: liking a post,
+  // expanding "Xem thêm", and writing a (local-only) comment.
+  const [liked, setLiked] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [commentDraft, setCommentDraft] = useState('')
+  const [comments, setComments] = useState<string[]>([])
+  const [composing, setComposing] = useState(false)
+
+  const submitComment = (e: FormEvent) => {
+    e.preventDefault()
+    const text = commentDraft.trim()
+    if (!text) return
+    setComments((prev) => [...prev, text])
+    setCommentDraft('')
+  }
+
   return (
     <article className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-black/5">
       <div className="flex items-center gap-2.5 px-4 pt-3">
@@ -196,6 +226,24 @@ function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVoca
             <Segs segs={para} prefix={`${post.id}-${i}`} renderVocab={renderVocab} />
           </p>
         ))}
+        {post.more && !expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="cursor-pointer text-[14px] font-semibold text-[#65676b] hover:underline"
+          >
+            Xem thêm
+          </button>
+        )}
+        {post.more && expanded && (
+          <>
+            {post.more.map((para, i) => (
+              <p key={`more-${i}`}>
+                <Segs segs={para} prefix={`${post.id}-more-${i}`} renderVocab={renderVocab} />
+              </p>
+            ))}
+          </>
+        )}
       </div>
 
       {Illustration && <Illustration />}
@@ -206,10 +254,11 @@ function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVoca
             <LikeChip />
             <HeartChip />
           </span>
-          {post.likes}
+          {liked ? `Bạn và ${post.likes} người khác` : post.likes}
         </span>
         <span>
-          {post.comments} bình luận · {post.shares} lượt chia sẻ
+          {comments.length > 0 ? `${post.comments} +${comments.length}` : post.comments} bình luận ·{' '}
+          {post.shares} lượt chia sẻ
         </span>
       </div>
 
@@ -217,8 +266,10 @@ function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVoca
 
       <div className="flex px-2 py-1">
         <ActionButton
+          active={liked}
+          onClick={() => setLiked((v) => !v)}
           icon={
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
               <path d="M3 10h3v11H3zM8 21h8.4a2 2 0 0 0 1.9-1.4l2.5-7A2 2 0 0 0 18.9 10H14V5a2.4 2.4 0 0 0-2.4-2.4L11 2 8 10z" />
             </svg>
           }
@@ -226,6 +277,7 @@ function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVoca
           Thích
         </ActionButton>
         <ActionButton
+          onClick={() => setComposing(true)}
           icon={
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
               <path d="M21 12a8 8 0 0 1-8 8H4l1.6-3.2A8 8 0 1 1 21 12z" />
@@ -244,6 +296,50 @@ function PostCard({ post, renderVocab }: { post: FbPost; renderVocab: RenderVoca
           Chia sẻ
         </ActionButton>
       </div>
+
+      {/* Comments: your local-only comments render like real ones */}
+      {(comments.length > 0 || composing) && <div className="mx-4 border-t border-[#e4e6eb]" />}
+      {comments.length > 0 && (
+        <div className="space-y-1.5 px-4 pt-2">
+          {comments.map((c, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-[#7fb3f5] to-[#2f6fd1]" />
+              <div className="rounded-2xl bg-[#f0f2f5] px-3 py-1.5">
+                <p className="text-[12px] leading-tight font-semibold text-[#050505]">Hải Đăng</p>
+                <p className="text-[13px] leading-snug text-[#050505]">{c}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={submitComment} className="flex items-center gap-2 px-4 py-2.5">
+        <span className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-[#7fb3f5] to-[#2f6fd1]" />
+        <div
+          className={`flex flex-1 items-center gap-2 rounded-full bg-[#f0f2f5] px-3 transition-all ${
+            composing ? 'py-2 ring-1 ring-[#1877f2]/40' : 'py-1.5'
+          }`}
+        >
+          <input
+            value={commentDraft}
+            onChange={(e) => setCommentDraft(e.target.value)}
+            onFocus={() => setComposing(true)}
+            onBlur={() => setComposing(false)}
+            placeholder="Viết bình luận…"
+            aria-label="Viết bình luận"
+            className="w-full min-w-0 bg-transparent text-[13px] text-[#050505] outline-none placeholder:text-[#65676b]"
+          />
+          <button
+            type="submit"
+            aria-label="Gửi bình luận"
+            disabled={!commentDraft.trim()}
+            className="shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-35"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#1877f2" aria-hidden="true">
+              <path d="M2 21l20-9L2 3v7l14 2-14 2z" />
+            </svg>
+          </button>
+        </div>
+      </form>
     </article>
   )
 }

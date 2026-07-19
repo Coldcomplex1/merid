@@ -10,6 +10,7 @@ export default function Footer() {
     { label: t.footer.features, to: '/#features' },
     { label: t.footer.faq, to: '/#faq' },
     { label: t.footer.tutorial, to: '/tutorial' },
+    { label: t.nav.tryIt, to: '/try' },
     { label: t.footer.createDataset, to: '/create-dataset' },
     { label: t.footer.apiKeyGuide, to: '/api-key-guide' },
   ]

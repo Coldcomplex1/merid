@@ -7,7 +7,11 @@ interface RevealProps {
   className?: string
 }
 
-/** Fades content up once it scrolls into view. */
+/** Fades content up once it scrolls into view.
+ *
+ *  Once revealed, NO transform class remains: a lingering `translate-y-0`
+ *  keeps a stacking context alive, which let later sections paint over
+ *  pop-ups (e.g. the vocab hover card) escaping an earlier section. */
 export default function Reveal({ children, delay = 0, className = '' }: RevealProps) {
   const { ref, inView } = useInView()
 
@@ -15,7 +19,7 @@ export default function Reveal({ children, delay = 0, className = '' }: RevealPr
     <div
       ref={ref}
       className={`transition-all duration-700 ease-out ${
-        inView ? 'translate-y-0 opacity-100' : 'translate-y-7 opacity-0'
+        inView ? 'opacity-100' : 'translate-y-7 opacity-0'
       } ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >

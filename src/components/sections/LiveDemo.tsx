@@ -1,10 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { VOCAB, type VocabEntry } from '../../data/vocab'
 import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'
 import DemoExtensionPanel, { type PanelDataset, type PanelMode } from '../demo/DemoExtensionPanel'
 import DemoCursorZone from '../demo/DemoCursor'
 import DemoGuideCursor, { type GuideCursorHandle } from '../demo/DemoGuideCursor'
+import { useAnchoredCard } from '../demo/kit/useAnchoredCard'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import FacebookLogo from '../ui/FacebookLogo'
 import SectionHeading from '../ui/SectionHeading'
@@ -12,10 +14,7 @@ import Reveal from '../ui/Reveal'
 import { useInView } from '../../hooks/useInView'
 import { useLang } from '../../i18n/LanguageContext'
 
-const CARD_WIDTH = 312
 const CARD_GAP = 10 // the extension offsets the card 10px from the word
-const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
-const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
 
 const MIN_BROWSER_W = 320 // narrowest the browser can be dragged (phone-ish)
 const HANDLE_ALLOWANCE = 16 // room the resize handle + gap take inside the row
@@ -29,23 +28,6 @@ const TABS: { id: TabId; title: string; url: string }[] = [
   { id: 'fb', title: 'Facebook', url: 'www.facebook.com' },
 ]
 
-/** Word geometry captured on hover; the card places itself after measuring. */
-interface Anchor {
-  entry: VocabEntry
-  cardW: number
-  left: number // clamped card-left, relative to the page content
-  top: number // word top, relative to the page content
-  bottom: number // word bottom, relative to the page content
-  spaceAbove: number // room above the word inside the visible scroller
-  spaceBelow: number // room below the word inside the visible scroller
-  contentH: number
-}
-
-interface Placement {
-  pos: CSSProperties
-  place: 'below' | 'above'
-}
-
 export default function LiveDemo() {
   const { t } = useLang()
   // Defaults mirror a fresh install: SAT · Focused · Highlight · VIE → ENG.
@@ -57,8 +39,6 @@ export default function LiveDemo() {
   const [enabled, setEnabled] = useState(true)
   const [reverted, setReverted] = useState(false)
   const [tab, setTab] = useState<TabId>('wiki')
-  const [anchor, setAnchor] = useState<Anchor | null>(null)
-  const [placement, setPlacement] = useState<Placement | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [knownIds, setKnownIds] = useState<Set<string>>(new Set())
   // null = fill the column; a number = width in px chosen by dragging the handle
@@ -74,8 +54,6 @@ export default function LiveDemo() {
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
-  const cardRef = useRef<HTMLDivElement | null>(null)
-  const hideTimer = useRef<number | null>(null)
   const browserBoxRef = useRef<HTMLDivElement | null>(null)
   const resizeDrag = useRef<{ startX: number; startW: number; max: number } | null>(null)
   const guideRef = useRef<GuideCursorHandle | null>(null)
@@ -83,9 +61,15 @@ export default function LiveDemo() {
   // Fires once when the fake browser scrolls into view; drives the guided tour.
   const { ref: browserColRef, inView: browserInView } = useInView<HTMLDivElement>(0.3)
 
+  // The extension-style hover card, shared with every other interactive demo.
+  const { anchor, placement, cardRef, openPopup, close: closeCard, cancelHide, scheduleHide } =
+    useAnchoredCard(scrollerRef, contentRef)
+  const closeCardRef = useRef(closeCard)
+  closeCardRef.current = closeCard
+
   // A card anchored to a word that just moved or disappeared would float wrong.
   useEffect(() => {
-    setAnchor(null)
+    closeCardRef.current()
   }, [dataset, intensity, mode, vieEng, engEng, enabled, reverted])
 
   // Like the real extension, a reverted page stays reverted only until the
@@ -94,74 +78,15 @@ export default function LiveDemo() {
     setReverted(false)
   }, [dataset, intensity, mode, vieEng, engEng, enabled])
 
-  useEffect(
-    () => () => {
-      if (hideTimer.current !== null) window.clearTimeout(hideTimer.current)
-    },
-    [],
-  )
-
-  const cancelHide = () => {
-    if (hideTimer.current !== null) {
-      window.clearTimeout(hideTimer.current)
-      hideTimer.current = null
-    }
-  }
-
-  const scheduleHide = () => {
-    cancelHide()
-    hideTimer.current = window.setTimeout(() => {
-      hideTimer.current = null
-      setAnchor(null)
-    }, HIDE_GRACE_MS)
-  }
-
-  const openPopup = (target: HTMLElement, entry: VocabEntry) => {
-    if (!scrollerRef.current || !contentRef.current) return
-    cancelHide()
-    const wordRect = target.getBoundingClientRect()
-    const contentRect = contentRef.current.getBoundingClientRect()
-    const scrollerRect = scrollerRef.current.getBoundingClientRect()
-    const cardW = Math.min(CARD_WIDTH, contentRect.width - 16)
-    const rawLeft = wordRect.left - contentRect.left + wordRect.width / 2 - cardW / 2
-    setAnchor({
-      entry,
-      cardW,
-      left: Math.max(8, Math.min(rawLeft, contentRect.width - cardW - 8)),
-      top: wordRect.top - contentRect.top,
-      bottom: wordRect.bottom - contentRect.top,
-      spaceAbove: wordRect.top - scrollerRect.top,
-      spaceBelow: scrollerRect.bottom - wordRect.bottom,
-      contentH: contentRect.height,
-    })
-  }
-
-  // Mirror the extension: render the card, measure it, then flip it above the
-  // word when the visible space below is too small (and above is enough).
-  useLayoutEffect(() => {
-    if (!anchor) {
-      setPlacement(null)
-      return
-    }
-    const cardH = cardRef.current?.offsetHeight ?? 400
-    const flipAbove =
-      anchor.spaceBelow < cardH + FLIP_BUFFER && anchor.spaceAbove > cardH + FLIP_BUFFER
-    setPlacement(
-      flipAbove
-        ? { place: 'above', pos: { left: anchor.left, bottom: anchor.contentH - anchor.top + CARD_GAP } }
-        : { place: 'below', pos: { left: anchor.left, top: anchor.bottom + CARD_GAP } },
-    )
-  }, [anchor])
-
   const handleKnow = (id: string) => {
     setKnownIds((prev) => new Set(prev).add(id))
-    setAnchor(null)
+    closeCard()
   }
 
   const switchTab = (next: TabId) => {
     if (next === tab) return
     setTab(next)
-    setAnchor(null)
+    closeCard()
     scrollerRef.current?.scrollTo({ top: 0 })
   }
 
@@ -196,7 +121,7 @@ export default function LiveDemo() {
       guide.hide()
       setGuiding(false)
       setGuideFbPulse(false)
-      setAnchor(null)
+      closeCardRef.current()
       ac.abort()
     }
     const sleep = (ms: number) =>
@@ -340,7 +265,7 @@ export default function LiveDemo() {
         if (entry) openPopup(word, entry)
         await sleep(1300) // dwell, following the word if the page scrolls
         if (cancelled) return
-        setAnchor(null)
+        closeCardRef.current()
         await sleep(220)
         if (cancelled) return
       }
@@ -371,7 +296,7 @@ export default function LiveDemo() {
       cancelled = true
       cleanup()
     }
-    // Intentionally keyed only to browserInView/tab: openPopup and setAnchor are
+    // Intentionally keyed only to browserInView/tab: openPopup and closeCard are
     // stable closures over refs, and depending on them would restart the tour on
     // every card render.
   }, [browserInView, tab])
@@ -416,7 +341,7 @@ export default function LiveDemo() {
       startW: box.getBoundingClientRect().width,
       max: maxBrowserW(),
     }
-    setAnchor(null)
+    closeCardRef.current()
     setResizing(true)
   }
 
@@ -442,7 +367,7 @@ export default function LiveDemo() {
     if (!box) return
     const current = browserW ?? box.getBoundingClientRect().width
     const delta = e.key === 'ArrowRight' ? RESIZE_KEY_STEP : -RESIZE_KEY_STEP
-    setAnchor(null)
+    closeCardRef.current()
     setBrowserW(clampBrowserW(current + delta, maxBrowserW()))
   }
 
@@ -450,7 +375,7 @@ export default function LiveDemo() {
   const handlePagePointerDown = (e: React.PointerEvent) => {
     const el = e.target as HTMLElement
     if (el.closest('[data-vocab-card]') || el.closest('[data-vocab-word]')) return
-    setAnchor(null)
+    closeCardRef.current()
   }
 
   // The demo page is Vietnamese, so words light up only while VIE → ENG is
@@ -635,7 +560,7 @@ export default function LiveDemo() {
                           saved={savedIds.has(anchor.entry.id)}
                           onSave={() => setSavedIds((prev) => new Set(prev).add(anchor.entry.id))}
                           onKnow={() => handleKnow(anchor.entry.id)}
-                          onClose={() => setAnchor(null)}
+                          onClose={() => closeCardRef.current()}
                         />
                       </div>
                     )}
@@ -707,6 +632,22 @@ export default function LiveDemo() {
                 </div>
               </div>
             </div>
+          </div>
+        </Reveal>
+
+        {/* Bridge to the real-engine playground: paste your own text. */}
+        <Reveal delay={80} className="mt-10">
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-3xl bg-surface px-6 py-8 text-center ring-1 ring-line sm:flex-row sm:text-left">
+            <div className="flex-1">
+              <h3 className="text-lg font-extrabold text-heading">{t.demo.ownTextTitle}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-body">{t.demo.ownTextBody}</p>
+            </div>
+            <Link
+              to="/try"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gold-400 px-6 py-3 text-sm font-bold text-navy-900 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gold-300 hover:shadow-lift active:scale-95"
+            >
+              {t.demo.ownTextCta} →
+            </Link>
           </div>
         </Reveal>
       </div>

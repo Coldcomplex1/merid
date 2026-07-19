@@ -1,4 +1,5 @@
 import BrowserMockup from '../ui/BrowserMockup'
+import HeroLiveLine from '../ui/HeroLiveLine'
 import InstallButton from '../ui/InstallButton'
 import { useLang } from '../../i18n/LanguageContext'
 
@@ -30,6 +31,9 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">{t.hero.sub}</p>
+
+          {/* The product, running inside the hero sentence itself. */}
+          <HeroLiveLine />
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <InstallButton label={t.hero.ctaInstall} variant="primary" />
