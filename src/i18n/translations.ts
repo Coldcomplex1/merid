@@ -89,7 +89,6 @@ export interface Strings {
     privacy: string
     tagNote: string
     scrollCue: string
-    liveHint: string
   }
   demo: {
     eyebrow: string
@@ -461,7 +460,6 @@ const vi: Strings = {
     privacy: 'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn, không cần tài khoản và không gửi dữ liệu trang web lên máy chủ.',
     tagNote: 'Học theo ngữ cảnh · Miễn phí',
     scrollCue: 'Cuộn xuống thử demo trực tiếp',
-    liveHint: 'Di chuột lên từ vàng thử xem',
   },
   demo: {
     eyebrow: 'Demo tương tác',
@@ -1135,7 +1133,6 @@ const en: Strings = {
     privacy: 'Private by design. It runs locally on your device, with no account and no webpage data sent to a server.',
     tagNote: 'Context-aware learning · Free',
     scrollCue: 'Scroll down to try the live demo',
-    liveHint: 'Hover the gold word',
   },
   demo: {
     eyebrow: 'Interactive demo',
