@@ -35,15 +35,10 @@ export default function Footer() {
               {link.label}
             </Link>
           ))}
-          <a
-            href="https://meridpp.netlify.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-accent"
-          >
-            {t.footer.privacy}
-          </a>
           <InstallButton label={t.footer.install} variant="link" className="text-accent hover:text-accent-hover" />
+          <Link to="/privacy-policy" className="transition-colors hover:text-accent">
+            {t.footer.privacy}
+          </Link>
         </div>
       </div>
     </footer>

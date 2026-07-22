@@ -19,6 +19,7 @@ export interface Strings {
     welcomeTitle: string
     goodbyeTitle: string
     tryTitle: string
+    privacyPolicyTitle: string
   }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
@@ -364,6 +365,7 @@ const vi: Strings = {
     welcomeTitle: 'Merid đã sẵn sàng: bắt đầu trong 2 phút',
     goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
     tryTitle: 'Thử Merid với văn bản của bạn - Merid',
+    privacyPolicyTitle: 'Chính sách bảo mật - Merid',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -1037,6 +1039,7 @@ const en: Strings = {
     welcomeTitle: 'Merid is ready: start in 2 minutes',
     goodbyeTitle: 'Goodbye - help make Merid better',
     tryTitle: 'Try Merid on your own text - Merid',
+    privacyPolicyTitle: 'Privacy Policy - Merid',
   },
   theme: {
     toDark: 'Switch to dark mode',
