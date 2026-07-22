@@ -15,6 +15,7 @@ import MyDeck from './pages/MyDeck'
 import AuthPage from './pages/AuthPage'
 import Welcome from './pages/Welcome'
 import Goodbye from './pages/Goodbye'
+import PrivacyPolicy from './pages/PrivacyPolicy'
 
 /** Scrolls to the hash target on navigation (e.g. /#demo from the tutorial page), else to top. */
 function ScrollManager() {
@@ -64,6 +65,7 @@ export default function App() {
                   <Route path="/try" element={<TryText />} />
                   <Route path="/create-dataset" element={<CreateDataset />} />
                   <Route path="/api-key-guide" element={<ApiKeyGuide />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   {/* Opened by the extension: first install / after uninstall. */}
                   <Route path="/welcome" element={<Welcome />} />
                   <Route path="/goodbye" element={<Goodbye />} />
