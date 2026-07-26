@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { onAuthStateChanged, type User } from '../lib/auth'
 import { announceAuthToExtension } from '../lib/extensionBridge'

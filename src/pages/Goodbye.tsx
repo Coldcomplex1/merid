@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'

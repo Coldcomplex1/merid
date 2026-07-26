@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { classifyAuthError, signIn, signInWithGoogle, signUp, validateCredentials } from '../lib/auth'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'

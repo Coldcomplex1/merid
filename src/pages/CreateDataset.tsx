@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import CopyButton from '../components/ui/CopyButton'
 import InstallButton from '../components/ui/InstallButton'

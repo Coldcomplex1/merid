@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import PracticeArticle from '../components/demo/PracticeArticle'
 import PinSimulator from '../components/demo/PinSimulator'

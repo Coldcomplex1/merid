@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import { CHROME_STORE_URL } from '../config'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'

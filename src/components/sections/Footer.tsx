@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { useLang } from '../../i18n/LanguageContext'
 import InstallButton from '../ui/InstallButton'
 

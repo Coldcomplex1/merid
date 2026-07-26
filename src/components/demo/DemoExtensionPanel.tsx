@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import type { CSSProperties, ReactNode } from 'react'
 
 // The extension popup's exact palette (merid-extension/popup.css :root).

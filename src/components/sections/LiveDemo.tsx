@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { VOCAB, type VocabEntry } from '../../data/vocab'
 import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'

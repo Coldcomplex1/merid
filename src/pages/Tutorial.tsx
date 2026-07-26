@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
 import PracticeArticle from '../components/demo/PracticeArticle'
