@@ -355,9 +355,14 @@ function readCsvFile(file, onText) {
 }
 
 function wireCustom() {
-    // Point every "create a dataset" link at the fixed merid.site URL (A10).
+    // Point every outbound link at its configured merid.site URL (A10). Each
+    // destination has its own hook class - a link must not borrow another's,
+    // or its href gets rewritten to the wrong page.
     document.querySelectorAll('a.create-dataset-url').forEach(a => {
         a.href = window.VMFirebaseConfig.webCreateDatasetUrl;
+    });
+    document.querySelectorAll('a.api-key-guide-url').forEach(a => {
+        a.href = window.VMFirebaseConfig.webApiKeyGuideUrl;
     });
 
     // Upload flow: validate locally for an instant preview; the background

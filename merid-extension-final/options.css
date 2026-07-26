@@ -262,8 +262,8 @@ body {
 }
 .report-rows li { padding: 2px 0; overflow-wrap: anywhere; }
 
-.btn:focus-visible, a.create-dataset-url:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-a.create-dataset-url { color: var(--accent); }
+.btn:focus-visible, a.ext-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a.ext-link { color: var(--accent); }
 
 .privacy { list-style: none; }
 .privacy li { position: relative; padding-left: 20px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
