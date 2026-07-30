@@ -52,6 +52,18 @@ const check = (c, label, extra = '') => (c ? ok : fail).push(label + (extra ? ` 
 let sw = ctx.serviceWorkers()[0];
 if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 15000 });
 
+// The worker kicks off its own dataset load at startup (background.js:210).
+// Touching storage mid-boot lets that in-flight load finish afterwards and
+// overwrite whatever dataset this test chose - which shows up as a confusing
+// "SAT" when the test asked for C1. Wait for boot to settle first.
+await sw.evaluate(async () => {
+    for (let i = 0; i < 80; i++) {
+        const c = (await chrome.storage.local.get('vm_vocab_cache')).vm_vocab_cache;
+        if (c && Array.isArray(c.data) && c.data.length) return;
+        await new Promise(r => setTimeout(r, 100));
+    }
+});
+
 const reset = (extra = {}) => sw.evaluate(async (e) => {
     await chrome.storage.sync.set(Object.assign({
         datasetKey: 'c1', frequency: 60, replacementMode: 'replace',
@@ -72,6 +84,10 @@ const countSpans = async (url) => {
     const words = await p.$$eval('.vocab-master-highlight', els => [...new Set(els.map(e => e.dataset.word))]);
     const levels = await p.$$eval('.vocab-master-highlight', els => [...new Set(els.map(e => e.dataset.level))]);
     await p.close();
+    // Closing the tab fires pagehide -> flushProfileEvents -> a worker write.
+    // Let that land before the caller seeds a profile, or the flush arrives
+    // afterwards and overwrites the seed with the pre-seed state.
+    await new Promise(r => setTimeout(r, 700));
     return { n, words, levels };
 };
 

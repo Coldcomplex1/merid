@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const siteToggle = document.getElementById('site-toggle');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs && tabs[0];
+        if (tab && typeof tab.id === 'number') renderAiPanel(tab.id);
         let host = '';
         try {
             const u = new URL(tab.url);
@@ -303,5 +304,65 @@ document.addEventListener('DOMContentLoaded', () => {
             ? t('popupExtensionOn', 'Extension is ON')
             : t('popupExtensionOff', 'Extension is OFF');
         extensionToggle.classList.toggle('active', enabled);
+    }
+
+    // ---- "AI on this page" -------------------------------------------------
+    // The context check is otherwise invisible. This turns it into something
+    // the user can point at: how many replacements it read, how many it
+    // corrected, and how many answers came free from the cache.
+    function renderAiPanel(tabId) {
+        const panel = document.getElementById('ai-panel');
+        const stateEl = document.getElementById('ai-state');
+        const statsEl = document.getElementById('ai-stats');
+        const footEl = document.getElementById('ai-foot');
+        if (!panel) return;
+
+        chrome.runtime.sendMessage({ type: 'MERID_AI_STATS_GET', tabId }, (res) => {
+            if (chrome.runtime.lastError) return;
+            const s = res && res.stats;
+            if (!s) return; // Merid never ran here (non-web page, paused site)
+
+            panel.hidden = false;
+            const fixes = s.reverted + s.upgraded;
+
+            if (s.state === 'off') {
+                stateEl.textContent = t('popupAiStateOff', 'Off - add your Gemini API key in Settings to switch it on.');
+                stateEl.className = 'ai-state muted';
+                statsEl.hidden = true;
+                footEl.hidden = true;
+                return;
+            }
+            if (s.state === 'error') {
+                stateEl.textContent = t('popupAiStateError', 'Could not reach Gemini. Check your key in Settings.')
+                    + (s.error ? ` (${s.error})` : '');
+                stateEl.className = 'ai-state bad';
+                statsEl.hidden = true;
+                footEl.hidden = true;
+                return;
+            }
+            if (s.state === 'idle' || s.checked === 0) {
+                stateEl.textContent = t('popupAiStateIdle', 'Watching this page…');
+                stateEl.className = 'ai-state muted';
+                statsEl.hidden = true;
+                footEl.hidden = true;
+                return;
+            }
+
+            stateEl.textContent = fixes > 0
+                ? t('popupAiStateFixed', 'Checked every swapped word against its sentence.')
+                : t('popupAiStateClean', 'Checked every swapped word - all of them fit.');
+            stateEl.className = 'ai-state good';
+            statsEl.hidden = false;
+            document.getElementById('ai-checked').textContent = String(s.checked);
+            document.getElementById('ai-fixed').textContent = String(fixes);
+            document.getElementById('ai-saved-calls').textContent = String(s.cached);
+
+            if (s.model) {
+                footEl.hidden = false;
+                footEl.textContent = s.model + (s.cached > 0
+                    ? ' - ' + t('popupAiCachedNote', 'answers reused from cache cost nothing')
+                    : '');
+            }
+        });
     }
 });

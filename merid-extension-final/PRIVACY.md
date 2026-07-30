@@ -52,6 +52,26 @@ All of it is stored in Firestore under your own account and protected by
 server-side security rules so only you can access it. Page content is **not**
 part of deck sync. Signing out stops all syncing immediately.
 
+**Personalization profile (on by default, stored on your device).** Merid
+records how you interact with the words it shows: how often a word appeared,
+whether you opened its card, rated it 👍/👎, saved it to your deck, or marked
+it "I know this", plus a coarse subject area derived from the page's address
+(for example `business` or `tech`) and the CEFR level of the word. It uses
+these counts to show more of what suits you and less of what does not.
+
+This profile contains **counts about vocabulary only**. It does not store page
+text, page titles, full URLs, your browsing history, or anything that
+identifies you. It lives in `chrome.storage.local` on this device; if you use
+the optional deck sync, it is also backed up to your own account so your
+preferences follow you to another computer. You can read back everything it
+holds - and erase it on its own, without touching your deck - in Settings →
+**What Merid has learned about you** → **Forget what Merid learned**.
+
+When the AI context check is on, a short summary of these preferences (for
+example "prefers C1-level words; reads mostly business") is included in the
+request to Gemini so its suggestions suit you. The summary carries preferences
+only: no page content, no URLs, no identifiers.
+
 **Optional AI context check (off by default; requires your own key).** If you
 turn this feature on in Settings and paste your own Google Gemini API key,
 then after Merid replaces words on a page it sends Google's Gemini API a short
@@ -85,6 +105,8 @@ the feature off in Settings to stop all such requests instantly.
 - **Revert a page** to its original text from the popup.
 - **Turn off the AI context check** or clear your API key in Settings at any time.
 - **Sign out** in Settings to stop deck sync immediately.
+- **Forget what Merid learned** in Settings clears the personalization profile
+  on its own, leaving your deck and settings intact.
 - **Delete everything:** Settings → **Delete all stored data** clears your
   settings, deck and datasets from the device. Uninstalling the extension also
   removes local data. To remove synced data as well, clear your deck while

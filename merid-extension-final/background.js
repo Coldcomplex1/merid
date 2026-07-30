@@ -618,6 +618,72 @@ async function getProfile() {
     return Prof.withDefaults(r[PROFILE_KEY]);
 }
 
+/**
+ * Forget everything learned, without touching the deck or the settings.
+ *
+ * Goes through the same write chain as applyProfileEvents: a tab closing at
+ * that moment flushes its queued events, and a delete that raced ahead of that
+ * flush would be undone by it - the user would press Forget, see the panel
+ * empty, and find a profile again seconds later.
+ */
+function resetProfile() {
+    profileWriteChain = profileWriteChain.then(async () => {
+        await chrome.storage.local.remove([PROFILE_KEY]);
+        return { ok: true };
+    }).catch(e => {
+        console.warn('[VM] profile reset failed:', e && e.message);
+        return { ok: false };
+    });
+    return profileWriteChain;
+}
+
+// =============================================================
+// AI activity per tab.
+//
+// The context check is silent by design - it changes a word back or swaps a
+// better one in, and that is all the reader sees. These per-tab tallies make
+// it legible: the toolbar icon carries a badge with the number of fixes, and
+// the popup shows the full breakdown for the current page.
+//
+// Memory only, keyed by tab id, cleared when the tab navigates or closes.
+// Nothing about which words or which page is persisted anywhere.
+// =============================================================
+const aiTabStats = new Map();
+
+function setAiBadge(tabId, stats) {
+    const fixes = (stats.reverted || 0) + (stats.upgraded || 0);
+    const text = fixes > 0 ? String(fixes) : '';
+    try {
+        chrome.action.setBadgeText({ tabId, text });
+        if (text) {
+            chrome.action.setBadgeBackgroundColor({ tabId, color: '#19355D' });
+            chrome.action.setTitle({ tabId, title: `Merid - AI fixed ${fixes} word${fixes === 1 ? '' : 's'} on this page` });
+        } else {
+            chrome.action.setTitle({ tabId, title: '' }); // fall back to the manifest title
+        }
+    } catch (e) { /* tab closed mid-update */ }
+}
+
+function recordAiStats(tabId, stats) {
+    if (typeof tabId !== 'number' || !stats || typeof stats !== 'object') return { ok: false };
+    const clean = {
+        checked: Math.max(0, Number(stats.checked) || 0),
+        reverted: Math.max(0, Number(stats.reverted) || 0),
+        upgraded: Math.max(0, Number(stats.upgraded) || 0),
+        cached: Math.max(0, Number(stats.cached) || 0),
+        asked: Math.max(0, Number(stats.asked) || 0),
+        model: String(stats.model || '').slice(0, 40),
+        state: ['idle', 'ok', 'off', 'error'].includes(stats.state) ? stats.state : 'idle',
+        error: String(stats.error || '').slice(0, 60),
+        at: Date.now()
+    };
+    aiTabStats.set(tabId, clean);
+    setAiBadge(tabId, clean);
+    return { ok: true };
+}
+
+chrome.tabs.onRemoved.addListener(tabId => aiTabStats.delete(tabId));
+
 async function aiTestKey(key) {
     const k = String(key || '').trim();
     if (!k) return { ok: false, reason: 'no-key' };
@@ -720,6 +786,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     .then(profile => sendResponse({ ok: true, profile }))
                     .catch(() => sendResponse({ ok: false }));
                 return true;
+            }
+            case 'MERID_PROFILE_RESET': {
+                resetProfile()
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+
+            // ---- AI activity (content script reports, popup reads) ----
+            case 'MERID_AI_STATS': {
+                sendResponse(recordAiStats(sender && sender.tab && sender.tab.id, request.stats));
+                return false;
+            }
+            case 'MERID_AI_STATS_GET': {
+                const id = Number(request.tabId);
+                sendResponse({ ok: true, stats: aiTabStats.get(id) || null });
+                return false;
             }
 
             case 'MERID_SYNC_STATUS': {

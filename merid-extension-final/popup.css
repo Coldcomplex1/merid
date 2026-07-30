@@ -721,3 +721,71 @@ footer {
 }
 
 .modal-never:hover { color: var(--text-secondary); text-decoration: underline; }
+
+/* ---- "AI on this page" ---------------------------------------------------
+   Makes the context check visible. It otherwise runs silently, so the user
+   has no way to tell it is working - or that their API key is even valid. */
+.ai-panel {
+    margin-bottom: 22px;
+    padding: 14px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid rgba(244, 190, 55, 0.18);
+}
+
+.ai-panel .section-title {
+    margin-bottom: 8px;
+}
+
+.ai-state {
+    font-family: var(--font-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.ai-state.good { color: var(--text-primary); }
+.ai-state.muted { color: var(--text-secondary); }
+.ai-state.bad { color: #fca5a5; }
+
+.ai-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.ai-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 9px;
+}
+
+.ai-num {
+    font-family: var(--font-main);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.ai-stat-good .ai-num { color: var(--ok); }
+
+.ai-lbl {
+    font-family: var(--font-secondary);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
+}
+
+.ai-foot {
+    font-family: var(--font-secondary);
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin: 9px 0 0;
+}

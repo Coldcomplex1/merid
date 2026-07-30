@@ -737,5 +737,98 @@ function wireAccount() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { load(); wire(); wireAccount(); wireCustom(); });
+// =============================================================
+// "What Merid has learned about you"
+//
+// Reads the local profile back to the user in plain language and gives it its
+// own Forget button. A personalization system nobody can inspect or reset is
+// a trust problem, and "Delete all stored data" is too blunt for the job -
+// it also wipes the deck.
+// =============================================================
+const Prof = window.VMProfile;
+
+function renderProfilePanel() {
+    const card = document.getElementById('profileCard');
+    if (!card || !Prof) return;
+    const empty = document.getElementById('profileEmpty');
+    const body = document.getElementById('profileBody');
+
+    chrome.runtime.sendMessage({ type: 'MERID_PROFILE_GET' }, (res) => {
+        if (chrome.runtime.lastError) return;
+        const p = Prof.withDefaults(res && res.profile);
+        const words = Object.keys(p.words);
+
+        if (!p.events && !words.length) {
+            empty.hidden = false;
+            body.hidden = true;
+            return;
+        }
+        empty.hidden = true;
+        body.hidden = false;
+
+        const pct = Math.round(Prof.confidence(p) * 100);
+        document.getElementById('profileBar').style.width = pct + '%';
+        document.getElementById('profileConfidence').textContent =
+            `${p.events} feedback signal${p.events === 1 ? '' : 's'} so far - personalization is ${pct}% dialled in.` +
+            (pct < 100 ? ' Below 100% Merid stays close to its default behaviour on purpose.' : '');
+
+        // Rank the CEFR buckets the same way the ranker does.
+        const levels = Object.keys(p.levels)
+            .map(k => ({ k, rate: Prof.bucketRate(p.levels[k]), n: p.levels[k].up + p.levels[k].down }))
+            .filter(x => x.n >= 2)
+            .sort((a, b) => b.rate - a.rate);
+        document.getElementById('profileLevel').textContent = levels.length ? levels[0].k : 'still working it out';
+
+        const topics = Object.keys(p.topics)
+            .map(k => ({ k, n: p.topics[k].up + p.topics[k].down }))
+            .filter(x => x.n >= 2)
+            .sort((a, b) => b.n - a.n)
+            .slice(0, 3)
+            .map(x => x.k);
+        document.getElementById('profileTopics').textContent = topics.length ? topics.join(', ') : 'still working it out';
+        document.getElementById('profileWords').textContent = String(words.length);
+
+        const score = w => (w.up + w.saved) - (w.down + w.known);
+        const chips = (el, list, cls) => {
+            el.textContent = '';
+            list.forEach(w => {
+                const span = document.createElement('span');
+                span.className = 'learn-chip ' + cls;
+                span.textContent = w;  // textContent: never innerHTML for stored words
+                el.appendChild(span);
+            });
+        };
+        const ranked = words
+            .map(w => ({ w, s: score(p.words[w]) }))
+            .filter(x => x.s !== 0)
+            .sort((a, b) => b.s - a.s);
+        chips(document.getElementById('profileLiked'), ranked.filter(x => x.s > 0).slice(0, 12).map(x => x.w), 'up');
+        chips(document.getElementById('profileDisliked'),
+            ranked.filter(x => x.s < 0).reverse().slice(0, 12).map(x => x.w), 'down');
+    });
+}
+
+function wireProfilePanel() {
+    const btn = document.getElementById('profileReset');
+    if (!btn) return;
+    const status = document.getElementById('profileStatus');
+    btn.addEventListener('click', () => {
+        if (!confirm('Forget everything Merid learned about your preferences? Your deck and settings are not affected.')) return;
+        chrome.runtime.sendMessage({ type: 'MERID_PROFILE_RESET' }, () => {
+            void chrome.runtime.lastError;
+            status.hidden = false;
+            status.textContent = 'Cleared. Merid starts learning again from your next page.';
+            renderProfilePanel();
+        });
+    });
+    // The service worker rewrites the profile as you browse; keep this live.
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.vm_profile) renderProfilePanel();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    load(); wire(); wireAccount(); wireCustom();
+    renderProfilePanel(); wireProfilePanel();
+});
 

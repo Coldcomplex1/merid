@@ -98,6 +98,11 @@ function init() {
     hoveredThisPage = new Set();
     pageTopic = P ? P.topicFromUrl(location.href) : 'general';
 
+    // Clear the previous page's AI tally immediately, so the popup can never
+    // show a stale count during the ~1.5s before the first check runs.
+    aiStats = { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle' };
+    reportAiStats();
+
     // Snapshot the learned profile for this scan. Fetching it once (rather than
     // per candidate word) keeps the scan synchronous and means every word on a
     // page is judged against the same profile - a mid-scan update cannot make
@@ -475,6 +480,32 @@ function scheduleAiContextCheck() {
     aiCheckTimer = setTimeout(runAiContextCheck, AI_CHECK_DEBOUNCE_MS);
 }
 
+// -------------------------------------------------------------
+// AI activity report
+//
+// The context check is otherwise invisible: it quietly reverts or upgrades
+// words and the reader has no way to tell it ran at all. These running totals
+// are pushed to the service worker, which badges the toolbar icon and feeds
+// the "AI on this page" panel in the popup.
+// -------------------------------------------------------------
+let aiStats = { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle' };
+
+function reportAiStats() {
+    try {
+        chrome.runtime.sendMessage({ type: 'MERID_AI_STATS', stats: aiStats }, () => {
+            void chrome.runtime.lastError; // popup closed / worker asleep: harmless
+        });
+    } catch (e) { /* extension context invalidated */ }
+}
+
+/** Record why the check produced nothing, so the popup can say something
+ *  more useful than a row of zeros. */
+function setAiState(state) {
+    if (aiStats.state === state) return;
+    aiStats.state = state;
+    reportAiStats();
+}
+
 function sentenceAround(span) {
     const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
     const text = ((block && block.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -514,13 +545,16 @@ function runAiContextCheck() {
     aiChecksSent++;
     log('[VM] AI context check: sending', items.length, 'items (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
-        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
-        if (!res) { console.warn('[VM] AI check: no response.'); return; }
-        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); return; }
+        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); setAiState('error'); return; }
+        if (!res) { console.warn('[VM] AI check: no response.'); setAiState('error'); return; }
+        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); setAiState('off'); return; }
         if (!res.ok || !Array.isArray(res.verdicts)) {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
+            aiStats.error = String(res.status || res.reason || 'unknown');
+            setAiState('error');
             return;
         }
+        aiStats.state = 'ok';
         let reverted = 0;
         let upgraded = 0;
         batch.forEach((g, i) => {
@@ -538,6 +572,15 @@ function runAiContextCheck() {
             if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
             else { revertSpans(g.spans); reverted++; }
         });
+
+        aiStats.checked += batch.length;
+        aiStats.reverted += reverted;
+        aiStats.upgraded += upgraded;
+        aiStats.cached += res.cached || 0;
+        aiStats.asked += res.asked || 0;
+        if (res.model) aiStats.model = res.model;
+        reportAiStats();
+
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,
             '(cached ' + (res.cached || 0) + ', asked ' + (res.asked || 0) + ', model ' + (res.model || '?') + ')');
@@ -590,6 +633,10 @@ function isOnScreen(el) {
 /** Rewrite one span in place to show a different vocabulary entry. */
 function applyUpgrade(span, entry) {
     if (!span || !span.isConnected) return;
+    // Remember what the dataset had picked, so the learning card can show the
+    // reader exactly what the AI changed and why the word is there.
+    if (!span.dataset.aiFrom) span.dataset.aiFrom = span.dataset.word || '';
+    span.classList.add('vocab-ai-fix');
     span.dataset.word = entry.word;
     span.dataset.replacement = entry.word;
     span.dataset.level = entry.dataset || '';
@@ -780,6 +827,8 @@ function showTooltip(target, item) {
     const originalText = target.dataset.original || '';
     const phon = item.phon_n_am || item.phon_br || '';
     const isSaved = savedSet.has((item.word || '').toLowerCase());
+    // Set only on words the AI context check replaced with a better fit.
+    const aiFrom = target.dataset.aiFrom || '';
 
     tooltipElement.dataset.currentWord = item.word || '';
     tooltipElement.dataset.currentVietnamese = item.vietnamese || '';
@@ -824,6 +873,7 @@ function showTooltip(target, item) {
                     <div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipVietnamese', 'Vietnamese'))}</span><span class="vm-tvalue">${esc(item.vietnamese || 'N/A')}</span></div>
                     ${originalText ? `<div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipReplaced', 'Replaced'))}</span><span class="vm-tvalue">${esc(originalText)}</span></div>` : ''}
                 </div>
+                ${aiFrom ? `<div class="vm-aifix">${esc(t('tooltipAiFixed', 'AI context check swapped this'))}: <s>${esc(aiFrom)}</s> → <strong>${esc(item.word || '')}</strong></div>` : ''}
             </div>
             <div class="vm-actions">
                 <button class="vm-save" type="button" ${isSaved ? 'disabled' : ''}>${esc(isSaved ? t('tooltipSaved', 'Saved ✓') : t('tooltipSave', 'Save to Deck'))}</button>

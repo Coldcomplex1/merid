@@ -40,6 +40,29 @@
             <button class="create-link" id="create-dataset-link" type="button" data-i18n="popupCreateDataset">＋ Create your own dataset ↗</button>
         </section>
 
+        <!-- What the AI context check did on the current tab. Populated from
+             the per-tab tallies the content script reports; hidden entirely on
+             pages Merid does not run on. -->
+        <section class="ai-panel" id="ai-panel" hidden>
+            <h3 class="section-title" data-i18n="popupAiPanelTitle">AI on this page</h3>
+            <p class="ai-state" id="ai-state"></p>
+            <div class="ai-stats" id="ai-stats" hidden>
+                <div class="ai-stat">
+                    <span class="ai-num" id="ai-checked">0</span>
+                    <span class="ai-lbl" data-i18n="popupAiChecked">checked</span>
+                </div>
+                <div class="ai-stat ai-stat-good">
+                    <span class="ai-num" id="ai-fixed">0</span>
+                    <span class="ai-lbl" data-i18n="popupAiFixed">fixed</span>
+                </div>
+                <div class="ai-stat">
+                    <span class="ai-num" id="ai-saved-calls">0</span>
+                    <span class="ai-lbl" data-i18n="popupAiCachedShort">free</span>
+                </div>
+            </div>
+            <p class="ai-foot" id="ai-foot" hidden></p>
+        </section>
+
         <section class="settings-section">
             <h3 class="section-title" data-i18n="popupMainSettings">Main settings</h3>
 

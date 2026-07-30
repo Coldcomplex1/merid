@@ -186,6 +186,51 @@
             <p class="hint" id="aiStatus" hidden></p>
         </section>
 
+        <!-- WHAT MERID HAS LEARNED -->
+        <section class="card" id="profileCard">
+            <h2>What Merid has learned about you</h2>
+            <p class="hint">Merid watches which words you save, rate and skip, and quietly shows more of what
+                suits you and less of what does not. It all stays on this device (and in your own account if
+                you sign in). Nothing here is sent to Merid.</p>
+
+            <p class="hint" id="profileEmpty">Nothing yet. Hover a highlighted word and use 👍 / 👎, "Save to Deck"
+                or "I know this" a few times, and this fills in.</p>
+
+            <div id="profileBody" hidden>
+                <div class="learn-meter">
+                    <div class="learn-bar"><span id="profileBar"></span></div>
+                    <p class="hint" id="profileConfidence"></p>
+                </div>
+
+                <div class="learn-rows">
+                    <div class="learn-row">
+                        <span class="learn-label">Level that suits you</span>
+                        <span class="learn-value" id="profileLevel">-</span>
+                    </div>
+                    <div class="learn-row">
+                        <span class="learn-label">What you read</span>
+                        <span class="learn-value" id="profileTopics">-</span>
+                    </div>
+                    <div class="learn-row">
+                        <span class="learn-label">Words tracked</span>
+                        <span class="learn-value" id="profileWords">-</span>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <label class="learn-label">Showing you more of</label>
+                    <div class="learn-chips" id="profileLiked"></div>
+                </div>
+                <div class="subsection">
+                    <label class="learn-label">Showing you less of</label>
+                    <div class="learn-chips" id="profileDisliked"></div>
+                </div>
+            </div>
+
+            <button class="btn danger" id="profileReset" type="button">Forget what Merid learned</button>
+            <p class="hint" id="profileStatus" hidden></p>
+        </section>
+
         <!-- DATA & PRIVACY -->
         <section class="card">
             <h2>Data &amp; privacy</h2>
@@ -194,6 +239,7 @@
                 <li>By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below.</li>
                 <li>If you turn on the optional <strong>AI context check</strong>, short pieces of the sentence around each replaced word are sent to Google Gemini, using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (only you can read it) so it works on all your devices.</li>
                 <li>If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
+                <li>Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
                 <li>Your settings (selected dataset, display mode, intensity, on/off, paused sites) are stored on your device via <code>chrome.storage</code>.</li>
                 <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li>Turn the extension off any time from the popup - globally, or just for one site.</li>
@@ -207,6 +253,7 @@
     </main>
 
     <script src="lib/vocab-core.js"></script>
+    <script src="lib/profile.js"></script>
     <script src="lib/firebase-config.js"></script>
     <script src="options.js"></script>
 </body>

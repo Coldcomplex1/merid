@@ -38,6 +38,18 @@ const check = (cond, label, extra = '') => (cond ? ok : fail).push(label + (extr
 let sw = ctx.serviceWorkers()[0];
 if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 15000 });
 
+// The worker kicks off its own dataset load at startup (background.js:210).
+// Touching storage mid-boot lets that in-flight load finish afterwards and
+// overwrite whatever dataset this test chose - which shows up as a confusing
+// "SAT" when the test asked for C1. Wait for boot to settle first.
+await sw.evaluate(async () => {
+    for (let i = 0; i < 80; i++) {
+        const c = (await chrome.storage.local.get('vm_vocab_cache')).vm_vocab_cache;
+        if (c && Array.isArray(c.data) && c.data.length) return;
+        await new Promise(r => setTimeout(r, 100));
+    }
+});
+
 // Stub Gemini: record every request, answer "ok" for every item the prompt
 // asked about, except any word listed in __rejectWords.
 await sw.evaluate(async () => {
