@@ -19,7 +19,6 @@ export default function Navbar() {
     { label: t.nav.features, to: '/#features' },
     { label: t.nav.how, to: '/#how-it-works' },
     { label: t.nav.tutorial, to: '/tutorial' },
-    { label: t.nav.tryIt, to: '/try' },
     { label: t.nav.createDataset, to: '/create-dataset' },
   ]
 

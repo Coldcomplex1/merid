@@ -18,12 +18,11 @@ export interface Strings {
     apiKeyGuideTitle: string
     welcomeTitle: string
     goodbyeTitle: string
-    tryTitle: string
     privacyPolicyTitle: string
   }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
-  nav: { demo: string; features: string; how: string; tutorial: string; tryIt: string; createDataset: string; cta: string }
+  nav: { demo: string; features: string; how: string; tutorial: string; createDataset: string; cta: string }
   deck: {
     title: string
     backHome: string
@@ -98,9 +97,6 @@ export interface Strings {
     resizeHandle: string
     tryIt: string
     guiding: string
-    ownTextTitle: string
-    ownTextBody: string
-    ownTextCta: string
   }
   features: {
     eyebrow: string
@@ -308,25 +304,6 @@ export interface Strings {
     ctaDemo: string
     ctaTutorial: string
   }
-  try: {
-    eyebrow: string
-    title: string
-    sub: string
-    inputLabel: string
-    placeholder: string
-    sampleBtn: string
-    clearBtn: string
-    datasetLabel: string
-    intensityLabel: string
-    modeLabel: string
-    loading: string
-    loadError: string
-    outputLabel: string
-    emptyOutput: string
-    matches: (n: number) => string
-    hoverHint: string
-    privacyNote: string
-  }
   goodbye: {
     eyebrow: string
     title: string
@@ -364,7 +341,6 @@ const vi: Strings = {
     apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
     welcomeTitle: 'Merid đã sẵn sàng: bắt đầu trong 2 phút',
     goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
-    tryTitle: 'Thử Merid với văn bản của bạn - Merid',
     privacyPolicyTitle: 'Chính sách bảo mật - Merid',
   },
   theme: {
@@ -447,7 +423,6 @@ const vi: Strings = {
     features: 'Tính năng',
     how: 'Cách hoạt động',
     tutorial: 'Hướng dẫn',
-    tryIt: 'Thử văn bản',
     createDataset: 'Tạo bộ từ',
     cta: 'Thêm vào Chrome',
   },
@@ -470,9 +445,6 @@ const vi: Strings = {
     resizeHandle: 'Kéo để chỉnh độ rộng trang demo. Nhấp đúp để trở về kích thước đầy đủ.',
     tryIt: 'Tới lượt bạn! Tự mình thử ngay nhé.',
     guiding: 'Merid đang hướng dẫn cho bạn',
-    ownTextTitle: 'Muốn thử với văn bản của riêng bạn?',
-    ownTextBody: 'Dán một đoạn email, bài báo hay bài đọc trên lớp và xem Merid xử lý bằng bộ từ vựng thật, hơn 3.300 từ.',
-    ownTextCta: 'Thử với văn bản của bạn',
   },
   features: {
     eyebrow: 'Tính năng',
@@ -957,25 +929,6 @@ const vi: Strings = {
     ctaDemo: 'Xem demo tương tác',
     ctaTutorial: 'Hướng dẫn chi tiết',
   },
-  try: {
-    eyebrow: 'Thử với văn bản của bạn',
-    title: 'Dán bất kỳ đoạn tiếng Việt nào vào đây',
-    sub: 'Một email, một bài báo, bài đọc trên lớp… Merid sẽ xử lý ngay trong trình duyệt của bạn bằng bộ từ vựng thật của extension - hơn 3.300 từ SAT, C1 và C2.',
-    inputLabel: 'Văn bản của bạn',
-    placeholder: 'Dán một đoạn văn tiếng Việt vào đây…',
-    sampleBtn: 'Dùng đoạn văn mẫu',
-    clearBtn: 'Xoá',
-    datasetLabel: 'Bộ từ vựng',
-    intensityLabel: 'Cường độ',
-    modeLabel: 'Kiểu hiển thị',
-    loading: 'Đang tải bộ từ vựng…',
-    loadError: 'Không tải được bộ từ vựng. Kiểm tra kết nối mạng rồi thử lại nhé.',
-    outputLabel: 'Kết quả - đúng như Merid hiển thị trên trang thật',
-    emptyOutput: 'Chưa tìm thấy từ nào để thay trong đoạn này. Thử một đoạn dài hơn, tăng cường độ, hoặc chuyển bộ từ "All" xem sao.',
-    matches: (n: number) => `${n} từ được thay`,
-    hoverHint: 'Di chuột lên từ vàng để mở thẻ học, y như trên trang thật.',
-    privacyNote: 'Văn bản của bạn được xử lý ngay trong trình duyệt và không được gửi đi đâu cả.',
-  },
   goodbye: {
     eyebrow: 'Tạm biệt',
     title: 'Merid đã được gỡ khỏi trình duyệt',
@@ -1038,7 +991,6 @@ const en: Strings = {
     apiKeyGuideTitle: 'Paste your own API key for the best Merid - Merid',
     welcomeTitle: 'Merid is ready: start in 2 minutes',
     goodbyeTitle: 'Goodbye - help make Merid better',
-    tryTitle: 'Try Merid on your own text - Merid',
     privacyPolicyTitle: 'Privacy Policy - Merid',
   },
   theme: {
@@ -1121,7 +1073,6 @@ const en: Strings = {
     features: 'Features',
     how: 'How it works',
     tutorial: 'Tutorial',
-    tryIt: 'Try your text',
     createDataset: 'Create dataset',
     cta: 'Add to Chrome',
   },
@@ -1144,9 +1095,6 @@ const en: Strings = {
     resizeHandle: 'Drag to resize the demo page. Double-click to restore the full width.',
     tryIt: 'Your turn! Try it yourself.',
     guiding: 'Merid is showing you around',
-    ownTextTitle: 'Want to try it on your own text?',
-    ownTextBody: "Paste an email, a news article, or your class reading and watch Merid work through it with the extension's real datasets - 3,300+ words.",
-    ownTextCta: 'Try it on your text',
   },
   features: {
     eyebrow: 'Features',
@@ -1631,25 +1579,6 @@ const en: Strings = {
     outroSub: 'On a site where you don\'t want replacements, like banking or work tools, open Merid and press "Turn off on this site." Merid then leaves that site alone.',
     ctaDemo: 'Try the interactive demo',
     ctaTutorial: 'Full tutorial',
-  },
-  try: {
-    eyebrow: 'Try it on your text',
-    title: 'Paste any Vietnamese text here',
-    sub: "An email, a news story, your class reading… Merid processes it right in your browser using the extension's real datasets - 3,300+ SAT, C1 and C2 words.",
-    inputLabel: 'Your text',
-    placeholder: 'Paste a Vietnamese passage here…',
-    sampleBtn: 'Use a sample passage',
-    clearBtn: 'Clear',
-    datasetLabel: 'Dataset',
-    intensityLabel: 'Intensity',
-    modeLabel: 'Display mode',
-    loading: 'Loading the dataset…',
-    loadError: 'Could not load the dataset. Check your connection and try again.',
-    outputLabel: 'Result - exactly what Merid shows on a real page',
-    emptyOutput: 'No replaceable words found in this passage. Try a longer text, raise the intensity, or switch to the "All" dataset.',
-    matches: (n: number) => `${n} ${n === 1 ? 'word' : 'words'} replaced`,
-    hoverHint: 'Hover a gold word to open the learning card, just like on a real page.',
-    privacyNote: 'Your text is processed in your browser and never sent anywhere.',
   },
   goodbye: {
     eyebrow: 'Goodbye',

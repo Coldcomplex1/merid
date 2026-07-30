@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router'
 import { VOCAB, type VocabEntry } from '../../data/vocab'
 import WikiPage from '../demo/WikiPage'
 import FacebookPage from '../demo/FacebookPage'
@@ -632,22 +631,6 @@ export default function LiveDemo() {
                 </div>
               </div>
             </div>
-          </div>
-        </Reveal>
-
-        {/* Bridge to the real-engine playground: paste your own text. */}
-        <Reveal delay={80} className="mt-10">
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-3xl bg-surface px-6 py-8 text-center ring-1 ring-line sm:flex-row sm:text-left">
-            <div className="flex-1">
-              <h3 className="text-lg font-extrabold text-heading">{t.demo.ownTextTitle}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-body">{t.demo.ownTextBody}</p>
-            </div>
-            <Link
-              to="/try"
-              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gold-400 px-6 py-3 text-sm font-bold text-navy-900 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gold-300 hover:shadow-lift active:scale-95"
-            >
-              {t.demo.ownTextCta} →
-            </Link>
           </div>
         </Reveal>
       </div>

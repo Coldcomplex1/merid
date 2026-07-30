@@ -8,7 +8,6 @@ import Navbar from './components/sections/Navbar'
 import Footer from './components/sections/Footer'
 import Home from './pages/Home'
 import Tutorial from './pages/Tutorial'
-import TryText from './pages/TryText'
 import CreateDataset from './pages/CreateDataset'
 import ApiKeyGuide from './pages/ApiKeyGuide'
 import MyDeck from './pages/MyDeck'
@@ -62,7 +61,6 @@ export default function App() {
                 <Route element={<SiteLayout />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/tutorial" element={<Tutorial />} />
-                  <Route path="/try" element={<TryText />} />
                   <Route path="/create-dataset" element={<CreateDataset />} />
                   <Route path="/api-key-guide" element={<ApiKeyGuide />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
