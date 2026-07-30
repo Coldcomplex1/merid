@@ -349,13 +349,20 @@ const AI_CHECK_MAX_ITEMS = 20;
 // that drops, merges or reorders an item can no longer shift every following
 // verdict onto the wrong word - a mis-parse now loses one item instead of
 // silently corrupting the whole batch.
+// `better` is free-form: the model does not know our datasets, so it proposes
+// whatever English word actually fits. The content script then looks that word
+// up in the loaded vocabulary and only swaps when it finds a real entry -
+// otherwise it falls back to reverting. That keeps a hallucinated suggestion
+// from ever reaching the page, and guarantees every displayed word still has a
+// definition, IPA and example behind it.
 const AI_VERDICT_SCHEMA = {
     type: 'ARRAY',
     items: {
         type: 'OBJECT',
         properties: {
             i: { type: 'INTEGER' },
-            ok: { type: 'BOOLEAN' }
+            ok: { type: 'BOOLEAN' },
+            better: { type: 'STRING' }
         },
         required: ['i', 'ok']
     }
@@ -489,32 +496,50 @@ async function aiCheckContext(items) {
     const cache = await readAiCache();
     const cutoff = now - AI_CACHE_TTL_MS;
     const verdicts = new Array(capped.length).fill(1);
+    const betters = new Array(capped.length).fill('');
     const askIdx = [];          // positions still needing an answer
     const keys = capped.map(it => aiCacheKey(it.word, it.sentence));
 
     capped.forEach((it, i) => {
         const hit = cache[keys[i]];
-        if (Array.isArray(hit) && Number(hit[1]) > cutoff) verdicts[i] = hit[0] ? 1 : 0;
-        else askIdx.push(i);
+        if (Array.isArray(hit) && Number(hit[1]) > cutoff) {
+            verdicts[i] = hit[0] ? 1 : 0;
+            betters[i] = typeof hit[2] === 'string' ? hit[2] : ''; // absent in pre-suggestion entries
+        } else {
+            askIdx.push(i);
+        }
     });
 
     const cachedCount = capped.length - askIdx.length;
     if (!askIdx.length) {
         log('[VM] AI check: all', cachedCount, 'items served from cache (0 API calls)');
-        return { ok: true, verdicts, cached: cachedCount, asked: 0 };
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: 0 };
     }
 
     const list = askIdx.map((srcIdx, n) => {
         const it = capped[srcIdx];
         return `${n + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`;
     }).join('\n');
+
+    // Personalization: a compact, aggregate description of this reader's taste.
+    // Contains no page content and no identifiers - only preferences learned
+    // from their own ratings - and is empty for a user with no history, so a
+    // new user's prompt is byte-for-byte what it was before.
+    const profile = await getProfile();
+    const who = Prof.describeProfile(profile);
+    const persona = who ? `The reader ${who}. Prefer suggestions that suit them.\n` : '';
+
     const prompt =
         'In each sentence below, one Vietnamese word/phrase was replaced by an English word. ' +
         'For each item decide whether the English word correctly expresses the replaced Vietnamese meaning in that sentence context. ' +
-        'Return one object per item with "i" set to the item number shown and "ok" true when the word fits, false when it does not.\n' + list;
+        'Return one object per item with "i" set to the item number shown and "ok" true when the word fits, false when it does not. ' +
+        'When "ok" is false, set "better" to a single English word of similar or higher CEFR level that does fit; ' +
+        'leave "better" empty when the word already fits or when no good replacement exists.\n' +
+        persona + list;
 
     try {
-        const res = await callGemini(local.geminiApiKey, prompt, 40 + askIdx.length * 16, AI_VERDICT_SCHEMA);
+        // Room for the suggestion field on top of each verdict.
+        const res = await callGemini(local.geminiApiKey, prompt, 60 + askIdx.length * 28, AI_VERDICT_SCHEMA);
         if (!res.ok) return res;
 
         let parsed;
@@ -533,14 +558,20 @@ async function aiCheckContext(items) {
             if (!Number.isInteger(n) || n < 1 || n > askIdx.length) continue;
             const srcIdx = askIdx[n - 1];
             const v = row.ok ? 1 : 0;
+            // A suggestion is only meaningful for a rejected word, and only as
+            // a single word - anything longer is the model explaining itself.
+            const better = (!v && typeof row.better === 'string')
+                ? row.better.trim().split(/\s+/)[0].replace(/[^A-Za-z'-]/g, '').slice(0, 40)
+                : '';
             verdicts[srcIdx] = v;
-            additions[keys[srcIdx]] = [v, now];
+            betters[srcIdx] = better;
+            additions[keys[srcIdx]] = better ? [v, now, better] : [v, now];
             answered++;
         }
 
         await writeAiCache(cache, additions, now);
         log('[VM] AI check:', cachedCount, 'cached,', askIdx.length, 'asked,', answered, 'answered');
-        return { ok: true, verdicts, cached: cachedCount, asked: askIdx.length, model: res.model };
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: askIdx.length, model: res.model };
     } catch (e) {
         return { ok: false, reason: 'network' };
     }

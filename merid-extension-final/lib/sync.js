@@ -71,7 +71,8 @@
             await storeRemove([SNAPSHOT_KEY]);
             await setStatus({ state: 'idle', errorCode: null });
             kick();
-            reconcileAiKey(); // fire-and-forget: restore/back up the Gemini key
+            reconcileAiKey();  // fire-and-forget: restore/back up the Gemini key
+            reconcileProfile(); // fire-and-forget: merge the learned profile
             return { ok: true, email };
         } catch (e) {
             return { ok: false, code: e.code || 'UNKNOWN' };
@@ -99,7 +100,8 @@
             if (!cur || cur.uid !== r.uid) await storeRemove([SNAPSHOT_KEY]);
             await setStatus({ state: 'idle', errorCode: null });
             kick();
-            reconcileAiKey(); // fire-and-forget: restore/back up the Gemini key
+            reconcileAiKey();  // fire-and-forget: restore/back up the Gemini key
+            reconcileProfile(); // fire-and-forget: merge the learned profile
             return { ok: true };
         } catch (e) {
             return { ok: false, code: e.code || 'UNKNOWN' };
@@ -166,6 +168,86 @@
             }
         } catch (e) {
             console.warn('[VM] ai-key sync skipped: ' + (e.code || 'UNKNOWN'));
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Personalization profile backup (users/{uid}/profile/state).
+    //
+    // Stored as one JSON string rather than a nested map: the profile's shape
+    // is owned by lib/profile.js and evolves with the ranker, and encoding it
+    // as a string keeps firestore.rules validating a size and a type instead
+    // of chasing that shape. Contains only aggregate counts about vocabulary -
+    // no page content, no URLs, no identifiers.
+    // ---------------------------------------------------------
+    const PROFILE_DOC = 'profile/state';
+    const PROFILE_KEY = 'vm_profile';
+    const PROFILE_MAX_CHARS = 200000; // matches the rules cap
+
+    function profilePath(uid) { return 'users/' + uid + '/' + PROFILE_DOC; }
+
+    /** Back up this device's profile. No-op when signed out. */
+    async function pushProfile() {
+        const r = await storeGet([AUTH_KEY, PROFILE_KEY]);
+        const auth = r[AUTH_KEY];
+        if (!FB.configured() || !auth) return { ok: false, code: 'SIGNED_OUT' };
+        const local = r[PROFILE_KEY];
+        if (!local) return { ok: false, code: 'NO_PROFILE' };
+        try {
+            const state = JSON.stringify(local);
+            // Oversized payloads would be rejected by the rules anyway; skip
+            // quietly rather than retrying a write that can never succeed.
+            if (state.length > PROFILE_MAX_CHARS) return { ok: false, code: 'TOO_LARGE' };
+            const idToken = await getIdToken(auth);
+            await FB.commit(idToken, [FB.setWrite(profilePath(auth.uid), { state }, ['updatedAt'])]);
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, code: e.code || 'UNKNOWN' };
+        }
+    }
+
+    // The profile is rewritten on every flush of interaction events, which is
+    // often. Coalesce those into one upload per quiet period so a long reading
+    // session costs a single Firestore write instead of dozens.
+    const PROFILE_PUSH_DEBOUNCE_MS = 60 * 1000;
+    let profilePushTimer = null;
+
+    function scheduleProfilePush() {
+        if (profilePushTimer) clearTimeout(profilePushTimer);
+        profilePushTimer = setTimeout(() => {
+            profilePushTimer = null;
+            pushProfile().catch(() => { /* retried on the next change */ });
+        }, PROFILE_PUSH_DEBOUNCE_MS);
+    }
+
+    /**
+     * After sign-in: merge the account's profile into this device's rather than
+     * picking a winner. Both sides recorded genuine interactions, so summing
+     * them is the only answer that does not silently discard a device's
+     * history. Fail-soft - sign-in never breaks on a profile hiccup.
+     */
+    async function reconcileProfile() {
+        try {
+            const r = await storeGet([AUTH_KEY, PROFILE_KEY]);
+            const auth = r[AUTH_KEY];
+            if (!FB.configured() || !auth) return;
+            const Prof = self.VMProfile;
+            if (!Prof) return;
+
+            const idToken = await getIdToken(auth);
+            const doc = await FB.getDoc(idToken, profilePath(auth.uid));
+            let cloud = null;
+            if (doc && typeof doc.state === 'string' && doc.state) {
+                try { cloud = JSON.parse(doc.state); } catch (e) { cloud = null; } // corrupt: start over
+            }
+            const local = r[PROFILE_KEY] || null;
+            if (!cloud && !local) return;
+
+            const merged = Prof.mergeProfiles(local, cloud);
+            await storeSet({ [PROFILE_KEY]: merged });
+            await pushProfile();
+        } catch (e) {
+            console.warn('[VM] profile sync skipped: ' + (e.code || 'UNKNOWN'));
         }
     }
 
@@ -372,7 +454,10 @@
     function onStorageChanged(changes, area) {
         if (area !== 'local') return;
         if (changes.savedWords || changes.knownWords) kick();
+        // The profile is rewritten in bursts as the user reads; debounce the
+        // upload so a reading session costs one write, not one per rating.
+        if (changes.vm_profile) scheduleProfilePush();
     }
 
-    return { kick, onStorageChanged, signIn, signOut, adoptSession, getStatus, pushAiKey, reconcileAiKey };
+    return { kick, onStorageChanged, signIn, signOut, adoptSession, getStatus, pushAiKey, reconcileAiKey, pushProfile, reconcileProfile };
 });

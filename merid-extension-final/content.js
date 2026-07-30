@@ -37,6 +37,9 @@ let replacedCount = 0;
 let knownSet = new Set();
 let savedSet = new Set();
 
+// Learned personalization profile, snapshotted once per scan (null = none yet).
+let profile = null;
+
 const MAX_REPLACEMENTS_PER_PAGE = 800;   // safety cap to protect big pages
 const MUTATION_DEBOUNCE_MS = 300;
 
@@ -81,6 +84,13 @@ function init() {
     aiChecksSent = 0;
     if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
 
+    // Drop upgrades parked for a page state that no longer exists.
+    pendingUpgrades = [];
+    if (upgradeScrollBound) {
+        window.removeEventListener('scroll', onUpgradeScroll);
+        upgradeScrollBound = false;
+    }
+
     // Per-page personalization state. Flush anything still queued from the
     // previous scan before resetting, so a settings change cannot drop events.
     flushProfileEvents();
@@ -88,6 +98,18 @@ function init() {
     hoveredThisPage = new Set();
     pageTopic = P ? P.topicFromUrl(location.href) : 'general';
 
+    // Snapshot the learned profile for this scan. Fetching it once (rather than
+    // per candidate word) keeps the scan synchronous and means every word on a
+    // page is judged against the same profile - a mid-scan update cannot make
+    // the top and bottom of an article disagree.
+    chrome.runtime.sendMessage({ type: 'MERID_PROFILE_GET' }, (res) => {
+        void chrome.runtime.lastError; // an unavailable profile just means no personalization
+        profile = (res && res.ok && res.profile) ? res.profile : null;
+        startScan();
+    });
+}
+
+function startScan() {
     // Load the local deck/known lists first so we can honour them while scanning.
     chrome.storage.local.get(['knownWords', 'savedWords'], (local) => {
         knownSet = new Set((local.knownWords || []).map(w => String(w).toLowerCase()));
@@ -223,7 +245,14 @@ function processTextNode(node, vocabMap) {
         }
 
         // Deterministic intensity gate - stable across re-renders (no Math.random).
-        if (!C.gateByFrequency(matchedText.toLowerCase() + '|' + replaceWith.toLowerCase(), settings.frequency)) {
+        //
+        // Personalization enters HERE and only here: it bends the frequency the
+        // gate sees, it does not make the decision. The hash still does that,
+        // so the same word on the same page always resolves the same way. With
+        // no profile, or a profile too young to trust, effectiveFrequency()
+        // returns settings.frequency unchanged.
+        if (!C.gateByFrequency(matchedText.toLowerCase() + '|' + replaceWith.toLowerCase(),
+            effectiveFrequency(replaceWith, item.dataset))) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -375,6 +404,24 @@ let pageTopic = 'general';
 let shownThisPage = new Set();
 let hoveredThisPage = new Set();
 
+/**
+ * How often this reader should meet `word`, in the 0..100 form
+ * `VMCore.gateByFrequency` expects.
+ *
+ * Falls back to the user's raw setting whenever personalization cannot or
+ * should not speak: no profile module, no profile loaded yet, or a profile
+ * with too little evidence (VMProfile handles that last case internally by
+ * fading its multiplier in from exactly 1.0).
+ */
+function effectiveFrequency(word, level) {
+    if (!P || !profile) return settings.frequency;
+    try {
+        return P.adjustedFrequency(profile, { word, level, topic: pageTopic }, settings.frequency);
+    } catch (e) {
+        return settings.frequency; // personalization must never break a page
+    }
+}
+
 function queueProfileEvent(word, event, level) {
     const w = String(word || '').toLowerCase().trim();
     if (!w) return;
@@ -475,15 +522,24 @@ function runAiContextCheck() {
             return;
         }
         let reverted = 0;
+        let upgraded = 0;
         batch.forEach((g, i) => {
             aiCheckedPairs.add(g.key);
             const word = g.spans[0].dataset.word || '';
             const bad = res.verdicts[i] === 0;
             // The verdict is also a free training label for the local ranker.
             queueProfileEvent(word, bad ? 'aiBad' : 'aiOk');
-            if (bad) { revertSpans(g.spans); reverted++; }
+            if (!bad) return;
+
+            // Prefer upgrading to the word the AI suggested over dropping the
+            // slot entirely - but only when that word is a real entry in the
+            // loaded dataset, so the tooltip still has something to show.
+            const entry = findVocabEntry((res.betters || [])[i]);
+            if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
+            else { revertSpans(g.spans); reverted++; }
         });
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
+            ', upgraded', upgraded,
             '(cached ' + (res.cached || 0) + ', asked ' + (res.asked || 0) + ', model ' + (res.model || '?') + ')');
     });
 }
@@ -501,6 +557,85 @@ function revertPage() {
     // Merge adjacent text nodes only where we actually changed things.
     parents.forEach(p => { try { p.normalize(); } catch (e) { /* detached */ } });
     replacedCount = 0;
+}
+
+// -------------------------------------------------------------
+// Word upgrades (AI suggested something better than what we inserted)
+//
+// Swapping text under a reader's eyes is worse than showing a slightly wrong
+// word: the line reflows and they lose their place. So an upgrade is only
+// applied while the span is OUT of the viewport. Anything currently on screen
+// is parked until it scrolls away, and dropped if the user never goes back.
+// -------------------------------------------------------------
+let pendingUpgrades = [];
+let upgradeScrollBound = false;
+let upgradeRaf = null;
+
+/** Case-insensitive lookup of an English headword in the loaded dataset. */
+function findVocabEntry(word) {
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return null;
+    // Never suggest a word the user has already dismissed or told us they know.
+    if (knownSet.has(w)) return null;
+    return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
+}
+
+function isOnScreen(el) {
+    if (!el || !el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return false; // hidden or detached
+    return r.bottom > 0 && r.top < (window.innerHeight || 0);
+}
+
+/** Rewrite one span in place to show a different vocabulary entry. */
+function applyUpgrade(span, entry) {
+    if (!span || !span.isConnected) return;
+    span.dataset.word = entry.word;
+    span.dataset.replacement = entry.word;
+    span.dataset.level = entry.dataset || '';
+    // applyDisplayMode re-renders from dataset and guards its own
+    // replacedCount bookkeeping, so the count stays correct on re-entry.
+    applyDisplayMode(span);
+    const wl = (entry.word || '').toLowerCase();
+    if (!shownThisPage.has(wl)) {
+        shownThisPage.add(wl);
+        queueProfileEvent(entry.word, 'shown', entry.dataset);
+    }
+}
+
+function scheduleUpgrade(spans, entry) {
+    (spans || []).forEach(span => {
+        if (!span || !span.isConnected) return;
+        if (!isOnScreen(span)) { applyUpgrade(span, entry); return; }
+        pendingUpgrades.push({ span, entry });
+    });
+    if (pendingUpgrades.length && !upgradeScrollBound) {
+        upgradeScrollBound = true;
+        window.addEventListener('scroll', onUpgradeScroll, { passive: true });
+    }
+}
+
+function onUpgradeScroll() {
+    if (upgradeRaf) return;                       // coalesce a burst of scroll events
+    upgradeRaf = requestAnimationFrame(() => {
+        upgradeRaf = null;
+        flushPendingUpgrades();
+    });
+}
+
+function flushPendingUpgrades() {
+    if (!pendingUpgrades.length) return;
+    const stillPending = [];
+    for (const job of pendingUpgrades) {
+        if (!job.span.isConnected) continue;      // the node went away; drop it
+        if (isOnScreen(job.span)) { stillPending.push(job); continue; }
+        applyUpgrade(job.span, job.entry);
+    }
+    pendingUpgrades = stillPending;
+    if (!pendingUpgrades.length && upgradeScrollBound) {
+        window.removeEventListener('scroll', onUpgradeScroll);
+        upgradeScrollBound = false;
+    }
 }
 
 /**

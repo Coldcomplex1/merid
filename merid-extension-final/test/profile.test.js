@@ -241,6 +241,70 @@ test('pruning caps the table and keeps explicitly-rated words', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Cross-device merge
+// ---------------------------------------------------------------------------
+test('merging sums counters instead of letting one device win', () => {
+    const laptop = repeat(P.createProfile(), { word: 'candid', event: 'up', level: 'C1' }, 4);
+    const phone = repeat(P.createProfile(), { word: 'candid', event: 'up', level: 'C1' }, 6);
+    const m = P.mergeProfiles(laptop, phone);
+    assert.strictEqual(m.words.candid.up, 10, 'both devices\' history must survive');
+    assert.strictEqual(m.events, laptop.events + phone.events);
+    assert.strictEqual(m.levels.C1.up, laptop.levels.C1.up + phone.levels.C1.up);
+});
+
+test('merging keeps words seen on only one device', () => {
+    const a = P.recordEvent(P.createProfile(), { word: 'alpha', event: 'up' });
+    const b = P.recordEvent(P.createProfile(), { word: 'beta', event: 'down' });
+    const m = P.mergeProfiles(a, b);
+    assert.strictEqual(m.words.alpha.up, 1);
+    assert.strictEqual(m.words.beta.down, 1);
+});
+
+test('merging takes the later lastSeen', () => {
+    const a = P.recordEvent(P.createProfile(), { word: 'w', event: 'shown', now: 1000 });
+    const b = P.recordEvent(P.createProfile(), { word: 'w', event: 'shown', now: 9000 });
+    assert.strictEqual(P.mergeProfiles(a, b).words.w.lastSeen, 9000);
+    assert.strictEqual(P.mergeProfiles(b, a).words.w.lastSeen, 9000);
+});
+
+test('merge order does not change the result', () => {
+    let a = repeat(P.createProfile(), { word: 'x', event: 'up', level: 'C1', topic: 'tech' }, 7);
+    let b = repeat(P.createProfile(), { word: 'x', event: 'down', level: 'C2', topic: 'news' }, 5);
+    const ab = P.mergeProfiles(a, b);
+    const ba = P.mergeProfiles(b, a);
+    assert.deepStrictEqual(ab.words, ba.words);
+    assert.deepStrictEqual(ab.levels, ba.levels);
+    assert.deepStrictEqual(ab.topics, ba.topics);
+    assert.strictEqual(ab.events, ba.events);
+});
+
+test('merging with an empty or missing profile is a no-op', () => {
+    const a = repeat(P.createProfile(), { word: 'x', event: 'up' }, 3);
+    for (const other of [P.createProfile(), null, undefined, {}]) {
+        const m = P.mergeProfiles(a, other);
+        assert.strictEqual(m.words.x.up, 3);
+        assert.strictEqual(m.events, a.events);
+    }
+});
+
+test('merged profile stays within the size cap', () => {
+    let a = P.createProfile(), b = P.createProfile();
+    for (let i = 0; i < P.MAX_WORDS_TRACKED; i++) {
+        a = P.recordEvent(a, { word: 'a' + i, event: 'shown', now: i });
+        b = P.recordEvent(b, { word: 'b' + i, event: 'shown', now: i });
+    }
+    assert.ok(Object.keys(P.mergeProfiles(a, b).words).length <= P.MAX_WORDS_TRACKED);
+});
+
+test('merged profile survives a JSON round trip (how it is synced)', () => {
+    let a = repeat(P.createProfile(), { word: 'cân', event: 'up', level: 'C1', topic: 'tech' }, 5);
+    const clone = P.withDefaults(JSON.parse(JSON.stringify(a)));
+    assert.deepStrictEqual(clone.words, a.words);
+    assert.deepStrictEqual(clone.weights, a.weights);
+    assert.strictEqual(clone.events, a.events);
+});
+
+// ---------------------------------------------------------------------------
 // Prompt summary - billed on every AI request, so it must stay small and safe
 // ---------------------------------------------------------------------------
 test('describeProfile says nothing for a new user', () => {

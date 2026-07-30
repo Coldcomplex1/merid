@@ -430,7 +430,57 @@
     }
 
     // -----------------------------------------------------------------
-    // Prompt-facing summary (consumed in Phase 3)
+    // Cross-device merge
+    // -----------------------------------------------------------------
+
+    /**
+     * Combine two profiles for the same user, e.g. this device's and the copy
+     * stored in their account.
+     *
+     * Counters are SUMMED rather than overwritten: both sides recorded real
+     * things the user really did, so last-write-wins would throw away a whole
+     * device's history. `lastSeen` takes the later timestamp (the word was most
+     * recently shown then), and the two weight vectors are averaged - they were
+     * trained on overlapping evidence, so the mean is a reasonable consensus
+     * and is self-correcting as feedback continues on the merged profile.
+     *
+     * Commutative and associative over counters, so sync order does not matter.
+     */
+    function mergeProfiles(a, b) {
+        const pa = withDefaults(a);
+        const pb = withDefaults(b);
+        const out = createProfile();
+
+        for (const key of Object.keys(pa.words).concat(Object.keys(pb.words))) {
+            if (out.words[key]) continue;
+            const wa = pa.words[key] || emptyWordStat();
+            const wb = pb.words[key] || emptyWordStat();
+            const merged = emptyWordStat();
+            for (const f of Object.keys(merged)) {
+                merged[f] = f === 'lastSeen' ? Math.max(wa[f], wb[f]) : wa[f] + wb[f];
+            }
+            out.words[key] = merged;
+        }
+
+        for (const bucket of ['levels', 'topics']) {
+            for (const key of Object.keys(pa[bucket]).concat(Object.keys(pb[bucket]))) {
+                if (out[bucket][key]) continue;
+                const ba = pa[bucket][key] || { up: 0, down: 0 };
+                const bb = pb[bucket][key] || { up: 0, down: 0 };
+                out[bucket][key] = { up: ba.up + bb.up, down: ba.down + bb.down };
+            }
+        }
+
+        for (let i = 0; i < FEATURE_COUNT; i++) {
+            out.weights[i] = (pa.weights[i] + pb.weights[i]) / 2;
+        }
+        out.events = pa.events + pb.events;
+        out.updatedAt = Math.max(pa.updatedAt, pb.updatedAt);
+        return pruneWords(out);
+    }
+
+    // -----------------------------------------------------------------
+    // Prompt-facing summary
     // -----------------------------------------------------------------
 
     /**
@@ -486,7 +536,7 @@
         MAX_WORDS_TRACKED,
         createProfile, withDefaults, emptyWordStat,
         topicFromUrl, TOPIC_RULES,
-        recordEvent, pruneWords,
+        recordEvent, pruneWords, mergeProfiles,
         featureVector, scoreCandidate, confidence,
         frequencyMultiplier, adjustedFrequency,
         describeProfile, bucketRate,

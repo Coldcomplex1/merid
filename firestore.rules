@@ -82,6 +82,31 @@ service cloud.firestore {
         }
       }
 
+      // Learned personalization profile. Only the fixed 'state' doc exists:
+      // it holds aggregate counts about vocabulary (how often a word was
+      // shown, rated, saved) so the reader's preferences follow them across
+      // devices. No page content, no URLs, no browsing history.
+      //
+      // The payload is one JSON string rather than a nested map: its shape is
+      // owned by the extension's ranker and changes as that evolves, so the
+      // rules validate a type and a size instead of chasing that shape.
+      // Owner-only (A01), strict schema (A03), capped well under the 1 MiB
+      // document limit.
+      match /profile/state {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validProfile();
+
+        function validProfile() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['state', 'updatedAt'])
+            && d.keys().hasAll(['state', 'updatedAt'])
+            && d.state is string
+            && d.state.size() >= 2
+            && d.state.size() <= 200000
+            && d.updatedAt == request.time;
+        }
+      }
+
       match /words/{wordId} {
         allow read: if isOwner(uid);
 
