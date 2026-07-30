@@ -14,7 +14,7 @@
 // Page content is never sent anywhere else.
 // =============================================================
 
-importScripts('lib/vocab-core.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
+importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
 
 // Release builds keep the console quiet; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -22,6 +22,7 @@ const DEBUG = false;
 const log = DEBUG ? console.log.bind(console) : () => { };
 
 const C = self.VMCore;
+const Prof = self.VMProfile;
 const Custom = self.VMCustom;
 const Sync = self.VMSync;
 const FB = self.VMFirebase;
@@ -343,13 +344,37 @@ async function googleSignIn() {
 const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 const AI_CHECK_MAX_ITEMS = 20;
 
-async function callGeminiModel(apiKey, model, prompt, maxOutputTokens) {
+// Structured-output schema for the context check. Asking for the item index
+// alongside each verdict (rather than a bare positional array) means a model
+// that drops, merges or reorders an item can no longer shift every following
+// verdict onto the wrong word - a mis-parse now loses one item instead of
+// silently corrupting the whole batch.
+const AI_VERDICT_SCHEMA = {
+    type: 'ARRAY',
+    items: {
+        type: 'OBJECT',
+        properties: {
+            i: { type: 'INTEGER' },
+            ok: { type: 'BOOLEAN' }
+        },
+        required: ['i', 'ok']
+    }
+};
+
+async function callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema) {
+    const generationConfig = { temperature: 0, maxOutputTokens };
+    // Native JSON mode: Gemini constrains decoding to the schema, so the reply
+    // is always parseable. Replaces regex-scraping a JSON array out of prose.
+    if (schema) {
+        generationConfig.responseMimeType = 'application/json';
+        generationConfig.responseSchema = schema;
+    }
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens }
+            generationConfig
         })
     });
     if (!resp.ok) {
@@ -368,14 +393,14 @@ async function callGeminiModel(apiKey, model, prompt, maxOutputTokens) {
     return { ok: true, text };
 }
 
-async function callGemini(apiKey, prompt, maxOutputTokens) {
+async function callGemini(apiKey, prompt, maxOutputTokens, schema) {
     const { vm_ai_model } = await chrome.storage.local.get(['vm_ai_model']);
     const models = vm_ai_model
         ? [vm_ai_model, ...GEMINI_MODELS.filter(m => m !== vm_ai_model)]
         : GEMINI_MODELS;
     let last = null;
     for (const model of models) {
-        const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens);
+        const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema);
         if (res.ok) {
             if (model !== vm_ai_model) chrome.storage.local.set({ vm_ai_model: model });
             return Object.assign(res, { model });
@@ -389,34 +414,177 @@ async function callGemini(apiKey, prompt, maxOutputTokens) {
     return last;
 }
 
+// ---- Verdict cache -------------------------------------------------------
+// A verdict depends on the (word, sentence) PAIR, so that is the cache key.
+// Re-reading a page, revisiting it tomorrow, or meeting the same boilerplate
+// sentence on another page of the same site all become free. Entries are
+// evicted oldest-first once the table is full.
+const AI_CACHE_KEY = 'vm_ai_cache';
+const AI_CACHE_MAX = 2000;
+const AI_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+/** Stable short key for one (word, sentence) pair. */
+function aiCacheKey(word, sentence) {
+    const norm = String(sentence || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const w = String(word || '').toLowerCase().trim();
+    // Two independent hashes over differently-salted inputs: a 32-bit hash
+    // alone collides often enough at 2000 entries to matter (birthday bound),
+    // and a collision would apply one word's verdict to an unrelated one.
+    const a = C.hashToInt(w + ' ' + norm).toString(36);
+    const b = C.hashToInt(norm + '' + w + '|' + norm.length).toString(36);
+    return a + '.' + b;
+}
+
+async function readAiCache() {
+    try {
+        const r = await chrome.storage.local.get([AI_CACHE_KEY]);
+        const c = r[AI_CACHE_KEY];
+        return (c && typeof c === 'object') ? c : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+/** Merge fresh verdicts in, drop expired ones, then trim to the size cap. */
+async function writeAiCache(cache, additions, now) {
+    const merged = Object.assign({}, cache, additions);
+    const cutoff = now - AI_CACHE_TTL_MS;
+    for (const k of Object.keys(merged)) {
+        const e = merged[k];
+        if (!Array.isArray(e) || !(Number(e[1]) > cutoff)) delete merged[k];
+    }
+    const keys = Object.keys(merged);
+    if (keys.length > AI_CACHE_MAX) {
+        keys.sort((x, y) => merged[y][1] - merged[x][1]); // newest first
+        const trimmed = {};
+        for (let i = 0; i < AI_CACHE_MAX; i++) trimmed[keys[i]] = merged[keys[i]];
+        try { await chrome.storage.local.set({ [AI_CACHE_KEY]: trimmed }); } catch (e) { /* quota */ }
+        return;
+    }
+    try { await chrome.storage.local.set({ [AI_CACHE_KEY]: merged }); } catch (e) { /* quota */ }
+}
+
+/**
+ * Verify a batch of replacements against their sentence context.
+ *
+ * Returns `verdicts` positionally aligned with the input `items`: 1 = the
+ * English word fits, 0 = it does not. Cached pairs are answered without a
+ * network call; only the remainder is sent to Gemini. When the model omits an
+ * item, that item defaults to 1 (keep) - a missing answer must never silently
+ * revert a word the model never judged.
+ */
 async function aiCheckContext(items) {
     const sync = await chrome.storage.sync.get(['aiCheckEnabled']);
     const local = await chrome.storage.local.get(['geminiApiKey']);
     if (!sync.aiCheckEnabled || !local.geminiApiKey) return { ok: false, disabled: true };
-    if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [] };
+    if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [], cached: 0 };
 
     const capped = items.slice(0, AI_CHECK_MAX_ITEMS).map(it => ({
         word: String(it && it.word || '').slice(0, 60),
         original: String(it && it.original || '').slice(0, 60),
         sentence: String(it && it.sentence || '').slice(0, 180)
     }));
-    const list = capped.map((it, i) =>
-        `${i + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`).join('\n');
+
+    const now = Date.now();
+    const cache = await readAiCache();
+    const cutoff = now - AI_CACHE_TTL_MS;
+    const verdicts = new Array(capped.length).fill(1);
+    const askIdx = [];          // positions still needing an answer
+    const keys = capped.map(it => aiCacheKey(it.word, it.sentence));
+
+    capped.forEach((it, i) => {
+        const hit = cache[keys[i]];
+        if (Array.isArray(hit) && Number(hit[1]) > cutoff) verdicts[i] = hit[0] ? 1 : 0;
+        else askIdx.push(i);
+    });
+
+    const cachedCount = capped.length - askIdx.length;
+    if (!askIdx.length) {
+        log('[VM] AI check: all', cachedCount, 'items served from cache (0 API calls)');
+        return { ok: true, verdicts, cached: cachedCount, asked: 0 };
+    }
+
+    const list = askIdx.map((srcIdx, n) => {
+        const it = capped[srcIdx];
+        return `${n + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`;
+    }).join('\n');
     const prompt =
         'In each sentence below, one Vietnamese word/phrase was replaced by an English word. ' +
-        'For each item answer 1 if the English word correctly expresses the replaced Vietnamese meaning in that sentence context, otherwise 0. ' +
-        'Reply with ONLY a JSON array of 0/1 (one per item), nothing else.\n' + list;
+        'For each item decide whether the English word correctly expresses the replaced Vietnamese meaning in that sentence context. ' +
+        'Return one object per item with "i" set to the item number shown and "ok" true when the word fits, false when it does not.\n' + list;
 
     try {
-        const res = await callGemini(local.geminiApiKey, prompt, 200);
+        const res = await callGemini(local.geminiApiKey, prompt, 40 + askIdx.length * 16, AI_VERDICT_SCHEMA);
         if (!res.ok) return res;
-        const m = (res.text || '').match(/\[[\s\S]*?\]/);
-        if (!m) return { ok: false, reason: 'bad-response' };
-        const verdicts = JSON.parse(m[0]).map(v => (v ? 1 : 0));
-        return { ok: true, verdicts };
+
+        let parsed;
+        try {
+            parsed = JSON.parse(res.text || '');
+        } catch (e) {
+            return { ok: false, reason: 'bad-response' };
+        }
+        if (!Array.isArray(parsed)) return { ok: false, reason: 'bad-response' };
+
+        const additions = {};
+        let answered = 0;
+        for (const row of parsed) {
+            if (!row || typeof row !== 'object') continue;
+            const n = Number(row.i);
+            if (!Number.isInteger(n) || n < 1 || n > askIdx.length) continue;
+            const srcIdx = askIdx[n - 1];
+            const v = row.ok ? 1 : 0;
+            verdicts[srcIdx] = v;
+            additions[keys[srcIdx]] = [v, now];
+            answered++;
+        }
+
+        await writeAiCache(cache, additions, now);
+        log('[VM] AI check:', cachedCount, 'cached,', askIdx.length, 'asked,', answered, 'answered');
+        return { ok: true, verdicts, cached: cachedCount, asked: askIdx.length, model: res.model };
     } catch (e) {
         return { ok: false, reason: 'network' };
     }
+}
+
+// =============================================================
+// Personalization profile (local, private).
+//
+// The content script streams interaction events here; this is the only writer,
+// so concurrent tabs cannot clobber each other's updates mid-read. Everything
+// stays in chrome.storage.local - the profile is mirrored to the user's own
+// Firestore account only if they opt into deck sync.
+// =============================================================
+const PROFILE_KEY = 'vm_profile';
+const PROFILE_EVENTS_MAX = 200;
+
+// Serializes read-modify-write cycles: two tabs flushing at once would
+// otherwise both read the same profile and the later write would win outright,
+// silently discarding the other tab's events.
+let profileWriteChain = Promise.resolve();
+
+function applyProfileEvents(events) {
+    if (!Array.isArray(events) || !events.length) return Promise.resolve({ ok: true, applied: 0 });
+    const batch = events.slice(0, PROFILE_EVENTS_MAX);
+    profileWriteChain = profileWriteChain.then(async () => {
+        const r = await chrome.storage.local.get([PROFILE_KEY]);
+        let profile = Prof.withDefaults(r[PROFILE_KEY]);
+        for (const ev of batch) {
+            if (!ev || typeof ev !== 'object') continue;
+            profile = Prof.recordEvent(profile, ev);
+        }
+        await chrome.storage.local.set({ [PROFILE_KEY]: profile });
+        log('[VM] profile: applied', batch.length, 'events;', Object.keys(profile.words).length, 'words tracked');
+        return { ok: true, applied: batch.length };
+    }).catch(e => {
+        console.warn('[VM] profile update failed:', e && e.message);
+        return { ok: false };
+    });
+    return profileWriteChain;
+}
+
+async function getProfile() {
+    const r = await chrome.storage.local.get([PROFILE_KEY]);
+    return Prof.withDefaults(r[PROFILE_KEY]);
 }
 
 async function aiTestKey(key) {
@@ -505,6 +673,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             case 'MERID_AI_TEST_KEY': {
                 aiTestKey(request.key)
                     .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+
+            // ---- Personalization (content script / options page) ----
+            case 'MERID_PROFILE_EVENTS': {
+                applyProfileEvents(request.events)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_PROFILE_GET': {
+                getProfile()
+                    .then(profile => sendResponse({ ok: true, profile }))
                     .catch(() => sendResponse({ ok: false }));
                 return true;
             }

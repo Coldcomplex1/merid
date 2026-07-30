@@ -49,6 +49,8 @@
   "tooltipSave": { "message": "Save to Deck" },
   "tooltipSaved": { "message": "Saved ✓" },
   "tooltipKnow": { "message": "I know this" },
+  "tooltipGood": { "message": "Good suggestion" },
+  "tooltipBad": { "message": "Not a good fit here" },
   "tooltipVietnamese": { "message": "Vietnamese" },
   "tooltipReplaced": { "message": "Replaced" },
   "tooltipNoDefinition": { "message": "No definition available." },

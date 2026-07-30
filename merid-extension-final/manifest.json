@@ -24,6 +24,7 @@
       ],
       "js": [
         "lib/vocab-core.js",
+        "lib/profile.js",
         "content.js"
       ],
       "css": [

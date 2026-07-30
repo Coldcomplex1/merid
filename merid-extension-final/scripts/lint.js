@@ -11,6 +11,7 @@ const files = [
     'options.js',
     'content-bridge.js',
     'lib/vocab-core.js',
+    'lib/profile.js',
     'lib/custom-datasets.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',

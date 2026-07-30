@@ -49,6 +49,8 @@
   "tooltipSave": { "message": "Lưu vào bộ thẻ" },
   "tooltipSaved": { "message": "Đã lưu ✓" },
   "tooltipKnow": { "message": "Tôi biết từ này" },
+  "tooltipGood": { "message": "Gợi ý hay" },
+  "tooltipBad": { "message": "Không hợp ở đây" },
   "tooltipVietnamese": { "message": "Tiếng Việt" },
   "tooltipReplaced": { "message": "Từ gốc" },
   "tooltipNoDefinition": { "message": "Chưa có định nghĩa." },

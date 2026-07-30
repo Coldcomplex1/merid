@@ -261,6 +261,45 @@
     background: rgba(25, 53, 93, 0.05);
 }
 
+/* Thumbs up / down. Sits beside the two primary actions but does not take an
+   equal share of the row - it is a quiet signal, not a call to action. The
+   surrounding span means these buttons opt out of the `button + button`
+   divider rule above, so their borders are declared explicitly. */
+.vm-rate {
+    display: flex;
+    flex: 0 0 auto;
+    border-left: 1px solid var(--vm-line);
+}
+
+.vm-actions .vm-rate button {
+    flex: 0 0 auto;
+    padding: 13px 10px;
+    font-size: 14px;
+    line-height: 1;
+    filter: grayscale(1);
+    opacity: 0.55;
+}
+
+.vm-actions .vm-rate button + button {
+    border-left: 1px solid var(--vm-line);
+}
+
+.vm-actions .vm-rate button:hover:not(:disabled) {
+    filter: none;
+    opacity: 1;
+    background: rgba(25, 53, 93, 0.05);
+}
+
+/* After rating, the pair locks and only the chosen thumb keeps its colour. */
+.vm-actions .vm-rate button.vm-picked {
+    filter: none;
+    opacity: 1;
+}
+
+.vm-actions .vm-rate.vm-rated button:not(.vm-picked) {
+    opacity: 0.2;
+}
+
 .vm-actions button:disabled {
     cursor: default;
     opacity: 0.85;
