@@ -66,23 +66,36 @@ const installStub = (proxyReply) => sw.evaluate(async (reply) => {
         await chrome.storage.local.set({ __calls: cur });
     };
 
+    // Resolve a fetch() argument to its host and path. Matching the hostname
+    // exactly, rather than asking whether the URL string *contains* a domain,
+    // is both what CodeQL wants and simply more correct - "evil.test/?x=
+    // generativelanguage.googleapis.com" contains that domain without being it.
+    const routeOf = (u) => {
+        try {
+            const raw = typeof u === 'string' ? u : (u && typeof u.url === 'string' ? u.url : String(u));
+            const parsed = new URL(raw);
+            return { host: parsed.hostname, path: parsed.pathname };
+        } catch (e) {
+            return { host: '', path: '' };
+        }
+    };
     self.fetch = async (u, opts) => {
-        const url = String(u);
+        const { host, path } = routeOf(u);
         const body = opts && opts.body ? String(opts.body) : '';
 
-        if (url.includes('identitytoolkit.googleapis.com') && url.includes('signUp')) {
+        if (host === 'identitytoolkit.googleapis.com' && path.endsWith('signUp')) {
             await record({ kind: 'anon-signup', body });
             return new Response(JSON.stringify({
                 localId: 'anon-uid-1', idToken: 'fake-id-token', refreshToken: 'fake-refresh', expiresIn: '3600'
             }), { status: 200 });
         }
-        if (url.includes('securetoken.googleapis.com')) {
+        if (host === 'securetoken.googleapis.com') {
             await record({ kind: 'refresh' });
             return new Response(JSON.stringify({
                 id_token: 'fake-id-token', user_id: 'anon-uid-1', refresh_token: 'fake-refresh', expires_in: '3600'
             }), { status: 200 });
         }
-        if (url.includes('/api/check')) {
+        if (host === 'merid.site' && path === '/api/check') {
             const parsed = JSON.parse(body || '{}');
             await record({
                 kind: 'proxy',
@@ -101,7 +114,7 @@ const installStub = (proxyReply) => sw.evaluate(async (reply) => {
                 used: r.used, limit: r.limit, resetIn: 3600
             }), { status: 200 });
         }
-        if (url.includes('generativelanguage.googleapis.com')) {
+        if (host === 'generativelanguage.googleapis.com') {
             await record({ kind: 'direct-gemini' });
             const prompt = JSON.parse(body).contents[0].parts[0].text;
             const rows = prompt.split('\n').filter(l => /^\d+\.\s+english=/.test(l));

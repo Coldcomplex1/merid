@@ -62,15 +62,21 @@ await sw.evaluate(async () => {
     self.__rejectWords = [];
     // Only intercept Gemini: the worker also fetch()es the bundled dataset CSVs.
     if (!self.__realFetch) self.__realFetch = self.fetch;
-    self.fetch = async (u, opts) => {
-        let host = '';
+    // Resolve a fetch() argument to its host and path. Matching the hostname
+    // exactly, rather than asking whether the URL string *contains* a domain,
+    // is both what CodeQL wants and simply more correct - "evil.test/?x=
+    // generativelanguage.googleapis.com" contains that domain without being it.
+    const routeOf = (u) => {
         try {
-            const rawUrl = typeof u === 'string' ? u : (u && typeof u.url === 'string' ? u.url : String(u));
-            host = new URL(rawUrl).hostname;
-        } catch (_) {
-            return self.__realFetch(u, opts);
+            const raw = typeof u === 'string' ? u : (u && typeof u.url === 'string' ? u.url : String(u));
+            const parsed = new URL(raw);
+            return { host: parsed.hostname, path: parsed.pathname };
+        } catch (e) {
+            return { host: '', path: '' };
         }
-        if (host !== 'generativelanguage.googleapis.com') {
+    };
+    self.fetch = async (u, opts) => {
+        if (routeOf(u).host !== 'generativelanguage.googleapis.com') {
             return self.__realFetch(u, opts);
         }
         const body = JSON.parse(opts.body);

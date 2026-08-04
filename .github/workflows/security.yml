@@ -47,6 +47,8 @@ jobs:
         run: |
           npm ci
           npm run build
+      - name: Test AI proxy (token verification, quota window, model ranking)
+        run: npm run test:api
       - name: Lint + test extension
         working-directory: merid-extension-final
         run: |

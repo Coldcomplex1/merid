@@ -92,6 +92,12 @@ The proxy lives in `api/` on the branch
 branch has to be merged (or the Production Branch changed in
 **Settings → Git**). Until then `/api/check` returns Vercel's 404 page.
 
+`vercel.json` rewrites everything except `/api/*` to `index.html`, so the SPA
+keeps working and the function stays reachable. Note that **`vercel.json`
+rejects unknown keys**, including a `"//"` used as a comment - adding one fails
+the deployment with a schema error before anything is built, which is why the
+file has no comments in it.
+
 ### 4b. Add the environment variables
 
 **Settings → Environment Variables.** For each row: paste the name, paste the

@@ -149,10 +149,21 @@ const installStub = (better) => sw.evaluate(async (b) => {
     // via chrome.runtime.getURL, and swallowing those leaves the extension with
     // an empty vocabulary and nothing to replace.
     if (!self.__realFetch) self.__realFetch = self.fetch;
-    self.fetch = async (u, opts) => {
-        if (!String(u).includes('generativelanguage.googleapis.com')) {
-            return self.__realFetch(u, opts);
+    // Resolve a fetch() argument to its host and path. Matching the hostname
+    // exactly, rather than asking whether the URL string *contains* a domain,
+    // is both what CodeQL wants and simply more correct - "evil.test/?x=
+    // generativelanguage.googleapis.com" contains that domain without being it.
+    const routeOf = (u) => {
+        try {
+            const raw = typeof u === 'string' ? u : (u && typeof u.url === 'string' ? u.url : String(u));
+            const parsed = new URL(raw);
+            return { host: parsed.hostname, path: parsed.pathname };
+        } catch (e) {
+            return { host: '', path: '' };
         }
+    };
+    self.fetch = async (u, opts) => {
+        if (routeOf(u).host !== 'generativelanguage.googleapis.com') return self.__realFetch(u, opts);
         const body = JSON.parse(opts.body);
         const prompt = body.contents[0].parts[0].text;
         const cur = (await chrome.storage.local.get('__prompts')).__prompts || [];

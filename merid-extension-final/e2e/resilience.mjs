@@ -64,10 +64,23 @@ await sw.evaluate(async () => {
 const stub = (policy) => sw.evaluate(async (pol) => {
     self.__calls = [];
     self.__policy = pol;
+    // Resolve a fetch() argument to its host and path. Matching the hostname
+    // exactly, rather than asking whether the URL string *contains* a domain,
+    // is both what CodeQL wants and simply more correct - "evil.test/?x=
+    // generativelanguage.googleapis.com" contains that domain without being it.
+    const routeOf = (u) => {
+        try {
+            const raw = typeof u === 'string' ? u : (u && typeof u.url === 'string' ? u.url : String(u));
+            const parsed = new URL(raw);
+            return { host: parsed.hostname, path: parsed.pathname };
+        } catch (e) {
+            return { host: '', path: '' };
+        }
+    };
     self.fetch = async (u, opts) => {
-        const url = String(u);
-        if (!url.includes('generativelanguage.googleapis.com')) return self.__realFetch(u, opts);
-        const model = (url.match(/models\/([^:]+):/) || [, '?'])[1];
+        const route = routeOf(u);
+        if (route.host !== 'generativelanguage.googleapis.com') return self.__realFetch(u, opts);
+        const model = (route.path.match(/models\/([^:]+):/) || [, '?'])[1];
         self.__calls.push(model);
         const status = self.__policy[model];
         if (status) {

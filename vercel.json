@@ -1,9 +1,5 @@
 {
   "rewrites": [
-    {
-      "//": "SPA fallback for the marketing site. /api/* is excluded so the serverless functions are reachable - a bare catch-all would rewrite them to index.html.",
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
