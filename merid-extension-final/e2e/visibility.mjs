@@ -145,7 +145,7 @@ const popupTabId = await sw.evaluate(async () => {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     return tabs[0] && tabs[0].id;
 });
-await sw.evaluate(id => self.recordAiStats(id, {
+await sw.evaluate(id => self.recordPageStats(id, {
     checked: 9, reverted: 1, upgraded: 2, cached: 4, asked: 5,
     model: 'gemini-flash-lite-latest', state: 'ok'
 }), popupTabId);
@@ -155,7 +155,7 @@ await popup.waitForTimeout(700);
 // Stats are per tab: a tab that never reported has none, so the popup shows
 // nothing rather than another page's numbers.
 const blankStats = await popup.evaluate(id => new Promise(r =>
-    chrome.runtime.sendMessage({ type: 'MERID_AI_STATS_GET', tabId: id }, r)), 9999999);
+    chrome.runtime.sendMessage({ type: 'MERID_PAGE_STATS_GET', tabId: id }, r)), 9999999);
 check(blankStats && blankStats.stats === null, 'a tab Merid never ran on reports no stats',
     JSON.stringify(blankStats));
 
@@ -172,7 +172,7 @@ check(nums.checked === '9' && nums.fixed === '3' && nums.free === '4',
 check(/gemini/.test(nums.foot), 'the panel names the model actually used', nums.foot);
 
 // The "off" state must say something more useful than a row of zeros.
-await sw.evaluate(id => self.recordAiStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'off' }), popupTabId);
+await sw.evaluate(id => self.recordPageStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'off' }), popupTabId);
 await popup.reload({ waitUntil: 'load' });
 await popup.waitForTimeout(600);
 const offState = await popup.evaluate(() => ({
@@ -183,7 +183,7 @@ check(/API key/i.test(offState.text) && offState.statsHidden,
     'with AI off the panel explains how to switch it on', JSON.stringify(offState));
 
 // An error state must not be dressed up as success.
-await sw.evaluate(id => self.recordAiStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'error', error: '429' }), popupTabId);
+await sw.evaluate(id => self.recordPageStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'error', error: '429' }), popupTabId);
 await popup.reload({ waitUntil: 'load' });
 await popup.waitForTimeout(600);
 const errState = await popup.$eval('#ai-state', el => ({ t: el.textContent, cls: el.className }));

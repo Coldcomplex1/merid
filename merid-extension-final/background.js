@@ -400,24 +400,56 @@ async function callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema) {
     return { ok: true, text };
 }
 
+// Statuses where a DIFFERENT model on the SAME key is worth trying:
+//   404 - this model does not exist for this key/project
+//   429 - rate limited. Gemini's free-tier quotas are per model, so a sibling
+//         model usually still has budget; this is the common case for a heavy
+//         reader on a free key
+//   500/503 - that model is overloaded or erroring on Google's side
+// Everything else (400/401/403 - malformed or rejected key) is about the key
+// itself, and retrying other models would only burn time and quota.
+const GEMINI_RETRY_STATUSES = new Set([404, 429, 500, 503]);
+
+// A model that just rate-limited stays skipped for this long, so the next page
+// does not spend a wasted round trip rediscovering the same 429 before falling
+// through to a model that works.
+const MODEL_COOLDOWN_MS = 5 * 60 * 1000;
+const MODEL_COOLDOWN_KEY = 'vm_ai_model_cooldown';
+
 async function callGemini(apiKey, prompt, maxOutputTokens, schema) {
-    const { vm_ai_model } = await chrome.storage.local.get(['vm_ai_model']);
-    const models = vm_ai_model
+    const store = await chrome.storage.local.get(['vm_ai_model', MODEL_COOLDOWN_KEY]);
+    const vm_ai_model = store.vm_ai_model;
+    const cooldown = store[MODEL_COOLDOWN_KEY] || {};
+    const now = Date.now();
+
+    const ordered = vm_ai_model
         ? [vm_ai_model, ...GEMINI_MODELS.filter(m => m !== vm_ai_model)]
-        : GEMINI_MODELS;
+        : GEMINI_MODELS.slice();
+
+    // Cooling-down models go last rather than being dropped: if every model is
+    // cooling down we still try them all instead of failing without a request.
+    const hot = ordered.filter(m => !(cooldown[m] > now));
+    const cool = ordered.filter(m => cooldown[m] > now);
+    const models = hot.concat(cool);
+
     let last = null;
+    const nextCooldown = Object.assign({}, cooldown);
+    let cooldownChanged = false;
+
     for (const model of models) {
         const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema);
         if (res.ok) {
             if (model !== vm_ai_model) chrome.storage.local.set({ vm_ai_model: model });
-            return Object.assign(res, { model });
+            if (nextCooldown[model]) { delete nextCooldown[model]; cooldownChanged = true; }
+            if (cooldownChanged) chrome.storage.local.set({ [MODEL_COOLDOWN_KEY]: nextCooldown });
+            return Object.assign(res, { model, triedModels: models.indexOf(model) + 1 });
         }
         last = Object.assign(res, { model });
-        // Only 404 means "this model doesn't exist for this key" - try the
-        // next candidate. Any other error (bad key, rate limit, outage) is
-        // real and retrying other models would just burn quota.
-        if (res.status !== 404) return last;
+        if (res.status === 429) { nextCooldown[model] = now + MODEL_COOLDOWN_MS; cooldownChanged = true; }
+        if (!GEMINI_RETRY_STATUSES.has(res.status)) break;
     }
+
+    if (cooldownChanged) chrome.storage.local.set({ [MODEL_COOLDOWN_KEY]: nextCooldown });
     return last;
 }
 
@@ -648,7 +680,7 @@ function resetProfile() {
 // Memory only, keyed by tab id, cleared when the tab navigates or closes.
 // Nothing about which words or which page is persisted anywhere.
 // =============================================================
-const aiTabStats = new Map();
+const pageTabStats = new Map();
 
 function setAiBadge(tabId, stats) {
     const fixes = (stats.reverted || 0) + (stats.upgraded || 0);
@@ -664,7 +696,7 @@ function setAiBadge(tabId, stats) {
     } catch (e) { /* tab closed mid-update */ }
 }
 
-function recordAiStats(tabId, stats) {
+function recordPageStats(tabId, stats) {
     if (typeof tabId !== 'number' || !stats || typeof stats !== 'object') return { ok: false };
     const clean = {
         checked: Math.max(0, Number(stats.checked) || 0),
@@ -675,14 +707,18 @@ function recordAiStats(tabId, stats) {
         model: String(stats.model || '').slice(0, 40),
         state: ['idle', 'ok', 'off', 'error'].includes(stats.state) ? stats.state : 'idle',
         error: String(stats.error || '').slice(0, 60),
+        // Local personalization - reported whether or not the AI check is on.
+        reviews: Math.max(0, Number(stats.reviews) || 0),
+        hidden: Math.max(0, Number(stats.hidden) || 0),
+        confidence: Math.min(1, Math.max(0, Number(stats.confidence) || 0)),
         at: Date.now()
     };
-    aiTabStats.set(tabId, clean);
+    pageTabStats.set(tabId, clean);
     setAiBadge(tabId, clean);
     return { ok: true };
 }
 
-chrome.tabs.onRemoved.addListener(tabId => aiTabStats.delete(tabId));
+chrome.tabs.onRemoved.addListener(tabId => pageTabStats.delete(tabId));
 
 async function aiTestKey(key) {
     const k = String(key || '').trim();
@@ -795,13 +831,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
 
             // ---- AI activity (content script reports, popup reads) ----
-            case 'MERID_AI_STATS': {
-                sendResponse(recordAiStats(sender && sender.tab && sender.tab.id, request.stats));
+            case 'MERID_PAGE_STATS': {
+                sendResponse(recordPageStats(sender && sender.tab && sender.tab.id, request.stats));
                 return false;
             }
-            case 'MERID_AI_STATS_GET': {
+            case 'MERID_PAGE_STATS_GET': {
                 const id = Number(request.tabId);
-                sendResponse({ ok: true, stats: aiTabStats.get(id) || null });
+                sendResponse({ ok: true, stats: pageTabStats.get(id) || null });
                 return false;
             }
 

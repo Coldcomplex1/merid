@@ -39,6 +39,9 @@ let savedSet = new Set();
 
 // Learned personalization profile, snapshotted once per scan (null = none yet).
 let profile = null;
+// One timestamp per scan, so a long page cannot have its top and bottom
+// disagree about whether a word's review has come due.
+let scanStartedAt = 0;
 
 const MAX_REPLACEMENTS_PER_PAGE = 800;   // safety cap to protect big pages
 const MUTATION_DEBOUNCE_MS = 300;
@@ -100,8 +103,8 @@ function init() {
 
     // Clear the previous page's AI tally immediately, so the popup can never
     // show a stale count during the ~1.5s before the first check runs.
-    aiStats = { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle' };
-    reportAiStats();
+    pageStats = freshPageStats();
+    reportPageStats();
 
     // Snapshot the learned profile for this scan. Fetching it once (rather than
     // per candidate word) keeps the scan synchronous and means every word on a
@@ -142,9 +145,14 @@ function startScan() {
             }
 
             const start = () => {
+                scanStartedAt = Date.now();
+                pageStats.confidence = (P && profile) ? P.confidence(profile) : 0;
                 const vocabMap = C.buildVocabMap(vocabulary, modes);
                 processPage(vocabMap);
                 observeChanges(vocabMap);
+                // Publish now: the ranker has already done its work, and with
+                // the AI check off this is the only report the popup will get.
+                reportPageStats();
             };
 
             if (vocabulary.length > 0) {
@@ -244,6 +252,7 @@ function processTextNode(node, vocabMap) {
 
         // "I know this" - never replace words the user already knows.
         if (knownSet.has(replaceWith.toLowerCase())) {
+            pageStats.hidden++;
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -283,6 +292,13 @@ function processTextNode(node, vocabMap) {
         const wl = replaceWith.toLowerCase();
         if (!shownThisPage.has(wl)) {
             shownThisPage.add(wl);
+            // Due-ness is read against the scan's profile snapshot, before the
+            // "shown" event below moves the word's clock forward.
+            if (P && profile && P.isDueForReview(profile, wl, scanStartedAt)) {
+                pageStats.reviews++;
+                span.dataset.review = '1';
+                span.classList.add('vocab-review');
+            }
             queueProfileEvent(replaceWith, 'shown', item.dataset);
         }
 
@@ -375,7 +391,10 @@ function processNodeBatch(nodes, vocabMap) {
         const end = Math.min(index + batchSize, nodes.length);
         for (; index < end; index++) processTextNode(nodes[index], vocabMap);
         if (index < nodes.length) requestAnimationFrame(run);
-        else if (nodes.length) scheduleAiContextCheck(); // dynamic content settled
+        else if (nodes.length) {
+            reportPageStats();        // counts move as dynamic content arrives
+            scheduleAiContextCheck(); // dynamic content settled
+        }
     }
     run();
 }
@@ -488,11 +507,22 @@ function scheduleAiContextCheck() {
 // are pushed to the service worker, which badges the toolbar icon and feeds
 // the "AI on this page" panel in the popup.
 // -------------------------------------------------------------
-let aiStats = { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle' };
+function freshPageStats() {
+    return {
+        // AI context check
+        checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle',
+        // Local personalization - reported even when the AI check is off, since
+        // the ranker runs regardless and is otherwise completely invisible.
+        reviews: 0,     // saved words resurfaced because they came due
+        hidden: 0,      // matches skipped because the reader marked them known
+        confidence: 0   // how far the learned profile has ramped, 0..1
+    };
+}
+let pageStats = freshPageStats();
 
-function reportAiStats() {
+function reportPageStats() {
     try {
-        chrome.runtime.sendMessage({ type: 'MERID_AI_STATS', stats: aiStats }, () => {
+        chrome.runtime.sendMessage({ type: 'MERID_PAGE_STATS', stats: pageStats }, () => {
             void chrome.runtime.lastError; // popup closed / worker asleep: harmless
         });
     } catch (e) { /* extension context invalidated */ }
@@ -501,9 +531,9 @@ function reportAiStats() {
 /** Record why the check produced nothing, so the popup can say something
  *  more useful than a row of zeros. */
 function setAiState(state) {
-    if (aiStats.state === state) return;
-    aiStats.state = state;
-    reportAiStats();
+    if (pageStats.state === state) return;
+    pageStats.state = state;
+    reportPageStats();
 }
 
 function sentenceAround(span) {
@@ -550,11 +580,11 @@ function runAiContextCheck() {
         if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); setAiState('off'); return; }
         if (!res.ok || !Array.isArray(res.verdicts)) {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
-            aiStats.error = String(res.status || res.reason || 'unknown');
+            pageStats.error = String(res.status || res.reason || 'unknown');
             setAiState('error');
             return;
         }
-        aiStats.state = 'ok';
+        pageStats.state = 'ok';
         let reverted = 0;
         let upgraded = 0;
         batch.forEach((g, i) => {
@@ -573,13 +603,13 @@ function runAiContextCheck() {
             else { revertSpans(g.spans); reverted++; }
         });
 
-        aiStats.checked += batch.length;
-        aiStats.reverted += reverted;
-        aiStats.upgraded += upgraded;
-        aiStats.cached += res.cached || 0;
-        aiStats.asked += res.asked || 0;
-        if (res.model) aiStats.model = res.model;
-        reportAiStats();
+        pageStats.checked += batch.length;
+        pageStats.reverted += reverted;
+        pageStats.upgraded += upgraded;
+        pageStats.cached += res.cached || 0;
+        pageStats.asked += res.asked || 0;
+        if (res.model) pageStats.model = res.model;
+        reportPageStats();
 
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,

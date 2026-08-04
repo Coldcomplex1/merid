@@ -193,5 +193,26 @@
   },
   "tooltipAiFixed": {
     "message": "AI context check swapped this"
+  },
+  "popupLearnTitle": {
+    "message": "Personalized for you"
+  },
+  "popupLearnReview1": {
+    "message": "1 saved word brought back for review"
+  },
+  "popupLearnReviewN": {
+    "message": "%d saved words brought back for review"
+  },
+  "popupLearnHidden": {
+    "message": "%d words skipped - you already know them"
+  },
+  "popupLearnNone": {
+    "message": "Still learning what suits you."
+  },
+  "popupLevelUp": {
+    "message": "You already know a lot of %from% words. Try %to% →"
+  },
+  "popupLevelDown": {
+    "message": "%from% looks like a stretch right now. Try %to% →"
   }
 }

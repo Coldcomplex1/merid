@@ -63,6 +63,25 @@
             <p class="ai-foot" id="ai-foot" hidden></p>
         </section>
 
+        <!-- Local personalization. Deliberately its OWN section, not nested in
+             the AI panel: the ranker runs without an API key, and the dataset
+             advice is about the reader rather than the current page, so
+             neither may be hidden just because this tab has no AI stats. -->
+        <section class="ai-panel learn-panel" id="learn-panel" hidden>
+            <div class="learn-block" id="learn-block" hidden>
+                <div class="learn-head">
+                    <span data-i18n="popupLearnTitle">Personalized for you</span>
+                    <span class="learn-pct" id="learn-pct">0%</span>
+                </div>
+                <div class="learn-track"><span id="learn-fill"></span></div>
+                <p class="ai-foot" id="learn-detail"></p>
+            </div>
+
+            <!-- Shown only when the reader's own behaviour says their dataset
+                 no longer fits. One tap switches. -->
+            <button class="level-tip" id="level-tip" type="button" hidden></button>
+        </section>
+
         <section class="settings-section">
             <h3 class="section-title" data-i18n="popupMainSettings">Main settings</h3>
 
@@ -142,6 +161,7 @@
     </div>
 
     <script src="lib/vocab-core.js"></script>
+    <script src="lib/profile.js"></script>
     <script src="lib/firebase-config.js"></script>
     <script src="popup.js"></script>
 </body>

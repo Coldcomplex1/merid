@@ -105,7 +105,49 @@
     // -----------------------------------------------------------------
 
     function emptyWordStat() {
-        return { shown: 0, hover: 0, up: 0, down: 0, saved: 0, known: 0, aiOk: 0, aiBad: 0, lastSeen: 0 };
+        return {
+            shown: 0, hover: 0, up: 0, down: 0, saved: 0, known: 0, aiOk: 0, aiBad: 0,
+            lastSeen: 0,
+            stage: 0   // spaced-repetition step, only advanced for saved words
+        };
+    }
+
+    // ---------------------------------------------------------------------
+    // Spaced repetition for saved words.
+    //
+    // "Save to Deck" used to be a dead end for the reading experience: the
+    // word went into a list and the page never brought it back. These are the
+    // gaps after which a saved word becomes worth meeting again, growing each
+    // time the reader actually sees it - the standard expanding schedule.
+    // ---------------------------------------------------------------------
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const REVIEW_INTERVALS_MS = [1 * DAY_MS, 3 * DAY_MS, 7 * DAY_MS, 21 * DAY_MS, 60 * DAY_MS];
+
+    // A due word beats the normal ceiling: resurfacing it is the whole point,
+    // and it competes against words the reader has never asked for.
+    const REVIEW_MULTIPLIER = 3;
+
+    /**
+     * Is this a saved word the reader has not met for long enough that seeing
+     * it again would be useful? Never true for words they marked known, and
+     * never true for words they never saved.
+     */
+    function isDueForReview(profile, word, now) {
+        const p = withDefaults(profile);
+        const w = p.words[String(word || '').toLowerCase().trim()];
+        if (!w || w.saved <= 0 || w.known > 0) return false;
+        if (!w.lastSeen) return true; // saved elsewhere (site/deck) and never shown here
+        const idx = Math.min(w.stage, REVIEW_INTERVALS_MS.length - 1);
+        return (Number(now) || Date.now()) - w.lastSeen >= REVIEW_INTERVALS_MS[idx];
+    }
+
+    /** Words currently due, most overdue first. Drives the popup's review count. */
+    function dueForReview(profile, now) {
+        const p = withDefaults(profile);
+        const t = Number(now) || Date.now();
+        return Object.keys(p.words)
+            .filter(w => isDueForReview(p, w, t))
+            .sort((a, b) => (p.words[a].lastSeen || 0) - (p.words[b].lastSeen || 0));
     }
 
     function createProfile() {
@@ -153,7 +195,8 @@
                     if (!b || typeof b !== 'object') continue;
                     out[bucket][key] = {
                         up: Math.max(0, Number(b.up) || 0),
-                        down: Math.max(0, Number(b.down) || 0)
+                        down: Math.max(0, Number(b.down) || 0),
+                        known: Math.max(0, Number(b.known) || 0)
                     };
                 }
             }
@@ -256,9 +299,28 @@
         if (!word || !EVENT_NAMES.includes(event)) return next;
 
         const now = Number(ev.now) || Date.now();
+        // Due-ness has to be read BEFORE lastSeen moves, or every impression
+        // would look freshly seen and the schedule would never advance.
+        const wasDue = event === 'shown' && isDueForReview(next, word, now);
         const stat = next.words[word] || emptyWordStat();
         stat[event] = (stat[event] || 0) + 1;
-        if (event === 'shown') stat.lastSeen = now;
+        if (event === 'shown') {
+            // Advance only when a real interval elapsed. A word that is "due"
+            // merely because it has never been shown here (saved on another
+            // device and synced in) must not skip a step on first sight.
+            if (wasDue && stat.lastSeen > 0) {
+                stat.stage = Math.min(stat.stage + 1, REVIEW_INTERVALS_MS.length - 1);
+            }
+            stat.lastSeen = now;
+        }
+        // Saving a word restarts its schedule: the reader just told us they
+        // want to learn it, so the first review should come soon, not in 60
+        // days. They saved it from its own card, so they have just seen it -
+        // the clock starts now, not from whenever it was last rendered.
+        if (event === 'saved') {
+            stat.stage = 0;
+            stat.lastSeen = now;
+        }
         next.words[word] = stat;
 
         const weight = EVENT_WEIGHTS[event];
@@ -266,8 +328,12 @@
             const positive = weight > 0;
             const level = String((ev && ev.level) || '').toUpperCase();
             if (level) {
-                const b = next.levels[level] || { up: 0, down: 0 };
+                const b = next.levels[level] || { up: 0, down: 0, known: 0 };
                 b[positive ? 'up' : 'down'] += Math.abs(weight);
+                // Counted separately from `down` because the two mean opposite
+                // things for level advice: "I know this" says the dataset is
+                // too easy, a thumbs-down says the word was a bad fit.
+                if (event === 'known') b.known = (b.known || 0) + 1;
                 next.levels[level] = b;
             }
             const topic = String((ev && ev.topic) || '');
@@ -426,7 +492,59 @@
         const p = withDefaults(profile);
         const word = String((ctx && ctx.word) || '').toLowerCase().trim();
         if (p.words[word] && p.words[word].known > 0) return 0;
-        return Math.max(0, Math.min(100, base * frequencyMultiplier(p, ctx)));
+
+        let mult = frequencyMultiplier(p, ctx);
+        // A saved word that has come due outranks the learned preference: the
+        // reader explicitly asked to learn it, and the recency feature would
+        // otherwise keep damping exactly the words worth meeting again.
+        if (isDueForReview(p, word, ctx && ctx.now)) mult = Math.max(mult, REVIEW_MULTIPLIER);
+        return Math.max(0, Math.min(100, base * mult));
+    }
+
+    // -----------------------------------------------------------------
+    // Level advice
+    //
+    // The reader picks a dataset once and rarely revisits it. Their own
+    // behaviour says whether it still fits: marking a lot of its words "I know
+    // this" means it has run dry, while rating a lot of them down means it is
+    // ahead of them.
+    // -----------------------------------------------------------------
+    const LEVEL_ORDER = ['SAT', 'B2', 'C1', 'C2'];
+    const LEVEL_MIN_SAMPLES = 12;   // below this, behaviour is still noise
+    const LEVEL_UP_RATIO = 0.4;     // "known" share that means "too easy"
+    const LEVEL_DOWN_RATIO = 0.5;   // dislike share that means "too hard"
+
+    /**
+     * Suggest moving up or down a level, or null when the current one fits or
+     * there is not enough evidence yet.
+     *
+     * @returns {{direction:'up'|'down', from:string, to:string,
+     *            knownShare:number, samples:number}|null}
+     */
+    function suggestLevel(profile, currentTag) {
+        const p = withDefaults(profile);
+        const tag = String(currentTag || '').toUpperCase();
+        const idx = LEVEL_ORDER.indexOf(tag);
+        if (idx === -1) return null;              // "All"/custom: nothing to advise
+        const b = p.levels[tag];
+        if (!b) return null;
+
+        const samples = b.up + b.down;
+        if (samples < LEVEL_MIN_SAMPLES) return null;
+
+        const knownShare = (b.known || 0) / Math.max(1, samples);
+        if (knownShare >= LEVEL_UP_RATIO) {
+            // Skip B2 when it is not shipped as a dataset.
+            for (let i = idx + 1; i < LEVEL_ORDER.length; i++) {
+                return { direction: 'up', from: tag, to: LEVEL_ORDER[i], knownShare, samples };
+            }
+            return null;
+        }
+        const dislikeShare = b.down / Math.max(1, samples);
+        if (dislikeShare >= LEVEL_DOWN_RATIO && knownShare < 0.1 && idx > 0) {
+            return { direction: 'down', from: tag, to: LEVEL_ORDER[idx - 1], knownShare, samples };
+        }
+        return null;
     }
 
     // -----------------------------------------------------------------
@@ -457,7 +575,11 @@
             const wb = pb.words[key] || emptyWordStat();
             const merged = emptyWordStat();
             for (const f of Object.keys(merged)) {
-                merged[f] = f === 'lastSeen' ? Math.max(wa[f], wb[f]) : wa[f] + wb[f];
+                // lastSeen/stage are positions on a schedule, not tallies:
+                // summing them would push a word years into the future.
+                merged[f] = (f === 'lastSeen' || f === 'stage')
+                    ? Math.max(wa[f], wb[f])
+                    : wa[f] + wb[f];
             }
             out.words[key] = merged;
         }
@@ -465,9 +587,13 @@
         for (const bucket of ['levels', 'topics']) {
             for (const key of Object.keys(pa[bucket]).concat(Object.keys(pb[bucket]))) {
                 if (out[bucket][key]) continue;
-                const ba = pa[bucket][key] || { up: 0, down: 0 };
-                const bb = pb[bucket][key] || { up: 0, down: 0 };
-                out[bucket][key] = { up: ba.up + bb.up, down: ba.down + bb.down };
+                const ba = pa[bucket][key] || { up: 0, down: 0, known: 0 };
+                const bb = pb[bucket][key] || { up: 0, down: 0, known: 0 };
+                out[bucket][key] = {
+                    up: ba.up + bb.up,
+                    down: ba.down + bb.down,
+                    known: (ba.known || 0) + (bb.known || 0)
+                };
             }
         }
 
@@ -537,6 +663,8 @@
         createProfile, withDefaults, emptyWordStat,
         topicFromUrl, TOPIC_RULES,
         recordEvent, pruneWords, mergeProfiles,
+        REVIEW_INTERVALS_MS, REVIEW_MULTIPLIER, isDueForReview, dueForReview,
+        LEVEL_ORDER, LEVEL_MIN_SAMPLES, suggestLevel,
         featureVector, scoreCandidate, confidence,
         frequencyMultiplier, adjustedFrequency,
         describeProfile, bucketRate,

@@ -13,12 +13,14 @@ npm i --no-save playwright
 node e2e/interaction.mjs      # replacement, feedback signals, tooltip
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
+node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you
+node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level advice
 ```
 
 Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.
 Each script prints a pass/fail list and exits non-zero on failure.
 
-## Two traps worth knowing before editing these
+## Traps worth knowing before editing these
 
 - **Setting `datasetKey` in `chrome.storage.sync` does not switch the
   dataset.** The worker caches the parsed vocabulary and rebuilds it only via
@@ -31,3 +33,13 @@ Each script prints a pass/fail list and exits non-zero on failure.
   `chrome.runtime.getURL`. A blanket stub swallows those too, leaving an empty
   vocabulary, zero replacements, and assertions that pass vacuously because
   there is nothing on the page to be wrong about.
+
+- **Feedback is batched, not immediate.** The content script queues interaction
+  events and flushes after 4s (explicit ratings flush at once). A test that
+  closes the tab sooner is relying on the `pagehide` flush winning a race
+  against teardown - it usually loses. Wait out the timer with the page open.
+
+- **The worker cannot `sendMessage` to itself.** `chrome.runtime.sendMessage`
+  never invokes the sender's own listener, so a check driven from
+  `sw.evaluate` gets no reply at all. Drive message-based assertions from an
+  extension page (the popup or options page) instead.

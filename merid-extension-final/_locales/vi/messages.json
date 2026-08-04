@@ -193,5 +193,26 @@
   },
   "tooltipAiFixed": {
     "message": "AI đã đổi từ này cho hợp ngữ cảnh"
+  },
+  "popupLearnTitle": {
+    "message": "Cá nhân hóa cho bạn"
+  },
+  "popupLearnReview1": {
+    "message": "1 từ đã lưu được đưa lại để ôn"
+  },
+  "popupLearnReviewN": {
+    "message": "%d từ đã lưu được đưa lại để ôn"
+  },
+  "popupLearnHidden": {
+    "message": "%d từ được bỏ qua - bạn đã biết rồi"
+  },
+  "popupLearnNone": {
+    "message": "Vẫn đang học xem gì hợp với bạn."
+  },
+  "popupLevelUp": {
+    "message": "Bạn đã biết khá nhiều từ %from%. Thử %to% →"
+  },
+  "popupLevelDown": {
+    "message": "%from% đang hơi quá sức. Thử %to% →"
   }
 }

@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const P = require('../lib/profile.js');
 
 const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 
 /** Apply the same event n times, threading the profile through. */
 function repeat(profile, ev, n) {
@@ -241,6 +242,146 @@ test('pruning caps the table and keeps explicitly-rated words', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spaced repetition - the payoff for "Save to Deck"
+// ---------------------------------------------------------------------------
+const T0 = 1_000_000_000_000;
+
+test('only saved words ever come due', () => {
+    let p = P.createProfile();
+    p = P.recordEvent(p, { word: 'never-saved', event: 'shown', now: T0 });
+    assert.strictEqual(P.isDueForReview(p, 'never-saved', T0 + 400 * DAY), false);
+    assert.strictEqual(P.isDueForReview(p, 'not-even-seen', T0 + 400 * DAY), false);
+});
+
+test('a saved word comes due after the first interval, not before', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    assert.strictEqual(P.isDueForReview(p, 'candid', T0 + 12 * HOUR), false);
+    assert.strictEqual(P.isDueForReview(p, 'candid', T0 + 25 * HOUR), true);
+});
+
+test('each review pushes the next one further out', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    assert.strictEqual(p.words.candid.stage, 0);
+
+    let t = T0 + 2 * DAY;                       // due (interval 0 = 1 day)
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: t });
+    assert.strictEqual(p.words.candid.stage, 1);
+    assert.strictEqual(P.isDueForReview(p, 'candid', t + 2 * DAY), false, 'stage 1 waits 3 days');
+    assert.strictEqual(P.isDueForReview(p, 'candid', t + 4 * DAY), true);
+
+    t += 4 * DAY;
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: t });
+    assert.strictEqual(p.words.candid.stage, 2);
+    assert.strictEqual(P.isDueForReview(p, 'candid', t + 5 * DAY), false, 'stage 2 waits 7 days');
+});
+
+test('seeing a word that is NOT due does not advance the schedule', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 + HOUR });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 + 2 * HOUR });
+    assert.strictEqual(p.words.candid.stage, 0);
+});
+
+test('saving a word restarts its schedule', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    let t = T0;
+    for (let i = 0; i < 4; i++) {
+        t += 100 * DAY;
+        p = P.recordEvent(p, { word: 'candid', event: 'shown', now: t });
+    }
+    assert.ok(p.words.candid.stage > 0);
+    p = P.recordEvent(p, { word: 'candid', event: 'saved', now: t });
+    assert.strictEqual(p.words.candid.stage, 0, 'saving again means "bring this back soon"');
+});
+
+test('a due word beats the normal frequency ceiling', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    const notDue = P.adjustedFrequency(p, { word: 'candid', now: T0 + HOUR }, 20);
+    const due = P.adjustedFrequency(p, { word: 'candid', now: T0 + 5 * DAY }, 20);
+    assert.ok(due > notDue, `${due} should beat ${notDue}`);
+    assert.strictEqual(due, 60, 'due words get the review multiplier');
+});
+
+test('"I know this" cancels reviews even for a saved word', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'known', now: T0 });
+    assert.strictEqual(P.isDueForReview(p, 'candid', T0 + 90 * DAY), false);
+    assert.strictEqual(P.adjustedFrequency(p, { word: 'candid', now: T0 + 90 * DAY }, 100), 0);
+});
+
+test('reviews still respect the user turning replacement off', () => {
+    let p = P.recordEvent(P.createProfile(), { word: 'candid', event: 'saved', now: T0 });
+    p = P.recordEvent(p, { word: 'candid', event: 'shown', now: T0 });
+    assert.strictEqual(P.adjustedFrequency(p, { word: 'candid', now: T0 + 5 * DAY }, 0), 0);
+});
+
+test('dueForReview lists the most overdue words first', () => {
+    let p = P.createProfile();
+    for (const [w, t] of [['old', T0], ['newer', T0 + 10 * DAY], ['mid', T0 + 5 * DAY]]) {
+        p = P.recordEvent(p, { word: w, event: 'saved', now: t });
+        p = P.recordEvent(p, { word: w, event: 'shown', now: t });
+    }
+    assert.deepStrictEqual(P.dueForReview(p, T0 + 30 * DAY), ['old', 'mid', 'newer']);
+    assert.deepStrictEqual(P.dueForReview(p, T0), []);
+});
+
+// ---------------------------------------------------------------------------
+// Level advice
+// ---------------------------------------------------------------------------
+test('no advice without enough evidence', () => {
+    let p = P.createProfile();
+    p = repeat(p, { word: 'w', event: 'known', level: 'C1' }, 3);
+    assert.strictEqual(P.suggestLevel(p, 'C1'), null);
+});
+
+test('a level whose words the reader keeps knowing is called too easy', () => {
+    let p = P.createProfile();
+    for (let i = 0; i < 14; i++) p = P.recordEvent(p, { word: 'w' + i, event: 'known', level: 'C1' });
+    const s = P.suggestLevel(p, 'C1');
+    assert.ok(s, 'expected advice');
+    assert.strictEqual(s.direction, 'up');
+    assert.strictEqual(s.to, 'C2');
+});
+
+test('a level the reader keeps rejecting is called too hard', () => {
+    let p = P.createProfile();
+    for (let i = 0; i < 20; i++) p = P.recordEvent(p, { word: 'w' + i, event: 'down', level: 'C2' });
+    const s = P.suggestLevel(p, 'C2');
+    assert.ok(s, 'expected advice');
+    assert.strictEqual(s.direction, 'down');
+    assert.strictEqual(s.to, 'C1');
+});
+
+test('a level that suits the reader gets no advice', () => {
+    let p = P.createProfile();
+    for (let i = 0; i < 20; i++) p = P.recordEvent(p, { word: 'w' + i, event: 'up', level: 'C1' });
+    assert.strictEqual(P.suggestLevel(p, 'C1'), null);
+});
+
+test('no advice at the ends of the scale or for combined/custom sets', () => {
+    let p = P.createProfile();
+    for (let i = 0; i < 20; i++) p = P.recordEvent(p, { word: 'w' + i, event: 'known', level: 'C2' });
+    assert.strictEqual(P.suggestLevel(p, 'C2'), null, 'nothing above C2');
+    assert.strictEqual(P.suggestLevel(p, 'ALL'), null);
+    assert.strictEqual(P.suggestLevel(p, 'CUSTOM'), null);
+    assert.strictEqual(P.suggestLevel(p, ''), null);
+});
+
+test('"known" and "down" are counted apart - they mean opposite things', () => {
+    let p = P.createProfile();
+    for (let i = 0; i < 20; i++) p = P.recordEvent(p, { word: 'w' + i, event: 'down', level: 'C1' });
+    assert.strictEqual(p.levels.C1.known, 0, 'a thumbs-down is not "I know this"');
+    let q = P.createProfile();
+    for (let i = 0; i < 20; i++) q = P.recordEvent(q, { word: 'w' + i, event: 'known', level: 'C1' });
+    assert.strictEqual(q.levels.C1.known, 20);
+});
+
+// ---------------------------------------------------------------------------
 // Cross-device merge
 // ---------------------------------------------------------------------------
 test('merging sums counters instead of letting one device win', () => {
@@ -285,6 +426,16 @@ test('merging with an empty or missing profile is a no-op', () => {
         assert.strictEqual(m.words.x.up, 3);
         assert.strictEqual(m.events, a.events);
     }
+});
+
+test('merging takes the further review stage, never the sum', () => {
+    let a = P.recordEvent(P.createProfile(), { word: 'w', event: 'saved', now: T0 });
+    a = P.recordEvent(a, { word: 'w', event: 'shown', now: T0 });
+    a = P.recordEvent(a, { word: 'w', event: 'shown', now: T0 + 5 * DAY });   // stage 1
+    let b = P.recordEvent(P.createProfile(), { word: 'w', event: 'saved', now: T0 });
+    b = P.recordEvent(b, { word: 'w', event: 'shown', now: T0 });
+    const m = P.mergeProfiles(a, b);
+    assert.strictEqual(m.words.w.stage, 1, 'summing stages would push reviews years out');
 });
 
 test('merged profile stays within the size cap', () => {
