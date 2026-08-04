@@ -21,26 +21,31 @@ allowance and buy you nothing.
 For each project: <https://aistudio.google.com/apikey> → **Create API key** →
 choose **a new project** each time → copy the key.
 
-### What one project actually gives you
+### What one key actually gives you
 
-Only text-out models can answer a context check. From a current free-tier
-project:
+Verified against a real key on 2026-08-04: **31 usable text models**, and the
+proxy's ranking picks `gemini-3.5-flash-lite` first. Only text-out models can
+answer a context check, and the free tier splits them sharply:
 
-| Model | Requests/min | Requests/day |
+| Model tier | Requests/min | Requests/day |
 | --- | --- | --- |
-| Gemini 3.1 Flash Lite | 15 | **500** |
-| Gemini 3.5 Flash Lite | 15 | **500** |
-| Gemini 2.5 Flash Lite | 10 | 20 |
-| Gemini 2.5 / 3 / 3.5 / 3.6 Flash | 5 each | 20 each |
+| Flash Lite (3.5, 3.1, 2.5) | 10-15 each | **500 each** for the newest two |
+| Flash (2.5, 3, 3.5, 3.6) | 5 each | 20 each |
+| Pro | - | 0 on the free tier |
 
 That is roughly **1,100 requests per day per project**, almost all of it from
-the two Flash Lite models. At 50 checks/day per signed-in reader that is about
-**22 readers per project per day**; ten projects, about 220.
+the two newest Flash Lite models. At 50 checks/day per signed-in reader that is
+about **22 readers per project per day**.
 
-The proxy does not hardcode any of these names. It asks each key which models
-it can actually run (`GET /v1beta/models`), ranks the answer, and re-checks
-hourly - so a model Google adds or retires needs no code change. Non-text
-models (TTS, image, embedding, computer-use) are filtered out.
+The proxy hardcodes none of these names. It asks each key what it can run
+(`GET /v1beta/models`), ranks the answer, and re-checks hourly - so a model
+Google adds or retires needs no code change. Non-text models (TTS, image,
+embedding, computer-use) are filtered out.
+
+**Check whether your keys are in the same project.** Two keys in one project
+share one project's allowance and buy no extra capacity. In
+<https://aistudio.google.com/apikey> each key lists its project - if they match,
+create the next key with **a new project** to actually add headroom.
 
 ### How far a reader gets on their allowance
 
@@ -76,39 +81,78 @@ everyone who has not signed in.
 
 ---
 
-## 4. Set the Vercel environment variables
+## 4. Deploy it on Vercel
 
-Vercel project → **Settings → Environment Variables**. Add all of these for
-**Production** (and Preview, if you test there), then redeploy.
+Everything below is on <https://vercel.com/dashboard> → the **merid** project.
 
-| Variable | Value |
+### 4a. Get the code onto the deployed branch
+
+The proxy lives in `api/` on the branch
+`claude/english-vocab-chrome-extension-sksk6c`. Vercel builds `main`, so the
+branch has to be merged (or the Production Branch changed in
+**Settings → Git**). Until then `/api/check` returns Vercel's 404 page.
+
+### 4b. Add the environment variables
+
+**Settings → Environment Variables.** For each row: paste the name, paste the
+value, tick **Production** (and **Preview** if you test there), **Save**.
+
+| Name | Value |
 | --- | --- |
-| `GEMINI_API_KEYS` | Your keys, comma-separated. Add more any time - no redeploy of the extension needed. |
-| `UPSTASH_REDIS_REST_URL` | From step 2. |
-| `UPSTASH_REDIS_REST_TOKEN` | From step 2. |
-| `FIREBASE_PROJECT_ID` | `merid-49dd5` - the proxy rejects tokens issued for any other project. |
-| `MERID_LIMIT_SIGNED_IN` | Optional, default `50`. |
-| `MERID_LIMIT_ANONYMOUS` | Optional, default `20`. |
+| `GEMINI_API_KEYS` | The Gemini keys, comma-separated, no spaces or quotes: `key1,key2` |
+| `UPSTASH_REDIS_REST_URL` | The `https://….upstash.io` URL |
+| `UPSTASH_REDIS_REST_TOKEN` | The Upstash REST token |
+| `FIREBASE_PROJECT_ID` | `merid-49dd5` |
+| `MERID_LIMIT_SIGNED_IN` | *(optional)* `50` |
+| `MERID_LIMIT_ANONYMOUS` | *(optional)* `20` |
 
-`GEMINI_API_KEYS` is a real secret. It exists only here.
+Two things that silently break this:
 
----
+- **Do not wrap values in quotes.** Vercel stores the value literally, so
+  `"key1,key2"` makes the quotes part of the key and every call 403s.
+- **Use the Upstash token that can write.** Upstash offers a read-only token
+  as well; the counter uses `INCR`, so a read-only token fails every request
+  and - because the quota fails closed - the AI check stays off for everyone.
+
+### 4c. Redeploy
+
+Environment variables only reach a build that starts after they are saved.
+**Deployments → the latest one → ⋯ → Redeploy.**
 
 ## 5. Check it works
 
+Run these in order. Each one isolates a different failure.
+
+**1. Is the function deployed?**
 ```bash
 curl -i -X POST https://merid.site/api/check \
-  -H 'Content-Type: application/json' \
-  -d '{"items":[{"word":"abolish","original":"bãi bỏ","sentence":"Bãi bỏ quy định cũ."}]}'
+  -H 'Content-Type: application/json' -d '{"items":[]}'
 ```
+Expect **`401 {"ok":false,"code":"unauthorized"}`** - no token was sent. That
+already proves the function exists, is reachable, and is not open to the
+public. A **404** means step 4a is not done. A **500
+`server-misconfigured`** means `FIREBASE_PROJECT_ID` or the Upstash pair is
+missing.
 
-Expect **401 `unauthorized`** - no token was sent. That single response already
-proves the function deployed, is reachable, and is not open to the public.
+**2. Does Upstash accept the token?** (run this yourself - it needs the token)
+```bash
+curl -s -X POST "$UPSTASH_REDIS_REST_URL/pipeline" \
+  -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '[["INCR","merid:smoke"],["GET","merid:smoke"]]'
+```
+Expect `[{"result":1},{"result":"1"}]`. An error mentioning permissions means
+the read-only token was used - go back to 4b.
 
-For the real path: load the extension, open a Vietnamese page, and watch
-Settings → *AI context check*. It shows how many checks are left today.
+**3. Does a key still have quota?**
+```bash
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=3&key=YOUR_KEY" | head -5
+```
+Expect a JSON list of models.
 
----
+**4. End to end.** Load the extension, open a Vietnamese news page, then
+**Settings → AI context check**. It shows how many checks are left today. If it
+says nothing, the extension never got an answer - re-run step 1.
 
 ## Behaviour worth knowing
 
@@ -137,3 +181,20 @@ No URLs, no page titles, no browsing history, no account details beyond the
 Firebase uid the quota is counted against. This is a change from the
 key-per-user setup, where snippets went straight to Google: `PRIVACY.md` and
 the Chrome Web Store data disclosure need to say so.
+
+---
+
+## Rotate anything that has been pasted somewhere else
+
+`GEMINI_API_KEYS` and `UPSTASH_REDIS_REST_TOKEN` are real secrets, and Vercel's
+environment variables are the only place they belong. Any key that has been in
+a chat, an email, a screenshot or a commit should be replaced once setup works:
+
+- **Gemini:** <https://aistudio.google.com/apikey> → delete the old key, create
+  a new one in the same project, update `GEMINI_API_KEYS`, redeploy.
+- **Upstash:** console → the database → **Details → Reset token**, update
+  `UPSTASH_REDIS_REST_TOKEN`, redeploy.
+
+Rotating costs one redeploy and no downtime worth mentioning. Leaving a leaked
+Gemini key live means someone else spends your daily allowance; leaving a
+leaked Upstash token live means someone can clear every user's counter.
