@@ -15,6 +15,7 @@ node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
 node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you
 node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level advice
+node e2e/hosted.mjs           # Merid-hosted AI: identity, quota, personal-key priority
 ```
 
 Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.

@@ -40,48 +40,6 @@
             <button class="create-link" id="create-dataset-link" type="button" data-i18n="popupCreateDataset">＋ Create your own dataset ↗</button>
         </section>
 
-        <!-- What the AI context check did on the current tab. Populated from
-             the per-tab tallies the content script reports; hidden entirely on
-             pages Merid does not run on. -->
-        <section class="ai-panel" id="ai-panel" hidden>
-            <h3 class="section-title" data-i18n="popupAiPanelTitle">AI on this page</h3>
-            <p class="ai-state" id="ai-state"></p>
-            <div class="ai-stats" id="ai-stats" hidden>
-                <div class="ai-stat">
-                    <span class="ai-num" id="ai-checked">0</span>
-                    <span class="ai-lbl" data-i18n="popupAiChecked">checked</span>
-                </div>
-                <div class="ai-stat ai-stat-good">
-                    <span class="ai-num" id="ai-fixed">0</span>
-                    <span class="ai-lbl" data-i18n="popupAiFixed">fixed</span>
-                </div>
-                <div class="ai-stat">
-                    <span class="ai-num" id="ai-saved-calls">0</span>
-                    <span class="ai-lbl" data-i18n="popupAiCachedShort">free</span>
-                </div>
-            </div>
-            <p class="ai-foot" id="ai-foot" hidden></p>
-        </section>
-
-        <!-- Local personalization. Deliberately its OWN section, not nested in
-             the AI panel: the ranker runs without an API key, and the dataset
-             advice is about the reader rather than the current page, so
-             neither may be hidden just because this tab has no AI stats. -->
-        <section class="ai-panel learn-panel" id="learn-panel" hidden>
-            <div class="learn-block" id="learn-block" hidden>
-                <div class="learn-head">
-                    <span data-i18n="popupLearnTitle">Personalized for you</span>
-                    <span class="learn-pct" id="learn-pct">0%</span>
-                </div>
-                <div class="learn-track"><span id="learn-fill"></span></div>
-                <p class="ai-foot" id="learn-detail"></p>
-            </div>
-
-            <!-- Shown only when the reader's own behaviour says their dataset
-                 no longer fits. One tap switches. -->
-            <button class="level-tip" id="level-tip" type="button" hidden></button>
-        </section>
-
         <section class="settings-section">
             <h3 class="section-title" data-i18n="popupMainSettings">Main settings</h3>
 
@@ -133,6 +91,10 @@
             <button class="btn-view-deck" id="view-deck-btn" type="button" data-i18n="popupViewDeck">View my deck ↗</button>
             <button class="ai-hint" id="ai-hint" type="button" data-i18n="popupAiCheck">AI Context Check</button>
             <p class="sync-hint" id="sync-hint" hidden></p>
+            <!-- Shown only when today's AI allowance is spent, so a reader who
+                 notices the check went quiet knows why rather than assuming
+                 something broke. Silent the rest of the time. -->
+            <p class="sync-hint quota-hint" id="quota-hint" hidden></p>
             <div class="footer-links">
                 <button class="link-btn" id="options-btn" type="button" data-i18n="popupSettings">Settings</button>
             </div>
@@ -161,7 +123,6 @@
     </div>
 
     <script src="lib/vocab-core.js"></script>
-    <script src="lib/profile.js"></script>
     <script src="lib/firebase-config.js"></script>
     <script src="popup.js"></script>
 </body>

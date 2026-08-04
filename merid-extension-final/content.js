@@ -5,8 +5,9 @@
 //
 // Matching/normalization is pure and local (lib/vocab-core.js, VMCore). The
 // user's deck ("Save to Deck") and known words ("I know this") are stored
-// locally in chrome.storage.local. The only network use is the optional AI
-// context check, routed through the background worker and OFF by default.
+// locally in chrome.storage.local. The only network use is the AI context
+// check, which is routed through the background worker - this file never
+// makes a request of its own.
 // =============================================================
 
 const C = window.VMCore;
@@ -101,10 +102,6 @@ function init() {
     hoveredThisPage = new Set();
     pageTopic = P ? P.topicFromUrl(location.href) : 'general';
 
-    // Clear the previous page's AI tally immediately, so the popup can never
-    // show a stale count during the ~1.5s before the first check runs.
-    pageStats = freshPageStats();
-    reportPageStats();
 
     // Snapshot the learned profile for this scan. Fetching it once (rather than
     // per candidate word) keeps the scan synchronous and means every word on a
@@ -146,13 +143,9 @@ function startScan() {
 
             const start = () => {
                 scanStartedAt = Date.now();
-                pageStats.confidence = (P && profile) ? P.confidence(profile) : 0;
                 const vocabMap = C.buildVocabMap(vocabulary, modes);
                 processPage(vocabMap);
                 observeChanges(vocabMap);
-                // Publish now: the ranker has already done its work, and with
-                // the AI check off this is the only report the popup will get.
-                reportPageStats();
             };
 
             if (vocabulary.length > 0) {
@@ -252,7 +245,6 @@ function processTextNode(node, vocabMap) {
 
         // "I know this" - never replace words the user already knows.
         if (knownSet.has(replaceWith.toLowerCase())) {
-            pageStats.hidden++;
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -293,9 +285,9 @@ function processTextNode(node, vocabMap) {
         if (!shownThisPage.has(wl)) {
             shownThisPage.add(wl);
             // Due-ness is read against the scan's profile snapshot, before the
-            // "shown" event below moves the word's clock forward.
+            // "shown" event below moves the word's clock forward. The marker is
+            // what tells the reader why a word they saved has come back.
             if (P && profile && P.isDueForReview(profile, wl, scanStartedAt)) {
-                pageStats.reviews++;
                 span.dataset.review = '1';
                 span.classList.add('vocab-review');
             }
@@ -392,7 +384,6 @@ function processNodeBatch(nodes, vocabMap) {
         for (; index < end; index++) processTextNode(nodes[index], vocabMap);
         if (index < nodes.length) requestAnimationFrame(run);
         else if (nodes.length) {
-            reportPageStats();        // counts move as dynamic content arrives
             scheduleAiContextCheck(); // dynamic content settled
         }
     }
@@ -499,42 +490,6 @@ function scheduleAiContextCheck() {
     aiCheckTimer = setTimeout(runAiContextCheck, AI_CHECK_DEBOUNCE_MS);
 }
 
-// -------------------------------------------------------------
-// AI activity report
-//
-// The context check is otherwise invisible: it quietly reverts or upgrades
-// words and the reader has no way to tell it ran at all. These running totals
-// are pushed to the service worker, which badges the toolbar icon and feeds
-// the "AI on this page" panel in the popup.
-// -------------------------------------------------------------
-function freshPageStats() {
-    return {
-        // AI context check
-        checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, model: '', state: 'idle',
-        // Local personalization - reported even when the AI check is off, since
-        // the ranker runs regardless and is otherwise completely invisible.
-        reviews: 0,     // saved words resurfaced because they came due
-        hidden: 0,      // matches skipped because the reader marked them known
-        confidence: 0   // how far the learned profile has ramped, 0..1
-    };
-}
-let pageStats = freshPageStats();
-
-function reportPageStats() {
-    try {
-        chrome.runtime.sendMessage({ type: 'MERID_PAGE_STATS', stats: pageStats }, () => {
-            void chrome.runtime.lastError; // popup closed / worker asleep: harmless
-        });
-    } catch (e) { /* extension context invalidated */ }
-}
-
-/** Record why the check produced nothing, so the popup can say something
- *  more useful than a row of zeros. */
-function setAiState(state) {
-    if (pageStats.state === state) return;
-    pageStats.state = state;
-    reportPageStats();
-}
 
 function sentenceAround(span) {
     const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
@@ -575,16 +530,13 @@ function runAiContextCheck() {
     aiChecksSent++;
     log('[VM] AI context check: sending', items.length, 'items (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
-        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); setAiState('error'); return; }
-        if (!res) { console.warn('[VM] AI check: no response.'); setAiState('error'); return; }
-        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); setAiState('off'); return; }
+        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
+        if (!res) { console.warn('[VM] AI check: no response.'); return; }
+        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); return; }
         if (!res.ok || !Array.isArray(res.verdicts)) {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
-            pageStats.error = String(res.status || res.reason || 'unknown');
-            setAiState('error');
             return;
         }
-        pageStats.state = 'ok';
         let reverted = 0;
         let upgraded = 0;
         batch.forEach((g, i) => {
@@ -603,13 +555,6 @@ function runAiContextCheck() {
             else { revertSpans(g.spans); reverted++; }
         });
 
-        pageStats.checked += batch.length;
-        pageStats.reverted += reverted;
-        pageStats.upgraded += upgraded;
-        pageStats.cached += res.cached || 0;
-        pageStats.asked += res.asked || 0;
-        if (res.model) pageStats.model = res.model;
-        reportPageStats();
 
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,

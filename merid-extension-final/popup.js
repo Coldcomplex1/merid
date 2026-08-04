@@ -149,8 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const siteToggle = document.getElementById('site-toggle');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs && tabs[0];
-        if (tab && typeof tab.id === 'number') renderAiPanel(tab.id);
-        renderPersonalization(null); // page-independent: also runs when there are no stats
         let host = '';
         try {
             const u = new URL(tab.url);
@@ -300,142 +298,26 @@ document.addEventListener('DOMContentLoaded', () => {
         else labels[2].classList.add('active');
     }
 
+    // Today's AI allowance, if and only if it has run out.
+    (function renderQuotaHint() {
+        const el = document.getElementById('quota-hint');
+        if (!el) return;
+        chrome.storage.local.get(['vm_ai_quota'], (r) => {
+            const q = r.vm_ai_quota;
+            if (!q || !q.exhausted) return;
+            // A stale "exhausted" from a previous day must not linger.
+            if (q.resetAt && Date.now() > q.resetAt) return;
+            el.textContent = q.anonymous
+                ? t('popupQuotaAnon', 'AI checks used up for today. Sign in for more.')
+                : t('popupQuotaOut', 'AI checks used up for today. Resets at midnight UTC.');
+            el.hidden = false;
+        });
+    })();
+
     function updateExtensionToggleButton(enabled) {
         extensionToggle.textContent = enabled
             ? t('popupExtensionOn', 'Extension is ON')
             : t('popupExtensionOff', 'Extension is OFF');
         extensionToggle.classList.toggle('active', enabled);
-    }
-
-    // ---- "AI on this page" -------------------------------------------------
-    // The context check is otherwise invisible. This turns it into something
-    // the user can point at: how many replacements it read, how many it
-    // corrected, and how many answers came free from the cache.
-    function renderAiPanel(tabId) {
-        const panel = document.getElementById('ai-panel');
-        const stateEl = document.getElementById('ai-state');
-        const statsEl = document.getElementById('ai-stats');
-        const footEl = document.getElementById('ai-foot');
-        if (!panel) return;
-
-        chrome.runtime.sendMessage({ type: 'MERID_PAGE_STATS_GET', tabId }, (res) => {
-            if (chrome.runtime.lastError) return;
-            const s = res && res.stats;
-            if (!s) return; // Merid never ran here (non-web page, paused site)
-
-            panel.hidden = false;
-            renderPersonalization(s);
-            const fixes = s.reverted + s.upgraded;
-
-            if (s.state === 'off') {
-                stateEl.textContent = t('popupAiStateOff', 'Off - add your Gemini API key in Settings to switch it on.');
-                stateEl.className = 'ai-state muted';
-                statsEl.hidden = true;
-                footEl.hidden = true;
-                return;
-            }
-            if (s.state === 'error') {
-                stateEl.textContent = t('popupAiStateError', 'Could not reach Gemini. Check your key in Settings.')
-                    + (s.error ? ` (${s.error})` : '');
-                stateEl.className = 'ai-state bad';
-                statsEl.hidden = true;
-                footEl.hidden = true;
-                return;
-            }
-            if (s.state === 'idle' || s.checked === 0) {
-                stateEl.textContent = t('popupAiStateIdle', 'Watching this page…');
-                stateEl.className = 'ai-state muted';
-                statsEl.hidden = true;
-                footEl.hidden = true;
-                return;
-            }
-
-            stateEl.textContent = fixes > 0
-                ? t('popupAiStateFixed', 'Checked every swapped word against its sentence.')
-                : t('popupAiStateClean', 'Checked every swapped word - all of them fit.');
-            stateEl.className = 'ai-state good';
-            statsEl.hidden = false;
-            document.getElementById('ai-checked').textContent = String(s.checked);
-            document.getElementById('ai-fixed').textContent = String(fixes);
-            document.getElementById('ai-saved-calls').textContent = String(s.cached);
-
-            if (s.model) {
-                footEl.hidden = false;
-                footEl.textContent = s.model + (s.cached > 0
-                    ? ' - ' + t('popupAiCachedNote', 'answers reused from cache cost nothing')
-                    : '');
-            }
-        });
-    }
-
-    // ---- Personalization ---------------------------------------------------
-    // The ranker runs with or without an API key, and until now left no trace
-    // at all. This says how far it has learned and what it did on this page.
-    function renderLearnBlock(profile, s) {
-        const block = document.getElementById('learn-block');
-        const panel = document.getElementById('learn-panel');
-        const P = window.VMProfile;
-        if (!block || !P) return;
-        s = s || {};
-        const pct = Math.round(P.confidence(profile) * 100);
-        const bits = [];
-        if (s.reviews > 0) {
-            bits.push(s.reviews === 1
-                ? t('popupLearnReview1', '1 saved word brought back for review')
-                : t('popupLearnReviewN', 'saved words brought back for review').replace('%d', s.reviews));
-        }
-        if (s.hidden > 0) {
-            bits.push(t('popupLearnHidden', 'words skipped - you already know them').replace('%d', s.hidden));
-        }
-        // Nothing learned and nothing done: stay quiet rather than show 0%.
-        if (pct === 0 && !bits.length) { block.hidden = true; return; }
-
-        block.hidden = false;
-        if (panel) panel.hidden = false;
-        document.getElementById('learn-pct').textContent = pct + '%';
-        document.getElementById('learn-fill').style.width = pct + '%';
-        document.getElementById('learn-detail').textContent = bits.length
-            ? bits.join(' · ')
-            : t('popupLearnNone', 'Still learning what suits you.');
-    }
-
-    // ---- Level advice ------------------------------------------------------
-    function renderPersonalization(stats) {
-        chrome.runtime.sendMessage({ type: 'MERID_PROFILE_GET' }, (res) => {
-            if (chrome.runtime.lastError || !res || !res.ok) return;
-            renderLearnBlock(res.profile, stats);
-            renderLevelTip(res.profile);
-        });
-    }
-
-    function renderLevelTip(profile) {
-        const btn = document.getElementById('level-tip');
-        const panel = document.getElementById('learn-panel');
-        const P = window.VMProfile;
-        if (!btn || !P) return;
-        chrome.storage.sync.get(['datasetKey'], (s) => {
-            // "All" and custom sets have no position on the CEFR ladder, so
-            // suggestLevel returns null for them and nothing is shown.
-            const tip = P.suggestLevel(profile, C.datasetTagFor(s.datasetKey || 'sat'));
-            if (!tip) { btn.hidden = true; return; }
-
-            const key = tip.direction === 'up' ? 'popupLevelUp' : 'popupLevelDown';
-            const fallback = tip.direction === 'up'
-                ? 'You already know a lot of %from% words. Try %to% →'
-                : '%from% looks like a stretch right now. Try %to% →';
-            btn.textContent = t(key, fallback).replace('%from%', tip.from).replace('%to%', tip.to);
-            btn.hidden = false;
-            if (panel) panel.hidden = false;
-
-            btn.onclick = () => {
-                const target = tip.to.toLowerCase();
-                chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: target }, () => {
-                    void chrome.runtime.lastError;
-                    document.querySelectorAll('.dataset-btn').forEach(b =>
-                        b.classList.toggle('active', b.dataset.key === target));
-                    btn.hidden = true;
-                });
-            };
-        });
     }
 });

@@ -214,5 +214,11 @@
   },
   "popupLevelDown": {
     "message": "%from% đang hơi quá sức. Thử %to% →"
+  },
+  "popupQuotaOut": {
+    "message": "Đã dùng hết lượt AI hôm nay. Reset lúc 0h UTC."
+  },
+  "popupQuotaAnon": {
+    "message": "Đã dùng hết lượt AI hôm nay. Đăng nhập để có thêm."
   }
 }

@@ -7,14 +7,15 @@
 //     page and content script.
 //
 // The core experience is fully local: vocabulary datasets are bundled CSV
-// files read via chrome.runtime.getURL(). Two OPTIONAL features touch the
-// network, both off until the user opts in: deck sync to the user's own
-// Firestore account after sign-in (lib/sync.js), and the AI context check,
-// which sends short sentence snippets to Gemini using the user's own key.
-// Page content is never sent anywhere else.
+// files read via chrome.runtime.getURL(). Two features touch the network:
+// deck sync to the user's own Firestore account after sign-in (lib/sync.js,
+// off until they sign in), and the AI context check, which sends short
+// sentence snippets to Gemini - either through Merid's own metered endpoint
+// (lib/ai-proxy.js) or, if the user saved a personal API key, straight from
+// their browser to Google. Page content goes nowhere else.
 // =============================================================
 
-importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
+importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/ai-proxy.js', 'lib/sync.js');
 
 // Release builds keep the console quiet; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -26,6 +27,7 @@ const Prof = self.VMProfile;
 const Custom = self.VMCustom;
 const Sync = self.VMSync;
 const FB = self.VMFirebase;
+const AiProxy = self.VMAiProxy;
 const FBConfig = self.VMFirebaseConfig || {};
 
 // ---- In-memory state (rehydrated on SW wake) ----
@@ -515,7 +517,17 @@ async function writeAiCache(cache, additions, now) {
 async function aiCheckContext(items) {
     const sync = await chrome.storage.sync.get(['aiCheckEnabled']);
     const local = await chrome.storage.local.get(['geminiApiKey']);
-    if (!sync.aiCheckEnabled || !local.geminiApiKey) return { ok: false, disabled: true };
+
+    // Two ways to reach Gemini, in this order:
+    //   1. The reader's OWN key, if they saved one. It goes straight from their
+    //      browser to Google, has no daily cap from us, and never touches a
+    //      Merid server. Power users and anyone uncomfortable with (2) can opt
+    //      into it from Settings.
+    //   2. Merid's hosted endpoint, which holds the keys and the per-user
+    //      counter server-side. This is what everyone else gets, with no setup.
+    const ownKey = local.geminiApiKey;
+    const hosted = !ownKey && AiProxy && AiProxy.available();
+    if (!sync.aiCheckEnabled || (!ownKey && !hosted)) return { ok: false, disabled: true };
     if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [], cached: 0 };
 
     const capped = items.slice(0, AI_CHECK_MAX_ITEMS).map(it => ({
@@ -548,10 +560,10 @@ async function aiCheckContext(items) {
         return { ok: true, verdicts, betters, cached: cachedCount, asked: 0 };
     }
 
-    const list = askIdx.map((srcIdx, n) => {
-        const it = capped[srcIdx];
-        return `${n + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`;
-    }).join('\n');
+    const ask = askIdx.map(i => capped[i]);
+    const list = ask.map((it, n) =>
+        `${n + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`
+    ).join('\n');
 
     // Personalization: a compact, aggregate description of this reader's taste.
     // Contains no page content and no identifiers - only preferences learned
@@ -560,6 +572,29 @@ async function aiCheckContext(items) {
     const profile = await getProfile();
     const who = Prof.describeProfile(profile);
     const persona = who ? `The reader ${who}. Prefer suggestions that suit them.\n` : '';
+
+    // ---- Hosted path: the server holds the keys, picks the model and meters
+    // the reader. It returns the same shape as the direct path below, so the
+    // caching and merging underneath are identical either way.
+    if (hosted) {
+        const res = await AiProxy.check(ask, who);
+        if (!res.ok) {
+            log('[VM] AI check via proxy failed:', res.reason || '', res.status || '');
+            return { ok: false, reason: res.reason, status: res.status, quota: res.reason === 'quota' };
+        }
+        const additions = {};
+        res.verdicts.forEach((v, n) => {
+            const srcIdx = askIdx[n];
+            if (srcIdx === undefined) return;
+            const better = res.betters[n] || '';
+            verdicts[srcIdx] = v;
+            betters[srcIdx] = better;
+            additions[keys[srcIdx]] = better ? [v, now, better] : [v, now];
+        });
+        await writeAiCache(cache, additions, now);
+        log('[VM] AI check (hosted):', cachedCount, 'cached,', ask.length, 'asked');
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: ask.length, model: res.model, hosted: true };
+    }
 
     const prompt =
         'In each sentence below, one Vietnamese word/phrase was replaced by an English word. ' +
@@ -571,7 +606,7 @@ async function aiCheckContext(items) {
 
     try {
         // Room for the suggestion field on top of each verdict.
-        const res = await callGemini(local.geminiApiKey, prompt, 60 + askIdx.length * 28, AI_VERDICT_SCHEMA);
+        const res = await callGemini(ownKey, prompt, 60 + ask.length * 28, AI_VERDICT_SCHEMA);
         if (!res.ok) return res;
 
         let parsed;
@@ -587,7 +622,7 @@ async function aiCheckContext(items) {
         for (const row of parsed) {
             if (!row || typeof row !== 'object') continue;
             const n = Number(row.i);
-            if (!Number.isInteger(n) || n < 1 || n > askIdx.length) continue;
+            if (!Number.isInteger(n) || n < 1 || n > ask.length) continue;
             const srcIdx = askIdx[n - 1];
             const v = row.ok ? 1 : 0;
             // A suggestion is only meaningful for a rejected word, and only as
@@ -669,56 +704,6 @@ function resetProfile() {
     return profileWriteChain;
 }
 
-// =============================================================
-// AI activity per tab.
-//
-// The context check is silent by design - it changes a word back or swaps a
-// better one in, and that is all the reader sees. These per-tab tallies make
-// it legible: the toolbar icon carries a badge with the number of fixes, and
-// the popup shows the full breakdown for the current page.
-//
-// Memory only, keyed by tab id, cleared when the tab navigates or closes.
-// Nothing about which words or which page is persisted anywhere.
-// =============================================================
-const pageTabStats = new Map();
-
-function setAiBadge(tabId, stats) {
-    const fixes = (stats.reverted || 0) + (stats.upgraded || 0);
-    const text = fixes > 0 ? String(fixes) : '';
-    try {
-        chrome.action.setBadgeText({ tabId, text });
-        if (text) {
-            chrome.action.setBadgeBackgroundColor({ tabId, color: '#19355D' });
-            chrome.action.setTitle({ tabId, title: `Merid - AI fixed ${fixes} word${fixes === 1 ? '' : 's'} on this page` });
-        } else {
-            chrome.action.setTitle({ tabId, title: '' }); // fall back to the manifest title
-        }
-    } catch (e) { /* tab closed mid-update */ }
-}
-
-function recordPageStats(tabId, stats) {
-    if (typeof tabId !== 'number' || !stats || typeof stats !== 'object') return { ok: false };
-    const clean = {
-        checked: Math.max(0, Number(stats.checked) || 0),
-        reverted: Math.max(0, Number(stats.reverted) || 0),
-        upgraded: Math.max(0, Number(stats.upgraded) || 0),
-        cached: Math.max(0, Number(stats.cached) || 0),
-        asked: Math.max(0, Number(stats.asked) || 0),
-        model: String(stats.model || '').slice(0, 40),
-        state: ['idle', 'ok', 'off', 'error'].includes(stats.state) ? stats.state : 'idle',
-        error: String(stats.error || '').slice(0, 60),
-        // Local personalization - reported whether or not the AI check is on.
-        reviews: Math.max(0, Number(stats.reviews) || 0),
-        hidden: Math.max(0, Number(stats.hidden) || 0),
-        confidence: Math.min(1, Math.max(0, Number(stats.confidence) || 0)),
-        at: Date.now()
-    };
-    pageTabStats.set(tabId, clean);
-    setAiBadge(tabId, clean);
-    return { ok: true };
-}
-
-chrome.tabs.onRemoved.addListener(tabId => pageTabStats.delete(tabId));
 
 async function aiTestKey(key) {
     const k = String(key || '').trim();
@@ -830,16 +815,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return true;
             }
 
-            // ---- AI activity (content script reports, popup reads) ----
-            case 'MERID_PAGE_STATS': {
-                sendResponse(recordPageStats(sender && sender.tab && sender.tab.id, request.stats));
-                return false;
-            }
-            case 'MERID_PAGE_STATS_GET': {
-                const id = Number(request.tabId);
-                sendResponse({ ok: true, stats: pageTabStats.get(id) || null });
-                return false;
-            }
 
             case 'MERID_SYNC_STATUS': {
                 Sync.getStatus().then(sendResponse).catch(() => sendResponse({ state: 'error' }));

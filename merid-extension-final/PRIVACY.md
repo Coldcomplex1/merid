@@ -52,6 +52,12 @@ All of it is stored in Firestore under your own account and protected by
 server-side security rules so only you can access it. Page content is **not**
 part of deck sync. Signing out stops all syncing immediately.
 
+**Anonymous account for the AI check.** So the daily limit can be counted
+without asking you to sign up, Merid creates an anonymous Firebase account for
+this device the first time the AI check runs. It holds no personal information
+- just a random id - and is used only to count your daily allowance. Signing in
+with a real account replaces it and raises the limit.
+
 **Personalization profile (on by default, stored on your device).** Merid
 records how you interact with the words it shows: how often a word appeared,
 whether you opened its card, rated it 👍/👎, saved it to your deck, or marked
@@ -72,17 +78,31 @@ example "prefers C1-level words; reads mostly business") is included in the
 request to Gemini so its suggestions suit you. The summary carries preferences
 only: no page content, no URLs, no identifiers.
 
-**Optional AI context check (off by default; requires your own key).** If you
-turn this feature on in Settings and paste your own Google Gemini API key,
-then after Merid replaces words on a page it sends Google's Gemini API a short
-snippet of **page text** for each replaced word - the replaced word, the
-original word, and up to ~180 characters of the sentence around it (at most 20
-words per request, at most 3 requests per page). Gemini answers whether each
-replacement fits its sentence; words that do not fit are reverted. These
-snippets are sent directly from your browser to Google using your key, are not
-stored by the extension, and pass through no Merid server (there are none).
-Google's handling of Gemini API data is governed by Google's own terms. Turn
-the feature off in Settings to stop all such requests instantly.
+**AI context check (on by default).** After Merid replaces a word, it asks
+Google Gemini whether that word really fits the sentence it landed in. For each
+checked word it sends: the **English word**, the **Vietnamese it replaced**, and
+up to **180 characters of the sentence around it** - at most 20 words per
+request and at most 3 requests per page. It also sends a short summary of your
+own preferences, built on your device from your ratings (for example "prefers
+C1-level words; reads mostly business").
+
+It does **not** send the page address, the page title, your browsing history,
+or any part of the page beyond those sentence fragments. Answers are cached on
+your device for 30 days, so re-reading a page costs nothing.
+
+There are two ways this request reaches Google, and you choose which:
+
+- **Through Merid (the default).** The request goes to `merid.site/api/check`,
+  which calls Gemini with Merid's own API keys. Merid sees the sentence
+  fragments described above while handling the request, and stores only a
+  per-day counter against your account id so the daily limit can be enforced.
+  Fragments are not logged or retained. There is a daily limit per person;
+  signing in raises it. **Turn the check off in Settings** and nothing is sent
+  at all.
+- **With your own API key.** If you save a personal Gemini key in Settings,
+  Merid uses it instead and the request goes **straight from your browser to
+  Google** - it never reaches a Merid server, and no daily limit from us
+  applies.
 
 ## API keys
 

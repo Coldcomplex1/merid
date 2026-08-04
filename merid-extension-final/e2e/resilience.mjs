@@ -188,13 +188,12 @@ check(stage.stage === 1, 'the review schedule advanced one step', JSON.stringify
 check(stage.saved === 1 && stage.shown >= 1, 'the word kept its history', JSON.stringify(stage));
 
 // =====================================================================
-// 3. Level advice in the popup
+// 3. Level advice - now in Settings, not the popup
 // =====================================================================
-const popup = await ctx.newPage();
-await popup.goto(`chrome-extension://${extId}/popup.html`, { waitUntil: 'load' });
-await popup.waitForTimeout(600);
-check(await popup.$eval('#level-tip', el => el.hidden),
-    'no dataset advice without evidence');
+const opts = await ctx.newPage();
+await opts.goto(`chrome-extension://${extId}/options.html`, { waitUntil: 'load' });
+await opts.waitForTimeout(700);
+check(await opts.$eval('#levelTip', el => el.hidden), 'no dataset advice without evidence');
 
 await sw.evaluate(async () => {
     let p = self.VMProfile.createProfile();
@@ -203,19 +202,19 @@ await sw.evaluate(async () => {
     }
     await chrome.storage.local.set({ vm_profile: p });
 });
-await popup.reload({ waitUntil: 'load' });
-await popup.waitForTimeout(800);
-const tip = await popup.$eval('#level-tip', el => ({ hidden: el.hidden, text: el.textContent }));
+await opts.reload({ waitUntil: 'load' });
+await opts.waitForTimeout(800);
+const tip = await opts.$eval('#levelTip', el => ({ hidden: el.hidden, text: el.textContent }));
 check(!tip.hidden && /C1/.test(tip.text) && /C2/.test(tip.text),
     'a dataset the reader has outgrown prompts a move up', JSON.stringify(tip));
 
-await popup.click('#level-tip');
-await popup.waitForTimeout(900);
+await opts.click('#levelTip');
+await opts.waitForTimeout(900);
 const switched = await sw.evaluate(async () =>
     (await chrome.storage.sync.get('datasetKey')).datasetKey);
 check(switched === 'c2', 'tapping the advice actually switches the dataset', String(switched));
-check(await popup.$eval('#level-tip', el => el.hidden), 'the advice clears once taken');
-await popup.close();
+check(await opts.$eval('#levelTip', el => el.hidden), 'the advice clears once taken');
+await opts.close();
 
 console.log('\n=== PASS ===');
 ok.forEach(l => console.log('  +', l));

@@ -788,6 +788,8 @@ function renderProfilePanel() {
         document.getElementById('profileTopics').textContent = topics.length ? topics.join(', ') : 'still working it out';
         document.getElementById('profileWords').textContent = String(words.length);
 
+        renderLevelTip(p);
+
         const score = w => (w.up + w.saved) - (w.down + w.known);
         const chips = (el, list, cls) => {
             el.textContent = '';
@@ -805,6 +807,36 @@ function renderProfilePanel() {
         chips(document.getElementById('profileLiked'), ranked.filter(x => x.s > 0).slice(0, 12).map(x => x.w), 'up');
         chips(document.getElementById('profileDisliked'),
             ranked.filter(x => x.s < 0).reverse().slice(0, 12).map(x => x.w), 'down');
+    });
+}
+
+/**
+ * Offer a different dataset when the reader's own behaviour says the current
+ * one no longer fits - too many words they already know, or too many they
+ * reject. One tap switches, and the same message drives both directions.
+ */
+function renderLevelTip(profile) {
+    const btn = document.getElementById('levelTip');
+    if (!btn || !Prof) return;
+    chrome.storage.sync.get(['datasetKey'], (s) => {
+        // "All" and custom datasets have no place on the CEFR ladder, so
+        // suggestLevel returns null for them and nothing is offered.
+        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || 'sat'));
+        if (!tip) { btn.hidden = true; return; }
+        btn.textContent = tip.direction === 'up'
+            ? `You already know a lot of ${tip.from} words - try ${tip.to} →`
+            : `${tip.from} looks like a stretch right now - try ${tip.to} →`;
+        btn.hidden = false;
+        btn.onclick = () => {
+            const target = tip.to.toLowerCase();
+            chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: target }, () => {
+                void chrome.runtime.lastError;
+                setActive(els.datasetSeg, target);
+                refreshDatasetInfo();
+                flashSaved();
+                btn.hidden = true;
+            });
+        };
     });
 }
 
@@ -827,8 +859,38 @@ function wireProfilePanel() {
     });
 }
 
+/**
+ * Daily allowance for the hosted AI check. The numbers come from the server on
+ * every successful call, so this only reads back what it last said - it is a
+ * report, never the thing enforcing the limit.
+ */
+function renderAiQuota() {
+    const el = document.getElementById('aiQuota');
+    if (!el) return;
+    chrome.storage.local.get(['vm_ai_quota', 'geminiApiKey'], (r) => {
+        if (r.geminiApiKey) {
+            el.hidden = false;
+            el.textContent = 'Using your own API key - no daily limit from Merid.';
+            return;
+        }
+        const q = r.vm_ai_quota;
+        if (!q || typeof q.limit !== 'number') { el.hidden = true; return; }
+        const left = Math.max(0, q.limit - (q.used || 0));
+        el.hidden = false;
+        el.textContent = q.exhausted
+            ? `Daily limit reached (${q.limit}). It resets at midnight UTC.` +
+              (q.anonymous ? ' Signing in raises it.' : '')
+            : `${left} of ${q.limit} AI checks left today.` +
+              (q.anonymous ? ' Sign in to raise the limit.' : '');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     load(); wire(); wireAccount(); wireCustom();
     renderProfilePanel(); wireProfilePanel();
+    renderAiQuota();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && (changes.vm_ai_quota || changes.geminiApiKey)) renderAiQuota();
+    });
 });
 

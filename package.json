@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "audit": "npm audit --audit-level=high",
     "emulators": "firebase emulators:start --only auth,firestore",
-    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\"",
+    "test:api": "node --test test/api.test.mjs"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.2.8",

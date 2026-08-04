@@ -1,6 +1,10 @@
-// Verifies the surfaces that make Merid's AI and its learning visible:
-// the toolbar badge, the "AI on this page" popup panel, the AI marker on the
-// learning card, and the "What Merid has learned about you" options panel.
+// Verifies the two surfaces that show what Merid is doing: the marker the AI
+// context check leaves on a word it swapped, and the "What Merid has learned
+// about you" panel in Settings.
+//
+// The popup deliberately shows none of this. It went back to its plain layout
+// once the AI was known to work - a permanent stats panel is a debugging view,
+// not something a reader needs on every visit.
 import { chromium } from 'playwright';
 import http from 'node:http';
 import path from 'node:path';
@@ -115,84 +119,7 @@ await page.waitForTimeout(500);
 check(await page.$('.vm-aifix') === null, 'an untouched word shows no AI row in its card');
 
 // =====================================================================
-// 2. The toolbar badge
-// =====================================================================
-// Merid ships with `activeTab` only, so tab.url is not readable here - the
-// active-tab query is the one that works with the permissions it actually has.
-const tabId = await sw.evaluate(async () => {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    return tabs[0] && tabs[0].id;
-});
-check(typeof tabId === 'number', 'found the content tab', String(tabId));
-
-const badge = await sw.evaluate(id => chrome.action.getBadgeText({ tabId: id }), tabId);
-check(badge === '1', 'the toolbar badge shows the number of AI fixes', JSON.stringify(badge));
-
-const title = await sw.evaluate(id => chrome.action.getTitle({ tabId: id }), tabId);
-check(/AI fixed 1 word/.test(title), 'the badge tooltip spells it out', title);
-
-
-
-// =====================================================================
-// 3. The "AI on this page" popup panel
-// =====================================================================
-// popup.js reads the ACTIVE tab, which when the popup is opened as a page is
-// the popup itself. Seed that tab's stats so the render path is exercised.
-const popup = await ctx.newPage();
-await popup.goto(`chrome-extension://${extId}/popup.html`, { waitUntil: 'load' });
-await popup.bringToFront();
-const popupTabId = await sw.evaluate(async () => {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    return tabs[0] && tabs[0].id;
-});
-await sw.evaluate(id => self.recordPageStats(id, {
-    checked: 9, reverted: 1, upgraded: 2, cached: 4, asked: 5,
-    model: 'gemini-flash-lite-latest', state: 'ok'
-}), popupTabId);
-await popup.reload({ waitUntil: 'load' });
-await popup.waitForTimeout(700);
-
-// Stats are per tab: a tab that never reported has none, so the popup shows
-// nothing rather than another page's numbers.
-const blankStats = await popup.evaluate(id => new Promise(r =>
-    chrome.runtime.sendMessage({ type: 'MERID_PAGE_STATS_GET', tabId: id }, r)), 9999999);
-check(blankStats && blankStats.stats === null, 'a tab Merid never ran on reports no stats',
-    JSON.stringify(blankStats));
-
-check(await popup.$eval('#ai-panel', el => !el.hidden), 'the popup shows the AI panel');
-const nums = await popup.evaluate(() => ({
-    checked: document.getElementById('ai-checked').textContent,
-    fixed: document.getElementById('ai-fixed').textContent,
-    free: document.getElementById('ai-saved-calls').textContent,
-    state: document.getElementById('ai-state').textContent,
-    foot: document.getElementById('ai-foot').textContent
-}));
-check(nums.checked === '9' && nums.fixed === '3' && nums.free === '4',
-    'the panel reports checked / fixed / cached correctly', JSON.stringify(nums));
-check(/gemini/.test(nums.foot), 'the panel names the model actually used', nums.foot);
-
-// The "off" state must say something more useful than a row of zeros.
-await sw.evaluate(id => self.recordPageStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'off' }), popupTabId);
-await popup.reload({ waitUntil: 'load' });
-await popup.waitForTimeout(600);
-const offState = await popup.evaluate(() => ({
-    text: document.getElementById('ai-state').textContent,
-    statsHidden: document.getElementById('ai-stats').hidden
-}));
-check(/API key/i.test(offState.text) && offState.statsHidden,
-    'with AI off the panel explains how to switch it on', JSON.stringify(offState));
-
-// An error state must not be dressed up as success.
-await sw.evaluate(id => self.recordPageStats(id, { checked: 0, reverted: 0, upgraded: 0, cached: 0, asked: 0, state: 'error', error: '429' }), popupTabId);
-await popup.reload({ waitUntil: 'load' });
-await popup.waitForTimeout(600);
-const errState = await popup.$eval('#ai-state', el => ({ t: el.textContent, cls: el.className }));
-check(/429/.test(errState.t) && /bad/.test(errState.cls),
-    'a failing key is reported as a failure', JSON.stringify(errState));
-await popup.close();
-
-// =====================================================================
-// 4. The "What Merid has learned about you" options panel
+// 2. The "What Merid has learned about you" options panel
 // =====================================================================
 // Close the content tab first: while it is open it keeps flushing "shown"
 // events, which recreates the profile the moment this test clears it.

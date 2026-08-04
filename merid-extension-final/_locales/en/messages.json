@@ -214,5 +214,11 @@
   },
   "popupLevelDown": {
     "message": "%from% looks like a stretch right now. Try %to% →"
+  },
+  "popupQuotaOut": {
+    "message": "AI checks used up for today. Resets at midnight UTC."
+  },
+  "popupQuotaAnon": {
+    "message": "AI checks used up for today. Sign in for more."
   }
 }

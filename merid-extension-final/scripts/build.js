@@ -24,6 +24,7 @@ const FILES = [
     'lib/custom-datasets.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',
+    'lib/ai-proxy.js',
     'lib/sync.js',
     'fonts/Outfit-latin.woff2',
     'fonts/Inter-latin.woff2',

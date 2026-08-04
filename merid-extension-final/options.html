@@ -160,11 +160,11 @@
 
         <!-- AI CONTEXT CHECK -->
         <section class="card">
-            <h2>AI context check (beta)</h2>
-            <p class="hint">Optional. After Merid replaces words on a page, Google Gemini (flash-lite) checks that each
-                new word fits its sentence. Words that do not fit are <strong>changed back to the original text</strong> on their own.
-                Uses <strong>your own free API key</strong> from <strong>aistudio.google.com</strong> (create one there, then paste it below).
-                <a class="ext-link api-key-guide-url" href="https://merid.site/api-key-guide" target="_blank" rel="noopener">Full step-by-step guide ↗</a></p>
+            <h2>AI context check</h2>
+            <p class="hint">After Merid replaces a word, Google Gemini checks that it really fits the sentence it
+                landed in. Words that do not fit are <strong>swapped for a better one, or changed back</strong> on
+                their own. Included - <strong>no API key needed</strong>. There is a daily limit per person so the
+                service stays available to everyone; signing in raises it.</p>
 
             <div class="field">
                 <label>Enable AI context check</label>
@@ -172,16 +172,30 @@
                     <button data-val="on" type="button">On</button>
                     <button data-val="off" type="button">Off</button>
                 </div>
+                <p class="hint" id="aiQuota" hidden></p>
             </div>
 
-            <div class="field">
-                <label for="aiKey">Gemini API key</label>
-                <input type="password" id="aiKey" autocomplete="off" placeholder="AIza…">
-            </div>
+            <!-- BRING-YOUR-OWN-KEY - hidden, not deleted.
+                 Merid now serves the AI check from its own keys, so asking every
+                 user for one is friction with no payoff. The path still works
+                 end to end: a key saved here takes priority over the hosted
+                 endpoint, is used directly from this browser, and has no daily
+                 cap from us. Remove the `hidden` below to offer it again (for
+                 heavy users, or if the hosted service is ever retired). -->
+            <div id="aiOwnKeyBlock" hidden>
+                <p class="hint">Prefer your own key? Paste a free key from <strong>aistudio.google.com</strong> and
+                    Merid will use it instead - requests go straight from this browser to Google, with no daily limit
+                    from us. <a class="ext-link api-key-guide-url" href="https://merid.site/api-key-guide" target="_blank" rel="noopener">Step-by-step guide ↗</a></p>
 
-            <div class="auth-actions">
-                <button class="btn" id="aiSaveBtn" type="button">Save key</button>
-                <button class="btn ghost" id="aiTestBtn" type="button">Test key</button>
+                <div class="field">
+                    <label for="aiKey">Gemini API key</label>
+                    <input type="password" id="aiKey" autocomplete="off" placeholder="AIza…">
+                </div>
+
+                <div class="auth-actions">
+                    <button class="btn" id="aiSaveBtn" type="button">Save key</button>
+                    <button class="btn ghost" id="aiTestBtn" type="button">Test key</button>
+                </div>
             </div>
             <p class="hint" id="aiStatus" hidden></p>
         </section>
@@ -217,6 +231,11 @@
                     </div>
                 </div>
 
+                <!-- Dataset advice, shown only when the reader's own behaviour
+                     asks for it. It lives here rather than in the popup: it is
+                     about the reader, not about the page in front of them. -->
+                <button class="level-tip" id="levelTip" type="button" hidden></button>
+
                 <div class="subsection">
                     <label class="learn-label">Showing you more of</label>
                     <div class="learn-chips" id="profileLiked"></div>
@@ -237,7 +256,8 @@
             <ul class="privacy">
                 <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
                 <li>By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below.</li>
-                <li>If you turn on the optional <strong>AI context check</strong>, short pieces of the sentence around each replaced word are sent to Google Gemini, using your own API key. Your key is stored on this device; if you sign in, it is also backed up privately to your Merid account (only you can read it) so it works on all your devices.</li>
+                <li>With the <strong>AI context check</strong> on, short pieces of the sentence around each replaced word are sent to Google Gemini - by default through <code>merid.site/api/check</code>, which calls Gemini with Merid's keys and keeps only a per-day counter so the daily limit can be enforced. <strong>No page addresses, titles or browsing history are sent.</strong> Turn the check off above and nothing is sent at all. If you save your own API key, requests go straight from this browser to Google instead and never reach a Merid server.</li>
+                <li>To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit.</li>
                 <li>If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
                 <li>Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
                 <li>Your settings (selected dataset, display mode, intensity, on/off, paused sites) are stored on your device via <code>chrome.storage</code>.</li>

@@ -15,6 +15,7 @@ const files = [
     'lib/custom-datasets.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',
+    'lib/ai-proxy.js',
     'lib/sync.js',
     'scripts/build.js',
     'scripts/lint.js',
