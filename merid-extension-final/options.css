@@ -291,3 +291,84 @@ a.ext-link { color: var(--accent); }
 .btn.google:disabled { opacity: 0.6; cursor: default; }
 .g-logo { flex: none; }
 .auth-divider { margin-top: 12px; }
+
+/* ---- "What Merid has learned about you" ---------------------------------
+   A personalization feature the user cannot inspect or reset on its own is a
+   trust problem, so this panel reads the local profile back to them and gives
+   it a dedicated Forget button (separate from "Delete all stored data",
+   which also wipes the deck). */
+.learn-meter { margin-top: 16px; }
+
+.learn-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.learn-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+}
+
+.learn-rows { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+
+.learn-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.learn-label {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.learn-value { font-size: 14px; font-weight: 600; text-align: right; }
+
+.learn-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+.learn-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.learn-chip.up { border-color: rgba(16, 185, 129, 0.45); }
+.learn-chip.down { border-color: rgba(239, 68, 68, 0.4); }
+
+.learn-chips:empty::after {
+    content: "Nothing yet";
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* Dataset advice inside "What Merid has learned about you". Dashed rather than
+   solid so it reads as a suggestion, not a control the user must deal with. */
+.level-tip {
+    display: block;
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(244, 190, 55, 0.5);
+    border-radius: 9px;
+    background: rgba(244, 190, 55, 0.07);
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.level-tip:hover { background: rgba(244, 190, 55, 0.14); }

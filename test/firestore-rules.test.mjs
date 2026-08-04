@@ -208,6 +208,53 @@ test('AI key doc schema is enforced at the DB boundary', async () => {
 })
 
 // ---------------------------------------------------------------------------
+// users/{uid}/profile/state – learned personalization profile
+// ---------------------------------------------------------------------------
+function profileDoc(firestore, uid) {
+  return doc(firestore, 'users', uid, 'profile', 'state')
+}
+
+const PROFILE_JSON = JSON.stringify({ v: 1, words: { candid: { up: 2 } }, events: 2 })
+
+test('owner can store, read, replace and delete their own profile', async () => {
+  await env.clearFirestore()
+  const alice = db(ALICE)
+  await assertSucceeds(setDoc(profileDoc(alice, ALICE), { state: PROFILE_JSON, updatedAt: serverTimestamp() }))
+  await assertSucceeds(getDoc(profileDoc(alice, ALICE)))
+  await assertSucceeds(setDoc(profileDoc(alice, ALICE), { state: '{"v":1}', updatedAt: serverTimestamp() }))
+  await assertSucceeds(deleteDoc(profileDoc(alice, ALICE)))
+})
+
+test('another user (or anonymous) can never touch someone\'s profile', async () => {
+  await env.clearFirestore()
+  await assertSucceeds(setDoc(profileDoc(db(ALICE), ALICE), { state: PROFILE_JSON, updatedAt: serverTimestamp() }))
+  for (const stranger of [db(BOB), db(null)]) {
+    await assertFails(getDoc(profileDoc(stranger, ALICE)))
+    await assertFails(setDoc(profileDoc(stranger, ALICE), { state: '{"v":1}', updatedAt: serverTimestamp() }))
+    await assertFails(deleteDoc(profileDoc(stranger, ALICE)))
+  }
+})
+
+test('profile doc schema is enforced at the DB boundary', async () => {
+  await env.clearFirestore()
+  const alice = db(ALICE)
+  const cases = [
+    { state: '', updatedAt: serverTimestamp() },                        // empty
+    { state: 'x'.repeat(200001), updatedAt: serverTimestamp() },        // over the size cap
+    { state: { v: 1 }, updatedAt: serverTimestamp() },                  // wrong type (map, not string)
+    { state: 42, updatedAt: serverTimestamp() },                        // wrong type
+    { state: PROFILE_JSON, updatedAt: serverTimestamp(), extra: true }, // extra field
+    { state: PROFILE_JSON, updatedAt: new Date() },                     // client-set time
+    { updatedAt: serverTimestamp() },                                   // missing state
+  ]
+  for (const payload of cases) {
+    await assertFails(setDoc(profileDoc(alice, ALICE), payload))
+  }
+  // Only the fixed 'state' doc id is allowed under profile/.
+  await assertFails(setDoc(doc(alice, 'users', ALICE, 'profile', 'other'), { state: PROFILE_JSON, updatedAt: serverTimestamp() }))
+})
+
+// ---------------------------------------------------------------------------
 // feedback/{id} – anonymous, write-only uninstall-survey mailbox (/goodbye)
 // ---------------------------------------------------------------------------
 function feedbackPayload(extra = {}) {

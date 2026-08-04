@@ -737,5 +737,160 @@ function wireAccount() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { load(); wire(); wireAccount(); wireCustom(); });
+// =============================================================
+// "What Merid has learned about you"
+//
+// Reads the local profile back to the user in plain language and gives it its
+// own Forget button. A personalization system nobody can inspect or reset is
+// a trust problem, and "Delete all stored data" is too blunt for the job -
+// it also wipes the deck.
+// =============================================================
+const Prof = window.VMProfile;
+
+function renderProfilePanel() {
+    const card = document.getElementById('profileCard');
+    if (!card || !Prof) return;
+    const empty = document.getElementById('profileEmpty');
+    const body = document.getElementById('profileBody');
+
+    chrome.runtime.sendMessage({ type: 'MERID_PROFILE_GET' }, (res) => {
+        if (chrome.runtime.lastError) return;
+        const p = Prof.withDefaults(res && res.profile);
+        const words = Object.keys(p.words);
+
+        if (!p.events && !words.length) {
+            empty.hidden = false;
+            body.hidden = true;
+            return;
+        }
+        empty.hidden = true;
+        body.hidden = false;
+
+        const pct = Math.round(Prof.confidence(p) * 100);
+        document.getElementById('profileBar').style.width = pct + '%';
+        document.getElementById('profileConfidence').textContent =
+            `${p.events} feedback signal${p.events === 1 ? '' : 's'} so far - personalization is ${pct}% dialled in.` +
+            (pct < 100 ? ' Below 100% Merid stays close to its default behaviour on purpose.' : '');
+
+        // Rank the CEFR buckets the same way the ranker does.
+        const levels = Object.keys(p.levels)
+            .map(k => ({ k, rate: Prof.bucketRate(p.levels[k]), n: p.levels[k].up + p.levels[k].down }))
+            .filter(x => x.n >= 2)
+            .sort((a, b) => b.rate - a.rate);
+        document.getElementById('profileLevel').textContent = levels.length ? levels[0].k : 'still working it out';
+
+        const topics = Object.keys(p.topics)
+            .map(k => ({ k, n: p.topics[k].up + p.topics[k].down }))
+            .filter(x => x.n >= 2)
+            .sort((a, b) => b.n - a.n)
+            .slice(0, 3)
+            .map(x => x.k);
+        document.getElementById('profileTopics').textContent = topics.length ? topics.join(', ') : 'still working it out';
+        document.getElementById('profileWords').textContent = String(words.length);
+
+        renderLevelTip(p);
+
+        const score = w => (w.up + w.saved) - (w.down + w.known);
+        const chips = (el, list, cls) => {
+            el.textContent = '';
+            list.forEach(w => {
+                const span = document.createElement('span');
+                span.className = 'learn-chip ' + cls;
+                span.textContent = w;  // textContent: never innerHTML for stored words
+                el.appendChild(span);
+            });
+        };
+        const ranked = words
+            .map(w => ({ w, s: score(p.words[w]) }))
+            .filter(x => x.s !== 0)
+            .sort((a, b) => b.s - a.s);
+        chips(document.getElementById('profileLiked'), ranked.filter(x => x.s > 0).slice(0, 12).map(x => x.w), 'up');
+        chips(document.getElementById('profileDisliked'),
+            ranked.filter(x => x.s < 0).reverse().slice(0, 12).map(x => x.w), 'down');
+    });
+}
+
+/**
+ * Offer a different dataset when the reader's own behaviour says the current
+ * one no longer fits - too many words they already know, or too many they
+ * reject. One tap switches, and the same message drives both directions.
+ */
+function renderLevelTip(profile) {
+    const btn = document.getElementById('levelTip');
+    if (!btn || !Prof) return;
+    chrome.storage.sync.get(['datasetKey'], (s) => {
+        // "All" and custom datasets have no place on the CEFR ladder, so
+        // suggestLevel returns null for them and nothing is offered.
+        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || 'sat'));
+        if (!tip) { btn.hidden = true; return; }
+        btn.textContent = tip.direction === 'up'
+            ? `You already know a lot of ${tip.from} words - try ${tip.to} →`
+            : `${tip.from} looks like a stretch right now - try ${tip.to} →`;
+        btn.hidden = false;
+        btn.onclick = () => {
+            const target = tip.to.toLowerCase();
+            chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: target }, () => {
+                void chrome.runtime.lastError;
+                setActive(els.datasetSeg, target);
+                refreshDatasetInfo();
+                flashSaved();
+                btn.hidden = true;
+            });
+        };
+    });
+}
+
+function wireProfilePanel() {
+    const btn = document.getElementById('profileReset');
+    if (!btn) return;
+    const status = document.getElementById('profileStatus');
+    btn.addEventListener('click', () => {
+        if (!confirm('Forget everything Merid learned about your preferences? Your deck and settings are not affected.')) return;
+        chrome.runtime.sendMessage({ type: 'MERID_PROFILE_RESET' }, () => {
+            void chrome.runtime.lastError;
+            status.hidden = false;
+            status.textContent = 'Cleared. Merid starts learning again from your next page.';
+            renderProfilePanel();
+        });
+    });
+    // The service worker rewrites the profile as you browse; keep this live.
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.vm_profile) renderProfilePanel();
+    });
+}
+
+/**
+ * Daily allowance for the hosted AI check. The numbers come from the server on
+ * every successful call, so this only reads back what it last said - it is a
+ * report, never the thing enforcing the limit.
+ */
+function renderAiQuota() {
+    const el = document.getElementById('aiQuota');
+    if (!el) return;
+    chrome.storage.local.get(['vm_ai_quota', 'geminiApiKey'], (r) => {
+        if (r.geminiApiKey) {
+            el.hidden = false;
+            el.textContent = 'Using your own API key - no daily limit from Merid.';
+            return;
+        }
+        const q = r.vm_ai_quota;
+        if (!q || typeof q.limit !== 'number') { el.hidden = true; return; }
+        const left = Math.max(0, q.limit - (q.used || 0));
+        el.hidden = false;
+        el.textContent = q.exhausted
+            ? `Daily limit reached (${q.limit}). It resets at midnight UTC.` +
+              (q.anonymous ? ' Signing in raises it.' : '')
+            : `${left} of ${q.limit} AI checks left today.` +
+              (q.anonymous ? ' Sign in to raise the limit.' : '');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    load(); wire(); wireAccount(); wireCustom();
+    renderProfilePanel(); wireProfilePanel();
+    renderAiQuota();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && (changes.vm_ai_quota || changes.geminiApiKey)) renderAiQuota();
+    });
+});
 

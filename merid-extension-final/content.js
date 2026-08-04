@@ -5,11 +5,13 @@
 //
 // Matching/normalization is pure and local (lib/vocab-core.js, VMCore). The
 // user's deck ("Save to Deck") and known words ("I know this") are stored
-// locally in chrome.storage.local. The only network use is the optional AI
-// context check, routed through the background worker and OFF by default.
+// locally in chrome.storage.local. The only network use is the AI context
+// check, which is routed through the background worker - this file never
+// makes a request of its own.
 // =============================================================
 
 const C = window.VMCore;
+const P = window.VMProfile;
 
 // Release builds stay silent on users' pages; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -35,6 +37,12 @@ let replacedCount = 0;
 // User's local lists (lowercased headwords / saved-word keys).
 let knownSet = new Set();
 let savedSet = new Set();
+
+// Learned personalization profile, snapshotted once per scan (null = none yet).
+let profile = null;
+// One timestamp per scan, so a long page cannot have its top and bottom
+// disagree about whether a word's review has come due.
+let scanStartedAt = 0;
 
 const MAX_REPLACEMENTS_PER_PAGE = 800;   // safety cap to protect big pages
 const MUTATION_DEBOUNCE_MS = 300;
@@ -76,10 +84,37 @@ function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
     postWordCounts = new WeakMap();
-    aiCheckedWords = new Set();
+    aiCheckedPairs = new Set();
     aiChecksSent = 0;
     if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
 
+    // Drop upgrades parked for a page state that no longer exists.
+    pendingUpgrades = [];
+    if (upgradeScrollBound) {
+        window.removeEventListener('scroll', onUpgradeScroll);
+        upgradeScrollBound = false;
+    }
+
+    // Per-page personalization state. Flush anything still queued from the
+    // previous scan before resetting, so a settings change cannot drop events.
+    flushProfileEvents();
+    shownThisPage = new Set();
+    hoveredThisPage = new Set();
+    pageTopic = P ? P.topicFromUrl(location.href) : 'general';
+
+
+    // Snapshot the learned profile for this scan. Fetching it once (rather than
+    // per candidate word) keeps the scan synchronous and means every word on a
+    // page is judged against the same profile - a mid-scan update cannot make
+    // the top and bottom of an article disagree.
+    chrome.runtime.sendMessage({ type: 'MERID_PROFILE_GET' }, (res) => {
+        void chrome.runtime.lastError; // an unavailable profile just means no personalization
+        profile = (res && res.ok && res.profile) ? res.profile : null;
+        startScan();
+    });
+}
+
+function startScan() {
     // Load the local deck/known lists first so we can honour them while scanning.
     chrome.storage.local.get(['knownWords', 'savedWords'], (local) => {
         knownSet = new Set((local.knownWords || []).map(w => String(w).toLowerCase()));
@@ -107,6 +142,7 @@ function init() {
             }
 
             const start = () => {
+                scanStartedAt = Date.now();
                 const vocabMap = C.buildVocabMap(vocabulary, modes);
                 processPage(vocabMap);
                 observeChanges(vocabMap);
@@ -215,7 +251,14 @@ function processTextNode(node, vocabMap) {
         }
 
         // Deterministic intensity gate - stable across re-renders (no Math.random).
-        if (!C.gateByFrequency(matchedText.toLowerCase() + '|' + replaceWith.toLowerCase(), settings.frequency)) {
+        //
+        // Personalization enters HERE and only here: it bends the frequency the
+        // gate sees, it does not make the decision. The hash still does that,
+        // so the same word on the same page always resolves the same way. With
+        // no profile, or a profile too young to trust, effectiveFrequency()
+        // returns settings.frequency unchanged.
+        if (!C.gateByFrequency(matchedText.toLowerCase() + '|' + replaceWith.toLowerCase(),
+            effectiveFrequency(replaceWith, item.dataset))) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -235,7 +278,21 @@ function processTextNode(node, vocabMap) {
         span.dataset.word = item.word;
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
+        span.dataset.level = item.dataset || '';
         applyDisplayMode(span);
+
+        const wl = replaceWith.toLowerCase();
+        if (!shownThisPage.has(wl)) {
+            shownThisPage.add(wl);
+            // Due-ness is read against the scan's profile snapshot, before the
+            // "shown" event below moves the word's clock forward. The marker is
+            // what tells the reader why a word they saved has come back.
+            if (P && profile && P.isDueForReview(profile, wl, scanStartedAt)) {
+                span.dataset.review = '1';
+                span.classList.add('vocab-review');
+            }
+            queueProfileEvent(replaceWith, 'shown', item.dataset);
+        }
 
         stats.used++;
 
@@ -326,7 +383,9 @@ function processNodeBatch(nodes, vocabMap) {
         const end = Math.min(index + batchSize, nodes.length);
         for (; index < end; index++) processTextNode(nodes[index], vocabMap);
         if (index < nodes.length) requestAnimationFrame(run);
-        else if (nodes.length) scheduleAiContextCheck(); // dynamic content settled
+        else if (nodes.length) {
+            scheduleAiContextCheck(); // dynamic content settled
+        }
     }
     run();
 }
@@ -337,6 +396,73 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true });
     }
     return false;
+});
+
+// -------------------------------------------------------------
+// Personalization feedback
+//
+// Every interaction is evidence about which words this reader wants. Events
+// are queued here and flushed to the service worker in batches - writing
+// chrome.storage on every hover would be far too chatty.
+//
+// This data never leaves the device on its own: the service worker folds it
+// into the local profile, and only the deck sync (opt-in, after sign-in)
+// mirrors it to the user's own Firestore account.
+// -------------------------------------------------------------
+const PROFILE_FLUSH_MS = 4000;
+const PROFILE_QUEUE_MAX = 80;
+let profileQueue = [];
+let profileFlushTimer = null;
+let pageTopic = 'general';
+// "shown"/"hover" are recorded once per headword per page, not once per span:
+// 800 impressions of the same word on one page is one exposure to the reader.
+let shownThisPage = new Set();
+let hoveredThisPage = new Set();
+
+/**
+ * How often this reader should meet `word`, in the 0..100 form
+ * `VMCore.gateByFrequency` expects.
+ *
+ * Falls back to the user's raw setting whenever personalization cannot or
+ * should not speak: no profile module, no profile loaded yet, or a profile
+ * with too little evidence (VMProfile handles that last case internally by
+ * fading its multiplier in from exactly 1.0).
+ */
+function effectiveFrequency(word, level) {
+    if (!P || !profile) return settings.frequency;
+    try {
+        return P.adjustedFrequency(profile, { word, level, topic: pageTopic }, settings.frequency);
+    } catch (e) {
+        return settings.frequency; // personalization must never break a page
+    }
+}
+
+function queueProfileEvent(word, event, level) {
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return;
+    profileQueue.push({ word: w, event, level: level || '', topic: pageTopic });
+    if (profileQueue.length >= PROFILE_QUEUE_MAX) { flushProfileEvents(); return; }
+    if (!profileFlushTimer) profileFlushTimer = setTimeout(flushProfileEvents, PROFILE_FLUSH_MS);
+}
+
+function flushProfileEvents() {
+    if (profileFlushTimer) { clearTimeout(profileFlushTimer); profileFlushTimer = null; }
+    if (!profileQueue.length) return;
+    const events = profileQueue;
+    profileQueue = [];
+    try {
+        chrome.runtime.sendMessage({ type: 'MERID_PROFILE_EVENTS', events }, () => {
+            void chrome.runtime.lastError; // fire-and-forget; losing a batch is harmless
+        });
+    } catch (e) { /* extension context invalidated (update/reload) */ }
+}
+
+// Never lose the tail of a reading session. `pagehide` covers navigation and
+// tab close; `visibilitychange` covers tab switches and mobile backgrounding,
+// which on some platforms is the last callback that runs at all.
+window.addEventListener('pagehide', flushProfileEvents);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushProfileEvents();
 });
 
 // -------------------------------------------------------------
@@ -352,7 +478,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const AI_SNIPPET_RADIUS = 60;      // chars kept around the word - keeps tokens low
 const AI_CHECK_MAX_BATCHES = 3;    // max requests per page visit (cost cap)
 const AI_CHECK_DEBOUNCE_MS = 1500; // let dynamic content settle first
-let aiCheckedWords = new Set();
+// Keyed by "word|sentence", NOT by word: the whole point of the context check
+// is that a word can be right in one sentence and wrong in another, so a
+// verdict earned in one place must never be reused - or applied - elsewhere.
+let aiCheckedPairs = new Set();
 let aiChecksSent = 0;
 let aiCheckTimer = null;
 
@@ -360,6 +489,7 @@ function scheduleAiContextCheck() {
     if (aiCheckTimer) clearTimeout(aiCheckTimer);
     aiCheckTimer = setTimeout(runAiContextCheck, AI_CHECK_DEBOUNCE_MS);
 }
+
 
 function sentenceAround(span) {
     const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
@@ -373,25 +503,32 @@ function sentenceAround(span) {
 
 function runAiContextCheck() {
     if (aiChecksSent >= AI_CHECK_MAX_BATCHES) return;
-    const spans = [];
-    const seen = new Set();
-    document.querySelectorAll('.vocab-master-highlight.vocab-replaced').forEach(sp => {
-        const key = (sp.dataset.word || '').toLowerCase();
-        if (!key || seen.has(key) || aiCheckedWords.has(key)) return;
-        seen.add(key);
-        spans.push(sp);
-    });
-    if (!spans.length) return;
 
-    const batch = spans.slice(0, 20);
-    const items = batch.map(sp => ({
-        word: sp.dataset.replacement || sp.dataset.word || '',
-        original: sp.dataset.original || '',
-        sentence: sentenceAround(sp)
+    // Group by (word, sentence). Identical pairs on the page share one verdict
+    // - they are the same question - but the same word in a different sentence
+    // is a separate item, judged and reverted independently.
+    const groups = new Map();
+    document.querySelectorAll('.vocab-master-highlight.vocab-replaced').forEach(sp => {
+        const word = (sp.dataset.word || '').toLowerCase();
+        if (!word) return;
+        const sentence = sentenceAround(sp);
+        const key = word + '|' + sentence;
+        if (aiCheckedPairs.has(key)) return;
+        const g = groups.get(key);
+        if (g) g.spans.push(sp);
+        else groups.set(key, { key, sentence, spans: [sp] });
+    });
+    if (!groups.size) return;
+
+    const batch = Array.from(groups.values()).slice(0, 20);
+    const items = batch.map(g => ({
+        word: g.spans[0].dataset.replacement || g.spans[0].dataset.word || '',
+        original: g.spans[0].dataset.original || '',
+        sentence: g.sentence
     }));
 
     aiChecksSent++;
-    log('[VM] AI context check: sending', items.length, 'words (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
+    log('[VM] AI context check: sending', items.length, 'items (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
         if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
         if (!res) { console.warn('[VM] AI check: no response.'); return; }
@@ -401,12 +538,27 @@ function runAiContextCheck() {
             return;
         }
         let reverted = 0;
-        batch.forEach((sp, i) => {
-            const word = sp.dataset.word || '';
-            aiCheckedWords.add(word.toLowerCase());
-            if (res.verdicts[i] === 0) { revertWord(word); reverted++; }
+        let upgraded = 0;
+        batch.forEach((g, i) => {
+            aiCheckedPairs.add(g.key);
+            const word = g.spans[0].dataset.word || '';
+            const bad = res.verdicts[i] === 0;
+            // The verdict is also a free training label for the local ranker.
+            queueProfileEvent(word, bad ? 'aiBad' : 'aiOk');
+            if (!bad) return;
+
+            // Prefer upgrading to the word the AI suggested over dropping the
+            // slot entirely - but only when that word is a real entry in the
+            // loaded dataset, so the tooltip still has something to show.
+            const entry = findVocabEntry((res.betters || [])[i]);
+            if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
+            else { revertSpans(g.spans); reverted++; }
         });
-        log('[VM] AI context check: verified', batch.length, 'words, reverted', reverted, '(model: ' + (res.model || '?') + ')');
+
+
+        log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
+            ', upgraded', upgraded,
+            '(cached ' + (res.cached || 0) + ', asked ' + (res.asked || 0) + ', model ' + (res.model || '?') + ')');
     });
 }
 
@@ -425,13 +577,98 @@ function revertPage() {
     replacedCount = 0;
 }
 
-// Unwrap only the spans for a single headword (used by "I know this" and by
-// the AI context check when it rejects a replacement).
-function revertWord(word) {
-    const wl = String(word).toLowerCase();
+// -------------------------------------------------------------
+// Word upgrades (AI suggested something better than what we inserted)
+//
+// Swapping text under a reader's eyes is worse than showing a slightly wrong
+// word: the line reflows and they lose their place. So an upgrade is only
+// applied while the span is OUT of the viewport. Anything currently on screen
+// is parked until it scrolls away, and dropped if the user never goes back.
+// -------------------------------------------------------------
+let pendingUpgrades = [];
+let upgradeScrollBound = false;
+let upgradeRaf = null;
+
+/** Case-insensitive lookup of an English headword in the loaded dataset. */
+function findVocabEntry(word) {
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return null;
+    // Never suggest a word the user has already dismissed or told us they know.
+    if (knownSet.has(w)) return null;
+    return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
+}
+
+function isOnScreen(el) {
+    if (!el || !el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return false; // hidden or detached
+    return r.bottom > 0 && r.top < (window.innerHeight || 0);
+}
+
+/** Rewrite one span in place to show a different vocabulary entry. */
+function applyUpgrade(span, entry) {
+    if (!span || !span.isConnected) return;
+    // Remember what the dataset had picked, so the learning card can show the
+    // reader exactly what the AI changed and why the word is there.
+    if (!span.dataset.aiFrom) span.dataset.aiFrom = span.dataset.word || '';
+    span.classList.add('vocab-ai-fix');
+    span.dataset.word = entry.word;
+    span.dataset.replacement = entry.word;
+    span.dataset.level = entry.dataset || '';
+    // applyDisplayMode re-renders from dataset and guards its own
+    // replacedCount bookkeeping, so the count stays correct on re-entry.
+    applyDisplayMode(span);
+    const wl = (entry.word || '').toLowerCase();
+    if (!shownThisPage.has(wl)) {
+        shownThisPage.add(wl);
+        queueProfileEvent(entry.word, 'shown', entry.dataset);
+    }
+}
+
+function scheduleUpgrade(spans, entry) {
+    (spans || []).forEach(span => {
+        if (!span || !span.isConnected) return;
+        if (!isOnScreen(span)) { applyUpgrade(span, entry); return; }
+        pendingUpgrades.push({ span, entry });
+    });
+    if (pendingUpgrades.length && !upgradeScrollBound) {
+        upgradeScrollBound = true;
+        window.addEventListener('scroll', onUpgradeScroll, { passive: true });
+    }
+}
+
+function onUpgradeScroll() {
+    if (upgradeRaf) return;                       // coalesce a burst of scroll events
+    upgradeRaf = requestAnimationFrame(() => {
+        upgradeRaf = null;
+        flushPendingUpgrades();
+    });
+}
+
+function flushPendingUpgrades() {
+    if (!pendingUpgrades.length) return;
+    const stillPending = [];
+    for (const job of pendingUpgrades) {
+        if (!job.span.isConnected) continue;      // the node went away; drop it
+        if (isOnScreen(job.span)) { stillPending.push(job); continue; }
+        applyUpgrade(job.span, job.entry);
+    }
+    pendingUpgrades = stillPending;
+    if (!pendingUpgrades.length && upgradeScrollBound) {
+        window.removeEventListener('scroll', onUpgradeScroll);
+        upgradeScrollBound = false;
+    }
+}
+
+/**
+ * Unwrap an explicit list of spans, restoring their original text.
+ * Used by the AI context check, which rejects individual (word, sentence)
+ * occurrences rather than whole headwords.
+ */
+function revertSpans(spans) {
     const parents = new Set();
-    document.querySelectorAll('.vocab-master-highlight').forEach(span => {
-        if ((span.dataset.word || '').toLowerCase() !== wl) return;
+    (spans || []).forEach(span => {
+        if (!span || !span.isConnected) return;
         const originalText = span.dataset.original || span.textContent;
         if (span.classList.contains('vocab-replaced')) replacedCount = Math.max(0, replacedCount - 1);
         if (span.parentNode) parents.add(span.parentNode);
@@ -440,6 +677,17 @@ function revertWord(word) {
         span.replaceWith(makeTextNode(originalText));
     });
     parents.forEach(p => { try { p.normalize(); } catch (e) { /* detached */ } });
+}
+
+// Unwrap every span for a single headword (used by "I know this", which is a
+// statement about the word itself rather than about one sentence).
+function revertWord(word) {
+    const wl = String(word).toLowerCase();
+    const matches = [];
+    document.querySelectorAll('.vocab-master-highlight').forEach(span => {
+        if ((span.dataset.word || '').toLowerCase() === wl) matches.push(span);
+    });
+    revertSpans(matches);
 }
 
 // -------------------------------------------------------------
@@ -469,6 +717,28 @@ function onTooltipClick(e) {
         handleSave(e.target.closest('.vm-save'));
     } else if (e.target.closest('.vm-know')) {
         handleKnow();
+    } else if (e.target.closest('.vm-up')) {
+        handleRate('up', e.target.closest('.vm-rate'));
+    } else if (e.target.closest('.vm-down')) {
+        handleRate('down', e.target.closest('.vm-rate'));
+    }
+}
+
+/**
+ * Thumbs up / down. Purely a preference signal for the local ranker - unlike
+ * "I know this" it does not unwrap the word, so a rating never disturbs the
+ * text the user is reading. Rating down a word makes it rarer, not banned.
+ */
+function handleRate(kind, group) {
+    const word = tooltipElement.dataset.currentWord || '';
+    if (!word) return;
+    queueProfileEvent(word, kind, tooltipElement.dataset.currentLevel);
+    flushProfileEvents(); // explicit action: persist it now, not in 4s
+    if (group) {
+        group.classList.add('vm-rated');
+        group.querySelectorAll('button').forEach(b => { b.disabled = true; });
+        const picked = group.querySelector(kind === 'up' ? '.vm-up' : '.vm-down');
+        if (picked) picked.classList.add('vm-picked');
     }
 }
 
@@ -490,6 +760,8 @@ function handleSave(btn) {
         savedSet.add(word.toLowerCase());
         if (btn) { btn.textContent = t('tooltipSaved', 'Saved ✓'); btn.disabled = true; }
     });
+    queueProfileEvent(word, 'saved', tooltipElement.dataset.currentLevel);
+    flushProfileEvents();
 }
 
 // "I know this" - mark known, unwrap it here, and skip it on future pages.
@@ -505,6 +777,8 @@ function handleKnow() {
         revertWord(word);
         hideTooltip();
     });
+    queueProfileEvent(word, 'known', tooltipElement.dataset.currentLevel);
+    flushProfileEvents();
 }
 
 let hideTimeout = null;
@@ -528,12 +802,24 @@ function showTooltip(target, item) {
     const originalText = target.dataset.original || '';
     const phon = item.phon_n_am || item.phon_br || '';
     const isSaved = savedSet.has((item.word || '').toLowerCase());
+    // Set only on words the AI context check replaced with a better fit.
+    const aiFrom = target.dataset.aiFrom || '';
 
     tooltipElement.dataset.currentWord = item.word || '';
     tooltipElement.dataset.currentVietnamese = item.vietnamese || '';
     tooltipElement.dataset.currentDefinition = item.definition || '';
     tooltipElement.dataset.currentExample = item.example || '';
     tooltipElement.dataset.currentType = item.type || '';
+    tooltipElement.dataset.currentLevel = item.dataset || '';
+
+    // Opening the card is the cheapest genuine interest signal there is, so it
+    // is recorded once per headword per page - mouseover re-fires whenever the
+    // pointer crosses back onto a span, which is not new information.
+    const hoverKey = (item.word || '').toLowerCase();
+    if (hoverKey && !hoveredThisPage.has(hoverKey)) {
+        hoveredThisPage.add(hoverKey);
+        queueProfileEvent(item.word, 'hover', item.dataset);
+    }
 
     const synonyms = (item.synonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
     const antonyms = (item.antonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
@@ -562,10 +848,15 @@ function showTooltip(target, item) {
                     <div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipVietnamese', 'Vietnamese'))}</span><span class="vm-tvalue">${esc(item.vietnamese || 'N/A')}</span></div>
                     ${originalText ? `<div class="vm-trow"><span class="vm-tlabel">${esc(t('tooltipReplaced', 'Replaced'))}</span><span class="vm-tvalue">${esc(originalText)}</span></div>` : ''}
                 </div>
+                ${aiFrom ? `<div class="vm-aifix">${esc(t('tooltipAiFixed', 'AI context check swapped this'))}: <s>${esc(aiFrom)}</s> → <strong>${esc(item.word || '')}</strong></div>` : ''}
             </div>
             <div class="vm-actions">
                 <button class="vm-save" type="button" ${isSaved ? 'disabled' : ''}>${esc(isSaved ? t('tooltipSaved', 'Saved ✓') : t('tooltipSave', 'Save to Deck'))}</button>
                 <button class="vm-know" type="button">${esc(t('tooltipKnow', 'I know this'))}</button>
+                <span class="vm-rate">
+                    <button class="vm-up" type="button" aria-label="${esc(t('tooltipGood', 'Good suggestion'))}" title="${esc(t('tooltipGood', 'Good suggestion'))}">&#128077;</button>
+                    <button class="vm-down" type="button" aria-label="${esc(t('tooltipBad', 'Not a good fit here'))}" title="${esc(t('tooltipBad', 'Not a good fit here'))}">&#128078;</button>
+                </span>
             </div>
         </div>`;
 

@@ -721,3 +721,8 @@ footer {
 }
 
 .modal-never:hover { color: var(--text-secondary); text-decoration: underline; }
+
+/* Only rendered when today's AI allowance is spent - see popup.js. */
+.quota-hint {
+    color: var(--warn);
+}

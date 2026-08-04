@@ -7,14 +7,15 @@
 //     page and content script.
 //
 // The core experience is fully local: vocabulary datasets are bundled CSV
-// files read via chrome.runtime.getURL(). Two OPTIONAL features touch the
-// network, both off until the user opts in: deck sync to the user's own
-// Firestore account after sign-in (lib/sync.js), and the AI context check,
-// which sends short sentence snippets to Gemini using the user's own key.
-// Page content is never sent anywhere else.
+// files read via chrome.runtime.getURL(). Two features touch the network:
+// deck sync to the user's own Firestore account after sign-in (lib/sync.js,
+// off until they sign in), and the AI context check, which sends short
+// sentence snippets to Gemini - either through Merid's own metered endpoint
+// (lib/ai-proxy.js) or, if the user saved a personal API key, straight from
+// their browser to Google. Page content goes nowhere else.
 // =============================================================
 
-importScripts('lib/vocab-core.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/sync.js');
+importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/ai-proxy.js', 'lib/sync.js');
 
 // Release builds keep the console quiet; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -22,9 +23,11 @@ const DEBUG = false;
 const log = DEBUG ? console.log.bind(console) : () => { };
 
 const C = self.VMCore;
+const Prof = self.VMProfile;
 const Custom = self.VMCustom;
 const Sync = self.VMSync;
 const FB = self.VMFirebase;
+const AiProxy = self.VMAiProxy;
 const FBConfig = self.VMFirebaseConfig || {};
 
 // ---- In-memory state (rehydrated on SW wake) ----
@@ -343,13 +346,44 @@ async function googleSignIn() {
 const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 const AI_CHECK_MAX_ITEMS = 20;
 
-async function callGeminiModel(apiKey, model, prompt, maxOutputTokens) {
+// Structured-output schema for the context check. Asking for the item index
+// alongside each verdict (rather than a bare positional array) means a model
+// that drops, merges or reorders an item can no longer shift every following
+// verdict onto the wrong word - a mis-parse now loses one item instead of
+// silently corrupting the whole batch.
+// `better` is free-form: the model does not know our datasets, so it proposes
+// whatever English word actually fits. The content script then looks that word
+// up in the loaded vocabulary and only swaps when it finds a real entry -
+// otherwise it falls back to reverting. That keeps a hallucinated suggestion
+// from ever reaching the page, and guarantees every displayed word still has a
+// definition, IPA and example behind it.
+const AI_VERDICT_SCHEMA = {
+    type: 'ARRAY',
+    items: {
+        type: 'OBJECT',
+        properties: {
+            i: { type: 'INTEGER' },
+            ok: { type: 'BOOLEAN' },
+            better: { type: 'STRING' }
+        },
+        required: ['i', 'ok']
+    }
+};
+
+async function callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema) {
+    const generationConfig = { temperature: 0, maxOutputTokens };
+    // Native JSON mode: Gemini constrains decoding to the schema, so the reply
+    // is always parseable. Replaces regex-scraping a JSON array out of prose.
+    if (schema) {
+        generationConfig.responseMimeType = 'application/json';
+        generationConfig.responseSchema = schema;
+    }
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens }
+            generationConfig
         })
     });
     if (!resp.ok) {
@@ -368,56 +402,308 @@ async function callGeminiModel(apiKey, model, prompt, maxOutputTokens) {
     return { ok: true, text };
 }
 
-async function callGemini(apiKey, prompt, maxOutputTokens) {
-    const { vm_ai_model } = await chrome.storage.local.get(['vm_ai_model']);
-    const models = vm_ai_model
+// Statuses where a DIFFERENT model on the SAME key is worth trying:
+//   404 - this model does not exist for this key/project
+//   429 - rate limited. Gemini's free-tier quotas are per model, so a sibling
+//         model usually still has budget; this is the common case for a heavy
+//         reader on a free key
+//   500/503 - that model is overloaded or erroring on Google's side
+// Everything else (400/401/403 - malformed or rejected key) is about the key
+// itself, and retrying other models would only burn time and quota.
+const GEMINI_RETRY_STATUSES = new Set([404, 429, 500, 503]);
+
+// A model that just rate-limited stays skipped for this long, so the next page
+// does not spend a wasted round trip rediscovering the same 429 before falling
+// through to a model that works.
+const MODEL_COOLDOWN_MS = 5 * 60 * 1000;
+const MODEL_COOLDOWN_KEY = 'vm_ai_model_cooldown';
+
+async function callGemini(apiKey, prompt, maxOutputTokens, schema) {
+    const store = await chrome.storage.local.get(['vm_ai_model', MODEL_COOLDOWN_KEY]);
+    const vm_ai_model = store.vm_ai_model;
+    const cooldown = store[MODEL_COOLDOWN_KEY] || {};
+    const now = Date.now();
+
+    const ordered = vm_ai_model
         ? [vm_ai_model, ...GEMINI_MODELS.filter(m => m !== vm_ai_model)]
-        : GEMINI_MODELS;
+        : GEMINI_MODELS.slice();
+
+    // Cooling-down models go last rather than being dropped: if every model is
+    // cooling down we still try them all instead of failing without a request.
+    const hot = ordered.filter(m => !(cooldown[m] > now));
+    const cool = ordered.filter(m => cooldown[m] > now);
+    const models = hot.concat(cool);
+
     let last = null;
+    const nextCooldown = Object.assign({}, cooldown);
+    let cooldownChanged = false;
+
     for (const model of models) {
-        const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens);
+        const res = await callGeminiModel(apiKey, model, prompt, maxOutputTokens, schema);
         if (res.ok) {
             if (model !== vm_ai_model) chrome.storage.local.set({ vm_ai_model: model });
-            return Object.assign(res, { model });
+            if (nextCooldown[model]) { delete nextCooldown[model]; cooldownChanged = true; }
+            if (cooldownChanged) chrome.storage.local.set({ [MODEL_COOLDOWN_KEY]: nextCooldown });
+            return Object.assign(res, { model, triedModels: models.indexOf(model) + 1 });
         }
         last = Object.assign(res, { model });
-        // Only 404 means "this model doesn't exist for this key" - try the
-        // next candidate. Any other error (bad key, rate limit, outage) is
-        // real and retrying other models would just burn quota.
-        if (res.status !== 404) return last;
+        if (res.status === 429) { nextCooldown[model] = now + MODEL_COOLDOWN_MS; cooldownChanged = true; }
+        if (!GEMINI_RETRY_STATUSES.has(res.status)) break;
     }
+
+    if (cooldownChanged) chrome.storage.local.set({ [MODEL_COOLDOWN_KEY]: nextCooldown });
     return last;
 }
 
+// ---- Verdict cache -------------------------------------------------------
+// A verdict depends on the (word, sentence) PAIR, so that is the cache key.
+// Re-reading a page, revisiting it tomorrow, or meeting the same boilerplate
+// sentence on another page of the same site all become free. Entries are
+// evicted oldest-first once the table is full.
+const AI_CACHE_KEY = 'vm_ai_cache';
+const AI_CACHE_MAX = 2000;
+const AI_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+/** Stable short key for one (word, sentence) pair. */
+function aiCacheKey(word, sentence) {
+    const norm = String(sentence || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const w = String(word || '').toLowerCase().trim();
+    // Two independent hashes over differently-salted inputs: a 32-bit hash
+    // alone collides often enough at 2000 entries to matter (birthday bound),
+    // and a collision would apply one word's verdict to an unrelated one.
+    const a = C.hashToInt(w + ' ' + norm).toString(36);
+    const b = C.hashToInt(norm + '' + w + '|' + norm.length).toString(36);
+    return a + '.' + b;
+}
+
+async function readAiCache() {
+    try {
+        const r = await chrome.storage.local.get([AI_CACHE_KEY]);
+        const c = r[AI_CACHE_KEY];
+        return (c && typeof c === 'object') ? c : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+/** Merge fresh verdicts in, drop expired ones, then trim to the size cap. */
+async function writeAiCache(cache, additions, now) {
+    const merged = Object.assign({}, cache, additions);
+    const cutoff = now - AI_CACHE_TTL_MS;
+    for (const k of Object.keys(merged)) {
+        const e = merged[k];
+        if (!Array.isArray(e) || !(Number(e[1]) > cutoff)) delete merged[k];
+    }
+    const keys = Object.keys(merged);
+    if (keys.length > AI_CACHE_MAX) {
+        keys.sort((x, y) => merged[y][1] - merged[x][1]); // newest first
+        const trimmed = {};
+        for (let i = 0; i < AI_CACHE_MAX; i++) trimmed[keys[i]] = merged[keys[i]];
+        try { await chrome.storage.local.set({ [AI_CACHE_KEY]: trimmed }); } catch (e) { /* quota */ }
+        return;
+    }
+    try { await chrome.storage.local.set({ [AI_CACHE_KEY]: merged }); } catch (e) { /* quota */ }
+}
+
+/**
+ * Verify a batch of replacements against their sentence context.
+ *
+ * Returns `verdicts` positionally aligned with the input `items`: 1 = the
+ * English word fits, 0 = it does not. Cached pairs are answered without a
+ * network call; only the remainder is sent to Gemini. When the model omits an
+ * item, that item defaults to 1 (keep) - a missing answer must never silently
+ * revert a word the model never judged.
+ */
 async function aiCheckContext(items) {
     const sync = await chrome.storage.sync.get(['aiCheckEnabled']);
     const local = await chrome.storage.local.get(['geminiApiKey']);
-    if (!sync.aiCheckEnabled || !local.geminiApiKey) return { ok: false, disabled: true };
-    if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [] };
+
+    // Two ways to reach Gemini, in this order:
+    //   1. The reader's OWN key, if they saved one. It goes straight from their
+    //      browser to Google, has no daily cap from us, and never touches a
+    //      Merid server. Power users and anyone uncomfortable with (2) can opt
+    //      into it from Settings.
+    //   2. Merid's hosted endpoint, which holds the keys and the per-user
+    //      counter server-side. This is what everyone else gets, with no setup.
+    const ownKey = local.geminiApiKey;
+    const hosted = !ownKey && AiProxy && AiProxy.available();
+    if (!sync.aiCheckEnabled || (!ownKey && !hosted)) return { ok: false, disabled: true };
+    if (!Array.isArray(items) || items.length === 0) return { ok: true, verdicts: [], cached: 0 };
 
     const capped = items.slice(0, AI_CHECK_MAX_ITEMS).map(it => ({
         word: String(it && it.word || '').slice(0, 60),
         original: String(it && it.original || '').slice(0, 60),
         sentence: String(it && it.sentence || '').slice(0, 180)
     }));
-    const list = capped.map((it, i) =>
-        `${i + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`).join('\n');
+
+    const now = Date.now();
+    const cache = await readAiCache();
+    const cutoff = now - AI_CACHE_TTL_MS;
+    const verdicts = new Array(capped.length).fill(1);
+    const betters = new Array(capped.length).fill('');
+    const askIdx = [];          // positions still needing an answer
+    const keys = capped.map(it => aiCacheKey(it.word, it.sentence));
+
+    capped.forEach((it, i) => {
+        const hit = cache[keys[i]];
+        if (Array.isArray(hit) && Number(hit[1]) > cutoff) {
+            verdicts[i] = hit[0] ? 1 : 0;
+            betters[i] = typeof hit[2] === 'string' ? hit[2] : ''; // absent in pre-suggestion entries
+        } else {
+            askIdx.push(i);
+        }
+    });
+
+    const cachedCount = capped.length - askIdx.length;
+    if (!askIdx.length) {
+        log('[VM] AI check: all', cachedCount, 'items served from cache (0 API calls)');
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: 0 };
+    }
+
+    const ask = askIdx.map(i => capped[i]);
+    const list = ask.map((it, n) =>
+        `${n + 1}. english="${it.word}" replaced_vietnamese="${it.original}" sentence="${it.sentence}"`
+    ).join('\n');
+
+    // Personalization: a compact, aggregate description of this reader's taste.
+    // Contains no page content and no identifiers - only preferences learned
+    // from their own ratings - and is empty for a user with no history, so a
+    // new user's prompt is byte-for-byte what it was before.
+    const profile = await getProfile();
+    const who = Prof.describeProfile(profile);
+    const persona = who ? `The reader ${who}. Prefer suggestions that suit them.\n` : '';
+
+    // ---- Hosted path: the server holds the keys, picks the model and meters
+    // the reader. It returns the same shape as the direct path below, so the
+    // caching and merging underneath are identical either way.
+    if (hosted) {
+        const res = await AiProxy.check(ask, who);
+        if (!res.ok) {
+            log('[VM] AI check via proxy failed:', res.reason || '', res.status || '');
+            return { ok: false, reason: res.reason, status: res.status, quota: res.reason === 'quota' };
+        }
+        const additions = {};
+        res.verdicts.forEach((v, n) => {
+            const srcIdx = askIdx[n];
+            if (srcIdx === undefined) return;
+            const better = res.betters[n] || '';
+            verdicts[srcIdx] = v;
+            betters[srcIdx] = better;
+            additions[keys[srcIdx]] = better ? [v, now, better] : [v, now];
+        });
+        await writeAiCache(cache, additions, now);
+        log('[VM] AI check (hosted):', cachedCount, 'cached,', ask.length, 'asked');
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: ask.length, model: res.model, hosted: true };
+    }
+
     const prompt =
         'In each sentence below, one Vietnamese word/phrase was replaced by an English word. ' +
-        'For each item answer 1 if the English word correctly expresses the replaced Vietnamese meaning in that sentence context, otherwise 0. ' +
-        'Reply with ONLY a JSON array of 0/1 (one per item), nothing else.\n' + list;
+        'For each item decide whether the English word correctly expresses the replaced Vietnamese meaning in that sentence context. ' +
+        'Return one object per item with "i" set to the item number shown and "ok" true when the word fits, false when it does not. ' +
+        'When "ok" is false, set "better" to a single English word of similar or higher CEFR level that does fit; ' +
+        'leave "better" empty when the word already fits or when no good replacement exists.\n' +
+        persona + list;
 
     try {
-        const res = await callGemini(local.geminiApiKey, prompt, 200);
+        // Room for the suggestion field on top of each verdict.
+        const res = await callGemini(ownKey, prompt, 60 + ask.length * 28, AI_VERDICT_SCHEMA);
         if (!res.ok) return res;
-        const m = (res.text || '').match(/\[[\s\S]*?\]/);
-        if (!m) return { ok: false, reason: 'bad-response' };
-        const verdicts = JSON.parse(m[0]).map(v => (v ? 1 : 0));
-        return { ok: true, verdicts };
+
+        let parsed;
+        try {
+            parsed = JSON.parse(res.text || '');
+        } catch (e) {
+            return { ok: false, reason: 'bad-response' };
+        }
+        if (!Array.isArray(parsed)) return { ok: false, reason: 'bad-response' };
+
+        const additions = {};
+        let answered = 0;
+        for (const row of parsed) {
+            if (!row || typeof row !== 'object') continue;
+            const n = Number(row.i);
+            if (!Number.isInteger(n) || n < 1 || n > ask.length) continue;
+            const srcIdx = askIdx[n - 1];
+            const v = row.ok ? 1 : 0;
+            // A suggestion is only meaningful for a rejected word, and only as
+            // a single word - anything longer is the model explaining itself.
+            const better = (!v && typeof row.better === 'string')
+                ? row.better.trim().split(/\s+/)[0].replace(/[^A-Za-z'-]/g, '').slice(0, 40)
+                : '';
+            verdicts[srcIdx] = v;
+            betters[srcIdx] = better;
+            additions[keys[srcIdx]] = better ? [v, now, better] : [v, now];
+            answered++;
+        }
+
+        await writeAiCache(cache, additions, now);
+        log('[VM] AI check:', cachedCount, 'cached,', askIdx.length, 'asked,', answered, 'answered');
+        return { ok: true, verdicts, betters, cached: cachedCount, asked: askIdx.length, model: res.model };
     } catch (e) {
         return { ok: false, reason: 'network' };
     }
 }
+
+// =============================================================
+// Personalization profile (local, private).
+//
+// The content script streams interaction events here; this is the only writer,
+// so concurrent tabs cannot clobber each other's updates mid-read. Everything
+// stays in chrome.storage.local - the profile is mirrored to the user's own
+// Firestore account only if they opt into deck sync.
+// =============================================================
+const PROFILE_KEY = 'vm_profile';
+const PROFILE_EVENTS_MAX = 200;
+
+// Serializes read-modify-write cycles: two tabs flushing at once would
+// otherwise both read the same profile and the later write would win outright,
+// silently discarding the other tab's events.
+let profileWriteChain = Promise.resolve();
+
+function applyProfileEvents(events) {
+    if (!Array.isArray(events) || !events.length) return Promise.resolve({ ok: true, applied: 0 });
+    const batch = events.slice(0, PROFILE_EVENTS_MAX);
+    profileWriteChain = profileWriteChain.then(async () => {
+        const r = await chrome.storage.local.get([PROFILE_KEY]);
+        let profile = Prof.withDefaults(r[PROFILE_KEY]);
+        for (const ev of batch) {
+            if (!ev || typeof ev !== 'object') continue;
+            profile = Prof.recordEvent(profile, ev);
+        }
+        await chrome.storage.local.set({ [PROFILE_KEY]: profile });
+        log('[VM] profile: applied', batch.length, 'events;', Object.keys(profile.words).length, 'words tracked');
+        return { ok: true, applied: batch.length };
+    }).catch(e => {
+        console.warn('[VM] profile update failed:', e && e.message);
+        return { ok: false };
+    });
+    return profileWriteChain;
+}
+
+async function getProfile() {
+    const r = await chrome.storage.local.get([PROFILE_KEY]);
+    return Prof.withDefaults(r[PROFILE_KEY]);
+}
+
+/**
+ * Forget everything learned, without touching the deck or the settings.
+ *
+ * Goes through the same write chain as applyProfileEvents: a tab closing at
+ * that moment flushes its queued events, and a delete that raced ahead of that
+ * flush would be undone by it - the user would press Forget, see the panel
+ * empty, and find a profile again seconds later.
+ */
+function resetProfile() {
+    profileWriteChain = profileWriteChain.then(async () => {
+        await chrome.storage.local.remove([PROFILE_KEY]);
+        return { ok: true };
+    }).catch(e => {
+        console.warn('[VM] profile reset failed:', e && e.message);
+        return { ok: false };
+    });
+    return profileWriteChain;
+}
+
 
 async function aiTestKey(key) {
     const k = String(key || '').trim();
@@ -508,6 +794,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     .catch(() => sendResponse({ ok: false }));
                 return true;
             }
+
+            // ---- Personalization (content script / options page) ----
+            case 'MERID_PROFILE_EVENTS': {
+                applyProfileEvents(request.events)
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_PROFILE_GET': {
+                getProfile()
+                    .then(profile => sendResponse({ ok: true, profile }))
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_PROFILE_RESET': {
+                resetProfile()
+                    .then(sendResponse)
+                    .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+
 
             case 'MERID_SYNC_STATUS': {
                 Sync.getStatus().then(sendResponse).catch(() => sendResponse({ state: 'error' }));

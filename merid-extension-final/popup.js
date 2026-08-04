@@ -298,6 +298,22 @@ document.addEventListener('DOMContentLoaded', () => {
         else labels[2].classList.add('active');
     }
 
+    // Today's AI allowance, if and only if it has run out.
+    (function renderQuotaHint() {
+        const el = document.getElementById('quota-hint');
+        if (!el) return;
+        chrome.storage.local.get(['vm_ai_quota'], (r) => {
+            const q = r.vm_ai_quota;
+            if (!q || !q.exhausted) return;
+            // A stale "exhausted" from a previous day must not linger.
+            if (q.resetAt && Date.now() > q.resetAt) return;
+            el.textContent = q.anonymous
+                ? t('popupQuotaAnon', 'AI checks used up for today. Sign in for more.')
+                : t('popupQuotaOut', 'AI checks used up for today. Resets at midnight UTC.');
+            el.hidden = false;
+        });
+    })();
+
     function updateExtensionToggleButton(enabled) {
         extensionToggle.textContent = enabled
             ? t('popupExtensionOn', 'Extension is ON')

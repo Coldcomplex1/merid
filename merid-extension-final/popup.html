@@ -91,6 +91,10 @@
             <button class="btn-view-deck" id="view-deck-btn" type="button" data-i18n="popupViewDeck">View my deck ↗</button>
             <button class="ai-hint" id="ai-hint" type="button" data-i18n="popupAiCheck">AI Context Check</button>
             <p class="sync-hint" id="sync-hint" hidden></p>
+            <!-- Shown only when today's AI allowance is spent, so a reader who
+                 notices the check went quiet knows why rather than assuming
+                 something broke. Silent the rest of the time. -->
+            <p class="sync-hint quota-hint" id="quota-hint" hidden></p>
             <div class="footer-links">
                 <button class="link-btn" id="options-btn" type="button" data-i18n="popupSettings">Settings</button>
             </div>

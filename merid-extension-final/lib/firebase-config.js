@@ -47,6 +47,12 @@
         // First-run onboarding tour, opened once right after install.
         webWelcomeUrl: 'https://merid.site/welcome',
         // Post-uninstall exit survey (chrome.runtime.setUninstallURL).
-        webUninstallUrl: 'https://merid.site/goodbye'
+        webUninstallUrl: 'https://merid.site/goodbye',
+        // Merid's own AI context-check endpoint. Holds the Gemini keys and the
+        // per-user daily counter server-side, so neither is in the extension
+        // where anyone could read or reset them. Set to '' to disable the
+        // hosted check entirely - the extension then falls back to a personal
+        // key if the user has saved one, and to no AI check if not.
+        aiProxyUrl: 'https://merid.site/api/check'
     };
 });

@@ -79,6 +79,19 @@
         return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn) };
     }
 
+    /**
+     * Create an anonymous account (Identity Toolkit accounts:signUp with no
+     * credentials). Gives the device a real, verifiable Firebase identity so
+     * the AI proxy can meter it, without asking anyone to sign up first.
+     *
+     * Requires Anonymous sign-in to be enabled in the Firebase console
+     * (Authentication -> Sign-in method -> Anonymous).
+     */
+    async function signUpAnonymous() {
+        const r = await postJson(identityUrl('signUp'), { returnSecureToken: true });
+        return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn) };
+    }
+
     async function signIn(email, password) {
         const r = await postJson(identityUrl('signInWithPassword'), { email, password, returnSecureToken: true });
         return { uid: r.localId, idToken: r.idToken, refreshToken: r.refreshToken, expiresIn: Number(r.expiresIn) };
@@ -237,7 +250,7 @@
 
     return {
         configured,
-        signUp, signIn, refresh,
+        signUp, signUpAnonymous, signIn, refresh,
         sendSignInLink, signInWithEmailLink, signInWithGoogleIdToken,
         getDoc, commit,
         createWrite, updateWrite, setWrite, deleteWrite
