@@ -110,7 +110,13 @@
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
         datasetKey: 'sat',
-        disabledSites: []            // canonical hostnames the user paused Merid on
+        disabledSites: [],           // canonical hostnames the user paused Merid on
+        // AI context check. ON by default now that it needs no setup from the
+        // reader: Merid supplies the keys and meters usage server-side. It was
+        // off while it required them to create their own API key, which made
+        // opting in the only honest default. Turning it off in Settings stops
+        // every request - nothing leaves the device with this false.
+        aiCheckEnabled: true
     };
 
     // ---------------------------------------------------------------------
