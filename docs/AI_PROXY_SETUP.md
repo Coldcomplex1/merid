@@ -4,6 +4,11 @@ The extension no longer asks every user for a Gemini API key. It calls
 `/api/check` on merid.site, which holds the keys and counts each person's daily
 usage. This page is how you set that up.
 
+**Handing the setup to someone else?** `HUONG-DAN-VERCEL.md` is a
+click-by-click Vietnamese walkthrough of steps 2-4 for a non-developer. Fill in
+the `<...>` placeholders and send it privately - the values are secrets and are
+deliberately absent from the copy in this repo.
+
 **Why a server at all.** A Chrome extension is a zip file on the user's disk.
 Any key inside it can be read in about a minute, and a daily limit the
 extension counts is a limit the user can reset by clearing storage. Moving both
