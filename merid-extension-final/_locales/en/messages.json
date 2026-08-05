@@ -83,6 +83,9 @@
   "popupSettings": {
     "message": "Settings"
   },
+  "popupTutorial": {
+    "message": "Tutorial"
+  },
   "popupSyncingAs": {
     "message": "Syncing to your deck as $EMAIL$",
     "placeholders": {

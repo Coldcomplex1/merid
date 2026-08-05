@@ -44,6 +44,8 @@
         // (AI context check), linked from the popup onboarding modal and the
         // options page.
         webApiKeyGuideUrl: 'https://merid.site/api-key-guide',
+        // How-to guide on merid.site, linked from the popup footer.
+        webTutorialUrl: 'https://merid.site/tutorial',
         // First-run onboarding tour, opened once right after install.
         webWelcomeUrl: 'https://merid.site/welcome',
         // Post-uninstall exit survey (chrome.runtime.setUninstallURL).

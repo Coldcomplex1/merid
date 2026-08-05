@@ -83,6 +83,9 @@
   "popupSettings": {
     "message": "Cài đặt"
   },
+  "popupTutorial": {
+    "message": "Hướng dẫn"
+  },
   "popupSyncingAs": {
     "message": "Đang đồng bộ bộ thẻ: $EMAIL$",
     "placeholders": {

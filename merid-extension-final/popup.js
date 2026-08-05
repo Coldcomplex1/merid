@@ -279,6 +279,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Opens the merid.site tutorial in a new tab. The URL is a fixed constant
+    // from lib/firebase-config.js - never user-supplied (A10).
+    document.getElementById('tutorial-btn').addEventListener('click', () => {
+        chrome.tabs.create({ url: window.VMFirebaseConfig.webTutorialUrl });
+    });
+
     document.getElementById('options-btn').addEventListener('click', openOptions);
 
     // ---- helpers ----
