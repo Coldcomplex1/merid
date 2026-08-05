@@ -264,6 +264,76 @@ check(abolishLeft === 0 && upgraded.includes('terminate'),
     `${abolishLeft} abolish left, upgraded=${JSON.stringify(upgraded)}`);
 await p2.close();
 
+// =====================================================================
+// 6. The check is ON without anyone touching a setting
+// =====================================================================
+// This is what "the AI is not working" looked like: aiCheckEnabled was absent
+// from DEFAULT_SETTINGS, every raw read got undefined, and the gate treated
+// that as off - so the feature never ran for a single user.
+await sw.evaluate(async () => {
+    await chrome.storage.sync.clear();
+    await chrome.storage.sync.set({ datasetKey: 'c1', frequency: 100, replacementMode: 'replace' });
+    await chrome.storage.local.remove([
+        'geminiApiKey', 'vm_ai_cache', 'vm_profile', 'vm_ai_quota', 'vm_anon_auth', 'vm_auth'
+    ]);
+    await self.loadVocabulary('c1');
+});
+await installStub({ status: 200, used: 1, limit: 20 });
+res = await runCheck();
+check(res.ok && res.hosted === true,
+    'with aiCheckEnabled never set, the check still runs', JSON.stringify(res.ok || res));
+
+// ...and switching it off still stops everything.
+await sw.evaluate(() => chrome.storage.sync.set({ aiCheckEnabled: false }));
+await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_cache']));
+res = await runCheck();
+check(!res.ok && res.disabled === true, 'turning it off stops every request', JSON.stringify(res));
+await sw.evaluate(() => chrome.storage.sync.set({ aiCheckEnabled: true }));
+
+// =====================================================================
+// 7. The diagnostic names the broken link
+// =====================================================================
+const diagnose = () => sw.evaluate(() => self.aiDiagnose());
+
+await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_cache']));
+await installStub({ status: 200, used: 2, limit: 20 });
+let d = await diagnose();
+check(d.ok && d.stage === 'hosted' && /Working/.test(d.message),
+    'a healthy setup reports working', JSON.stringify(d));
+check(/left today/.test(d.message), 'it says how much allowance is left', d.message);
+
+await sw.evaluate(() => chrome.storage.sync.set({ aiCheckEnabled: false }));
+d = await diagnose();
+check(!d.ok && d.stage === 'off', 'a switched-off check is named as such', JSON.stringify(d));
+await sw.evaluate(() => chrome.storage.sync.set({ aiCheckEnabled: true }));
+
+// Each server failure has to lead somewhere different - that is the whole point.
+const cases = [
+    [{ status: 500, payload: { ok: false, code: 'server-misconfigured' } }, 'server', /environment variables/i],
+    [{ status: 503, payload: { ok: false, code: 'quota-unavailable' } }, 'server', /Upstash/i],
+    [{ status: 502, payload: { ok: false, code: 'upstream' } }, 'server', /every Gemini key failed/i],
+    [{ status: 401, payload: { ok: false, code: 'unauthorized' } }, 'server', /FIREBASE_PROJECT_ID/],
+    [{ status: 429, payload: { ok: false, code: 'quota-exceeded', used: 21, limit: 20, resetIn: 3600, anonymous: true } }, 'quota', /allowance is used up/i]
+];
+for (const [reply, stage, re] of cases) {
+    await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_cache', 'vm_ai_quota']));
+    await installStub(reply);
+    d = await diagnose();
+    check(d.stage === stage && re.test(d.message),
+        `${reply.payload.code} is diagnosed distinctly`, `${d.stage}: ${d.message}`);
+}
+
+// A personal key is tested on its own path, never through the proxy.
+await sw.evaluate(async () => {
+    await chrome.storage.local.set({ geminiApiKey: 'AIzaPersonalKey' });
+    await chrome.storage.local.remove(['vm_ai_cache']);
+});
+await installStub({ status: 200, used: 1, limit: 20 });
+d = await diagnose();
+check(d.ok && d.stage === 'own-key' && /your own API key/i.test(d.message),
+    'a personal key is diagnosed on its own path', JSON.stringify(d));
+await sw.evaluate(() => chrome.storage.local.remove(['geminiApiKey']));
+
 console.log('\n=== PASS ===');
 ok.forEach(l => console.log('  +', l));
 if (fail.length) { console.log('\n=== FAIL ==='); fail.forEach(l => console.log('  -', l)); }

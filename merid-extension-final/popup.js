@@ -206,24 +206,31 @@ document.addEventListener('DOMContentLoaded', () => {
         else window.open(chrome.runtime.getURL('options.html'));
     };
     let aiKeyConfigured = false;
-    chrome.storage.sync.get(['aiCheckEnabled'], (s) => {
+    // Merid serves the AI check from its own keys, so a reader needs no key at
+    // all. The onboarding modal below only makes sense when that hosted path is
+    // switched off (aiProxyUrl empty) - otherwise it would nag every user, daily,
+    // to do something that is already done for them.
+    const hostedAi = !!(window.VMFirebaseConfig && window.VMFirebaseConfig.aiProxyUrl);
+    chrome.storage.sync.get(['aiCheckEnabled'], (raw) => {
+        const s = C.withDefaults(raw);
         chrome.storage.local.get(['geminiApiKey', 'vm_ai_modal_day', 'vm_ai_modal_optout', 'vm_first_day'], (l) => {
             aiKeyConfigured = !!l.geminiApiKey;
-            if (s.aiCheckEnabled && aiKeyConfigured) {
+            // "ON" whenever the check can actually run: hosted, or their own key.
+            if (s.aiCheckEnabled && (hostedAi || aiKeyConfigured)) {
                 aiHint.textContent = t('popupAiCheckOn', 'AI Context Check: ON');
                 aiHint.classList.add('on');
             }
             const today = new Date().toDateString();
             if (!l.vm_first_day) chrome.storage.local.set({ vm_first_day: today });
             const isFirstDay = !l.vm_first_day || l.vm_first_day === today;
-            if (!aiKeyConfigured && !l.vm_ai_modal_optout && !isFirstDay && l.vm_ai_modal_day !== today) {
+            if (!hostedAi && !aiKeyConfigured && !l.vm_ai_modal_optout && !isFirstDay && l.vm_ai_modal_day !== today) {
                 aiModal.hidden = false;
                 chrome.storage.local.set({ vm_ai_modal_day: today });
             }
         });
     });
     aiHint.addEventListener('click', () => {
-        if (aiKeyConfigured) openOptions();
+        if (hostedAi || aiKeyConfigured) openOptions();
         else aiModal.hidden = false;
     });
     document.getElementById('ai-modal-settings').addEventListener('click', openOptions);

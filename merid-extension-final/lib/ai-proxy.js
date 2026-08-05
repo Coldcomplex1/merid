@@ -117,7 +117,8 @@
         try {
             auth = await getToken();
         } catch (e) {
-            return { ok: false, reason: 'auth', detail: (e && e.code) || '' };
+            // Almost always "Anonymous sign-in is not enabled in Firebase".
+            return { ok: false, reason: 'auth', code: (e && e.code) || '', detail: (e && e.message) || '' };
         }
 
         let resp;
@@ -148,7 +149,13 @@
         }
 
         if (!resp.ok || !data || !data.ok || !Array.isArray(data.verdicts)) {
-            return { ok: false, reason: 'upstream', status: resp.status };
+            // Carry the server's own code through. "It failed" is useless when
+            // the causes are as different as a missing environment variable, an
+            // unreachable quota store and an exhausted key.
+            return {
+                ok: false, reason: 'upstream', status: resp.status,
+                code: (data && data.code) || '', detail: (data && data.reason) || ''
+            };
         }
 
         await recordQuota({

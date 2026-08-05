@@ -515,7 +515,10 @@ async function writeAiCache(cache, additions, now) {
  * revert a word the model never judged.
  */
 async function aiCheckContext(items) {
-    const sync = await chrome.storage.sync.get(['aiCheckEnabled']);
+    // Through withDefaults: a raw read returns undefined for anyone who has
+    // never touched the toggle, and undefined is falsy - which would leave the
+    // check off for every existing user no matter what the default says.
+    const sync = C.withDefaults(await chrome.storage.sync.get(['aiCheckEnabled']));
     const local = await chrome.storage.local.get(['geminiApiKey']);
 
     // Two ways to reach Gemini, in this order:
@@ -705,6 +708,96 @@ function resetProfile() {
 }
 
 
+/**
+ * Run one real check and report which link in the chain is broken.
+ *
+ * "The AI is not working" has at least six unrelated causes - the toggle, the
+ * Firebase project, the endpoint, its environment variables, its quota store,
+ * and the Gemini keys themselves - and they are indistinguishable from the
+ * page. This walks the same path a real check takes and names the one that
+ * failed, so nobody has to guess whether it is "the key" or "the extension".
+ *
+ * @returns {Promise<{ok:boolean, stage:string, message:string, detail?:string}>}
+ */
+async function aiDiagnose() {
+    const sync = C.withDefaults(await chrome.storage.sync.get(['aiCheckEnabled']));
+    const local = await chrome.storage.local.get(['geminiApiKey']);
+
+    if (!sync.aiCheckEnabled) {
+        return { ok: false, stage: 'off', message: 'The AI context check is switched off. Turn it on above.' };
+    }
+
+    // A saved personal key takes priority, so that is the path to test.
+    if (local.geminiApiKey) {
+        const res = await aiTestKey(local.geminiApiKey);
+        if (res.ok) {
+            return { ok: true, stage: 'own-key', message: `Working, using your own API key (model: ${res.model}).` };
+        }
+        return {
+            ok: false, stage: 'own-key',
+            message: 'Your own API key was rejected by Google. Clear it below to fall back to Merid\'s.',
+            detail: res.detail || ('HTTP ' + (res.status || res.reason || '?'))
+        };
+    }
+
+    if (!AiProxy || !AiProxy.available()) {
+        return {
+            ok: false, stage: 'config',
+            message: 'This build has no AI endpoint configured (aiProxyUrl or the Firebase project is empty).'
+        };
+    }
+
+    // One real, minimal check. It spends one unit of the daily allowance,
+    // which is the price of an answer that is actually true.
+    const probe = [{ word: 'candid', original: 'thẳng thắn', sentence: 'Anh ấy rất candid khi nói chuyện.' }];
+    const res = await AiProxy.check(probe, '');
+
+    if (res.ok) {
+        const q = await AiProxy.getQuota();
+        const left = q && typeof q.limit === 'number' ? Math.max(0, q.limit - (q.used || 0)) : null;
+        return {
+            ok: true, stage: 'hosted',
+            message: `Working (model: ${res.model || 'unknown'}).` +
+                (left === null ? '' : ` ${left} of ${q.limit} checks left today.`)
+        };
+    }
+
+    if (res.reason === 'auth') {
+        return {
+            ok: false, stage: 'auth',
+            message: 'Could not create an account for this device. Anonymous sign-in is probably not enabled in the Firebase project.',
+            detail: res.code || res.detail || ''
+        };
+    }
+    if (res.reason === 'network') {
+        return {
+            ok: false, stage: 'network',
+            message: 'Could not reach the Merid AI endpoint. Check your connection, or the endpoint is not deployed.'
+        };
+    }
+    if (res.reason === 'quota') {
+        return {
+            ok: true, stage: 'quota',
+            message: 'Working, but today\'s allowance is used up. It resets at midnight UTC.' +
+                (res.anonymous ? ' Signing in raises the limit.' : '')
+        };
+    }
+
+    // Everything else is the server telling us what it could not do.
+    const byCode = {
+        'server-misconfigured': 'The endpoint is deployed but missing its environment variables (Gemini keys, Upstash, or the Firebase project id).',
+        'quota-unavailable': 'The endpoint cannot reach its quota store, so it is refusing to serve unmetered. Check the Upstash credentials.',
+        'upstream': 'The endpoint reached Google but every Gemini key failed - out of quota, or the keys are wrong.',
+        'bad-response': 'Gemini answered, but not in the expected format. Usually transient.',
+        'unauthorized': 'The endpoint rejected this device\'s token. Its FIREBASE_PROJECT_ID probably does not match this extension\'s Firebase project.'
+    };
+    return {
+        ok: false, stage: 'server',
+        message: byCode[res.code] || `The endpoint returned HTTP ${res.status || '?'}.`,
+        detail: res.code || ''
+    };
+}
+
 async function aiTestKey(key) {
     const k = String(key || '').trim();
     if (!k) return { ok: false, reason: 'no-key' };
@@ -786,6 +879,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 aiCheckContext(request.items)
                     .then(sendResponse)
                     .catch(() => sendResponse({ ok: false }));
+                return true;
+            }
+            case 'MERID_AI_DIAGNOSE': {
+                aiDiagnose()
+                    .then(sendResponse)
+                    .catch(e => sendResponse({ ok: false, stage: 'unknown', message: 'Diagnosis failed.', detail: String((e && e.message) || '') }));
                 return true;
             }
             case 'MERID_AI_TEST_KEY': {

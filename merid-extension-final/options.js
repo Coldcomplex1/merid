@@ -60,8 +60,8 @@ function load() {
         refreshDatasetInfo();
     });
     // AI context check: toggle lives in sync, the key stays local-only.
-    chrome.storage.sync.get(['aiCheckEnabled'], s => {
-        setActive(els.aiSeg, s.aiCheckEnabled ? 'on' : 'off');
+    chrome.storage.sync.get(['aiCheckEnabled'], raw => {
+        setActive(els.aiSeg, C.withDefaults(raw).aiCheckEnabled ? 'on' : 'off');
     });
     chrome.storage.local.get(['geminiApiKey'], l => {
         if (l.geminiApiKey) els.aiKey.value = l.geminiApiKey;
@@ -885,10 +885,39 @@ function renderAiQuota() {
     });
 }
 
+/**
+ * "Test the AI check" - runs one real check and reports which link failed.
+ * The whole point is to answer "is it the key or the extension?" without
+ * anyone having to read a console log.
+ */
+function wireAiDiagnose() {
+    const btn = document.getElementById('aiDiagnoseBtn');
+    const out = document.getElementById('aiDiagnosis');
+    if (!btn || !out) return;
+    btn.addEventListener('click', () => {
+        btn.disabled = true;
+        out.hidden = false;
+        out.classList.remove('auth-error');
+        out.textContent = 'Testing…';
+        chrome.runtime.sendMessage({ type: 'MERID_AI_DIAGNOSE' }, (res) => {
+            btn.disabled = false;
+            if (chrome.runtime.lastError || !res) {
+                out.classList.add('auth-error');
+                out.textContent = 'Could not reach the extension background. Reload Merid at chrome://extensions and try again.';
+                return;
+            }
+            out.classList.toggle('auth-error', !res.ok);
+            out.textContent = (res.ok ? '✓ ' : '✗ ') + res.message +
+                (res.detail ? ` (${res.detail})` : '');
+            renderAiQuota();
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     load(); wire(); wireAccount(); wireCustom();
     renderProfilePanel(); wireProfilePanel();
-    renderAiQuota();
+    renderAiQuota(); wireAiDiagnose();
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && (changes.vm_ai_quota || changes.geminiApiKey)) renderAiQuota();
     });

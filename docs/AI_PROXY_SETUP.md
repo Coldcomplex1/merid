@@ -85,12 +85,11 @@ everyone who has not signed in.
 
 Everything below is on <https://vercel.com/dashboard> → the **merid** project.
 
-### 4a. Get the code onto the deployed branch
+### 4a. The code is already on `main`
 
-The proxy lives in `api/` on the branch
-`claude/english-vocab-chrome-extension-sksk6c`. Vercel builds `main`, so the
-branch has to be merged (or the Production Branch changed in
-**Settings → Git**). Until then `/api/check` returns Vercel's 404 page.
+The proxy lives in `api/check.js`, merged in PR #36, so Vercel builds it with
+every deploy of `main`. Nothing to do here unless the Production Branch was
+changed in **Settings → Git**.
 
 `vercel.json` rewrites everything except `/api/*` to `index.html`, so the SPA
 keeps working and the function stays reachable. Note that **`vercel.json`
@@ -156,9 +155,28 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=3&key=
 ```
 Expect a JSON list of models.
 
-**4. End to end.** Load the extension, open a Vietnamese news page, then
-**Settings → AI context check**. It shows how many checks are left today. If it
-says nothing, the extension never got an answer - re-run step 1.
+**4. End to end, from the extension.** Load the extension, open
+**Settings → AI context check → Test the AI check**. It runs one real check and
+names whichever link is broken rather than just failing:
+
+| What it says | What to fix |
+| --- | --- |
+| Working (model: …), N of M left today | Nothing. |
+| The AI context check is switched off | The toggle above it. |
+| Could not create an account for this device | Step 3 - anonymous sign-in is not enabled. |
+| Could not reach the Merid AI endpoint | Not deployed, or no connection. |
+| …missing its environment variables | Step 4b. |
+| …cannot reach its quota store | The Upstash URL/token, step 2. |
+| …every Gemini key failed | Out of quota, or the keys are wrong. |
+| …rejected this device's token | `FIREBASE_PROJECT_ID` does not match the extension's Firebase project. |
+
+**5. The server on its own** (needs live keys, spends real quota):
+```bash
+GEMINI_API_KEYS="key1,key2" node test/manual/live-proxy.mjs
+```
+Runs the real handler against real Gemini with a local stand-in for Upstash -
+the only check that proves the handler, the prompt, model selection across the
+key pool, the quota window and token verification all work together.
 
 ## Behaviour worth knowing
 
