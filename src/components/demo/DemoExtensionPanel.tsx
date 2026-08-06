@@ -1,7 +1,8 @@
 import { Link } from 'react-router'
 import type { CSSProperties, ReactNode } from 'react'
+import MeridMark from '../ui/MeridMark'
 
-// The extension popup's exact palette (merid-extension/popup.css :root).
+// The extension popup's exact palette (merid-extension-final/popup.css :root).
 // Raised controls (#1d2d50) and gold-button ink (#020c1b) appear as literals
 // inside Tailwind classes below.
 const BG = '#0a192f'
@@ -86,7 +87,9 @@ export default function DemoExtensionPanel({
       className="w-full rounded-2xl p-6 shadow-panel ring-1 ring-navy-600/50"
       style={{ backgroundColor: BG }}
     >
-      <h3 className="text-[26px] leading-none font-bold" style={{ color: TEXT }}>
+      {/* Same lockup ratio as the real popup header (popup.css .logo). */}
+      <h3 className="flex items-center gap-2.5 text-[26px] leading-none font-bold" style={{ color: TEXT }}>
+        <MeridMark size={36} variant="bare" />
         Merid
       </h3>
 

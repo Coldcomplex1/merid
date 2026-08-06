@@ -6,6 +6,7 @@ import { signOut } from '../../lib/auth'
 import LangToggle from '../ui/LangToggle'
 import ThemeToggle from '../ui/ThemeToggle'
 import InstallButton from '../ui/InstallButton'
+import MeridMark from '../ui/MeridMark'
 
 export default function Navbar() {
   const { t } = useLang()
@@ -40,9 +41,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-8">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold-400 text-lg font-extrabold text-navy-900 shadow-[0_0_20px_-4px_rgb(245_197_66/0.7)]">
-            M
-          </span>
+          <MeridMark size={32} />
           <span className="text-lg font-bold text-heading">Merid</span>
         </Link>
 

@@ -47,7 +47,18 @@ body {
 .wrap { max-width: 720px; margin: 0 auto; }
 
 .head { text-align: center; margin-bottom: 28px; }
-.head h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+/* Brand lockup: mark + name. This page is navy, so the mark is the reversed
+   (cream) one - see brand/README.md. */
+.head h1 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+.head h1 img { width: 42px; height: 42px; display: block; }
 .head h1 span { color: var(--accent); }
 .tagline { color: var(--muted); margin-top: 6px; }
 

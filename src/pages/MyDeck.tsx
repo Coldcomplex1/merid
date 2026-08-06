@@ -10,6 +10,7 @@ import FlashcardMode from '../components/study/FlashcardMode'
 import InstallButton from '../components/ui/InstallButton'
 import LangToggle from '../components/ui/LangToggle'
 import ThemeToggle from '../components/ui/ThemeToggle'
+import MeridMark from '../components/ui/MeridMark'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
 type Tab = 'words' | 'puzzle' | 'flashcards'
@@ -84,9 +85,7 @@ export default function MyDeck() {
       <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:px-8">
           <Link to="/" title={t.deck.backHome} className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold-400 text-lg font-extrabold text-navy-900 shadow-[0_0_20px_-4px_rgb(245_197_66/0.7)]">
-              M
-            </span>
+            <MeridMark size={32} />
             <span className="text-lg font-bold text-heading">Merid</span>
           </Link>
 

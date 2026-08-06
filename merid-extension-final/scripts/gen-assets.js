@@ -1,14 +1,15 @@
-// Render the branded PNG assets (extension icons + Chrome Web Store images) from
-// the HTML sources in assets/ using the headless Chromium that ships with this
-// environment. Zero npm dependencies.
+// Render the Chrome Web Store images from the HTML sources in assets/ using the
+// headless Chromium that ships with this environment. Zero npm dependencies.
 //
 //   node scripts/gen-assets.js
 //
 // Outputs:
-//   icon16.png / icon48.png / icon128.png        -> repo root (shipped in the extension)
 //   store-assets/screenshot-*.png (1280x800)     -> store listing (not shipped)
 //   store-assets/promo-tile-440x280.png          -> store listing (not shipped)
 //   store-assets/marquee-1400x560.png            -> store listing (not shipped)
+//
+// The shipped icons are NOT rendered here - they come straight from the design
+// pack via ../scripts/gen-brand-assets.js. This script only verifies they exist.
 
 const fs = require('fs');
 const path = require('path');
@@ -58,7 +59,10 @@ function renderScaled(srcName, outPng, targetW, targetH) {
     template = template
         .replace(/__W__/g, String(mw)).replace(/__H__/g, String(mh))
         .replace(/__SIZE__/g, String(Math.min(mw, mh)))
-        .replace(/__SCALE__/g, String(scale));
+        .replace(/__SCALE__/g, String(scale))
+        // Templates render from a temp dir, so brand art is referenced by
+        // absolute path rather than relative to assets/.
+        .replace(/__BRAND__/g, path.join(root, '..', 'brand'));
     const tmpHtml = path.join(TMP, `${path.basename(srcName, '.html')}-${mw}x${mh}.html`);
     fs.writeFileSync(tmpHtml, template);
 
@@ -105,9 +109,17 @@ function pngSize(file) {
 }
 
 // --- Extension icons (shipped) ---
-renderScaled('icon.html', path.join(root, 'icon128.png'), 128, 128);
-renderScaled('icon.html', path.join(root, 'icon48.png'), 48, 48);
-renderScaled('icon.html', path.join(root, 'icon16.png'), 16, 16);
+// Not rendered here: the icons come from the design pack in brand/, which
+// already contains a hand-tuned render at every size Chrome asks for.
+// `node ../scripts/gen-brand-assets.js icons` copies them in - this just checks
+// that somebody did.
+for (const size of [16, 32, 48, 128]) {
+    const icon = path.join(root, `icon${size}.png`);
+    if (!fs.existsSync(icon)) throw new Error(`missing icon${size}.png - run: node ../scripts/gen-brand-assets.js icons`);
+    const { width, height } = pngSize(icon);
+    if (width !== size || height !== size) throw new Error(`icon${size}.png is ${width}x${height}`);
+    console.log(`ok  icon${size}.png  (${width}x${height}, from brand/)`);
+}
 
 // --- Store screenshots (1280x800) ---
 for (const name of ['screenshot-1', 'screenshot-2', 'screenshot-3', 'screenshot-4']) {

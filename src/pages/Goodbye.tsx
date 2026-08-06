@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
+import MeridMark from '../components/ui/MeridMark'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 import {
   FEEDBACK_COMMENT_MAX,
@@ -95,9 +96,8 @@ function WrongSitesRescue({
       <p className="mt-1 text-sm leading-relaxed text-body">{body}</p>
       <div className="mt-4 max-w-xs rounded-xl bg-[#0a192f] p-4 shadow-panel ring-1 ring-navy-600/50">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gold-400 text-[11px] font-extrabold text-navy-900">
-            M
-          </span>
+          {/* Popup replica: fixed navy palette, so the bare mark - not the tile. */}
+          <MeridMark size={24} variant="bare" />
           <span className="truncate text-[12px] font-semibold text-[#e6f1ff]">mybank.com.vn</span>
         </div>
         <button

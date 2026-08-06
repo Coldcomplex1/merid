@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<!--
+  Source for the social preview: public/og-image.png (1200x630) and the JPEG
+  copy public/og-card.jpg, both written by scripts/gen-brand-assets.js. Nothing
+  loads over the network - fonts come from the installed @fontsource packages and
+  the mark from brand/ - so the render is reproducible offline.
+
+  __FONTS__ / __BRAND__ / __LORA__ are replaced with absolute paths by the
+  generator, because the page is rendered from a temporary directory.
+-->
+<style>
+  @font-face { font-family: 'Be Vietnam Pro'; font-weight: 400; src: url('__FONTS__/be-vietnam-pro-vietnamese-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Be Vietnam Pro'; font-weight: 600; src: url('__FONTS__/be-vietnam-pro-vietnamese-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Be Vietnam Pro'; font-weight: 700; src: url('__FONTS__/be-vietnam-pro-vietnamese-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Be Vietnam Pro'; font-weight: 800; src: url('__FONTS__/be-vietnam-pro-vietnamese-800-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Lora'; font-weight: 600; src: url('__LORA__/lora-vietnamese-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Lora'; font-weight: 700; src: url('__LORA__/lora-vietnamese-700-normal.woff2') format('woff2'); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: transparent; }
+  body { width: 1200px; height: 770px; overflow: hidden; }
+
+  .card {
+    position: absolute; top: 0; left: 0;
+    width: 1200px; height: 630px; overflow: hidden;
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+    background:
+      radial-gradient(900px 620px at 78% 8%, #1b2f52 0%, rgba(27,47,82,0) 62%),
+      linear-gradient(135deg, #101c33 0%, #0c1526 55%, #0a1122 100%);
+    color: #f7f6f3;
+  }
+
+  /* ── Brand lockup (mark + name), sized to the pack's own ratio ── */
+  .brand { position: absolute; left: 72px; top: 92px; display: flex; align-items: center; gap: 13px; }
+  .brand .mark { width: 42px; height: 42px; background: url('__BRAND__/merid-mark-cream-512.png') center / contain no-repeat; }
+  .brand .name { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* ── Left column ── */
+  .headline { position: absolute; left: 72px; top: 186px; width: 560px; }
+  .headline h1 { font-size: 55px; line-height: 1.14; font-weight: 800; letter-spacing: -0.02em; }
+  .headline h1 .gold { color: #f3c33c; }
+  .sub { position: absolute; left: 72px; top: 396px; width: 545px; font-size: 21px; line-height: 1.5; font-weight: 400; color: #b9c5de; }
+  .chips { position: absolute; left: 72px; top: 494px; display: flex; gap: 14px; }
+  .chip { font-size: 15px; font-weight: 700; padding: 9px 16px; border-radius: 9px; color: #cdd9f0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); }
+  .chip.beta { color: #f3c33c; border-color: rgba(243,195,60,0.55); background: rgba(243,195,60,0.08); }
+
+  /* ── Right: the product actually running ── */
+  .mock { position: absolute; left: 652px; top: 128px; width: 476px; border-radius: 16px; overflow: hidden;
+    background: #fffdf8; box-shadow: 0 34px 70px rgba(4,10,22,0.55); }
+  .mock .bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: #f3ede0; }
+  .mock .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .mock .url { flex: 1; margin-left: 6px; padding: 5px 12px; border-radius: 999px; background: #fff; color: #55607a;
+    font-size: 12.5px; font-weight: 600; }
+  .mock .page { padding: 18px 20px 26px; }
+  .feature { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border: 1px solid #e6dcbe; border-radius: 8px; background: #fbf3da; }
+  .feature .star { width: 22px; height: 22px; border-radius: 4px; background: #f3c33c; color: #16233f; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; }
+  .feature .t { font-family: 'Lora', Georgia, serif; font-size: 14.5px; font-weight: 700; color: #202122; }
+  .body { margin-top: 16px; font-family: 'Lora', Georgia, serif; font-size: 17px; line-height: 2.02; color: #202122; }
+  .body .lnk { color: #2f6fce; font-weight: 600; }
+  /* The extension's two looks, side by side: replaced words carry a gold wash,
+     highlighted Vietnamese keeps a gold underline. */
+  .body .swap { font-style: italic; font-weight: 700; background: #ffe9a3; box-shadow: 0 0 0 3px #ffe9a3; border-radius: 2px; }
+  .body .hl { font-weight: 700; box-shadow: inset 0 -3px 0 #f3c33c; }
+
+  .pop { position: absolute; left: 688px; top: 424px; display: flex; align-items: center; gap: 14px;
+    padding: 15px 22px; border-radius: 13px; background: #fffdf8; border: 3px solid #16233f;
+    box-shadow: 0 22px 48px rgba(4,10,22,0.5); }
+  .pop .w { font-size: 21px; font-weight: 800; letter-spacing: 0.06em; color: #16233f; }
+  .pop .sep { color: #98a2b8; font-size: 14px; }
+  .pop .vi { font-size: 15px; font-weight: 600; color: #3c4761; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><div class="mark"></div><div class="name">Merid</div></div>
+
+    <div class="headline">
+      <h1>Học <span class="gold">từ vựng tiếng<br>Anh</span> ngay khi đọc<br>web tiếng Việt.</h1>
+    </div>
+    <p class="sub">Chrome Extension thay từ tiếng Việt bằng từ vựng SAT, B2, C1, C2 khi bạn lướt web.</p>
+    <div class="chips">
+      <span class="chip">SAT</span>
+      <span class="chip">B2</span>
+      <span class="chip">C1</span>
+      <span class="chip">C2</span>
+      <span class="chip beta">Miễn phí trong beta</span>
+    </div>
+
+    <div class="mock">
+      <div class="bar">
+        <span class="dot" style="background:#f26d5f"></span>
+        <span class="dot" style="background:#f5c14e"></span>
+        <span class="dot" style="background:#5ec269"></span>
+        <span class="url">vi.wikipedia.org/wiki/Trang_Chính</span>
+      </div>
+      <div class="page">
+        <div class="feature"><span class="star">★</span><span class="t">Bài viết chọn lọc</span></div>
+        <p class="body">
+          <span class="lnk">Xuân quang xạ tiết</span> là một bộ phim năm 1997, một tác phẩm
+          <span class="swap">elaborate</span> do <span class="lnk">Vương Gia Vệ</span> đạo diễn.
+          Bộ phim khắc họa nỗi <span class="swap">solitude</span> qua lối kể chuyện giàu
+          <span class="hl">ẩn dụ</span> đầy chất thơ.
+        </p>
+      </div>
+    </div>
+
+    <div class="pop">
+      <span class="w">ELABORATE</span>
+      <span class="sep">·</span>
+      <span class="vi">phức tạp, công phu, tỉ mỉ</span>
+    </div>
+  </div>
+</body>
+</html>

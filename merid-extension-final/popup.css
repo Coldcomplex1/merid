@@ -62,10 +62,21 @@ header {
     margin-bottom: 25px;
 }
 
+/* Brand lockup: the mark plus the name. The popup is navy, so logo-mark.png is
+   the reversed (cream) mark - see brand/README.md. */
 .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: var(--text-primary);
     font-size: 24px;
     font-weight: 700;
+}
+
+.logo img {
+    width: 34px;
+    height: 34px;
+    display: block;
 }
 
 .logo span {

@@ -8,6 +8,7 @@ import DemoGuideCursor, { type GuideCursorHandle } from '../demo/DemoGuideCursor
 import { useAnchoredCard } from '../demo/kit/useAnchoredCard'
 import VocabPopupCard from '../ui/VocabPopupCard'
 import FacebookLogo from '../ui/FacebookLogo'
+import MeridMark from '../ui/MeridMark'
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
 import { useInView } from '../../hooks/useInView'
@@ -509,11 +510,8 @@ export default function LiveDemo() {
                       <path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8L12 3z" />
                     </svg>
                   </div>
-                  <span
-                    className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gold-400 text-[11px] font-extrabold text-navy-900"
-                    title="Merid"
-                  >
-                    M
+                  <span className="relative flex h-6 w-6 shrink-0 items-center justify-center" title="Merid">
+                    <MeridMark size={24} variant="tile" />
                     {enabled && (
                       <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#34a853] ring-2 ring-white" />
                     )}

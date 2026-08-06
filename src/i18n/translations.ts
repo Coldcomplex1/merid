@@ -615,11 +615,11 @@ const vi: Strings = {
             text: 'Bấm biểu tượng mảnh ghép ở góc trên bên phải của Chrome rồi ghim Merid.',
           },
         ],
-        outro: 'Chữ M vàng giờ nằm ngay cạnh thanh địa chỉ. Một click mở tất cả.',
+        outro: 'Biểu tượng Merid giờ nằm ngay cạnh thanh địa chỉ. Một click mở tất cả.',
       },
       {
         title: 'Mở bảng điều khiển và chọn bộ từ',
-        intro: 'Bấm chữ M vàng rồi chọn bộ từ vựng bạn muốn học:',
+        intro: 'Bấm biểu tượng Merid rồi chọn bộ từ vựng bạn muốn học:',
         bullets: [
           { term: 'SAT.', text: 'Từ vựng cho kỳ thi SAT và các bài thi tuyển sinh tương tự.' },
           { term: 'C1, C2.', text: 'Các cấp CEFR, từ nâng cao tới tiếng Anh học thuật gần bản xứ.' },
@@ -895,7 +895,7 @@ const vi: Strings = {
       watch: 'Xem Merid làm mẫu…',
       yourTurn: 'Tới lượt bạn: bấm biểu tượng mảnh ghép 🧩',
       menuTitle: 'Tiện ích',
-      pinnedNote: 'Đẹp! Chữ M vàng đã nằm cạnh thanh địa chỉ. Trong Chrome thật, hãy làm đúng như vậy.',
+      pinnedNote: 'Đẹp! Biểu tượng Merid đã nằm cạnh thanh địa chỉ. Trong Chrome thật, hãy làm đúng như vậy.',
       replay: 'Xem lại hướng dẫn',
     },
     mission: {
@@ -1265,11 +1265,11 @@ const en: Strings = {
             text: 'Click the puzzle icon at the top right of Chrome and pin Merid.',
           },
         ],
-        outro: 'The gold M now sits next to your address bar. One click opens everything.',
+        outro: 'The Merid icon now sits next to your address bar. One click opens everything.',
       },
       {
         title: 'Open the panel and choose your dataset',
-        intro: 'Click the gold M, then pick the vocabulary dataset you want to learn from:',
+        intro: 'Click the Merid icon, then pick the vocabulary dataset you want to learn from:',
         bullets: [
           { term: 'SAT.', text: 'Vocabulary for the SAT and similar admission tests.' },
           { term: 'C1, C2.', text: 'CEFR levels, from advanced up to near-native academic English.' },
@@ -1546,7 +1546,7 @@ const en: Strings = {
       watch: 'Watch Merid demonstrate…',
       yourTurn: 'Your turn: click the puzzle icon 🧩',
       menuTitle: 'Extensions',
-      pinnedNote: 'Nice! The gold M now sits next to the address bar. Do exactly this in your real Chrome.',
+      pinnedNote: 'Nice! The Merid icon now sits next to the address bar. Do exactly this in your real Chrome.',
       replay: 'Replay the demo',
     },
     mission: {

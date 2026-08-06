@@ -29,8 +29,11 @@ const FILES = [
     'fonts/Outfit-latin.woff2',
     'fonts/Inter-latin.woff2',
     'icon16.png',
+    'icon32.png',
     'icon48.png',
-    'icon128.png'
+    'icon128.png',
+    // Reversed mark for the popup/options headers (both pages are navy).
+    'logo-mark.png'
 ];
 
 // Datasets are matched dynamically so a future dataset-B2.csv ships automatically.

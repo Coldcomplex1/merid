@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { useLang } from '../../i18n/LanguageContext'
 import InstallButton from '../ui/InstallButton'
+import MeridMark from '../ui/MeridMark'
 
 export default function Footer() {
   const { t } = useLang()
@@ -18,9 +19,7 @@ export default function Footer() {
     <footer className="border-t border-line py-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-5 sm:flex-row sm:px-8">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gold-400 text-base font-extrabold text-navy-900">
-            M
-          </span>
+          <MeridMark size={28} />
           <span className="text-sm font-bold text-heading">Merid</span>
         </div>
 

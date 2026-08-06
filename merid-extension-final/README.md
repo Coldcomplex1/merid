@@ -188,7 +188,7 @@ No build step is required to run the extension unpacked. Tooling is zero-depende
 npm test          # run the unit test suite (node --test) for lib/vocab-core.js
 npm run lint      # syntax-check every extension script (node --check)
 npm run build     # copy shippable files to dist/ (+ dist.zip) and fail if a secret is present
-npm run gen:assets # re-render the icons + store images from assets/ (needs a Chromium binary)
+npm run gen:assets # re-render the Chrome Web Store images from assets/ (needs a Chromium binary)
 ```
 
 Routine console logging is compiled out of release builds: flip the `DEBUG`
@@ -197,13 +197,21 @@ flag at the top of `content.js` / `background.js` while developing.
 The build **whitelists** only the files the extension needs - `assets/`,
 `store-assets/`, `test/`, `scripts/`, docs, and `node_modules/` never ship.
 
-### Store assets
+### Icons and store assets
 
-Branded PNGs are generated from the HTML sources in [`assets/`](assets) by
-`scripts/gen-assets.js` (via a headless Chromium; set `CHROME_BIN` if it can't be
-found automatically). Outputs: the extension icons (`icon16/48/128.png`) and the
-Chrome Web Store images in [`store-assets/`](store-assets) (screenshots 1280×800,
-promo tile 440×280, marquee 1400×560).
+The shipped icons (`icon16/32/48/128.png`) and the reversed mark used in the
+popup and options headers (`logo-mark.png`) are **not** drawn here - they come
+from the design pack in [`../brand/`](../brand), which holds a hand-tuned render
+at every size Chrome asks for. Regenerate them from the repo root with
+`node scripts/gen-brand-assets.js icons`; `brand/README.md` explains which
+variant belongs where.
+
+The Chrome Web Store images are generated from the HTML sources in
+[`assets/`](assets) by `scripts/gen-assets.js` (via a headless Chromium; set
+`CHROME_BIN` if it can't be found automatically), which also verifies the icons
+above are present and correctly sized. Outputs land in
+[`store-assets/`](store-assets): screenshots 1280×800, promo tile 440×280,
+marquee 1400×560.
 
 `store-assets/screenshot-5-realpage.png` is different: it shows the REAL content
 script running over a fictional Vietnamese article (`assets/realpage.html`) with
@@ -231,7 +239,7 @@ the learning card open - regenerate it with `node scripts/gen-real-screenshot.js
    (identitytoolkit / securetoken / firestore / generativelanguage).
 8. Confirm permissions are exactly `storage` + `activeTab`.
 9. Host [`PRIVACY.md`](PRIVACY.md) at a public URL (e.g. merid.site/privacy).
-10. Store assets ready: icons `icon16/48/128.png`, screenshots + promo images in
+10. Store assets ready: icons `icon16/32/48/128.png`, screenshots + promo images in
     [`store-assets/`](store-assets). Copy listing text, the single-purpose
     statement, permission justifications, **and the data-safety answers** from
     [`STORE_LISTING.md`](STORE_LISTING.md) - they must match actual behavior.

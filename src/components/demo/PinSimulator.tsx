@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useInView } from '../../hooks/useInView'
 import { useLang } from '../../i18n/LanguageContext'
+import MeridMark from '../ui/MeridMark'
 
 /** Chrome's puzzle-piece extensions icon. */
 function PuzzleIcon({ className = '' }: { className?: string }) {
@@ -40,7 +41,7 @@ interface PinSimulatorProps {
  * view, a Merid guide cursor performs the two clicks once (puzzle icon →
  * pin), then resets and hands over. The visitor then does it for real:
  * clicking the puzzle opens the extensions dropdown, clicking the pin slides
- * the gold M into the toolbar.
+ * the Merid icon into the toolbar.
  */
 export default function PinSimulator({ onPinned, initiallyPinned = false }: PinSimulatorProps) {
   const { t } = useLang()
@@ -183,9 +184,11 @@ export default function PinSimulator({ onPinned, initiallyPinned = false }: PinS
               vnexpress.net
             </div>
             {pinnedIcon && (
-              <span className="animate-pop-in flex h-7 w-7 items-center justify-center rounded-md bg-gold-400 text-sm font-extrabold text-navy-900 shadow-[0_0_14px_-2px_rgb(245_197_66/0.8)]">
-                M
-              </span>
+              <MeridMark
+                size={28}
+                variant="tile"
+                className="animate-pop-in drop-shadow-[0_0_8px_rgb(243_195_60/0.75)]"
+              />
             )}
             <button
               ref={puzzleRef}
@@ -212,9 +215,7 @@ export default function PinSimulator({ onPinned, initiallyPinned = false }: PinS
             <div className="animate-card-in absolute top-[46px] right-2 z-20 w-64 rounded-xl bg-white p-2 shadow-pop ring-1 ring-black/10">
               <p className="px-2 pt-1 pb-2 text-[12px] font-bold text-[#202124]">{s.menuTitle}</p>
               <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-black/5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gold-400 text-[12px] font-extrabold text-navy-900">
-                  M
-                </span>
+                <MeridMark size={28} variant="tile" />
                 <span className="flex-1 text-[13px] font-medium text-[#202124]">Merid</span>
                 <button
                   ref={pinBtnRef}

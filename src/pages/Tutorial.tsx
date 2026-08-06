@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
+import MeridMark from '../components/ui/MeridMark'
 import PracticeArticle from '../components/demo/PracticeArticle'
 import DemoGuideCursor, { type GuideCursorHandle } from '../components/demo/DemoGuideCursor'
 import { PANEL_DATASETS, type PanelDataset, type PanelMode } from '../components/demo/DemoExtensionPanel'
@@ -420,12 +421,12 @@ export default function Tutorial() {
                   </span>
                 )}
                 <span
-                  className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gold-400 text-[11px] font-extrabold text-navy-900 ${
+                  className={`relative flex h-6 w-6 shrink-0 items-center justify-center ${
                     active === 0 ? 'animate-pulse-soft' : ''
                   }`}
                   title="Merid"
                 >
-                  M
+                  <MeridMark size={24} variant="tile" />
                   <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#34a853] ring-2 ring-white" />
                 </span>
               </div>

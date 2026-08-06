@@ -4,7 +4,8 @@ Everything below is ready to paste into the Chrome Web Store developer dashboard
 Two languages are provided - use **Vietnamese** as the primary listing (the audience
 is Vietnamese learners) and add **English** as a secondary/localized listing if you
 wish. Assets to upload are in [`store-assets/`](store-assets) and the icons are
-`icon128.png` (store icon) plus the bundled 16/48/128 set.
+`icon128.png` (store icon) plus the bundled 16/32/48/128 set, all taken from the
+design pack in [`../brand/`](../brand).
 
 > **Accuracy note (important):** this copy matches what the extension actually
 > does in v1.6: matching/replacement is local, and there are exactly two

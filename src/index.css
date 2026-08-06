@@ -27,6 +27,14 @@
   --color-wiki-blue-deep: #1b4f9c;
   --color-ink: #1b2a4e;
 
+  /* ── Logo (brand/, exact values from the master artwork) ─────
+     Deliberately a shade off the UI palette above: the logo keeps its own
+     colours so it stays identical everywhere it appears, including the
+     extension and the Chrome Web Store art. --logo-tile flips per theme
+     (see the theme blocks below); the M and bar never change. */
+  --color-logo-m: #f7f6f3;
+  --color-logo-bar: #f3c33c;
+
   --font-display: "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
   --font-wiki: "Lora", Georgia, "Times New Roman", serif;
 
@@ -202,6 +210,9 @@
   --danger: #b91c1c;
   --success: #047857;
 
+  /* The logo wears its navy tile on light surfaces. */
+  --logo-tile: #16233f;
+
   --shadow-tint: rgb(23 33 59 / 0.14);
 }
 
@@ -230,6 +241,12 @@
 
   --danger: #fca5a5;
   --success: #6ee7b7;
+
+  /* Dropping the tile leaves the bare cream mark - the pack's own dark lockup.
+     Both variants share their inner geometry, so nothing shifts on a theme flip.
+     Zero-alpha navy rather than `transparent` so the themed fill transition
+     fades the tile out in its own colour instead of through black. */
+  --logo-tile: rgb(22 35 63 / 0);
 
   --shadow-tint: rgb(10 17 34 / 0.55);
 }
@@ -261,6 +278,8 @@
 
     --danger: #fca5a5;
     --success: #6ee7b7;
+
+    --logo-tile: rgb(22 35 63 / 0);
 
     --shadow-tint: rgb(10 17 34 / 0.55);
   }

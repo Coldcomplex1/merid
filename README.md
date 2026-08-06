@@ -57,6 +57,14 @@ src/
   original language since they represent the real extension UI.
 - **Social previews**: Open Graph and Twitter tags live in `index.html` (absolute URLs on
   https://merid.site) with the preview image at `public/og-card.jpg` (1200 x 630, kept under 100 KB for WhatsApp/Zalo client-side fetching).
+  The card is generated, not hand-made: edit `assets/og-card.html`, then run
+  `node scripts/gen-brand-assets.js og`.
+- **Branding**: every logo asset comes from the masters in [`brand/`](./brand) - see
+  [`brand/README.md`](./brand/README.md) for which variant belongs where. `MeridMark`
+  (`src/components/ui/MeridMark.tsx`) renders the mark inline as SVG, traced from the master
+  PNG by `scripts/trace-mark.js`, so it stays sharp at any size and drops its navy tile in dark
+  mode. Favicons, the app icon and the extension icons are written by
+  `node scripts/gen-brand-assets.js`.
 
 - **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`

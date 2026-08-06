@@ -15,24 +15,22 @@
 | `merid-extension-final/dataset-SAT.csv` | **Source of truth** (canonical extension) | 989 |
 | `merid-extension-final/dataset-C1.csv` | **Source of truth** (canonical extension) | 1380 |
 | `merid-extension-final/dataset-C2.csv` | **Source of truth** (canonical extension) | 978 |
-| `merid-extension/dataset-SAT.csv` | Duplicate copy (older/reverted extension build) | 989 |
-| `merid-extension/dataset-C1.csv` | Duplicate copy | 1380 |
-| `merid-extension/dataset-C2.csv` | Duplicate copy | 978 |
+| `merid-extension/dataset-{SAT,C1,C2}.csv` | Duplicate copy in an older/reverted extension build â€” **that directory has since been deleted**, so `merid-extension-final/` is now the only copy | 989 / 1380 / 978 |
 | `src/data/vocab.ts` | **Separate** hand-curated demo vocab for the marketing website's live demo | 17 |
 
-**Total shipped vocabulary entries audited: 3,347** (989 + 1,380 + 978), present identically in both extension directories.
+**Total shipped vocabulary entries audited: 3,347** (989 + 1,380 + 978). At the time of the audit these were present identically in both extension directories; the duplicate directory has since been removed.
 
 ### Source-of-truth vs generated files
 
 - The three `dataset-*.csv` files are **hand-maintained source-of-truth** files. Git history shows they were added by direct upload ("Add files via upload"), and there is **no generation or merge script** in the repo.
-- There is **no physical "combined" dataset file.** The **"All" mode is assembled at runtime**: `lib/vocab-core.js` - †’ `DATASET_REGISTRY.all` lists `['dataset-SAT.csv','dataset-C1.csv','dataset-C2.csv']`, which the content script fetches and concatenates. Because the combined set is never persisted, there is nothing to "regenerate" -  -  - it is deterministic from the three sources by construction.
-- `merid-extension/` and `merid-extension-final/` are **two copies of the extension.** Commit `ad6a15b` ("Move AI context check to merid-extension-final, revert merid-extension") establishes **`merid-extension-final` as the active/canonical copy.** The two copies' **datasets are byte-identical**, but their code has diverged (see Â§Technical validation - †’ *Code drift*).
+- There is **no physical "combined" dataset file.** The **"All" mode is assembled at runtime**: `lib/vocab-core.js` - ï¿½ï¿½ `DATASET_REGISTRY.all` lists `['dataset-SAT.csv','dataset-C1.csv','dataset-C2.csv']`, which the content script fetches and concatenates. Because the combined set is never persisted, there is nothing to "regenerate" -  -  - it is deterministic from the three sources by construction.
+- `merid-extension/` and `merid-extension-final/` are **two copies of the extension.** Commit `ad6a15b` ("Move AI context check to merid-extension-final, revert merid-extension") establishes **`merid-extension-final` as the active/canonical copy.** The two copies' **datasets are byte-identical**, but their code has diverged (see Â§Technical validation - ï¿½ï¿½ *Code drift*).
 
 ### Relevant scripts
 
 | Script | Purpose |
 | --- | --- |
-| `lib/vocab-core.js` | CSV parsing (`parseCSV`, `splitCsvLine`), entry normalization (`normalizeEntry` - †’ `id = "<TAG>:<word>"`), `buildVocabMap` (matching index), settings model. Pure/DOM-free, shared by content script and tests. |
+| `lib/vocab-core.js` | CSV parsing (`parseCSV`, `splitCsvLine`), entry normalization (`normalizeEntry` - ï¿½ï¿½ `id = "<TAG>:<word>"`), `buildVocabMap` (matching index), settings model. Pure/DOM-free, shared by content script and tests. |
 | `scripts/build.js` | Copies shippable files (incl. any `dataset-*.csv`) into `dist/` and zips. Dynamic dataset globbing means a future `dataset-B2.csv` ships automatically. |
 | `scripts/lint.js` | Node `--check` syntax lint of the JS files. |
 | `scripts/validate-datasets.js` | **New in this audit** -  -  - structural/mechanical dataset validator (see Â§11). |
@@ -40,11 +38,11 @@
 
 ### How the extension consumes the data
 
-1. `content.js` fetches the active dataset CSV(s) and runs them through `parseCSV` - †’ `validateEntry` - †’ `normalizeEntry`.
+1. `content.js` fetches the active dataset CSV(s) and runs them through `parseCSV` - ï¿½ï¿½ `validateEntry` - ï¿½ï¿½ `normalizeEntry`.
 2. `buildVocabMap(activeVocab, modes)` builds a `Map<matchKey, VocabularyEntry[]>`:
-   - **`vieEng`** (Vietnamese - †’English): indexes the comma-split `vietnamese` terms. **In the canonical `merid-extension-final`, only multi-word Vietnamese phrases are indexed** (`if (normalizeKey(s).includes(' '))`) -  -  - single syllables are deliberately excluded as "too ambiguous."
-   - **`engEng`** (English synonym - †’headword): indexes the comma-split `synonyms` of every entry (single words included).
-3. `findMatch` greedily matches windows of 3 - †’2 - †’1 tokens; `gateByFrequency` deterministically thins replacements; per-page / per-post caps apply.
+   - **`vieEng`** (Vietnamese - ï¿½ï¿½English): indexes the comma-split `vietnamese` terms. **In the canonical `merid-extension-final`, only multi-word Vietnamese phrases are indexed** (`if (normalizeKey(s).includes(' '))`) -  -  - single syllables are deliberately excluded as "too ambiguous."
+   - **`engEng`** (English synonym - ï¿½ï¿½headword): indexes the comma-split `synonyms` of every entry (single words included).
+3. `findMatch` greedily matches windows of 3 - ï¿½ï¿½2 - ï¿½ï¿½1 tokens; `gateByFrequency` deterministically thins replacements; per-page / per-post caps apply.
 4. **"I know this"** and **"Save to Deck"** are keyed by **lowercased headword string**, *not* by `id` (see Â§Duplicate report for why this matters).
 
 ---
@@ -65,12 +63,12 @@
 
 | Dataset | Entry | Field | Original value | Corrected value | Issue | Evidence | Confidence | Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SAT | battery, buffet, canvas, compound, implement, resolve | vietnamese (whole record) | quoted field contained a **newline** separating senses | newline collapsed to `", "` | The shipped `parseCSV` splits on `\n` *before* honoring quotes, so each multi-line record shattered into corrupt rows (e.g. `battery` lost its synonyms/antonyms; a phantom `hÃ nh hung, -  - ¦` headword row was created). | Reproduced with the actual parser: SAT parsed to 996 rows vs 989 true records. | High | **Fixed** (both dirs) |
+| SAT | battery, buffet, canvas, compound, implement, resolve | vietnamese (whole record) | quoted field contained a **newline** separating senses | newline collapsed to `", "` | The shipped `parseCSV` splits on `\n` *before* honoring quotes, so each multi-line record shattered into corrupt rows (e.g. `battery` lost its synonyms/antonyms; a phantom `hÃ nh hung, -  - ï¿½` headword row was created). | Reproduced with the actual parser: SAT parsed to 996 rows vs 989 true records. | High | **Fixed** (both dirs) |
 | SAT | innocuous | synonyms | `harmless, benign, innocuous` | `harmless, benign` | Headword listed as its own synonym. | Self-reference; validator `self-syn`. | High | **Fixed** |
 | SAT | adhere | type | `noun` | `verb` | Definition "to stick to something / to follow devoutly" is a verb; *adhere* is only ever a verb. | Cambridge/Oxford: *adhere* = verb. | High | **Fixed** |
-| SAT | acumen, acute, adamant, adept, adhere, extricate, exult, fabricate, faÃ§ade, facile | phon_br, phon_n_am | bare IPA e.g. `É™ËˆkjuËmÉ™n` | `/É™ËˆkjuËmÉ™n/` | Missing the `/ -  - ¦/` delimiters every other entry uses. | Dataset-internal consistency (formatting only; symbols unchanged). | High | **Fixed** |
-| C1 | recount - †’ **recording** | word, type, phon_br, phon_n_am | `recount,verb,c1,,, -  - ¦` | `recording,noun,c1,/rÉªËˆkÉ - ËdÉªÅ‹/,/rÉªËˆkÉ - ËrdÉªÅ‹/, -  - ¦` | Headword said "recount" but **every other field describes "recording"** (def "sound or pictures that have been recorded -  - ¦", example "an audio recording", VN "Báº£n ghi", synonyms footage/archive). It caused a wrong replacement (VN "báº£n ghi" - †’ showed "recount"). IPA was also empty. | Internal evidence overwhelming; no separate `recording` entry exists. IPA is the standard dictionary transcription. | High (direction of fix inferred) | **Fixed** -  -  - headword aligned to content; report notes the inference |
-| C2 | hoodwink, hotly, husband, iconoclast, idolatry | phon_br, phon_n_am | bare IPA | slashed IPA | Same missing `/ -  - ¦/` as above. | Dataset consistency. | High | **Fixed** |
+| SAT | acumen, acute, adamant, adept, adhere, extricate, exult, fabricate, faÃ§ade, facile | phon_br, phon_n_am | bare IPA e.g. `É™ËˆkjuËmÉ™n` | `/É™ËˆkjuËmÉ™n/` | Missing the `/ -  - ï¿½/` delimiters every other entry uses. | Dataset-internal consistency (formatting only; symbols unchanged). | High | **Fixed** |
+| C1 | recount - ï¿½ï¿½ **recording** | word, type, phon_br, phon_n_am | `recount,verb,c1,,, -  - ï¿½` | `recording,noun,c1,/rÉªËˆkï¿½ - ËdÉªÅ‹/,/rÉªËˆkï¿½ - ËrdÉªÅ‹/, -  - ï¿½` | Headword said "recount" but **every other field describes "recording"** (def "sound or pictures that have been recorded -  - ï¿½", example "an audio recording", VN "Báº£n ghi", synonyms footage/archive). It caused a wrong replacement (VN "báº£n ghi" - ï¿½ï¿½ showed "recount"). IPA was also empty. | Internal evidence overwhelming; no separate `recording` entry exists. IPA is the standard dictionary transcription. | High (direction of fix inferred) | **Fixed** -  -  - headword aligned to content; report notes the inference |
+| C2 | hoodwink, hotly, husband, iconoclast, idolatry | phon_br, phon_n_am | bare IPA | slashed IPA | Same missing `/ -  - ï¿½/` as above. | Dataset consistency. | High | **Fixed** |
 | C2 | largess/largesse | type | *(empty)* | `noun` | Part of speech missing; *largesse* is unambiguously a noun. | Cambridge/Oxford. | High | **Fixed** |
 | C2 | laudable | (row 744) | duplicate of row 273 | removed row 744 | Same headword+POS+definition+example appearing twice (C2 is two concatenated A -  -  - Z runs; `laudable` was in both). | Validator `dup-in-dataset` (same word + POS). | High | **Removed** duplicate |
 
@@ -80,7 +78,7 @@
 | --- | --- | --- | --- | --- | --- |
 | C1 | constitutional, contrary (adj), deprive, film-maker, hydrogen, sake | definition + example | **Both blank.** Learning card would show empty def/example. Not fabricated. | High (issue) | **Human review** |
 | C2 | largess/largesse | example | Blank example. Slash headword ("largess/largesse") also displays literally on replacement. | High | **Human review** |
-| SAT | audacious | example | Example (" -  - ¦offer him a bribe.") does not contain the word or an inflection. | High | **Human review** |
+| SAT | audacious | example | Example (" -  - ï¿½offer him a bribe.") does not contain the word or an inflection. | High | **Human review** |
 | SAT | fraught | example | "Example" is a usage note: `usually used with "with"`. | High | **Human review** |
 | C1 | saint | example | Weak/degenerate example: "St John" (word only present as abbreviation). | Medium | **Human review** |
 | SAT | prescient | definition | Adjective defined with a verb phrase ("to have foreknowledge of events"). | Medium | **Human review** |
@@ -93,7 +91,7 @@
 > **Caveat on authority.** The SAT has *no* single official College Board word list, and CEFR level depends on sense/POS. Nothing below is asserted as "official." Levels marked *Reasonable but not independently confirmed* were **not** each checked against the English Vocabulary Profile / Cambridge in this pass.
 
 ### SAT membership issues
-- SAT is a classic advanced-academic word list (abase, abate, abdicate, -  - ¦). The list is internally consistent in register. No word was removed for being "too basic," but many SAT words also legitimately sit at C1/C2 (494 SAT headwords overlap C1 and/or C2 -  -  - expected, not an error).
+- SAT is a classic advanced-academic word list (abase, abate, abdicate, -  - ï¿½). The list is internally consistent in register. No word was removed for being "too basic," but many SAT words also legitimately sit at C1/C2 (494 SAT headwords overlap C1 and/or C2 -  -  - expected, not an error).
 - `battery`, `buffet`, `canvas`, `compound`, `implement`, `resolve`, `adhere` carried the structural/POS defects fixed above.
 - **Judgment-based, not confirmed:** whether every SAT word belongs on a test-prep list is inherently subjective; these are **not** flagged as errors.
 
@@ -117,7 +115,7 @@ Sense/POS-differentiated (defensible as separate senses, lower priority): `advoc
 ### Entries whose classification could not be confirmed
 - All CEFR labels are **structurally valid** (every C1 row = `c1`, every C2 row = `c2`; verified by the validator). Whether each label is **correct per the English Vocabulary Profile was not independently verified for all 3,347 entries** -  -  - treat unconfirmed levels as *Reasonable but not independently confirmed*.
 
-**Labels used above:** *Confirmed* (structural facts, dup/POS fixes) Â· *Reasonable but not independently confirmed* (most CEFR bands) Â· *Incorrect* (recount - †’recording; adhere POS) Â· *Ambiguous* (47 C1/C2 conflicts) Â· *Requires human review* (flagged table).
+**Labels used above:** *Confirmed* (structural facts, dup/POS fixes) Â· *Reasonable but not independently confirmed* (most CEFR bands) Â· *Incorrect* (recount - ï¿½ï¿½recording; adhere POS) Â· *Ambiguous* (47 C1/C2 conflicts) Â· *Requires human review* (flagged table).
 
 ---
 
@@ -127,7 +125,7 @@ Sense/POS-differentiated (defensible as separate senses, lower priority): `advoc
 - **Near duplicates (same word, same POS, differing only cosmetically):** the two `laudable` rows differed only in capitalization and one antonym; treated as exact for removal.
 - **Morphological duplicates (singular/plural, inflection, hyphenation, spelling variant):** none found *within* a dataset. Several entries intentionally encode variants in one headword (`stoic/stoical`, `satiate/sate`, `machination/machinations`, `nevertheless or nonetheless`, `largess/largesse`) -  -  - see Vietnamese/technical notes.
 - **Multi-POS same-word entries (C1):** **87** headwords have 2 -  -  - 3 rows differing by POS (e.g. `abuse` noun+verb, `alert` adj+noun+verb). **These are intentional and were kept.** They **share an `id`** (`C1:<word>`), but this is **runtime-harmless**: `content.js` keys "I know this"/"Save to Deck" by **lowercased headword**, not `id`, and `id` is otherwise unused in the content script. Recommendation (optional, low priority): if per-sense state is ever needed, disambiguate `id` (e.g. append POS) -  -  - but this touches persisted deck/known-word storage, so it needs a migration and was **not** changed.
-- **Cross-dataset overlaps:** **520** headwords appear in more than one dataset. SAT - ˆ©C1/C2 overlaps are expected (advanced words). The **47 C1 - ˆ©C2** overlaps are the real concern (Â§4). **No cross-dataset entries were deleted** -  -  - the datasets are independently selectable modes, and the "All" map already de-dupes per match-key by headword at build time (`!arr.some(e => e.word === item.word)`), so overlaps do **not** cause double replacements.
+- **Cross-dataset overlaps:** **520** headwords appear in more than one dataset. SAT - ï¿½ï¿½C1/C2 overlaps are expected (advanced words). The **47 C1 - ï¿½ï¿½C2** overlaps are the real concern (Â§4). **No cross-dataset entries were deleted** -  -  - the datasets are independently selectable modes, and the "All" map already de-dupes per match-key by headword at build time (`!arr.some(e => e.word === item.word)`), so overlaps do **not** cause double replacements.
 - **Conflicting duplicate entries:** the 47 C1/C2 pairs carry different definitions/synonyms per copy; in "All" mode the first-loaded (C1) copy wins the shared key, making the C2 variant's wording unreachable there. Documented; not auto-resolved.
 
 ---
@@ -137,10 +135,10 @@ Sense/POS-differentiated (defensible as separate senses, lower priority): `advoc
 **Key architectural fact (canonical `merid-extension-final`):** `buildVocabMap` **only indexes multi-word Vietnamese phrases** for `vieEng` matching. Single-syllable/single-word Vietnamese terms (the majority of the `vietnamese` column) are **never turned into match keys**, so most single-word false-positive risks below are **already mitigated in the shipping extension.**
 
 - **High-risk single common words / function words** mapped to rare English words (would be dangerous *only if single-word matching were on*):
-  - `forth - †’ "Ra"`, `mere/solely - †’ "Chá»‰"`, `thread - †’ "Chá»‰"`, `behalf/sake - †’ "vÃ¬"`, `inasmuch - †’ "VÃ¬"`, `midst - †’ "trong"`, `accordance - †’ "Theo"`, `conceive - †’ "LÃªn"`, `offspring - †’ "Con"`, `reside - †’ "á»ž"`, `whilst - †’ "Khi"`.
+  - `forth - ï¿½ï¿½ "Ra"`, `mere/solely - ï¿½ï¿½ "Chá»‰"`, `thread - ï¿½ï¿½ "Chá»‰"`, `behalf/sake - ï¿½ï¿½ "vÃ¬"`, `inasmuch - ï¿½ï¿½ "VÃ¬"`, `midst - ï¿½ï¿½ "trong"`, `accordance - ï¿½ï¿½ "Theo"`, `conceive - ï¿½ï¿½ "LÃªn"`, `offspring - ï¿½ï¿½ "Con"`, `reside - ï¿½ï¿½ "á»ž"`, `whilst - ï¿½ï¿½ "Khi"`.
   - **Live risk only in `merid-extension` (old parser, single-word matching active).** In `merid-extension-final` these are dormant. **Recommendation:** either (a) retire `merid-extension` to remove the drift, or (b) if single-word matching is ever re-enabled, prune these overly broad single-word VN terms.
-- **Homograph conflicts** (one Vietnamese key - †’ multiple unrelated English words): `bÃ²` - †’ `cattle` *and* `crawl`; `chá»‰` - †’ `mere`/`solely`/`thread`. Only relevant when the single word is indexed; harmless for multi-word matching.
-- **Grammatically incompatible replacements:** the single-word cases above cross POS (preposition/particle - †’ noun/verb). Mitigated by the multi-word rule.
+- **Homograph conflicts** (one Vietnamese key - ï¿½ï¿½ multiple unrelated English words): `bÃ²` - ï¿½ï¿½ `cattle` *and* `crawl`; `chá»‰` - ï¿½ï¿½ `mere`/`solely`/`thread`. Only relevant when the single word is indexed; harmless for multi-word matching.
+- **Grammatically incompatible replacements:** the single-word cases above cross POS (preposition/particle - ï¿½ï¿½ noun/verb). Mitigated by the multi-word rule.
 - **Accent correctness:** Vietnamese diacritics were spot-checked in the flagged rows and looked correct; `stripDiacritics` is used only as a non-primary fuzzy fallback, so accent-insensitive matching does **not** drive primary replacement.
 - **Overly broad matching terms / recommended human-review entries:** the 11 single-word function-word mappings listed above, plus any future single-word VN terms, should be reviewed before enabling single-word matching anywhere.
 
@@ -170,9 +168,9 @@ Sense/POS-differentiated (defensible as separate senses, lower priority): `advoc
 - `merid-extension/lib/vocab-core.js` (old) vs `merid-extension-final/lib/vocab-core.js` (canonical) **differ**: the canonical `buildVocabMap` restricts `vieEng` to multi-word phrases; the old one does not. **Same data, different matching behavior.** Recommend consolidating to one extension directory.
 
 ### Build / test results
-- `npm test` - †’ **21/21 pass** Â· `npm run lint` - †’ **all files pass** Â· `npm run build` - †’ **23 files copied, dist.zip created** (artifacts cleaned, git-ignored).
-- `node scripts/validate-datasets.js` - †’ **0 ERRORS**, 45 warnings, 780 info (overlaps/multi-POS/CRLF/etc., all reviewed).
-- **All-mode load smoke test:** all three CSVs load - †’ **3,347 active entries, 0 dropped** by `validateEntry`; `buildVocabMap` and `findMatch` run without error.
+- `npm test` - ï¿½ï¿½ **21/21 pass** Â· `npm run lint` - ï¿½ï¿½ **all files pass** Â· `npm run build` - ï¿½ï¿½ **23 files copied, dist.zip created** (artifacts cleaned, git-ignored).
+- `node scripts/validate-datasets.js` - ï¿½ï¿½ **0 ERRORS**, 45 warnings, 780 info (overlaps/multi-POS/CRLF/etc., all reviewed).
+- **All-mode load smoke test:** all three CSVs load - ï¿½ï¿½ **3,347 active entries, 0 dropped** by `validateEntry`; `buildVocabMap` and `findMatch` run without error.
 
 ---
 
@@ -182,10 +180,10 @@ All edits were applied **identically to both `merid-extension-final/` and `merid
 
 | File(s) | What changed | Why | Type | Verified by | Downstream regen |
 | --- | --- | --- | --- | --- | --- |
-| `dataset-SAT.csv` | 6 multi-line records collapsed to single lines (in-quote `\n` - †’ `", "`) | Removed 7 phantom/corrupt rows; restored lost synonyms/antonyms | Structural | validator (996 - †’989 rows; 0 field-count errors), All-mode smoke test | N/A (source file) |
-| `dataset-SAT.csv` | `innocuous` self-synonym removed; `adhere` POS noun - †’verb; 10 IPA fields slashed | Correctness + formatting consistency | Factual/formatting | validator, `git diff` review | N/A |
-| `dataset-C1.csv` | `recount` - †’`recording` headword + empty IPA filled | Headword/content mismatch causing wrong replacement | Factual | `git diff`, alphabetical order preserved | N/A |
-| `dataset-C2.csv` | 5 IPA fields slashed; `largess/largesse` POS - †’noun; `laudable` duplicate row removed | Formatting + correctness + de-dup | Factual/formatting/structural | validator (979 - †’978, 0 dup errors) | N/A |
+| `dataset-SAT.csv` | 6 multi-line records collapsed to single lines (in-quote `\n` - ï¿½ï¿½ `", "`) | Removed 7 phantom/corrupt rows; restored lost synonyms/antonyms | Structural | validator (996 - ï¿½ï¿½989 rows; 0 field-count errors), All-mode smoke test | N/A (source file) |
+| `dataset-SAT.csv` | `innocuous` self-synonym removed; `adhere` POS noun - ï¿½ï¿½verb; 10 IPA fields slashed | Correctness + formatting consistency | Factual/formatting | validator, `git diff` review | N/A |
+| `dataset-C1.csv` | `recount` - ï¿½ï¿½`recording` headword + empty IPA filled | Headword/content mismatch causing wrong replacement | Factual | `git diff`, alphabetical order preserved | N/A |
+| `dataset-C2.csv` | 5 IPA fields slashed; `largess/largesse` POS - ï¿½ï¿½noun; `laudable` duplicate row removed | Formatting + correctness + de-dup | Factual/formatting/structural | validator (979 - ï¿½ï¿½978, 0 dup errors) | N/A |
 | `merid-extension-final/scripts/validate-datasets.js` | **New** structural validator | Automated, repeatable dataset checks (Â§11) | New tooling | runs clean; `node --check` passes via lint discovery | N/A |
 
 *No generated files exist, so nothing was regenerated; the "All" set is reproduced deterministically at runtime from the three sources.*
@@ -197,7 +195,7 @@ All edits were applied **identically to both `merid-extension-final/` and `merid
 - **Semantic per-entry verification is incomplete.** 100% of entries were structurally validated and every flagged entry was manually reviewed, but a citation-backed check of **every** definition, Vietnamese gloss, synonym/antonym set, IPA, and CEFR band across all 3,347 entries was **not** performed in this pass. The provided validator + issue log are designed to make that review incremental and repeatable.
 - **CEFR bands are mostly unconfirmed.** Only structural validity (label matches file) is guaranteed. The 47 C1/C2 same-sense conflicts specifically need a linguist/teacher to resolve against the English Vocabulary Profile.
 - **SAT membership is judgment-based** by nature (no official list). No SAT words were added/removed on membership grounds.
-- **`recount - †’recording` fix infers curator intent** from overwhelming internal evidence; a human should confirm no separate "recount" entry was intended.
+- **`recount - ï¿½ï¿½recording` fix infers curator intent** from overwhelming internal evidence; a human should confirm no separate "recount" entry was intended.
 - **Flagged content gaps** (blank definitions/examples, weak examples, verb-phrased adjective/noun definitions) were **not fabricated** -  -  - they await human authoring.
 - **Vietnamese naturalness/accent correctness** was spot-checked, not exhaustively verified by a native speaker.
 - **Live UI features not exercised:** highlight/replace/beside rendering, learning-card display, deck sync, and the AI context check run in a browser/extension context that cannot be launched here; they were validated only via the pure-logic layer (parser, map builder, matcher) and the unit tests.
@@ -211,6 +209,6 @@ cd merid-extension-final
 node scripts/validate-datasets.js            # validate this dir's CSVs (human-readable)
 node scripts/validate-datasets.js --verbose  # also list every WARN/INFO
 node scripts/validate-datasets.js --json      # machine-readable
-node scripts/validate-datasets.js --dir ../merid-extension   # validate the other copy
+node scripts/validate-datasets.js --dir ../some-other-dir     # validate a copy elsewhere
 ```
-Exit code is non-zero if any **ERROR**-level problem exists (safe to wire into CI). Checks: header/schema, field counts, **embedded-newline corruption**, required/empty fields, POS validity, CEFR label, IPA delimiters, self/duplicate synonyms & antonyms, synonym - ˆ§antonym overlap, duplicate Vietnamese terms, broad single-word Vietnamese terms, example-contains-headword, true (same-POS) duplicates vs intentional multi-POS entries, cross-dataset overlaps & POS conflicts, sorting, control/zero-width unicode.
+Exit code is non-zero if any **ERROR**-level problem exists (safe to wire into CI). Checks: header/schema, field counts, **embedded-newline corruption**, required/empty fields, POS validity, CEFR label, IPA delimiters, self/duplicate synonyms & antonyms, synonym - ï¿½ï¿½antonym overlap, duplicate Vietnamese terms, broad single-word Vietnamese terms, example-contains-headword, true (same-POS) duplicates vs intentional multi-POS entries, cross-dataset overlaps & POS conflicts, sorting, control/zero-width unicode.

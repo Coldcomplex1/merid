@@ -1,12 +1,13 @@
 import SectionHeading from '../ui/SectionHeading'
 import Reveal from '../ui/Reveal'
+import MeridMark from '../ui/MeridMark'
 import { useLang } from '../../i18n/LanguageContext'
 
 const STEP_NUMBERS = ['01', '02', '03']
 
 /* ── Micro-demos: each card shows its step happening, on loop ── */
 
-/** Step 1: a toolbar where the gold M gets "clicked" and the panel pops. */
+/** Step 1: a toolbar where the Merid icon gets "clicked" and the panel pops. */
 function ToolbarMicroDemo() {
   return (
     <div className="relative mt-5 h-24 overflow-hidden rounded-xl bg-cream-100 ring-1 ring-navy-200/50" aria-hidden="true">
@@ -17,9 +18,7 @@ function ToolbarMicroDemo() {
         <div className="ml-1.5 h-5 flex-1 rounded-full bg-white/85 px-2.5 text-[9px] leading-5 text-navy-500">
           vnexpress.net
         </div>
-        <span className="animate-micro-click flex h-6 w-6 items-center justify-center rounded-md bg-gold-400 text-[11px] font-extrabold text-navy-900">
-          M
-        </span>
+        <MeridMark size={24} variant="tile" className="animate-micro-click" />
       </div>
       {/* Panel stub that pops right after the "click" */}
       <div className="animate-micro-pop absolute top-10 right-3 w-32 rounded-lg bg-[#0a192f] p-2 shadow-pop ring-1 ring-navy-600/70">
