@@ -36,13 +36,13 @@
     "message": "Locked-in"
   },
   "popupIntensityHint_casual": {
-    "message": "Up to 1 word per short post, 2–3 in a long article."
+    "message": "Up to 1 word per post, 2–3 in a long article."
   },
   "popupIntensityOff": {
     "message": "Currently replacing nothing. Move the slider to switch it back on."
   },
   "popupIntensityHint_focused": {
-    "message": "Up to 1 word per short post, 2–4 as the article gets longer."
+    "message": "Up to 2 words per post, 3–4 in a long article."
   },
   "popupIntensityHint_locked": {
     "message": "Up to 2 words per short post, 3–5 as the article gets longer."

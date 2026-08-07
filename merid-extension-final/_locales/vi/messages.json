@@ -36,13 +36,13 @@
     "message": "Hết cỡ"
   },
   "popupIntensityHint_casual": {
-    "message": "Tối đa 1 từ với bài ngắn, 2–3 từ khi bài dài."
+    "message": "Tối đa 1 từ mỗi bài, 2–3 từ với bài dài."
   },
   "popupIntensityOff": {
     "message": "Đang không thay từ nào. Kéo thanh trượt để bật lại."
   },
   "popupIntensityHint_focused": {
-    "message": "Tối đa 1 từ với bài ngắn, 2–4 từ khi bài dài hơn."
+    "message": "Tối đa 2 từ mỗi bài, 3–4 từ với bài dài."
   },
   "popupIntensityHint_locked": {
     "message": "Tối đa 2 từ với bài ngắn, 3–5 từ khi bài dài hơn."

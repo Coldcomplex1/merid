@@ -225,11 +225,70 @@
      */
     const POST_WORD_CAPS = [
         // maxWords, casual, focused, locked
-        { upTo: 200, casual: 1, focused: 1, locked: 2 },
+        { upTo: 200, casual: 1, focused: 2, locked: 2 },
         { upTo: 1000, casual: 1, focused: 2, locked: 3 },
         { upTo: 2000, casual: 2, focused: 3, locked: 4 },
         { upTo: Infinity, casual: 3, focused: 4, locked: 5 }
     ];
+
+    /**
+     * Spare words to swap in beyond the cap, so the context check has
+     * something to reject.
+     *
+     * The cap used to be applied while scanning, which made the AI check
+     * purely subtractive: at casual a post got exactly one word, and if the
+     * check disliked it the reader got nothing at all. Scanning now replaces
+     * cap + this many candidates and the cap is applied AFTER the verdicts
+     * come back, so it selects among words known to fit rather than truncating
+     * blind. Two is enough slack to lose a couple of candidates without
+     * turning every post into an AI request of its own.
+     */
+    const CANDIDATE_SURPLUS = 2;
+
+    /** How many words the scan may replace before the context check prunes. */
+    function postCandidateCap(intensity, postWords) {
+        const cap = postWordCap(intensity, postWords);
+        return cap > 0 ? cap + CANDIDATE_SURPLUS : 0;
+    }
+
+    /**
+     * Choose `n` of `positions` spread as evenly as possible across the range
+     * they span, so the words that survive the check are distributed through
+     * the post instead of bunched in the opening lines.
+     *
+     * Divides the span from first to last into `n` equal bands and takes the
+     * candidate nearest each band's centre, never picking the same one twice.
+     *
+     * @param {number[]} positions ascending offsets (px down the page, or any
+     *                             monotonic measure of "how far into the post")
+     * @param {number} n how many to keep
+     * @returns {number[]} indices into `positions`, ascending
+     */
+    function pickSpread(positions, n) {
+        const len = positions.length;
+        if (n >= len) return positions.map((_, i) => i);
+        if (n <= 0) return [];
+        if (n === 1) return [0];   // one word: the first one the reader meets
+
+        const first = positions[0];
+        const last = positions[len - 1];
+        const span = last - first;
+        const taken = new Set();
+        for (let k = 0; k < n; k++) {
+            // Band centres, including both ends: k/(n-1) puts the first pick at
+            // the top of the post and the last at the bottom.
+            const target = first + (span * k) / (n - 1);
+            let best = -1;
+            let bestDist = Infinity;
+            for (let i = 0; i < len; i++) {
+                if (taken.has(i)) continue;
+                const d = Math.abs(positions[i] - target);
+                if (d < bestDist) { bestDist = d; best = i; }
+            }
+            if (best >= 0) taken.add(best);
+        }
+        return Array.from(taken).sort((a, b) => a - b);
+    }
 
     /**
      * Cap for a post of `postWords` words at the given intensity.
@@ -685,6 +744,7 @@
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
         INTENSITY_LEVELS, INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
         normalizeIntensity, POST_WORD_CAPS, postWordCap, countWords,
+        CANDIDATE_SURPLUS, postCandidateCap, pickSpread,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching

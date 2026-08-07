@@ -205,8 +205,8 @@ test('postWordCap follows the published table', () => {
     // reader asked for locked-in), a normal article tops out at three.
     const table = [
         //  words  casual focused locked
-        [10, 1, 1, 2],
-        [200, 1, 1, 2],
+        [10, 1, 2, 2],
+        [200, 1, 2, 2],
         [201, 1, 2, 3],
         [1000, 1, 2, 3],
         [1001, 2, 3, 4],
@@ -229,6 +229,43 @@ test('postWordCap accepts a stored frequency as well as a level name', () => {
     assert.strictEqual(C.postWordCap(63, 500), C.postWordCap('focused', 500));
     // and legacy level names keep working
     assert.strictEqual(C.postWordCap('heavy', 500), C.postWordCap('locked', 500));
+});
+
+test('postCandidateCap leaves room for the context check to reject words', () => {
+    // The scan replaces more than the cap on purpose; the cap is applied after
+    // the verdicts come back. Without the slack, one bad verdict at casual
+    // means the post ends up with no vocabulary in it at all.
+    for (const level of C.INTENSITY_LEVELS) {
+        for (const words of [10, 200, 500, 1500, 5000]) {
+            assert.strictEqual(
+                C.postCandidateCap(level, words),
+                C.postWordCap(level, words) + C.CANDIDATE_SURPLUS,
+                `${level} @ ${words}`);
+        }
+    }
+    // Off stays off - there is nothing to over-provision for.
+    assert.strictEqual(C.postCandidateCap(0, 500), 0);
+});
+
+test('pickSpread spreads the keepers across the post', () => {
+    // Four candidates bunched at the top and one at the bottom: keeping two
+    // must take one from each end, not the first two.
+    assert.deepStrictEqual(C.pickSpread([0, 10, 20, 30, 900], 2), [0, 4]);
+    // Evenly spaced input stays evenly spaced.
+    assert.deepStrictEqual(C.pickSpread([0, 100, 200, 300, 400], 3), [0, 2, 4]);
+    // One keeper is the first word the reader meets, not the middle.
+    assert.deepStrictEqual(C.pickSpread([0, 50, 900], 1), [0]);
+    // Asking for everything (or more) keeps everything, in order.
+    assert.deepStrictEqual(C.pickSpread([5, 15, 25], 3), [0, 1, 2]);
+    assert.deepStrictEqual(C.pickSpread([5, 15, 25], 9), [0, 1, 2]);
+    assert.deepStrictEqual(C.pickSpread([], 3), []);
+    assert.deepStrictEqual(C.pickSpread([1, 2, 3], 0), []);
+    // Never returns a duplicate, whatever the clustering.
+    for (const n of [1, 2, 3, 4]) {
+        const picked = C.pickSpread([0, 0, 0, 0, 0, 0], n);
+        assert.strictEqual(new Set(picked).size, picked.length, `n=${n} must be distinct`);
+        assert.strictEqual(picked.length, n, `n=${n} must return n items`);
+    }
 });
 
 test('a stored frequency of 0 still means off', () => {

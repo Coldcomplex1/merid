@@ -15,24 +15,46 @@
 import { chromium } from 'playwright';
 import http from 'node:http';
 import path from 'node:path';
+import fs from 'node:fs';
 
 const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
-// Vietnamese meanings straight from dataset-C1.csv so matching is real. Each
-// post draws a different phrase, so words keep being new the deeper you scroll
-// - a feed where every post repeated the same words would be collapsed by the
-// one-per-session rule and would prove nothing about reach.
-const PHRASES = [
-    'Vô lý', 'Dồi dào', 'Lạm dụng', 'Học viện', 'Tăng tốc',
-    'Chấp nhận', 'Dễ tiếp cận', 'Thành tựu', 'Do đó', 'Tích lũy',
-    'Cáo buộc', 'Vắng mặt', 'Phá thai', 'Chịu trách nhiệm', 'Bãi bỏ'
-];
+// Vietnamese meanings pulled straight out of dataset-C1.csv, so the matching
+// under test is the real thing. Every phrase on the page is distinct: repeats
+// would be collapsed by the one-per-session rule and the feed would stop
+// proving anything about reach. Each post carries several of them, which is
+// what lets the scan over-provision candidates and the cap prune them back -
+// with one phrase per post there is nothing to choose between.
+const POSTS = 40;
+const PHRASES_PER_POST = 3;
+
+function loadPhrases(limit) {
+    const csv = fs.readFileSync(new URL('../dataset-C1.csv', import.meta.url), 'utf8');
+    const seen = new Set();
+    const out = [];
+    for (const line of csv.split('\n').slice(1)) {
+        if (!line.trim()) continue;
+        const quoted = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+        if (quoted.length < 3) continue;
+        // vietnamese sits just before the synonyms/antonyms columns
+        const first = (quoted[quoted.length - 3] || '').split(',')[0].trim();
+        const key = first.toLowerCase();
+        if (first.length < 3 || seen.has(key)) continue;
+        seen.add(key);
+        out.push(first);
+        if (out.length >= limit) break;
+    }
+    return out;
+}
 
 // The word planted in the deep post, and rejected by the stub when it gets
-// there. Kept out of PHRASES so it can only come from that one post.
+// there. Held out of the pool so it can only come from that one post.
 const DEEP_PHRASE = 'Sự vắng mặt';   // -> "absence"
 const DEEP_WORD = 'absence';
 const DEEP_POST = 28;
+
+const PHRASES = loadPhrases(POSTS * PHRASES_PER_POST + 8)
+    .filter((p) => p.toLowerCase() !== DEEP_PHRASE.toLowerCase());
 
 // Each post is a <div role="article"> - the markup content.js recognises as a
 // feed item - and posts mount in batches as the sentinel scrolls into view.
@@ -46,11 +68,14 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <script>
   var made = 0;
   var PHRASES = ${JSON.stringify(PHRASES)};
+  var PER_POST = ${PHRASES_PER_POST};
   var DEEP_PHRASE = ${JSON.stringify(DEEP_PHRASE)};
   var DEEP_POST = ${DEEP_POST};
+  var TOTAL = ${POSTS};
+  var cursor = 0;
   function addPosts(n) {
     var feed = document.getElementById('feed');
-    for (var i = 0; i < n; i++) {
+    for (var i = 0; i < n && made < TOTAL; i++) {
       made++;
       var post = document.createElement('div');
       post.setAttribute('role', 'article');
@@ -58,17 +83,23 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
       var h = document.createElement('p');
       h.textContent = 'Bài số ' + made;
       post.appendChild(h);
-      var p = document.createElement('p');
-      var phrase = made === DEEP_POST ? DEEP_PHRASE : PHRASES[made % PHRASES.length];
-      p.textContent = phrase + ' là chủ đề chính của bản tin hôm nay.';
-      post.appendChild(p);
+      // Several distinct phrases per post, so the scan has more candidates
+      // than the cap allows and the prune has a real choice to make.
+      for (var k = 0; k < PER_POST; k++) {
+        var phrase = (made === DEEP_POST && k === 0)
+          ? DEEP_PHRASE
+          : PHRASES[cursor++ % PHRASES.length];
+        var p = document.createElement('p');
+        p.textContent = phrase + ' là chủ đề chính của bản tin hôm nay.';
+        post.appendChild(p);
+      }
       feed.appendChild(post);
     }
     window.__postCount = made;
   }
   addPosts(5);
   new IntersectionObserver(function (es) {
-    if (es.some(function (e) { return e.isIntersecting; }) && made < 40) addPosts(5);
+    if (es.some(function (e) { return e.isIntersecting; }) && made < TOTAL) addPosts(5);
   }).observe(document.getElementById('sentinel'));
 </script>
 </body></html>`;
@@ -193,18 +224,43 @@ check(deepAsked, `a word ${DEEP_POST} posts down was sent for checking`, DEEP_WO
 const deepPost = await page.$(`[data-post-index="${DEEP_POST}"]`);
 const deepState = deepPost ? await deepPost.evaluate((el, w) => ({
     stillSwapped: !!el.querySelector(`.vocab-master-highlight[data-word="${w}"]`),
+    survivors: el.querySelectorAll('.vocab-master-highlight').length,
     text: el.innerText
 }), DEEP_WORD) : null;
 check(deepState && !deepState.stillSwapped && /vắng mặt/i.test(deepState.text),
     'the rejected deep word was reverted to Vietnamese',
     deepState ? deepState.text.replace(/\s+/g, ' ').trim() : 'post not found');
 
+// The reason for over-provisioning: losing a word to the context check must
+// not leave the post with nothing to learn from. Before the scan replaced
+// spares, a rejected word in a one-word post meant a post with no vocabulary.
+check(deepState && deepState.survivors > 0,
+    'the post that lost a word still teaches another one',
+    deepState ? `${deepState.survivors} words left` : 'post not found');
+
 // --- 4. Per-post allowance and one-per-session dedupe both hold ---
-const perPost = await page.$$eval('[role="article"]',
-    posts => posts.map(p => p.querySelectorAll('.vocab-master-highlight').length));
-const worst = Math.max(0, ...perPost);
-// Locked-in on posts of this length allows at most 3.
-check(worst <= 3, 'no post exceeds its word allowance', `worst post had ${worst}`);
+// Posts are checked, then cut back to the cap. Only posts that have scrolled
+// out of view are guaranteed to be pruned - a span still on screen keeps its
+// word until the reader moves past it, on purpose.
+const OFFSCREEN_CAP = 2;   // locked-in, posts this short
+const prunable = await page.$$eval('[role="article"]', (posts) =>
+    posts
+        .filter((p) => {
+            const r = p.getBoundingClientRect();
+            return r.bottom < 0 || r.top > window.innerHeight;
+        })
+        .map((p) => p.querySelectorAll('.vocab-master-highlight').length));
+const worst = Math.max(0, ...prunable);
+check(prunable.length > 5, 'enough posts scrolled past to judge', `${prunable.length} off-screen`);
+check(worst <= OFFSCREEN_CAP, 'posts the reader has passed are cut back to the cap',
+    `worst off-screen post had ${worst}`);
+
+// The whole point of the change: over-provisioning means a rejected word does
+// not leave the post empty. Every post the reader passed should still have a
+// word in it.
+const empty = prunable.filter((n) => n === 0).length;
+check(empty === 0, 'no post was left with nothing after the check',
+    `${empty} of ${prunable.length} posts empty`);
 
 const words = await page.$$eval('.vocab-master-highlight',
     els => els.map(e => (e.dataset.word || '').toLowerCase()));

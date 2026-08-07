@@ -56,11 +56,16 @@ const MUTATION_DEBOUNCE_MS = 300;
 let processedNodes = new WeakSet();
 
 // Per-"post" (feed item or article body) scan stats:
-// { words: total words in the post, used: translations made so far }. The cap
-// comes from VMCore.postWordCap(intensity, words) - a flat allowance sized by
-// how long the post is, measured once when we first touch the post. Reset on
-// every init().
+// { words, used, candidates: [span] }. The scan replaces up to
+// VMCore.postCandidateCap words - the real cap plus a couple of spares - and
+// prunePost() cuts back to VMCore.postWordCap once the context check has said
+// which of them actually fit. Reset on every init().
 let postWordCounts = new WeakMap();
+// Every post we have touched, so a global prune (AI switched off, allowance
+// spent) can reach all of them. Cleared on every init().
+let knownPosts = new Set();
+// Which post a span belongs to, for pruning after its verdict arrives.
+let spanPost = new WeakMap();
 
 // Headwords (and the Vietnamese text they replaced) already used somewhere on
 // this page visit. A word is worth meeting once: seeing "apprehend" swapped in
@@ -94,6 +99,8 @@ function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
     postWordCounts = new WeakMap();
+    knownPosts = new Set();
+    spanPost = new WeakMap();
     takenThisPage = new Set();
     aiCheckedPairs = new Set();
     aiRequestsSent = 0;
@@ -256,8 +263,14 @@ function statsFor(container) {
     let stats = postWordCounts.get(container);
     const now = Date.now();
     if (!stats) {
-        stats = { words: C.countWords(container.textContent || ''), used: 0, measuredAt: now };
+        stats = {
+            words: C.countWords(container.textContent || ''),
+            used: 0,
+            measuredAt: now,
+            candidates: []
+        };
         postWordCounts.set(container, stats);
+        knownPosts.add(container);
         return stats;
     }
     if (now - stats.measuredAt >= POST_REMEASURE_MS) {
@@ -276,7 +289,12 @@ function processTextNode(node, vocabMap) {
     const tokens = C.tokenize(original);
     const container = postContainerFor(node.parentElement);
     const stats = statsFor(container);
-    const cap = C.postWordCap(settings.frequency, stats.words);
+    // Over-provision only when a context check is actually coming: it is what
+    // prunes the surplus back to the cap. With no check on the way, the cap has
+    // to hold at scan time or the reader just gets too many words.
+    const cap = contextCheckPossible()
+        ? C.postCandidateCap(settings.frequency, stats.words)
+        : C.postWordCap(settings.frequency, stats.words);
 
     const out = [];
     let modified = false;
@@ -343,6 +361,8 @@ function processTextNode(node, vocabMap) {
         }
 
         stats.used++;
+        stats.candidates.push(span);
+        spanPost.set(span, container);
 
         // The AI context check starts when the reader actually reaches this
         // word, not when the scan finds it.
@@ -714,10 +734,18 @@ function flushAiQueue() {
         }
         let reverted = 0;
         let upgraded = 0;
+        // Posts whose candidates may now all have verdicts, and so be ready to
+        // be cut back to the cap.
+        const touchedPosts = new Set();
         batch.forEach((g, i) => {
             aiCheckedPairs.add(g.key);
             const word = g.spans[0].dataset.word || '';
             const bad = res.verdicts[i] === 0;
+            g.spans.forEach(sp => {
+                sp.dataset.aiChecked = '1';
+                const post = spanPost.get(sp);
+                if (post) touchedPosts.add(post);
+            });
             // The verdict is also a free training label for the local ranker.
             queueProfileEvent(word, bad ? 'aiBad' : 'aiOk');
             if (!bad) return;
@@ -729,6 +757,10 @@ function flushAiQueue() {
             if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
             else { revertSpans(g.spans); reverted++; }
         });
+
+        // Now that these posts have their verdicts, apply the reader's cap to
+        // the words that survived.
+        touchedPosts.forEach(post => prunePost(post, false));
 
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,
@@ -747,6 +779,82 @@ function stopAiChecking() {
     clearAiTimers();
     if (spanObserver) { spanObserver.disconnect(); spanObserver = null; }
     Status.set('off');
+    // No verdicts are coming, so the spare candidates already on the page will
+    // never be judged. Cut every post back to its cap now rather than leaving
+    // the reader with more words than they asked for.
+    knownPosts.forEach(post => prunePost(post, true));
+}
+
+/** True while a context check could still arrive to prune the spare words. */
+function contextCheckPossible() {
+    return !aiDisabled && settings.aiCheckEnabled !== false;
+}
+
+// -------------------------------------------------------------
+// Pruning: the cap, applied after the context check
+//
+// The scan deliberately replaces more words than the reader's intensity
+// allows, so the check has something to reject. Once the verdicts for a post
+// are in, this cuts the survivors back down to the cap.
+//
+// Which ones survive is a spread question, not a first-come one: three good
+// words bunched in the opening sentence read worse than three spaced through
+// the piece, so the keepers are chosen by their position down the page.
+// -------------------------------------------------------------
+
+/** Vertical position of a span in the document, for spread selection. */
+function verticalPosition(span) {
+    try {
+        return span.getBoundingClientRect().top + (window.scrollY || 0);
+    } catch (e) {
+        return 0;
+    }
+}
+
+/**
+ * Cut one post back to its cap.
+ *
+ * @param {Element} container the post
+ * @param {boolean} force     prune even if some candidates are still unchecked
+ *                            (used when no verdict will ever arrive)
+ */
+function prunePost(container, force) {
+    // Sites with virtualized feeds recycle posts out of the DOM; stop holding
+    // on to those.
+    if (!container.isConnected) { knownPosts.delete(container); return; }
+    const stats = postWordCounts.get(container);
+    if (!stats || !stats.candidates.length) return;
+
+    // Drop candidates that are gone (reverted by the check, unwrapped by "I
+    // know this", or removed by the site itself).
+    const live = stats.candidates.filter(sp =>
+        sp.isConnected && sp.classList.contains('vocab-master-highlight'));
+    stats.candidates = live;
+    if (!live.length) return;
+
+    // Wait until every candidate has a verdict, so the choice is made among
+    // words that are all known to fit.
+    if (!force && live.some(sp => sp.dataset.aiChecked !== '1')) return;
+
+    const cap = C.postWordCap(settings.frequency, stats.words);
+    if (live.length <= cap) return;
+
+    const ordered = live
+        .map(sp => ({ sp, pos: verticalPosition(sp) }))
+        .sort((a, b) => a.pos - b.pos);
+    const keep = new Set(
+        C.pickSpread(ordered.map(o => o.pos), cap).map(i => ordered[i].sp)
+    );
+
+    // A surplus word was never wrong, just crowded out - let it have its turn
+    // in a later post rather than burning its one appearance here. The claim is
+    // released when the revert actually lands, not now: a revert on a span the
+    // reader is looking at is deferred, and releasing early would let the same
+    // word appear somewhere else while this copy is still on screen.
+    scheduleRevert(ordered.map(o => o.sp).filter(sp => !keep.has(sp)));
+
+    stats.candidates = live.filter(sp => keep.has(sp));
+    stats.used = stats.candidates.length;
 }
 
 // -------------------------------------------------------------
@@ -765,12 +873,17 @@ function revertPage() {
 }
 
 // -------------------------------------------------------------
-// Word upgrades (AI suggested something better than what we inserted)
+// Deferred edits (the context check changed its mind about a word)
 //
-// Swapping text under a reader's eyes is worse than showing a slightly wrong
-// word: the line reflows and they lose their place. So an upgrade is only
-// applied while the span is OUT of the viewport. Anything currently on screen
-// is parked until it scrolls away, and dropped if the user never goes back.
+// Changing text under a reader's eyes is worse than showing a slightly wrong
+// word: the line reflows and they lose their place. So an edit is only applied
+// while the span is OUT of the viewport. Anything currently on screen is
+// parked until it scrolls away, and dropped if the user never goes back.
+//
+// Two kinds of edit go through here: an UPGRADE, where the check suggested a
+// better word for the slot, and a REVERT, where the word was crowded out by
+// the reader's cap and goes back to Vietnamese. Both are cosmetic corrections
+// to text already on the page, so both owe the reader the same courtesy.
 // -------------------------------------------------------------
 let pendingUpgrades = [];
 let upgradeScrollBound = false;
@@ -820,16 +933,38 @@ function applyUpgrade(span, entry) {
     }
 }
 
-function scheduleUpgrade(spans, entry) {
+/** Queue an edit, applying it straight away if the span is off screen. */
+function scheduleEdit(spans, job) {
     (spans || []).forEach(span => {
         if (!span || !span.isConnected) return;
-        if (!isOnScreen(span)) { applyUpgrade(span, entry); return; }
-        pendingUpgrades.push({ span, entry });
+        if (!isOnScreen(span)) { applyEdit(span, job); return; }
+        pendingUpgrades.push(Object.assign({ span }, job));
     });
     if (pendingUpgrades.length && !upgradeScrollBound) {
         upgradeScrollBound = true;
         window.addEventListener('scroll', onUpgradeScroll, { passive: true });
     }
+}
+
+function applyEdit(span, job) {
+    if (job.entry) { applyUpgrade(span, job.entry); return; }
+    // Give the word back to the page only once it has actually left it.
+    if (job.release) {
+        takenThisPage.delete((span.dataset.word || '').toLowerCase());
+        takenThisPage.delete((span.dataset.original || '').toLowerCase());
+    }
+    revertSpans([span]);
+}
+
+/** The check found a better word for this slot. */
+function scheduleUpgrade(spans, entry) {
+    scheduleEdit(spans, { entry });
+}
+
+/** The word was crowded out by the cap and goes back to Vietnamese. It was
+ *  never judged wrong, so it is free to be used in a later post. */
+function scheduleRevert(spans) {
+    scheduleEdit(spans, { entry: null, release: true });
 }
 
 function onUpgradeScroll() {
@@ -846,7 +981,7 @@ function flushPendingUpgrades() {
     for (const job of pendingUpgrades) {
         if (!job.span.isConnected) continue;      // the node went away; drop it
         if (isOnScreen(job.span)) { stillPending.push(job); continue; }
-        applyUpgrade(job.span, job.entry);
+        applyEdit(job.span, job);
     }
     pendingUpgrades = stillPending;
     if (!pendingUpgrades.length && upgradeScrollBound) {

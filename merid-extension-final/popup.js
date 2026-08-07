@@ -13,8 +13,8 @@ function t(key, fallback, subs) {
 // What each intensity level actually buys, in the reader's terms. These track
 // VMCore.POST_WORD_CAPS - if that table changes, change these too.
 const INTENSITY_HINTS = {
-    casual: 'Up to 1 word per short post, 2–3 in a long article.',
-    focused: 'Up to 1 word per short post, 2–4 as the article gets longer.',
+    casual: 'Up to 1 word per post, 2–3 in a long article.',
+    focused: 'Up to 2 words per post, 3–4 in a long article.',
     locked: 'Up to 2 words per short post, 3–5 as the article gets longer.'
 };
 
