@@ -1,9 +1,8 @@
 import { useLang } from '../../i18n/LanguageContext'
 import type { DeckWord, WordStatus } from '../../deck/DeckSource'
-
-/** Fewest words a puzzle set can have: a question needs one answer and three
- *  believable wrong options. */
-export const MIN_PUZZLE_WORDS = 4
+// Owned by PuzzleMode, where it is derived from the number of options a
+// question offers - not restated here, so the two cannot disagree.
+import { MIN_PUZZLE_WORDS } from './PuzzleMode'
 
 interface Props {
   words: DeckWord[]

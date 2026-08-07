@@ -4,6 +4,11 @@ import type { DeckWord } from '../../deck/DeckSource'
 
 const OPTION_COUNT = 4
 
+/** Fewest words a puzzle can be built from: one answer plus three believable
+ *  wrong options. Lives here, next to OPTION_COUNT it is derived from, so the
+ *  two can never drift apart. */
+export const MIN_PUZZLE_WORDS = OPTION_COUNT
+
 interface Round {
   /** 'cloze' = fill the blank in the example sentence;
    *  'meaning' = pick the word matching the meaning (fallback for words
@@ -98,6 +103,11 @@ export default function PuzzleMode({ words, pool }: Props) {
     return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.puzzle.needMore}</p>
   }
 
+  // The deck is a live subscription, so a word can be removed - or marked
+  // known from another tab - mid-game and leave `rounds` shorter than the
+  // question we are sitting on. Clamp rather than index off the end.
+  const safeIndex = Math.min(index, rounds.length - 1)
+
   const right = rounds.reduce((n, r, i) => (answers[i] === r.answer ? n + 1 : n), 0)
   const wrongWords = rounds
     .filter((r, i) => answers[i] != null && answers[i] !== r.answer)
@@ -144,11 +154,11 @@ export default function PuzzleMode({ words, pool }: Props) {
     )
   }
 
-  const round = rounds[index]
-  const picked = answers[index] ?? null
+  const round = rounds[safeIndex]
+  const picked = answers[safeIndex] ?? null
   const answered = picked !== null
   const isCorrect = picked === round.answer
-  const isLast = index === rounds.length - 1
+  const isLast = safeIndex === rounds.length - 1
   // Answered questions are read-only on the way back: the score should reflect
   // what you knew at the time, not what you worked out afterwards.
   const furthest = answers.reduce<number>((max, a, i) => (a != null ? Math.max(max, i + 1) : max), 0)
@@ -157,7 +167,7 @@ export default function PuzzleMode({ words, pool }: Props) {
     if (answered) return
     setAnswers((prev) => {
       const next = [...prev]
-      next[index] = option
+      next[safeIndex] = option
       return next
     })
   }
@@ -179,9 +189,9 @@ export default function PuzzleMode({ words, pool }: Props) {
               disabled={!reachable}
               onClick={() => setIndex(i)}
               aria-label={t.deck.puzzle.jumpTo(i + 1)}
-              aria-current={i === index}
+              aria-current={i === safeIndex}
               className={`h-2 rounded-full transition-all ${tone} ${
-                i === index ? 'w-6 ring-2 ring-accent ring-offset-2 ring-offset-surface' : 'w-2'
+                i === safeIndex ? 'w-6 ring-2 ring-accent ring-offset-2 ring-offset-surface' : 'w-2'
               } ${reachable ? 'cursor-pointer' : 'cursor-default opacity-50'}`}
             />
           )
@@ -189,7 +199,7 @@ export default function PuzzleMode({ words, pool }: Props) {
       </div>
 
       <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-        {index + 1} / {rounds.length} · {round.kind === 'cloze' ? t.deck.puzzle.prompt : t.deck.puzzle.promptMeaning}
+        {safeIndex + 1} / {rounds.length} · {round.kind === 'cloze' ? t.deck.puzzle.prompt : t.deck.puzzle.promptMeaning}
       </p>
       <p
         lang={round.kind === 'meaning' ? 'vi' : 'en'}
@@ -226,7 +236,7 @@ export default function PuzzleMode({ words, pool }: Props) {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
-          disabled={index === 0}
+          disabled={safeIndex === 0}
           onClick={() => setIndex((i) => i - 1)}
           className="rounded-full border border-line-strong px-4 py-2 text-sm font-semibold text-body transition-colors hover:border-accent hover:text-accent disabled:cursor-default disabled:opacity-40 disabled:hover:border-line-strong disabled:hover:text-body"
         >

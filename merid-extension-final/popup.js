@@ -13,7 +13,7 @@ function t(key, fallback, subs) {
 // What each intensity level actually buys, in the reader's terms. These track
 // VMCore.POST_WORD_CAPS - if that table changes, change these too.
 const INTENSITY_HINTS = {
-    casual: 'Up to 1 word per post, 3 in a very long article.',
+    casual: 'Up to 1 word per short post, 2–3 in a long article.',
     focused: 'Up to 1 word per short post, 2–4 as the article gets longer.',
     locked: 'Up to 2 words per short post, 3–5 as the article gets longer.'
 };
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setSegActive(modeSeg, s.replacementMode);
             document.querySelector(`.dataset-btn[data-key="${s.datasetKey}"]`)?.classList.add('active');
             updateExtensionToggleButton(s.extensionEnabled !== false);
-            updateSliderLabels(intensityIndex(s.frequency));
+            updateSliderLabels(intensityIndex(s.frequency), s.frequency);
         }
     );
 
@@ -329,14 +329,27 @@ document.addEventListener('DOMContentLoaded', () => {
         return i < 0 ? 1 : i;
     }
 
-    function updateSliderLabels(index) {
+    /**
+     * @param {number} index      slider position 0/1/2
+     * @param {number} [stored]   the stored frequency, when reading it back.
+     *   Only 0 is interesting: older builds let the slider go to zero, meaning
+     *   "replace nothing", and the three-stop slider has no position for that.
+     *   It parks at Casual, so without this the popup would claim it is
+     *   replacing a word per post while the page stays untouched. Moving the
+     *   slider writes a real level and clears the state.
+     */
+    function updateSliderLabels(index, stored) {
         const labels = document.querySelectorAll('.slider-labels span');
         labels.forEach((span, i) => span.classList.toggle('active', i === index));
         const hint = document.getElementById('intensity-hint');
-        if (hint) {
-            const level = C.INTENSITY_LEVELS[index] || 'focused';
-            hint.textContent = t('popupIntensityHint_' + level, INTENSITY_HINTS[level]);
+        if (!hint) return;
+        if (Number(stored) === 0) {
+            hint.textContent = t('popupIntensityOff',
+                'Currently replacing nothing. Move the slider to switch it back on.');
+            return;
         }
+        const level = C.INTENSITY_LEVELS[index] || 'focused';
+        hint.textContent = t('popupIntensityHint_' + level, INTENSITY_HINTS[level]);
     }
 
     // Today's AI allowance, if and only if it has run out.
