@@ -53,7 +53,7 @@ function load() {
     chrome.storage.sync.get(SYNC_KEYS, sync => {
         const s = C.withDefaults(sync);
         setActive(els.modeSeg, s.replacementMode);
-        setActive(els.intensitySeg, C.frequencyToIntensity(s.frequency));
+        setActive(els.intensitySeg, C.normalizeIntensity(s.frequency));
         setCard('vieEng', !!s.vieEngMode);
         setCard('engEng', !!s.engEngMode);
         setActive(els.datasetSeg, s.datasetKey);

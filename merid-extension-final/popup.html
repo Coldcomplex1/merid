@@ -46,12 +46,23 @@
             <div class="setting-item">
                 <label data-i18n="popupIntensityLabel">Highlight intensity</label>
                 <div class="slider-container">
-                    <input type="range" min="0" max="100" value="70" class="slider" id="frequency-slider">
+                    <!-- Three stops, nothing in between: the values between the
+                         named levels never meant anything to a reader, and they
+                         made the same page translate differently at 48 vs 52. -->
+                    <input type="range" min="0" max="2" step="1" value="1" class="slider" id="frequency-slider"
+                        list="intensity-stops" aria-describedby="intensity-hint">
+                    <datalist id="intensity-stops">
+                        <option value="0"></option>
+                        <option value="1"></option>
+                        <option value="2"></option>
+                    </datalist>
                     <div class="slider-labels">
                         <span data-i18n="popupIntensityCasual">Casual</span>
                         <span class="active" data-i18n="popupIntensityFocused">Focused</span>
                         <span data-i18n="popupIntensityLocked">Locked-in</span>
                     </div>
+                    <!-- Text is set per level by popup.js (updateSliderLabels). -->
+                    <p class="slider-hint" id="intensity-hint" role="status"></p>
                 </div>
             </div>
 

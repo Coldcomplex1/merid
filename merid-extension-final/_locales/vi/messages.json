@@ -35,6 +35,15 @@
   "popupIntensityLocked": {
     "message": "Hết cỡ"
   },
+  "popupIntensityHint_casual": {
+    "message": "Tối đa 1 từ mỗi bài, 3 từ với bài rất dài."
+  },
+  "popupIntensityHint_focused": {
+    "message": "Tối đa 1 từ với bài ngắn, 2–4 từ khi bài dài hơn."
+  },
+  "popupIntensityHint_locked": {
+    "message": "Tối đa 2 từ với bài ngắn, 3–5 từ khi bài dài hơn."
+  },
   "popupDisplayModeLabel": {
     "message": "Kiểu hiển thị"
   },
@@ -70,6 +79,12 @@
   },
   "popupSiteOn": {
     "message": "Bật lại trên trang này"
+  },
+  "popupSiteAlwaysOff": {
+    "message": "Luôn tắt ở đây"
+  },
+  "popupSiteAlwaysOffHint": {
+    "message": "Merid không bao giờ đổi từ trên chính trang của mình."
   },
   "popupViewDeck": {
     "message": "Xem bộ thẻ của tôi ↗"

@@ -51,12 +51,18 @@ const MUTATION_DEBOUNCE_MS = 300;
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
 
-// Per-"post" (feed item / article / text block) scan stats:
-// { seen: words scanned so far, used: translations made so far }. The budget
-// scales with `seen` (VMCore.postWordBudget - roughly frequency/15 words per
-// 100 words of text), so long articles get translations spread all the way
-// through instead of only in the opening paragraph. Reset on every init().
+// Per-"post" (feed item or article body) scan stats:
+// { words: total words in the post, used: translations made so far }. The cap
+// comes from VMCore.postWordCap(intensity, words) - a flat allowance sized by
+// how long the post is, measured once when we first touch the post. Reset on
+// every init().
 let postWordCounts = new WeakMap();
+
+// Headwords (and the Vietnamese text they replaced) already used somewhere on
+// this page visit. A word is worth meeting once: seeing "apprehend" swapped in
+// twenty posts of the same feed is noise, not practice, and it wastes an AI
+// check slot per copy. Reset on every init().
+let takenThisPage = new Set();
 
 const FORBIDDEN_TAGS = new Set([
     'script', 'style', 'textarea', 'input', 'select', 'noscript', 'code', 'pre',
@@ -84,6 +90,7 @@ function init() {
     if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
     processedNodes = new WeakSet();
     postWordCounts = new WeakMap();
+    takenThisPage = new Set();
     aiCheckedPairs = new Set();
     aiChecksSent = 0;
     if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
@@ -204,13 +211,52 @@ function processPage(vocabMap) {
     processChunk();
 }
 
-// The nearest thing that reads as one "post": a feed item/article when the
-// site marks one up, otherwise the closest text block, otherwise the page.
+// The nearest thing a reader would call one "post".
+//
+// This used to fall back to the closest text block (p/li/td/heading), which
+// quietly turned every paragraph of an unmarked-up article into its own post
+// with its own word allowance - a ten-paragraph article got ten times the
+// intended budget. There are only two things worth recognising: a feed item,
+// or an article body. Anything else is the page.
+const FEED_ITEM_SELECTOR =
+    'article, [role="article"], [role="listitem"], [data-pagelet*="Feed"], [data-testid*="post"]';
+const ARTICLE_BODY_SELECTOR =
+    'main, [role="main"], .post-content, .entry-content, .article-body, .article-content, #content';
+
 function postContainerFor(el) {
     if (!el) return document.body;
-    return el.closest('article, [role="article"], [role="listitem"]') ||
-        el.closest('p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, section, main') ||
+    return el.closest(FEED_ITEM_SELECTOR) ||
+        el.closest(ARTICLE_BODY_SELECTOR) ||
         document.body;
+}
+
+// Longest a post's measured length is trusted before we look again. Reading
+// textContent walks the whole subtree, and processTextNode runs once per text
+// node, so re-measuring on every call would be quadratic on a long article.
+const POST_REMEASURE_MS = 2000;
+
+/**
+ * Scan stats for a post, measuring its length the first time we see it.
+ *
+ * Re-measures (at most every POST_REMEASURE_MS) when the post has grown by
+ * more than a quarter: feed items are often mounted with a truncated caption
+ * and expanded later ("See more"), and a post that doubled in length deserves
+ * the allowance its new length implies.
+ */
+function statsFor(container) {
+    let stats = postWordCounts.get(container);
+    const now = Date.now();
+    if (!stats) {
+        stats = { words: C.countWords(container.textContent || ''), used: 0, measuredAt: now };
+        postWordCounts.set(container, stats);
+        return stats;
+    }
+    if (now - stats.measuredAt >= POST_REMEASURE_MS) {
+        stats.measuredAt = now;
+        const words = C.countWords(container.textContent || '');
+        if (words > stats.words * 1.25) stats.words = words;
+    }
+    return stats;
 }
 
 function processTextNode(node, vocabMap) {
@@ -220,54 +266,44 @@ function processTextNode(node, vocabMap) {
 
     const tokens = C.tokenize(original);
     const container = postContainerFor(node.parentElement);
-    let stats = postWordCounts.get(container);
-    if (!stats) { stats = { seen: 0, used: 0 }; postWordCounts.set(container, stats); }
+    const stats = statsFor(container);
+    const cap = C.postWordCap(settings.frequency, stats.words);
 
     const out = [];
     let modified = false;
 
     for (let i = 0; i < tokens.length; i++) {
-        if (C.isWordToken(tokens[i])) stats.seen++;
-
-        const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE
+        const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < cap
             ? C.findMatch(tokens, i, vocabMap, { allowSingleWord: true, minSingleWordLen: 2 })
             : null;
 
         if (!match) { out.push(makeTextNode(tokens[i])); continue; }
 
         const { size, matchedText, items } = match;
-        // The rest of the matched tokens also count as scanned words.
-        for (let k = i + 1; k < i + size; k++) {
-            if (C.isWordToken(tokens[k])) stats.seen++;
-        }
         const item = items[0]; // deterministic pick from the dataset
         const replaceWith = item.word;
+        const wl = replaceWith.toLowerCase();
+        const ml = matchedText.toLowerCase();
 
         // "I know this" - never replace words the user already knows.
-        if (knownSet.has(replaceWith.toLowerCase())) {
+        if (knownSet.has(wl)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
         }
 
-        // Deterministic intensity gate - stable across re-renders (no Math.random).
-        //
-        // Personalization enters HERE and only here: it bends the frequency the
-        // gate sees, it does not make the decision. The hash still does that,
-        // so the same word on the same page always resolves the same way. With
-        // no profile, or a profile too young to trust, effectiveFrequency()
-        // returns settings.frequency unchanged.
-        if (!C.gateByFrequency(matchedText.toLowerCase() + '|' + replaceWith.toLowerCase(),
-            effectiveFrequency(replaceWith, item.dataset))) {
+        // One appearance per word, per page visit. Keyed both ways so the same
+        // Vietnamese phrase is never swapped twice, and the same English
+        // headword never shows up twice from two different source phrases.
+        if (takenThisPage.has(wl) || takenThisPage.has(ml)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
         }
 
-        // Density budget - at most ~frequency/15 translations per 100 words
-        // scanned in this post so far, so translations spread through the
-        // whole article instead of clustering in the first paragraph.
-        if (stats.used >= C.postWordBudget(settings.frequency, stats.seen)) {
+        // A word this reader keeps turning down does not get one of the few
+        // slots this post has.
+        if (!wordIsWelcome(replaceWith, item.dataset)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -281,7 +317,10 @@ function processTextNode(node, vocabMap) {
         span.dataset.level = item.dataset || '';
         applyDisplayMode(span);
 
-        const wl = replaceWith.toLowerCase();
+        // Claim the word for this page visit before anything else can.
+        takenThisPage.add(wl);
+        takenThisPage.add(ml);
+
         if (!shownThisPage.has(wl)) {
             shownThisPage.add(wl);
             // Due-ness is read against the scan's profile snapshot, before the
@@ -419,21 +458,33 @@ let pageTopic = 'general';
 let shownThisPage = new Set();
 let hoveredThisPage = new Set();
 
+// A word has to fall this far below the reader's own setting before we skip
+// it. Well above the noise floor: the profile has to have real evidence that
+// this reader keeps turning this word down, not just a mild preference.
+const PROFILE_REJECT_RATIO = 0.6;
+
 /**
- * How often this reader should meet `word`, in the 0..100 form
- * `VMCore.gateByFrequency` expects.
+ * Whether to offer `word` to this reader at all.
  *
- * Falls back to the user's raw setting whenever personalization cannot or
- * should not speak: no profile module, no profile loaded yet, or a profile
- * with too little evidence (VMProfile handles that last case internally by
- * fading its multiplier in from exactly 1.0).
+ * Personalization used to bend a 0..100 frequency that a hash gate then acted
+ * on, which is why the same page could show different words at 48 and 52. Now
+ * that each post has a small, fixed allowance, the useful question is narrower:
+ * is this a word the reader keeps rejecting? If so, pass on it and let the
+ * next candidate take the slot.
+ *
+ * Says yes whenever personalization cannot or should not speak: no profile
+ * module, no profile loaded yet, or a profile with too little evidence
+ * (VMProfile handles that last case internally by fading its multiplier in
+ * from exactly 1.0).
  */
-function effectiveFrequency(word, level) {
-    if (!P || !profile) return settings.frequency;
+function wordIsWelcome(word, level) {
+    if (!P || !profile) return true;
     try {
-        return P.adjustedFrequency(profile, { word, level, topic: pageTopic }, settings.frequency);
+        const base = Number(settings.frequency) || 50;
+        const adjusted = P.adjustedFrequency(profile, { word, level, topic: pageTopic, now: scanStartedAt }, base);
+        return adjusted >= base * PROFILE_REJECT_RATIO;
     } catch (e) {
-        return settings.frequency; // personalization must never break a page
+        return true; // personalization must never break a page
     }
 }
 
@@ -595,6 +646,9 @@ function findVocabEntry(word) {
     if (!w) return null;
     // Never suggest a word the user has already dismissed or told us they know.
     if (knownSet.has(w)) return null;
+    // Nor one already showing elsewhere on the page - an upgrade that creates a
+    // duplicate defeats the one-appearance-per-word rule.
+    if (takenThisPage.has(w)) return null;
     return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
 }
 
@@ -619,6 +673,11 @@ function applyUpgrade(span, entry) {
     // replacedCount bookkeeping, so the count stays correct on re-entry.
     applyDisplayMode(span);
     const wl = (entry.word || '').toLowerCase();
+    // The upgraded word now occupies this slot; the word it displaced is gone
+    // from the page, so release its claim.
+    const previous = (span.dataset.aiFrom || '').toLowerCase();
+    if (previous && previous !== wl) takenThisPage.delete(previous);
+    takenThisPage.add(wl);
     if (!shownThisPage.has(wl)) {
         shownThisPage.add(wl);
         queueProfileEvent(entry.word, 'shown', entry.dataset);

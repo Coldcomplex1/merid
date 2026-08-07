@@ -338,9 +338,32 @@ header {
     appearance: none;
     width: 100%;
     height: 4px;
-    background: #1d2d50;
+    /* Three visible stops so the track itself says the slider snaps. */
+    background:
+        radial-gradient(circle 3px at 2px 50%, var(--accent-yellow) 99%, transparent 100%),
+        radial-gradient(circle 3px at 50% 50%, var(--accent-yellow) 99%, transparent 100%),
+        radial-gradient(circle 3px at calc(100% - 2px) 50%, var(--accent-yellow) 99%, transparent 100%),
+        #1d2d50;
+    background-repeat: no-repeat;
     outline: none;
     border-radius: 2px;
+}
+
+.slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    background: var(--accent-yellow);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+/* Reads out what the selected level actually does, in words per post. */
+.slider-hint {
+    margin: 6px 0 0;
+    font-size: 9px;
+    line-height: 1.4;
+    color: var(--text-secondary);
 }
 
 .slider::-webkit-slider-thumb {

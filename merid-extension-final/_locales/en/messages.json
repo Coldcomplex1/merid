@@ -35,6 +35,15 @@
   "popupIntensityLocked": {
     "message": "Locked-in"
   },
+  "popupIntensityHint_casual": {
+    "message": "Up to 1 word per post, 3 in a very long article."
+  },
+  "popupIntensityHint_focused": {
+    "message": "Up to 1 word per short post, 2–4 as the article gets longer."
+  },
+  "popupIntensityHint_locked": {
+    "message": "Up to 2 words per short post, 3–5 as the article gets longer."
+  },
   "popupDisplayModeLabel": {
     "message": "Display mode"
   },
@@ -70,6 +79,12 @@
   },
   "popupSiteOn": {
     "message": "Turn back on for this site"
+  },
+  "popupSiteAlwaysOff": {
+    "message": "Always off here"
+  },
+  "popupSiteAlwaysOffHint": {
+    "message": "Merid never changes words on its own site."
   },
   "popupViewDeck": {
     "message": "View my deck ↗"

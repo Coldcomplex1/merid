@@ -182,29 +182,77 @@ test('intensity <-> frequency mapping', () => {
     }
 });
 
-test('postWordBudget scales with post length (per-100-words density)', () => {
-    // frequency 0 = feature off, no budget at any length
-    assert.strictEqual(C.postWordBudget(0, 1000), 0);
-    // head start: short posts still get a couple of words
-    assert.strictEqual(C.postWordBudget(50, 0), 2);
-    assert.strictEqual(C.postWordBudget(50, 30), 2);
-    // density per 100 words: light ≈ 2, medium ≈ 3, heavy ≈ 5
-    assert.strictEqual(C.postWordBudget(25, 1000), 20);
-    assert.strictEqual(C.postWordBudget(50, 100), 3);
-    assert.strictEqual(C.postWordBudget(50, 1000), 30);
-    assert.strictEqual(C.postWordBudget(80, 1000), 50);
-    // monotonic in BOTH frequency and length - a long article keeps earning
-    // budget all the way through instead of stalling after the first paragraph
-    let prev = 0;
-    for (let seen = 0; seen <= 2000; seen += 100) {
-        const now = C.postWordBudget(50, seen);
-        assert.ok(now >= prev, `budget must grow with length (seen=${seen})`);
-        prev = now;
+test('normalizeIntensity snaps any stored frequency to one of three levels', () => {
+    assert.strictEqual(C.normalizeIntensity(0), 'casual');
+    assert.strictEqual(C.normalizeIntensity(25), 'casual');
+    assert.strictEqual(C.normalizeIntensity(35), 'casual');
+    assert.strictEqual(C.normalizeIntensity(36), 'focused');
+    assert.strictEqual(C.normalizeIntensity(50), 'focused');
+    assert.strictEqual(C.normalizeIntensity(63), 'focused');  // in-between value from an older build
+    assert.strictEqual(C.normalizeIntensity(66), 'locked');
+    assert.strictEqual(C.normalizeIntensity(100), 'locked');
+    // an unreadable setting must not throw or blank the UI
+    assert.strictEqual(C.normalizeIntensity(undefined), 'focused');
+    assert.strictEqual(C.normalizeIntensity('nonsense'), 'focused');
+    // every level round-trips through the stored frequency
+    for (const level of C.INTENSITY_LEVELS) {
+        assert.strictEqual(C.normalizeIntensity(C.intensityToFrequency(level)), level);
     }
-    for (let f = 5; f <= 100; f += 5) {
-        assert.ok(C.postWordBudget(f, 500) >= C.postWordBudget(f - 5, 500) || f === 5,
-            `budget must not shrink as frequency rises (f=${f})`);
+});
+
+test('postWordCap follows the published table', () => {
+    // Rows are post length; a Facebook-sized post gets one word (two when the
+    // reader asked for locked-in), a normal article tops out at three.
+    const table = [
+        //  words  casual focused locked
+        [10, 1, 1, 2],
+        [200, 1, 1, 2],
+        [201, 1, 2, 3],
+        [1000, 1, 2, 3],
+        [1001, 2, 3, 4],
+        [2000, 2, 3, 4],
+        [2001, 3, 4, 5],
+        [50000, 3, 4, 5]
+    ];
+    for (const [words, casual, focused, locked] of table) {
+        assert.strictEqual(C.postWordCap('casual', words), casual, `casual @ ${words}`);
+        assert.strictEqual(C.postWordCap('focused', words), focused, `focused @ ${words}`);
+        assert.strictEqual(C.postWordCap('locked', words), locked, `locked @ ${words}`);
     }
+});
+
+test('postWordCap accepts a stored frequency as well as a level name', () => {
+    assert.strictEqual(C.postWordCap(25, 500), C.postWordCap('casual', 500));
+    assert.strictEqual(C.postWordCap(50, 500), C.postWordCap('focused', 500));
+    assert.strictEqual(C.postWordCap(80, 500), C.postWordCap('locked', 500));
+    // an in-between value left by an older build still resolves to a level
+    assert.strictEqual(C.postWordCap(63, 500), C.postWordCap('focused', 500));
+    // and legacy level names keep working
+    assert.strictEqual(C.postWordCap('heavy', 500), C.postWordCap('locked', 500));
+});
+
+test('postWordCap never shrinks as a post gets longer or intensity rises', () => {
+    for (const level of C.INTENSITY_LEVELS) {
+        let prev = 0;
+        for (let words = 0; words <= 5000; words += 100) {
+            const now = C.postWordCap(level, words);
+            assert.ok(now >= prev, `cap must not shrink with length (${level} @ ${words})`);
+            prev = now;
+        }
+    }
+    for (let words = 0; words <= 5000; words += 250) {
+        assert.ok(C.postWordCap('focused', words) >= C.postWordCap('casual', words), `focused >= casual @ ${words}`);
+        assert.ok(C.postWordCap('locked', words) >= C.postWordCap('focused', words), `locked >= focused @ ${words}`);
+    }
+});
+
+test('countWords counts words, not punctuation or emoji', () => {
+    assert.strictEqual(C.countWords('Xin chào các bạn'), 4);
+    assert.strictEqual(C.countWords('Hello!!! 🎉🎉 world?'), 2);
+    assert.strictEqual(C.countWords('  '), 0);
+    assert.strictEqual(C.countWords(null), 0);
+    // digits count - "top 10 films of 2024" is five words of reading
+    assert.strictEqual(C.countWords('top 10 films of 2024'), 5);
 });
 
 test('dataset registry resolves files and tags, falling back to sat', () => {
@@ -232,6 +280,20 @@ test('isSiteDisabled matches exact hosts, www variants and subdomains', () => {
     assert.strictEqual(C.isSiteDisabled('zingnews.vn', sites), false);
     assert.strictEqual(C.isSiteDisabled('vnexpress.net', []), false);
     assert.strictEqual(C.isSiteDisabled('vnexpress.net', undefined), false);
+});
+
+test('merid.site is blocked without the user having to pause it', () => {
+    // Reading about Merid while Merid rewrites the page is a bad first
+    // impression, so our own site is off with no setting involved.
+    assert.strictEqual(C.isSiteDisabled('merid.site', []), true);
+    assert.strictEqual(C.isSiteDisabled('www.merid.site', []), true);
+    assert.strictEqual(C.isSiteDisabled('app.merid.site', undefined), true);
+    assert.strictEqual(C.isHostBlocked('merid.site'), true);
+    assert.strictEqual(C.isHostBlocked('MERID.SITE'), true);
+    // a lookalike host must not be caught by it
+    assert.strictEqual(C.isHostBlocked('notmerid.site'), false);
+    assert.strictEqual(C.isHostBlocked('merid.site.example.com'), false);
+    assert.strictEqual(C.isHostBlocked('vnexpress.net'), false);
 });
 
 test('withDefaults supplies an empty disabledSites list', () => {

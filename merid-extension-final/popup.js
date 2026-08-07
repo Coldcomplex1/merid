@@ -10,6 +10,14 @@ function t(key, fallback, subs) {
     return fallback;
 }
 
+// What each intensity level actually buys, in the reader's terms. These track
+// VMCore.POST_WORD_CAPS - if that table changes, change these too.
+const INTENSITY_HINTS = {
+    casual: 'Up to 1 word per post, 3 in a very long article.',
+    focused: 'Up to 1 word per short post, 2–4 as the article gets longer.',
+    locked: 'Up to 2 words per short post, 3–5 as the article gets longer.'
+};
+
 // Static labels are marked with data-i18n (textContent) or data-i18n-html
 // (innerHTML - trusted extension strings only, never user or page content).
 function applyI18n() {
@@ -37,20 +45,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey'],
         (raw) => {
             const s = C.withDefaults(raw);
-            frequencySlider.value = s.frequency;
+            frequencySlider.value = String(intensityIndex(s.frequency));
             setModeCard('vieEng', !!s.vieEngMode);
             setModeCard('engEng', !!s.engEngMode);
             setSegActive(modeSeg, s.replacementMode);
             document.querySelector(`.dataset-btn[data-key="${s.datasetKey}"]`)?.classList.add('active');
             updateExtensionToggleButton(s.extensionEnabled !== false);
-            updateSliderLabels(s.frequency);
+            updateSliderLabels(intensityIndex(s.frequency));
         }
     );
 
     // ---- Wire settings ----
+    // The slider is a 0/1/2 index over the three levels; storage still holds
+    // the 0..100 frequency those levels map to, so nothing downstream changes.
     frequencySlider.addEventListener('input', (e) => {
-        updateSliderLabels(e.target.value);
-        chrome.storage.sync.set({ frequency: parseInt(e.target.value, 10) });
+        const idx = parseInt(e.target.value, 10) || 0;
+        updateSliderLabels(idx);
+        chrome.storage.sync.set({ frequency: C.intensityToFrequency(C.INTENSITY_LEVELS[idx]) });
     });
 
     modeSeg.addEventListener('click', (e) => {
@@ -158,33 +169,42 @@ document.addEventListener('DOMContentLoaded', () => {
         pageActions.hidden = false;
         siteToggle.title = host;
 
-        let disabledSites = [];
-        const renderSiteToggle = () => {
-            const off = C.isSiteDisabled(host, disabledSites);
-            siteToggle.textContent = off
-                ? t('popupSiteOn', 'Turn back on for this site')
-                : t('popupSiteOff', 'Turn off on this site');
-            siteToggle.classList.toggle('off', off);
-        };
-        chrome.storage.sync.get(['disabledSites'], (s) => {
-            disabledSites = Array.isArray(s.disabledSites) ? s.disabledSites : [];
-            renderSiteToggle();
-        });
+        // Merid never runs on its own site, and that is not the user's to
+        // change - offering a toggle that does nothing is worse than no toggle.
+        if (C.isHostBlocked(host)) {
+            siteToggle.disabled = true;
+            siteToggle.classList.add('off');
+            siteToggle.textContent = t('popupSiteAlwaysOff', 'Always off here');
+            siteToggle.title = t('popupSiteAlwaysOffHint', 'Merid never changes words on its own site.');
+        } else {
+            let disabledSites = [];
+            const renderSiteToggle = () => {
+                const off = C.isSiteDisabled(host, disabledSites);
+                siteToggle.textContent = off
+                    ? t('popupSiteOn', 'Turn back on for this site')
+                    : t('popupSiteOff', 'Turn off on this site');
+                siteToggle.classList.toggle('off', off);
+            };
+            chrome.storage.sync.get(['disabledSites'], (s) => {
+                disabledSites = Array.isArray(s.disabledSites) ? s.disabledSites : [];
+                renderSiteToggle();
+            });
 
-        siteToggle.addEventListener('click', () => {
-            if (C.isSiteDisabled(host, disabledSites)) {
-                // Drop every entry that covers this host (an apex entry also
-                // covers its subdomains, so removing it re-enables all of them).
-                disabledSites = disabledSites.filter(site => {
-                    const cs = C.canonicalHost(site);
-                    return !(host === cs || host.endsWith('.' + cs));
-                });
-            } else {
-                disabledSites = disabledSites.concat(host);
-            }
-            // Open tabs revert/re-scan on their own via storage.onChanged.
-            chrome.storage.sync.set({ disabledSites }, renderSiteToggle);
-        });
+            siteToggle.addEventListener('click', () => {
+                if (C.isSiteDisabled(host, disabledSites)) {
+                    // Drop every entry that covers this host (an apex entry also
+                    // covers its subdomains, so removing it re-enables all of them).
+                    disabledSites = disabledSites.filter(site => {
+                        const cs = C.canonicalHost(site);
+                        return !(host === cs || host.endsWith('.' + cs));
+                    });
+                } else {
+                    disabledSites = disabledSites.concat(host);
+                }
+                // Open tabs revert/re-scan on their own via storage.onChanged.
+                chrome.storage.sync.set({ disabledSites }, renderSiteToggle);
+            });
+        }
 
         revertBtn.addEventListener('click', () => {
             chrome.tabs.sendMessage(tab.id, { action: 'revertPage' }, () => {
@@ -303,12 +323,20 @@ document.addEventListener('DOMContentLoaded', () => {
         seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.val === val));
     }
 
-    function updateSliderLabels(value) {
+    /** Slider position (0/1/2) for a stored 0..100 frequency. */
+    function intensityIndex(frequency) {
+        const i = C.INTENSITY_LEVELS.indexOf(C.normalizeIntensity(frequency));
+        return i < 0 ? 1 : i;
+    }
+
+    function updateSliderLabels(index) {
         const labels = document.querySelectorAll('.slider-labels span');
-        labels.forEach(span => span.classList.remove('active'));
-        if (value < 33) labels[0].classList.add('active');
-        else if (value < 66) labels[1].classList.add('active');
-        else labels[2].classList.add('active');
+        labels.forEach((span, i) => span.classList.toggle('active', i === index));
+        const hint = document.getElementById('intensity-hint');
+        if (hint) {
+            const level = C.INTENSITY_LEVELS[index] || 'focused';
+            hint.textContent = t('popupIntensityHint_' + level, INTENSITY_HINTS[level]);
+        }
     }
 
     // Today's AI allowance, if and only if it has run out.

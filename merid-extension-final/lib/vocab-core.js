@@ -131,17 +131,40 @@
     }
 
     /**
-     * True when `hostname` is covered by the pause list. An entry covers its
-     * exact host and every subdomain (news.example.com matches example.com),
-     * so pausing a site holds across its www/mobile/amp variants.
+     * Sites Merid never touches, regardless of settings. Our own site is here
+     * because reading about the extension while the extension rewrites the
+     * page is genuinely unpleasant - the marketing copy, the tutorial and the
+     * deck all say specific words on purpose, and swapping them makes the
+     * product look broken. The content-bridge script (sign-in + deck sync)
+     * still runs on merid.site; only the word swapping is off.
      */
-    function isSiteDisabled(hostname, disabledSites) {
-        const host = canonicalHost(hostname);
-        if (!host || !Array.isArray(disabledSites)) return false;
-        return disabledSites.some(site => {
+    const BUILTIN_BLOCKED_HOSTS = ['merid.site'];
+
+    /** True when the host is on the built-in blocklist (not user-editable). */
+    function isHostBlocked(hostname) {
+        return matchesHostList(canonicalHost(hostname), BUILTIN_BLOCKED_HOSTS);
+    }
+
+    /** Shared matcher: an entry covers its exact host and every subdomain. */
+    function matchesHostList(host, list) {
+        if (!host || !Array.isArray(list)) return false;
+        return list.some(site => {
             const s = canonicalHost(site);
             return s && (host === s || host.endsWith('.' + s));
         });
+    }
+
+    /**
+     * True when `hostname` is covered by the pause list OR by the built-in
+     * blocklist. An entry covers its exact host and every subdomain
+     * (news.example.com matches example.com), so pausing a site holds across
+     * its www/mobile/amp variants.
+     */
+    function isSiteDisabled(hostname, disabledSites) {
+        const host = canonicalHost(hostname);
+        if (!host) return false;
+        return matchesHostList(host, BUILTIN_BLOCKED_HOSTS) ||
+            matchesHostList(host, disabledSites);
     }
 
     const REPLACEMENT_MODES = ['replace', 'highlight', 'beside'];
@@ -151,8 +174,24 @@
         return Object.assign({}, DEFAULT_SETTINGS, settings || {});
     }
 
-    // Intensity <-> frequency mapping used by the options UI.
-    const INTENSITY_TO_FREQUENCY = { light: 25, medium: 50, heavy: 80 };
+    // ---------------------------------------------------------------------
+    // Intensity: three named levels, nothing in between.
+    //
+    // The slider used to be a continuous 0..100 "frequency" that fed a hash
+    // gate, which made the in-between values unpredictable - the same page
+    // could show wildly different words for 48 vs 52. Readers only ever meant
+    // one of three things, so that is all we offer now. `frequency` stays in
+    // storage as the wire format (older installs have a number there, and the
+    // profile module still speaks it) but it only ever holds one of the three
+    // anchors below.
+    // ---------------------------------------------------------------------
+    const INTENSITY_LEVELS = ['casual', 'focused', 'locked'];
+    const INTENSITY_TO_FREQUENCY = {
+        casual: 25, focused: 50, locked: 80,
+        // Legacy aliases - settings saved by older versions, and options.html's
+        // segmented control, still use these names.
+        light: 25, medium: 50, heavy: 80
+    };
     function intensityToFrequency(mode) {
         return INTENSITY_TO_FREQUENCY[mode] != null ? INTENSITY_TO_FREQUENCY[mode] : 50;
     }
@@ -162,20 +201,61 @@
         return 'heavy';
     }
 
+    /** Snap any stored frequency (including in-between values written by older
+     *  versions) to one of the three levels. */
+    function normalizeIntensity(freq) {
+        const f = Number(freq);
+        if (!isFinite(f)) return 'focused';   // unreadable setting -> the default
+        if (f <= 35) return 'casual';
+        if (f <= 65) return 'focused';
+        return 'locked';
+    }
+
     /**
-     * Streaming word budget for a post/article: how many translations are
-     * allowed once `wordsSeen` words of the post have been scanned. Density
-     * scales with the post's LENGTH - roughly `frequency / 15` translations
-     * per 100 words (light ≈ 2/100, medium ≈ 3/100, heavy ≈ 5/100) - so a
-     * long article keeps getting translations all the way through instead of
-     * burning a flat cap in the first paragraph. The floor of 2 is a head
-     * start so short feed posts still get a couple of words.
+     * How many words Merid may replace in one post/article.
+     *
+     * Rows are post length in words, columns are the three intensity levels.
+     * A Facebook-sized post gets one word (two when the reader asked for
+     * locked-in); a normal article tops out at three; only genuinely long
+     * pieces earn the extra one or two, because a reader who has scrolled
+     * through 2000 words has room for them.
+     *
+     * This table is the whole policy - to retune how much Merid translates,
+     * change these numbers and nothing else.
      */
-    function postWordBudget(frequency, wordsSeen) {
-        const f = Math.max(0, Math.min(100, Number(frequency)));
-        if (!(f > 0)) return 0;
-        const perHundred = Math.max(1, Math.round(f / 15));
-        return Math.max(2, Math.ceil((Math.max(0, wordsSeen) / 100) * perHundred));
+    const POST_WORD_CAPS = [
+        // maxWords, casual, focused, locked
+        { upTo: 200, casual: 1, focused: 1, locked: 2 },
+        { upTo: 1000, casual: 1, focused: 2, locked: 3 },
+        { upTo: 2000, casual: 2, focused: 3, locked: 4 },
+        { upTo: Infinity, casual: 3, focused: 4, locked: 5 }
+    ];
+
+    /**
+     * Cap for a post of `postWords` words at the given intensity.
+     *
+     * Note this reads the post's TOTAL length, not how much of it has been
+     * scanned so far. The old streaming budget grew as the scan walked down
+     * the page, which meant a long article kept earning more slots the further
+     * you read; a flat per-post cap is what readers actually expect.
+     *
+     * @param {string|number} intensity level name, or a legacy 0..100 frequency
+     * @param {number} postWords total words in the post
+     */
+    function postWordCap(intensity, postWords) {
+        const level = typeof intensity === 'number'
+            ? normalizeIntensity(intensity)
+            : (INTENSITY_LEVELS.indexOf(intensity) >= 0 ? intensity : normalizeIntensity(intensityToFrequency(intensity)));
+        const words = Math.max(0, Number(postWords) || 0);
+        const row = POST_WORD_CAPS.find(r => words <= r.upTo) || POST_WORD_CAPS[POST_WORD_CAPS.length - 1];
+        return row[level];
+    }
+
+    /** Word count used to size a post. Counts runs of letters/digits, so
+     *  punctuation and emoji do not inflate a short caption into an article. */
+    function countWords(text) {
+        const m = String(text || '').match(/[\p{L}\p{N}]+/gu);
+        return m ? m.length : 0;
     }
 
     // ---------------------------------------------------------------------
@@ -598,8 +678,9 @@
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
-        canonicalHost, isSiteDisabled,
-        INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity, postWordBudget,
+        canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
+        INTENSITY_LEVELS, INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
+        normalizeIntensity, POST_WORD_CAPS, postWordCap, countWords,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching
