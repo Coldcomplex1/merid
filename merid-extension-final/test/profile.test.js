@@ -67,7 +67,7 @@ test('"shown" is tracked but is not treated as feedback evidence', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Cold start - the guardrail that keeps new users on v1.6 behaviour
+// Cold start - the guardrail that keeps new users on v1.6.1 behaviour
 // ---------------------------------------------------------------------------
 test('an empty profile leaves frequency exactly unchanged', () => {
     const p = P.createProfile();

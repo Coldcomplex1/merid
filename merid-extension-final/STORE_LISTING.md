@@ -8,7 +8,7 @@ wish. Assets to upload are in [`store-assets/`](store-assets) and the icons are
 design pack in [`../brand/`](../brand).
 
 > **Accuracy note (important):** this copy matches what the extension actually
-> does in v1.6: matching/replacement is local, and there are exactly two
+> does in v1.6.1: matching/replacement is local, and there are exactly two
 > **optional, off-by-default** network features - deck sync after the user signs
 > in, and the AI context check using the user's own Gemini API key. If you change
 > either feature, update this file, `PRIVACY.md`, and the data-safety answers
@@ -132,7 +132,7 @@ Google sign-in later, and add a justification for it here when you do.
 
 ## 6. Privacy / data-use disclosures (Data safety form)
 
-Answer the dashboard's data-use questions as follows (accurate for v1.6):
+Answer the dashboard's data-use questions as follows (accurate for v1.6.1):
 
 - **Does this item collect or use user data?** Yes - but **only when the user opts
   in**, and only the following:

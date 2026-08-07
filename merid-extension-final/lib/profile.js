@@ -21,7 +21,7 @@
  *    the same answer on every re-render and MutationObserver pass.
  *
  * 2. Cold start is explicit. With no feedback the multiplier is exactly 1.0,
- *    so a brand-new user gets today's v1.6 behaviour. Learned scores fade in
+ *    so a brand-new user gets today's v1.6.1 behaviour. Learned scores fade in
  *    over the first `COLD_START_EVENTS` feedback events - three rejections must
  *    never be allowed to dominate the system.
  *
