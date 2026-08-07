@@ -301,17 +301,59 @@
      * @param {string|number} intensity level name, or a legacy 0..100 frequency
      * @param {number} postWords total words in the post
      */
+    /**
+     * Beyond the last row of the table the allowance stops being a flat number
+     * and becomes a density: one more word per this many words of text.
+     *
+     * Without this the table's ceiling is absurd at the extremes - a 20,000
+     * word page (an infinite feed that resolved to a single container, or a
+     * very long piece) would get the same five words as a 2,100 word article,
+     * so everything past the opening would be bare. These rates are far
+     * gentler than the ones Merid shipped with originally (which ran to five
+     * words per hundred); one per few hundred words is a reading aid, not a
+     * rewrite.
+     */
+    const LONG_POST_WORDS_PER_EXTRA = { casual: 1200, focused: 800, locked: 600 };
+    const LONG_POST_FROM = 2000;
+
+    function levelOf(intensity) {
+        if (typeof intensity === 'number') return normalizeIntensity(intensity);
+        if (INTENSITY_LEVELS.indexOf(intensity) >= 0) return intensity;
+        return normalizeIntensity(intensityToFrequency(intensity));
+    }
+
     function postWordCap(intensity, postWords) {
         // Zero is still "off". The slider cannot produce it any more, but
         // installs that set it before the three-level change have it stored,
         // and a reader who turned Merid down to nothing meant it.
         if (Number(intensity) === 0) return 0;
-        const level = typeof intensity === 'number'
-            ? normalizeIntensity(intensity)
-            : (INTENSITY_LEVELS.indexOf(intensity) >= 0 ? intensity : normalizeIntensity(intensityToFrequency(intensity)));
+        const level = levelOf(intensity);
         const words = Math.max(0, Number(postWords) || 0);
         const row = POST_WORD_CAPS.find(r => words <= r.upTo) || POST_WORD_CAPS[POST_WORD_CAPS.length - 1];
-        return row[level];
+        const base = row[level];
+        if (words <= LONG_POST_FROM) return base;
+        return base + Math.floor((words - LONG_POST_FROM) / LONG_POST_WORDS_PER_EXTRA[level]);
+    }
+
+    /**
+     * How much of a post's allowance may be spent by the time `wordsSeen` of
+     * its `totalWords` have been scanned.
+     *
+     * The scan walks a post from top to bottom in one pass, so without this it
+     * simply spends the whole allowance on the first candidates it meets - the
+     * opening paragraphs get every word and the rest of the article gets none.
+     * Releasing the allowance in proportion to how far in we are spreads the
+     * words down the page instead. The floor of one is a head start, so a
+     * short post still gets its first word immediately rather than waiting
+     * until the reader is halfway through it.
+     */
+    function spreadAllowance(cap, wordsSeen, totalWords) {
+        if (!(cap > 0)) return 0;
+        const total = Number(totalWords) || 0;
+        if (total <= 0) return cap;                 // unmeasured: do not hold back
+        const seen = Math.max(0, Number(wordsSeen) || 0);
+        const share = Math.ceil(cap * Math.min(1, seen / total));
+        return Math.max(1, Math.min(cap, share));
     }
 
     /** Word count used to size a post. Counts runs of letters/digits, so
@@ -744,7 +786,8 @@
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
         INTENSITY_LEVELS, INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
         normalizeIntensity, POST_WORD_CAPS, postWordCap, countWords,
-        CANDIDATE_SURPLUS, postCandidateCap, pickSpread,
+        CANDIDATE_SURPLUS, postCandidateCap, pickSpread, spreadAllowance,
+        LONG_POST_WORDS_PER_EXTRA, LONG_POST_FROM,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching

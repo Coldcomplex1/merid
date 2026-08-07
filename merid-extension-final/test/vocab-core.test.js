@@ -211,8 +211,9 @@ test('postWordCap follows the published table', () => {
         [1000, 1, 2, 3],
         [1001, 2, 3, 4],
         [2000, 2, 3, 4],
-        [2001, 3, 4, 5],
-        [50000, 3, 4, 5]
+        [2001, 3, 4, 5]
+        // Past here the allowance becomes a density rather than a flat number;
+        // see the "keeps growing past the table" test below.
     ];
     for (const [words, casual, focused, locked] of table) {
         assert.strictEqual(C.postWordCap('casual', words), casual, `casual @ ${words}`);
@@ -229,6 +230,51 @@ test('postWordCap accepts a stored frequency as well as a level name', () => {
     assert.strictEqual(C.postWordCap(63, 500), C.postWordCap('focused', 500));
     // and legacy level names keep working
     assert.strictEqual(C.postWordCap('heavy', 500), C.postWordCap('locked', 500));
+});
+
+test('postWordCap keeps growing past the table instead of flatlining', () => {
+    // A 20,000-word page - an endless feed that resolved to one container, or
+    // a very long piece - must not get the same allowance as a 2,100-word
+    // article, or everything past the opening is left bare.
+    for (const level of C.INTENSITY_LEVELS) {
+        // The final table row's own figure is the base the density builds on.
+        const base = C.postWordCap(level, C.LONG_POST_FROM + 1);
+        const perExtra = C.LONG_POST_WORDS_PER_EXTRA[level];
+        assert.strictEqual(C.postWordCap(level, C.LONG_POST_FROM + perExtra - 1), base,
+            `${level}: nothing added until a full step of text`);
+        assert.strictEqual(C.postWordCap(level, C.LONG_POST_FROM + perExtra), base + 1, level);
+        assert.strictEqual(C.postWordCap(level, C.LONG_POST_FROM + perExtra * 5), base + 5, level);
+        assert.ok(C.postWordCap(level, 20000) > 10, `${level}: a huge page gets a real allowance`);
+    }
+    // Heavier intensity still means more words, at every length.
+    for (const words of [3000, 8000, 20000]) {
+        assert.ok(C.postWordCap('focused', words) > C.postWordCap('casual', words), `@ ${words}`);
+        assert.ok(C.postWordCap('locked', words) > C.postWordCap('focused', words), `@ ${words}`);
+    }
+    // Still off when the reader turned it off.
+    assert.strictEqual(C.postWordCap(0, 20000), 0);
+});
+
+test('spreadAllowance releases the budget as the scan moves down the post', () => {
+    // The bug this exists to stop: the whole allowance spent in the first
+    // paragraphs, nothing in the rest of the article.
+    assert.strictEqual(C.spreadAllowance(4, 0, 1000), 1);      // head start
+    assert.strictEqual(C.spreadAllowance(4, 250, 1000), 1);
+    assert.strictEqual(C.spreadAllowance(4, 500, 1000), 2);
+    assert.strictEqual(C.spreadAllowance(4, 750, 1000), 3);
+    assert.strictEqual(C.spreadAllowance(4, 1000, 1000), 4);
+    // Never more than the cap, however far past the end we run.
+    assert.strictEqual(C.spreadAllowance(4, 99999, 1000), 4);
+    // Monotonic: the allowance may never shrink as the scan advances.
+    let prev = 0;
+    for (let seen = 0; seen <= 2000; seen += 50) {
+        const now = C.spreadAllowance(5, seen, 2000);
+        assert.ok(now >= prev, `must not shrink at seen=${seen}`);
+        prev = now;
+    }
+    // Degenerate inputs must not stall the scan.
+    assert.strictEqual(C.spreadAllowance(3, 10, 0), 3);        // unmeasured post
+    assert.strictEqual(C.spreadAllowance(0, 10, 100), 0);      // off stays off
 });
 
 test('postCandidateCap leaves room for the context check to reject words', () => {

@@ -56,10 +56,12 @@ const MUTATION_DEBOUNCE_MS = 300;
 let processedNodes = new WeakSet();
 
 // Per-"post" (feed item or article body) scan stats:
-// { words, used, candidates: [span] }. The scan replaces up to
+// { words, seen, used, candidates: [span] }. The scan replaces up to
 // VMCore.postCandidateCap words - the real cap plus a couple of spares - and
 // prunePost() cuts back to VMCore.postWordCap once the context check has said
-// which of them actually fit. Reset on every init().
+// which of them actually fit. `seen` tracks how far into the post the scan has
+// walked, so VMCore.spreadAllowance can release the budget gradually instead
+// of letting the opening paragraphs spend all of it. Reset on every init().
 let postWordCounts = new WeakMap();
 // Every post we have touched, so a global prune (AI switched off, allowance
 // spent) can reach all of them. Cleared on every init().
@@ -101,6 +103,7 @@ function init() {
     postWordCounts = new WeakMap();
     knownPosts = new Set();
     spanPost = new WeakMap();
+    containerCache = new WeakMap();
     takenThisPage = new Set();
     aiCheckedPairs = new Set();
     aiRequestsSent = 0;
@@ -234,16 +237,72 @@ function processPage(vocabMap) {
 // with its own word allowance - a ten-paragraph article got ten times the
 // intended budget. There are only two things worth recognising: a feed item,
 // or an article body. Anything else is the page.
+// Every selector here must match ONE post, never the thing that holds them
+// all. `[data-pagelet*="Feed"]` used to be in this list and matched Facebook's
+// "MainFeed" wrapper, so an entire infinite feed resolved to a single post with
+// a single word allowance - which the first post then spent in full, leaving
+// everything below it untouched. Prefixes and exact values only.
 const FEED_ITEM_SELECTOR =
-    'article, [role="article"], [role="listitem"], [data-pagelet*="Feed"], [data-testid*="post"]';
+    'article, [role="article"], [role="listitem"], [data-pagelet^="FeedUnit"], ' +
+    '[data-ad-preview="message"], [data-ad-comet-preview="message"], [data-testid="post_message"]';
 const ARTICLE_BODY_SELECTOR =
     'main, [role="main"], .post-content, .entry-content, .article-body, .article-content, #content';
 
+// Structural fallback for feeds that mark nothing up. Facebook, Instagram and
+// Threads all render posts as anonymous divs on some layouts, and when none of
+// the selectors above match, the whole endless feed resolves to one container
+// and shares a single post's word allowance - so the top of the feed takes
+// everything and the rest is bare.
+//
+// What a feed item looks like without any attribute to go on: a block that
+// sits among several substantial siblings AND that is itself made of several
+// blocks. The second half is what keeps an article's paragraphs out - forty
+// <p> siblings pass the first test, but a paragraph is a leaf, not a container
+// of blocks, so it fails the second.
+const FEED_SIBLINGS_MIN = 3;     // how many peers make a list a feed
+const FEED_ITEM_MIN_WORDS = 12;  // below this a sibling is furniture, not a post
+const FEED_ITEM_MAX_HOPS = 10;   // never walk the whole tree looking for one
+const LEAF_BLOCKS = new Set(['P', 'LI', 'BLOCKQUOTE', 'FIGCAPTION',
+    'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH']);
+
+/** Could this element be one item of a feed, judged on its own shape? */
+function looksLikeFeedItem(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    if (LEAF_BLOCKS.has(el.tagName)) return false;
+    if (el.childElementCount < 2) return false;
+    return C.countWords(el.textContent || '') >= FEED_ITEM_MIN_WORDS;
+}
+
+function structuralFeedItem(el) {
+    let node = el;
+    for (let hops = 0; node && node.parentElement && hops < FEED_ITEM_MAX_HOPS; hops++) {
+        const parent = node.parentElement;
+        if (parent === document.body || parent === document.documentElement) break;
+        if (looksLikeFeedItem(node)) {
+            let peers = 0;
+            for (const sib of parent.children) {
+                if (looksLikeFeedItem(sib) && ++peers >= FEED_SIBLINGS_MIN) return node;
+            }
+        }
+        node = parent;
+    }
+    return null;
+}
+
+// Resolving a post walks ancestors and reads textContent, so cache it: many
+// text nodes share one parent, and on a long feed this runs thousands of times.
+let containerCache = new WeakMap();
+
 function postContainerFor(el) {
     if (!el) return document.body;
-    return el.closest(FEED_ITEM_SELECTOR) ||
+    const cached = containerCache.get(el);
+    if (cached && cached.isConnected) return cached;
+    const found = el.closest(FEED_ITEM_SELECTOR) ||
+        structuralFeedItem(el) ||
         el.closest(ARTICLE_BODY_SELECTOR) ||
         document.body;
+    containerCache.set(el, found);
+    return found;
 }
 
 // Longest a post's measured length is trusted before we look again. Reading
@@ -265,6 +324,7 @@ function statsFor(container) {
     if (!stats) {
         stats = {
             words: C.countWords(container.textContent || ''),
+            seen: 0,      // words of this post the scan has walked past
             used: 0,
             measuredAt: now,
             candidates: []
@@ -300,13 +360,23 @@ function processTextNode(node, vocabMap) {
     let modified = false;
 
     for (let i = 0; i < tokens.length; i++) {
-        const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < cap
+        if (C.isWordToken(tokens[i])) stats.seen++;
+
+        // Release the allowance in step with how far into the post we are, so
+        // the words land down the whole piece instead of all in the opening
+        // paragraphs.
+        const allowedSoFar = C.spreadAllowance(cap, stats.seen, stats.words);
+        const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < allowedSoFar
             ? C.findMatch(tokens, i, vocabMap, { allowSingleWord: true, minSingleWordLen: 2 })
             : null;
 
         if (!match) { out.push(makeTextNode(tokens[i])); continue; }
 
         const { size, matchedText, items } = match;
+        // The rest of a multi-word match counts towards how far in we are too.
+        for (let k = i + 1; k < i + size; k++) {
+            if (C.isWordToken(tokens[k])) stats.seen++;
+        }
         const item = items[0]; // deterministic pick from the dataset
         const replaceWith = item.word;
         const wl = replaceWith.toLowerCase();
