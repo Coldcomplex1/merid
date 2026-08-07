@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import type { VocabEntry } from '../../../data/vocab'
 
-const CARD_WIDTH = 312
+const CARD_WIDTH = 296 // the card's natural 312px at the 0.95 zoom VocabPopupCard applies
 const CARD_GAP = 10 // the extension offsets the card 10px from the word
 const FLIP_BUFFER = 20 // extension's buffer when deciding to flip above
 const HIDE_GRACE_MS = 120 // extension's grace period before hiding on mouse-out
