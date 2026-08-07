@@ -8,11 +8,10 @@ import path from 'node:path';
 const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
 // Vietnamese meanings taken straight from dataset-C1.csv so matching is real.
-// Each <p> is its own "post" with its own replacement budget (content.js
-// postRoot -> closest p/li/section), and that budget starts at 2. So to get
-// "bãi bỏ" replaced twice on one page it has to be the FIRST match inside two
-// separate paragraphs - put anything matchable ahead of it and the budget is
-// already spent by the time the scan reaches it.
+// The whole page is one "post" here (no <article>/<main> markup), so it draws a
+// single allowance from VMCore.postWordCap, and each headword may appear once.
+// "bãi bỏ" is seeded in two paragraphs precisely to prove the second is left
+// alone.
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Thử nghiệm</title></head><body>
 <p>Bãi bỏ quy định cũ là điều cần thiết.</p>
@@ -91,12 +90,15 @@ check(!!profile, 'profile was created in storage.local');
 const shownWords = Object.keys(profile?.words || {});
 check(shownWords.length > 0, 'shown events recorded', shownWords.join(', '));
 
-// "bãi bỏ" appears in two paragraphs -> two spans, but must be ONE exposure.
+// "bãi bỏ" is seeded in two paragraphs but must be swapped exactly once: a
+// word is worth meeting once per page, and repeating it is just noise.
 const abolishSpans = await page.$$eval('.vocab-master-highlight',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(abolishSpans >= 2 && profile.words.abolish?.shown === 1,
-    'repeated word counts as one exposure',
+check(abolishSpans === 1 && profile.words.abolish?.shown === 1,
+    'a repeated word is swapped exactly once',
     `${abolishSpans} spans -> shown=${profile.words.abolish?.shown}`);
+const secondAbolish = await page.$eval('body', b => (b.innerText.match(/[Bb]ãi bỏ/g) || []).length);
+check(secondAbolish >= 1, 'the other occurrence keeps its original Vietnamese', `${secondAbolish} left as-is`);
 check(profile.events === 0, '"shown" alone is not feedback evidence', `events=${profile.events}`);
 
 // --- 3. Tooltip renders with the new thumb buttons ---

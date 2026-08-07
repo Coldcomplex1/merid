@@ -13,13 +13,15 @@ const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
 // The upgrade target sits BELOW the fold on purpose: a swap is deliberately
 // parked while the span is on screen, so a short page would test the viewport
-// guard rather than the marker. The first paragraph stays visible to provide
-// an untouched word to compare against.
+// guard rather than the marker. The test scrolls down to it (which is what
+// gets it checked at all) and back up (which lets the swap land unseen). The
+// first paragraph stays visible to provide an untouched word to compare
+// against. Each paragraph is its own <article> so both get a word allowance.
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Thử nghiệm</title></head><body>
-<p>Nhiều doanh nghiệp đã cân nhắc kỹ trước khi đưa ra lựa chọn.</p>
+<article><p>Nhiều doanh nghiệp đã cân nhắc kỹ trước khi đưa ra lựa chọn.</p></article>
 <div style="height:2400px"></div>
-<p>Bãi bỏ quy định cũ là điều cần thiết.</p>
+<article><p id="target">Bãi bỏ quy định cũ là điều cần thiết.</p></article>
 </body></html>`;
 
 const server = http.createServer((req, res) => {
@@ -105,7 +107,13 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 await page.goto(base + '/kinh-doanh/x', { waitUntil: 'load' });
 await page.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(() => { });
+await page.waitForTimeout(2000);
+
+// Reach the target so it gets checked, then leave it so the swap can land.
+await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 await page.waitForTimeout(4000);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(1000);
 
 const fixed = await page.$$eval('.vocab-ai-fix', els => els.map(e => ({
     word: e.dataset.word, from: e.dataset.aiFrom, text: e.textContent
@@ -113,6 +121,14 @@ const fixed = await page.$$eval('.vocab-ai-fix', els => els.map(e => ({
 check(fixed.length > 0, 'the upgraded word carries the AI marker class', JSON.stringify(fixed));
 check(fixed[0]?.from === 'abolish' && fixed[0]?.word === 'terminate',
     'the marker remembers what the AI changed', JSON.stringify(fixed[0]));
+
+if (!fixed.length) {
+    // Nothing below depends on a marker that does not exist; bail out with the
+    // failures recorded rather than crashing on a missing selector.
+    console.log('\n=== FAIL ===');
+    fail.forEach(l => console.log('  -', l));
+    await ctx.close(); server.close(); process.exit(1);
+}
 
 await page.$eval('.vocab-ai-fix', el => el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
 await page.waitForTimeout(600);

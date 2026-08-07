@@ -15,6 +15,7 @@ const FILES = [
     '_locales/vi/messages.json',
     'background.js',
     'content.js',
+    'status-badge.js',
     'content.css',
     'popup.html', 'popup.js', 'popup.css',
     'options.html', 'options.js', 'options.css',

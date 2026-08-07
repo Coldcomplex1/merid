@@ -231,6 +231,14 @@ test('postWordCap accepts a stored frequency as well as a level name', () => {
     assert.strictEqual(C.postWordCap('heavy', 500), C.postWordCap('locked', 500));
 });
 
+test('a stored frequency of 0 still means off', () => {
+    // The three-stop slider cannot produce 0, but installs from before the
+    // change have it, and it meant "replace nothing" - it must keep meaning that.
+    assert.strictEqual(C.postWordCap(0, 0), 0);
+    assert.strictEqual(C.postWordCap(0, 500), 0);
+    assert.strictEqual(C.postWordCap(0, 100000), 0);
+});
+
 test('postWordCap never shrinks as a post gets longer or intensity rises', () => {
     for (const level of C.INTENSITY_LEVELS) {
         let prev = 0;

@@ -11,6 +11,7 @@ anywhere. These need Playwright and a Chromium binary.
 ```bash
 npm i --no-save playwright
 node e2e/interaction.mjs      # replacement, feedback signals, tooltip
+node e2e/scroll-feed.mjs      # endless feed: deep posts checked, caps, 20s ceiling
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
 node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you

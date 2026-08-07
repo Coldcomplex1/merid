@@ -12,6 +12,10 @@
 
 const C = window.VMCore;
 const P = window.VMProfile;
+// The corner badge that says a context check is running. A no-op stub keeps
+// every call site safe if status-badge.js ever fails to load - a missing
+// status indicator must never stop the page being read.
+const Status = window.MeridStatus || { set: function () { } };
 
 // Release builds stay silent on users' pages; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -92,8 +96,14 @@ function init() {
     postWordCounts = new WeakMap();
     takenThisPage = new Set();
     aiCheckedPairs = new Set();
-    aiChecksSent = 0;
-    if (aiCheckTimer) { clearTimeout(aiCheckTimer); aiCheckTimer = null; }
+    aiRequestsSent = 0;
+    aiQueue = [];
+    aiQueued = new Set();
+    aiInFlight = false;
+    aiDisabled = false;
+    clearAiTimers();
+    startSpanObserver();
+    Status.set('idle');
 
     // Drop upgrades parked for a page state that no longer exists.
     pendingUpgrades = [];
@@ -205,7 +215,6 @@ function processPage(vocabMap) {
             requestAnimationFrame(processChunk);
         } else {
             log('[VM] Page processing complete. Replaced:', replacedCount);
-            scheduleAiContextCheck();
         }
     }
     processChunk();
@@ -335,6 +344,10 @@ function processTextNode(node, vocabMap) {
 
         stats.used++;
 
+        // The AI context check starts when the reader actually reaches this
+        // word, not when the scan finds it.
+        observeSpan(span);
+
         out.push(span);
         i += size - 1;
         modified = true;
@@ -421,10 +434,9 @@ function processNodeBatch(nodes, vocabMap) {
     function run() {
         const end = Math.min(index + batchSize, nodes.length);
         for (; index < end; index++) processTextNode(nodes[index], vocabMap);
+        // Newly replaced words register themselves with the viewport observer
+        // as they are created, so there is nothing to kick off here.
         if (index < nodes.length) requestAnimationFrame(run);
-        else if (nodes.length) {
-            scheduleAiContextCheck(); // dynamic content settled
-        }
     }
     run();
 }
@@ -516,31 +528,111 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushProfileEvents();
 });
 
+// A reader who tabs away mid-post has still read those words; send what is
+// queued rather than letting the batch expire with the page.
+window.addEventListener('pagehide', flushAiQueue);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushAiQueue();
+});
+
 // -------------------------------------------------------------
 // AI context check (optional feature - the background gates on the user's
 // toggle + API key, so this is a no-op unless the user set both up).
-// Runs after the initial scan AND (debounced) after dynamically-added
-// content gets replaced, since modern sites render most text after load.
-// Each run sends one batched request: unique unchecked replaced words +
-// a short sentence snippet each. Words the AI flags as out-of-context are
-// reverted back to the original text immediately (no gray underline, no
-// user action needed). Failures never break the page.
+//
+// Checking is driven by what the reader is actually looking at. A post enters
+// the viewport, its replaced words join a queue, and the queue is sent as one
+// batched request. Words the AI flags as out-of-context are reverted or
+// upgraded immediately (no gray underline, no user action needed). Failures
+// never break the page.
+//
+// This used to be three requests per page visit, full stop. On an endless feed
+// that meant the first three screens were checked and everything past them was
+// left with whatever the dataset happened to pick - which is the majority of a
+// scrolling session. The cap below is now a runaway guard, not a budget; real
+// spend is metered server-side (lib/ai-proxy.js).
 // -------------------------------------------------------------
-const AI_SNIPPET_RADIUS = 60;      // chars kept around the word - keeps tokens low
-const AI_CHECK_MAX_BATCHES = 3;    // max requests per page visit (cost cap)
-const AI_CHECK_DEBOUNCE_MS = 1500; // let dynamic content settle first
+const AI_SNIPPET_RADIUS = 60;       // chars kept around the word - keeps tokens low
+const AI_CHECK_MAX_REQUESTS = 40;   // runaway guard per page visit
+const AI_BATCH_MAX_ITEMS = 20;      // most items one request may carry
+const AI_BATCH_READY_ITEMS = 12;    // enough queued to be worth sending now
+const AI_QUIET_MS = 1500;           // no new words for this long -> send
+// Longest a word may sit unchecked. Someone reading a single post carefully
+// should not be left staring at an unverified word because the queue never
+// filled up, so the queue goes out on this timer no matter how short it is.
+const AI_MAX_WAIT_MS = 20000;
+// How far below the fold to start checking. Generous on purpose: a verdict
+// that arrives while the word is still off screen can be applied silently,
+// whereas one that arrives after the reader is already looking at the word has
+// to wait until they scroll past it (see scheduleUpgrade). Roughly a screen and
+// a half of lead time at typical scroll speeds.
+const AI_LOOKAHEAD_PX = 1200;
+
 // Keyed by "word|sentence", NOT by word: the whole point of the context check
 // is that a word can be right in one sentence and wrong in another, so a
 // verdict earned in one place must never be reused - or applied - elsewhere.
 let aiCheckedPairs = new Set();
-let aiChecksSent = 0;
-let aiCheckTimer = null;
+let aiRequestsSent = 0;
+let aiQuietTimer = null;
+let aiDeadlineTimer = null;
+let aiInFlight = false;
+let aiDisabled = false;         // set once the background says the feature is off
+// Spans waiting to be checked, in the order they came into view.
+let aiQueue = [];
+let aiQueued = new Set();       // span-level guard against double-queueing
+// Watches replaced words for viewport entry.
+let spanObserver = null;
 
-function scheduleAiContextCheck() {
-    if (aiCheckTimer) clearTimeout(aiCheckTimer);
-    aiCheckTimer = setTimeout(runAiContextCheck, AI_CHECK_DEBOUNCE_MS);
+/** Queue a word that just came into view. */
+function queueSpanForAiCheck(span) {
+    if (aiDisabled || !span || aiQueued.has(span) || !span.dataset.word) return;
+    aiQueued.add(span);
+    aiQueue.push(span);
+    scheduleAiFlush();
 }
 
+/**
+ * Arm the two timers that get a queue sent.
+ *
+ * The quiet timer restarts on every new word, so a fast scroll accumulates a
+ * full batch instead of firing a request per post. The deadline timer is set
+ * once for the oldest word in the queue and never pushed back, which is what
+ * guarantees the 20-second ceiling.
+ */
+function scheduleAiFlush() {
+    if (aiQueue.length >= AI_BATCH_READY_ITEMS) { flushAiQueue(); return; }
+    if (aiQuietTimer) clearTimeout(aiQuietTimer);
+    aiQuietTimer = setTimeout(flushAiQueue, AI_QUIET_MS);
+    if (!aiDeadlineTimer) aiDeadlineTimer = setTimeout(flushAiQueue, AI_MAX_WAIT_MS);
+}
+
+function clearAiTimers() {
+    if (aiQuietTimer) { clearTimeout(aiQuietTimer); aiQuietTimer = null; }
+    if (aiDeadlineTimer) { clearTimeout(aiDeadlineTimer); aiDeadlineTimer = null; }
+}
+
+/** Watch a word so it gets checked when the reader reaches it. */
+function observeSpan(span) {
+    if (aiDisabled || !spanObserver || !span) return;
+    try { spanObserver.observe(span); } catch (e) { /* detached */ }
+}
+
+/**
+ * Watching the words themselves, rather than the posts containing them, is
+ * what makes this work on every kind of page: a feed item, an article body and
+ * a page with no useful markup at all are all just spans coming into view.
+ */
+function startSpanObserver() {
+    if (spanObserver) spanObserver.disconnect();
+    // A little ahead of the viewport, so a word is usually verified by the time
+    // it is actually readable rather than changing under the reader's eyes.
+    spanObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            spanObserver.unobserve(entry.target);
+            queueSpanForAiCheck(entry.target);
+        });
+    }, { rootMargin: AI_LOOKAHEAD_PX + 'px 0px' });
+}
 
 function sentenceAround(span) {
     const block = span.closest('p, li, td, th, h1, h2, h3, h4, blockquote') || span.parentElement;
@@ -552,40 +644,72 @@ function sentenceAround(span) {
     return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
 }
 
-function runAiContextCheck() {
-    if (aiChecksSent >= AI_CHECK_MAX_BATCHES) return;
+/**
+ * Send whatever is queued.
+ *
+ * One request at a time: while it is in flight the queue keeps filling, and
+ * the response re-arms the timers if anything is waiting. That keeps a fast
+ * scroll from opening several requests at once without ever stranding words.
+ */
+function flushAiQueue() {
+    clearAiTimers();
+    if (aiDisabled || aiInFlight) return;
+    if (aiRequestsSent >= AI_CHECK_MAX_REQUESTS) { aiQueue = []; aiQueued = new Set(); return; }
 
-    // Group by (word, sentence). Identical pairs on the page share one verdict
-    // - they are the same question - but the same word in a different sentence
-    // is a separate item, judged and reverted independently.
+    // Group by (word, sentence). Identical pairs share one verdict - they are
+    // the same question - but the same word in a different sentence is a
+    // separate item, judged and reverted independently.
     const groups = new Map();
-    document.querySelectorAll('.vocab-master-highlight.vocab-replaced').forEach(sp => {
+    const deferred = [];
+    for (const sp of aiQueue) {
+        if (!sp.isConnected || !sp.classList.contains('vocab-replaced')) continue;
         const word = (sp.dataset.word || '').toLowerCase();
-        if (!word) return;
+        if (!word) continue;
         const sentence = sentenceAround(sp);
         const key = word + '|' + sentence;
-        if (aiCheckedPairs.has(key)) return;
+        if (aiCheckedPairs.has(key)) continue;
         const g = groups.get(key);
-        if (g) g.spans.push(sp);
-        else groups.set(key, { key, sentence, spans: [sp] });
-    });
-    if (!groups.size) return;
+        if (g) { g.spans.push(sp); continue; }
+        // Past the batch size, keep the span queued for the next request
+        // rather than dropping it on the floor.
+        if (groups.size >= AI_BATCH_MAX_ITEMS) { deferred.push(sp); continue; }
+        groups.set(key, { key, sentence, spans: [sp] });
+    }
+    aiQueue = deferred;
+    aiQueued = new Set(deferred);
+    if (!groups.size) { Status.set('idle'); return; }
 
-    const batch = Array.from(groups.values()).slice(0, 20);
+    const batch = Array.from(groups.values());
     const items = batch.map(g => ({
         word: g.spans[0].dataset.replacement || g.spans[0].dataset.word || '',
         original: g.spans[0].dataset.original || '',
         sentence: g.sentence
     }));
 
-    aiChecksSent++;
-    log('[VM] AI context check: sending', items.length, 'items (batch', aiChecksSent + '/' + AI_CHECK_MAX_BATCHES + ')');
+    aiRequestsSent++;
+    aiInFlight = true;
+    Status.set('checking');
+    log('[VM] AI context check: sending', items.length, 'items (request',
+        aiRequestsSent + '/' + AI_CHECK_MAX_REQUESTS + ')');
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
-        if (chrome.runtime.lastError) { console.warn('[VM] AI check failed:', chrome.runtime.lastError.message); return; }
-        if (!res) { console.warn('[VM] AI check: no response.'); return; }
-        if (res.disabled) { log('[VM] AI check is off (toggle disabled or no API key).'); return; }
+        aiInFlight = false;
+        if (chrome.runtime.lastError) {
+            console.warn('[VM] AI check failed:', chrome.runtime.lastError.message);
+            Status.set('idle');
+            return;
+        }
+        if (!res) { console.warn('[VM] AI check: no response.'); Status.set('idle'); return; }
+        if (res.disabled) {
+            // Nothing will ever come back; stop queueing and stop watching.
+            log('[VM] AI check is off (toggle disabled or no API key).');
+            stopAiChecking();
+            return;
+        }
         if (!res.ok || !Array.isArray(res.verdicts)) {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
+            // A spent daily allowance is not a transient failure either.
+            if (res.reason === 'quota') stopAiChecking();
+            else Status.set('idle');
             return;
         }
         let reverted = 0;
@@ -606,11 +730,23 @@ function runAiContextCheck() {
             else { revertSpans(g.spans); reverted++; }
         });
 
-
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,
             '(cached ' + (res.cached || 0) + ', asked ' + (res.asked || 0) + ', model ' + (res.model || '?') + ')');
+
+        Status.set('done');
+        if (aiQueue.length) scheduleAiFlush();  // words arrived while we waited
     });
+}
+
+/** Give up on context checking for this page visit (feature off, or quota spent). */
+function stopAiChecking() {
+    aiDisabled = true;
+    aiQueue = [];
+    aiQueued = new Set();
+    clearAiTimers();
+    if (spanObserver) { spanObserver.disconnect(); spanObserver = null; }
+    Status.set('off');
 }
 
 // -------------------------------------------------------------

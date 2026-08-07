@@ -11,11 +11,14 @@ const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 // The word the proxy rejects sits below the fold: an upgrade is deliberately
 // parked while its span is on screen, so a short page would be testing the
 // viewport guard rather than whether the verdict arrived at all.
+// Each paragraph is its own <article> so both get a word allowance, and the
+// target below the fold only gets checked once the test scrolls to it - words
+// are checked when the reader reaches them, not all at once on load.
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Thử nghiệm</title></head><body>
-<p>Nhiều doanh nghiệp đã cân nhắc kỹ trước khi đưa ra lựa chọn.</p>
+<article><p>Nhiều doanh nghiệp đã cân nhắc kỹ trước khi đưa ra lựa chọn.</p></article>
 <div style="height:2400px"></div>
-<p>Bãi bỏ quy định cũ là điều cần thiết.</p>
+<article><p>Bãi bỏ quy định cũ là điều cần thiết.</p></article>
 </body></html>`;
 
 const server = http.createServer((req, res) => {
@@ -255,7 +258,12 @@ await installStub({ status: 200, used: 3, limit: 20 });
 const p2 = await ctx.newPage();
 await p2.goto(base + '/', { waitUntil: 'load' });
 await p2.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(() => { });
+// Scroll to the target (gets it checked), then away (lets the swap land).
+await p2.waitForTimeout(1500);
+await p2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 await p2.waitForTimeout(4500);
+await p2.evaluate(() => window.scrollTo(0, 0));
+await p2.waitForTimeout(1000);
 const abolishLeft = await p2.$$eval('.vocab-master-highlight',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
 const upgraded = await p2.$$eval('.vocab-ai-fix', els => els.map(e => e.dataset.word));

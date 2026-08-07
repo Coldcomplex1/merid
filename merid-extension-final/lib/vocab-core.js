@@ -243,6 +243,10 @@
      * @param {number} postWords total words in the post
      */
     function postWordCap(intensity, postWords) {
+        // Zero is still "off". The slider cannot produce it any more, but
+        // installs that set it before the three-level change have it stored,
+        // and a reader who turned Merid down to nothing meant it.
+        if (Number(intensity) === 0) return 0;
         const level = typeof intensity === 'number'
             ? normalizeIntensity(intensity)
             : (INTENSITY_LEVELS.indexOf(intensity) >= 0 ? intensity : normalizeIntensity(intensityToFrequency(intensity)));

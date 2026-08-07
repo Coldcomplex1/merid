@@ -8,26 +8,31 @@ const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
 // A tall page: the first paragraph is on screen, the last is far below the
 // fold, so the viewport guard can be observed doing both of its jobs.
+// Top and bottom carry DIFFERENT phrases, and each sits in its own <article>.
+// Both matter: a headword gets one appearance per page visit, and a post gets
+// a small fixed allowance - share either and the bottom paragraph is left
+// untouched, with nothing down there for the viewport guard to act on.
 const SPACER = '<div style="height:2400px"></div>';
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Thử nghiệm</title></head><body>
-<p id="top">Bãi bỏ quy định cũ là điều cần thiết.</p>
+<article><p id="top">Bãi bỏ quy định cũ là điều cần thiết.</p></article>
 ${SPACER}
-<p id="bottom">Bãi bỏ thêm một lần nữa trong năm nay.</p>
+<article><p id="bottom">Sự vắng mặt kéo dài đã gây ra nhiều khó khăn.</p></article>
 </body></html>`;
 
-// A longer page for the Phase 2 density test - more candidates means the
-// effect of the ranker on the whole page is measurable rather than noise.
-const LINES = [
-    'Chính phủ quyết định bãi bỏ quy định cũ trong lĩnh vực kinh doanh.',
-    'Các chuyên gia cho rằng việc này là cần thiết và hợp lý.',
-    'Nhiều doanh nghiệp đã cân nhắc kỹ trước khi đưa ra lựa chọn.',
-    'Báo cáo cho thấy sự phá thai đang giảm dần trong nhóm tuổi trẻ.',
-    'Thị trường chứng khoán biến động mạnh trong tháng vừa qua.',
-    'Chính sách mới sẽ được áp dụng từ đầu năm sau trên toàn quốc.'
+// A page with many DISTINCT candidates for the ranker tests. Repeating the
+// same lines would be collapsed to a couple of spans by the one-appearance
+// rule, leaving nothing to measure. Each phrase maps to its own C1 headword.
+const CANDIDATES = [
+    'Vô lý', 'Dồi dào', 'Lạm dụng', 'Học viện', 'Tăng tốc', 'Chấp nhận',
+    'Dễ tiếp cận', 'Thành tựu', 'Tích lũy', 'Cáo buộc', 'Phá thai',
+    'Chịu trách nhiệm', 'Bãi bỏ', 'Thành quả', 'Tích trữ', 'Đẩy nhanh'
 ];
+// Every candidate sits in its own <article>, so each gets its own allowance and
+// the page can show many at once - the ranker's effect is on WHICH ones appear.
 const DENSE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>T</title></head><body>`
-    + LINES.map(l => `<p>${l}</p>`).join('\n').repeat(6) + `</body></html>`;
+    + CANDIDATES.map(p => `<article><p>${p} là chủ đề của bản tin hôm nay.</p></article>`).join('\n')
+    + `</body></html>`;
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -96,9 +101,15 @@ const countSpans = async (url) => {
 // =====================================================================
 
 // --- Baseline: a fresh profile must reproduce the old behaviour exactly ---
+//
+// Word COUNT is no longer the thing to measure. Each post has a small fixed
+// allowance now, so the ranker cannot make a page denser or sparser - what it
+// changes is WHICH words fill those slots. Every assertion below is about
+// identity, not quantity.
 await reset();
 const baseline = await countSpans(base + '/dense');
-check(baseline.n > 5, 'baseline page has enough candidates to measure', `${baseline.n} spans`);
+check(baseline.words.length > 5, 'baseline page has enough candidates to measure',
+    `${baseline.words.length} words: ${baseline.words.join(', ')}`);
 check(baseline.levels.length === 1 && baseline.levels[0] === 'C1',
     'the intended dataset is the one actually loaded', JSON.stringify(baseline.levels));
 
@@ -106,7 +117,8 @@ await reset();
 const baseline2 = await countSpans(base + '/dense');
 check(baseline.n === baseline2.n, 'replacement is deterministic across loads', `${baseline.n} vs ${baseline2.n}`);
 
-// --- Seed strong dislike for everything that appeared ---
+// Seed against a fixed word list rather than whatever the baseline produced,
+// so the profile clears cold start regardless of how many words the page shows.
 const seed = (event, words, times) => sw.evaluate(async ({ event, words, times }) => {
     let p = self.VMProfile.createProfile();
     for (let i = 0; i < times; i++) {
@@ -116,20 +128,25 @@ const seed = (event, words, times) => sw.evaluate(async ({ event, words, times }
     return { events: p.events, confidence: self.VMProfile.confidence(p) };
 }, { event, words, times });
 
-let s = await seed('down', baseline.words, 8);
+// --- Seed strong dislike for exactly the words the baseline chose ---
+let s = await seed('down', baseline.words, 12);
 check(s.confidence === 1, 'seeded profile is past cold start', `events=${s.events}`);
 const disliked = await countSpans(base + '/dense');
-check(disliked.n < baseline.n, 'disliked words appear less often',
-    `${baseline.n} -> ${disliked.n}`);
+const stillThere = disliked.words.filter(w => baseline.words.includes(w));
+check(stillThere.length < baseline.words.length,
+    'words the reader keeps rejecting give up their slot',
+    `${baseline.words.length} baseline words -> ${stillThere.length} survived`);
 
-// --- Seed strong liking instead ---
+// --- Seed strong liking instead: the baseline words must all come back ---
 await sw.evaluate(async () => { await chrome.storage.local.remove(['vm_profile']); });
-await seed('up', baseline.words, 8);
+await seed('up', baseline.words, 12);
 const liked = await countSpans(base + '/dense');
-check(liked.n >= baseline.n, 'liked words appear at least as often',
-    `${baseline.n} -> ${liked.n}`);
-check(liked.n > disliked.n, 'liking and disliking move the page in opposite directions',
-    `liked ${liked.n} vs disliked ${disliked.n}`);
+const kept = liked.words.filter(w => baseline.words.includes(w));
+check(kept.length === baseline.words.length, 'liked words keep their slots',
+    `${kept.length}/${baseline.words.length}`);
+check(kept.length > stillThere.length,
+    'liking and disliking move the page in opposite directions',
+    `liked ${kept.length} vs disliked ${stillThere.length}`);
 
 // --- The ranker never overrides the user's own "off" switch ---
 await reset({ frequency: 0 });
@@ -170,11 +187,15 @@ const installStub = (better) => sw.evaluate(async (b) => {
         cur.push(prompt);
         await chrome.storage.local.set({ __prompts: cur });
         const rows = prompt.split('\n').filter(l => /^\d+\.\s+english=/.test(l));
+        // Reject the two words the fixture plants, each with its own
+        // replacement - "better" words are headwords too, so two rejections
+        // cannot share one suggestion without colliding with the
+        // one-appearance-per-page rule.
         const out = rows.map((line, idx) => {
             const w = (line.match(/english="([^"]*)"/) || [, ''])[1].toLowerCase();
-            return w === 'abolish'
-                ? { i: idx + 1, ok: false, better: self.__better }
-                : { i: idx + 1, ok: true };
+            if (w === 'abolish') return { i: idx + 1, ok: false, better: self.__better };
+            if (w === 'absence') return { i: idx + 1, ok: false, better: 'withdrawal' };
+            return { i: idx + 1, ok: true };
         });
         return new Response(JSON.stringify({
             candidates: [{ content: { parts: [{ text: JSON.stringify(out) }] } }]
@@ -203,15 +224,25 @@ const textOf = (sel) => page.$eval(sel, el => el.innerText.trim());
 check((await textOf('#top')).toLowerCase().startsWith('abolish'),
     'a word being read on screen is NOT swapped under the reader', await textOf('#top'));
 
-// #bottom is far below the fold -> swapped immediately.
-check((await textOf('#bottom')).toLowerCase().startsWith('terminate'),
-    'an off-screen word IS upgraded to the AI suggestion', await textOf('#bottom'));
+// #bottom is 2400px down, past the observer's lead - it has not been asked
+// about yet, so it must still be showing the dataset's own pick.
+check((await textOf('#bottom')).toLowerCase().includes('absence'),
+    'a word the reader has not reached yet is not checked yet', await textOf('#bottom'));
 
 // Scroll away from #top; the parked swap should then land.
 await page.evaluate(() => window.scrollTo(0, 1600));
 await page.waitForTimeout(600);
 check((await textOf('#top')).toLowerCase().startsWith('terminate'),
     'the parked swap lands once the reader scrolls away', await textOf('#top'));
+
+// Scrolling toward #bottom brings it inside the lookahead, so it gets checked
+// on the way; scrolling back off it lets the upgrade land unseen.
+await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await page.waitForTimeout(4000);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(800);
+check((await textOf('#bottom')).toLowerCase().includes('withdrawal'),
+    'scrolling to a word gets it checked and upgraded', await textOf('#bottom'));
 
 // The upgraded word must still be a real dataset entry with a working card.
 await page.evaluate(() => window.scrollTo(0, 0));
@@ -240,9 +271,12 @@ await p2.waitForTimeout(4000); // 1.5s AI debounce + round trip
 // true when nothing was replaced at all.
 const p2spans = await p2.$$eval('.vocab-master-highlight', els => els.length);
 check(p2spans > 0, 'the hallucination run actually replaced something first', `${p2spans} spans`);
-const bottom2 = await p2.$eval('#bottom', el => el.innerText.trim());
-check(bottom2.toLowerCase().startsWith('bãi bỏ'),
-    'a hallucinated suggestion is discarded and the word reverts', bottom2);
+// #top, not #bottom: only what the reader has reached gets checked, and #top
+// is the paragraph on screen. An unusable suggestion means there is nothing to
+// swap to, so the span is reverted outright rather than parked for later.
+const top2 = await p2.$eval('#top', el => el.innerText.trim());
+check(top2.toLowerCase().startsWith('bãi bỏ'),
+    'a hallucinated suggestion is discarded and the word reverts', top2);
 check(await p2.$$eval('.vocab-master-highlight',
     els => els.every(e => e.dataset.word !== 'flibbertigibbetous')),
     'an invented word never reaches the page');

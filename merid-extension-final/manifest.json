@@ -26,6 +26,7 @@
       "js": [
         "lib/vocab-core.js",
         "lib/profile.js",
+        "status-badge.js",
         "content.js"
       ],
       "css": [

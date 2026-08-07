@@ -8,8 +8,9 @@ import path from 'node:path';
 
 const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
-// "Bãi bỏ" leads two separate paragraphs -> two spans, two different
-// sentences, one headword. That is exactly the case the old code got wrong.
+// "Bãi bỏ" leads two separate paragraphs. Only the first is swapped now - a
+// headword gets one appearance per page visit - and the second is here to
+// prove the untouched copy stays in Vietnamese when the verdict comes back bad.
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Thử nghiệm</title></head><body>
 <p>Bãi bỏ quy định cũ là điều cần thiết.</p>
@@ -158,7 +159,13 @@ r = await sw.evaluate(async () => {
 check(r.verdicts[0] === 0 && r.verdicts[1] === 1,
     'an unanswered item defaults to keep', JSON.stringify(r.verdicts));
 
-// --- 6. THE FIX: a verdict reverts one occurrence, not the whole headword ---
+// --- 6. A bad verdict puts the page back the way it was ---
+//
+// Sections 1-5 above already prove the per-sentence contract at the API level:
+// the same word in two different sentences is two questions, cached and judged
+// separately. It can no longer be shown twice on one page - a headword gets a
+// single appearance per visit - so what is left to check here is the DOM half:
+// a rejected word goes back to Vietnamese and leaves no trace.
 await sw.evaluate(async () => {
     await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile']);
     self.__rejectWords = ['abolish']; // reject it only where the AI is asked
@@ -172,20 +179,26 @@ await page.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(
 
 const before = await page.$$eval('.vocab-master-highlight',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(before === 2, 'both occurrences replaced before the check', `${before}`);
+check(before === 1, 'the headword is swapped exactly once', `${before}`);
 
-// Wait out the 1.5s debounce plus the round trip.
+// Wait out the queue's quiet timer plus the round trip.
 await page.waitForTimeout(4000);
 const after = await page.$$eval('.vocab-master-highlight',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(after === 0, 'both rejected occurrences reverted', `${after} left`);
+check(after === 0, 'the rejected occurrence reverted', `${after} left`);
 
-// Two DIFFERENT sentences => the batch must contain two items, not one.
+// The revert must restore the original text, not leave a gap or an English word.
+const text = await page.$eval('body', b => b.innerText.replace(/\s+/g, ' '));
+const restored = (text.match(/[Bb]ãi bỏ/g) || []).length;
+check(restored === 2, 'both paragraphs read as Vietnamese again', `${restored} occurrences`);
+check(!/abolish/i.test(text), 'no English left behind after the revert');
+
+// The word was asked about exactly once - one appearance, one question.
 const sent = await sw.evaluate(() => {
     const last = self.__requests[self.__requests.length - 1];
     return last ? (last.prompt.match(/^\d+\.\s+english="abolish"/gm) || []).length : -1;
 });
-check(sent === 2, 'the same word in two sentences is judged twice', `${sent} items sent`);
+check(sent === 1, 'one appearance costs one item in the batch', `${sent} items sent`);
 
 // --- 7. AI verdicts feed the local ranker ---
 await page.waitForTimeout(1500);

@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 const files = [
     'background.js',
     'content.js',
+    'status-badge.js',
     'popup.js',
     'options.js',
     'content-bridge.js',
