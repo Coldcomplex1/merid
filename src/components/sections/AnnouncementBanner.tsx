@@ -10,9 +10,13 @@ export default function AnnouncementBanner() {
 
   return (
     <div className="border-b border-line bg-canvas-2">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-4 py-2 text-center text-sm">
-        <span className="inline-flex items-center gap-2 font-semibold text-heading">
-          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-gold-400" />
+      {/* Always a single line, phones included: nothing wraps, and below the
+       *  sm breakpoint the type scales with the viewport (3.05vw ≈ the widest
+       *  copy, English, fitting a 320px screen) until it reaches its 14px
+       *  ceiling. Padding, the dot and the gaps tighten to match. */}
+      <div className="mx-auto flex max-w-6xl items-center justify-center gap-x-1.5 px-2.5 py-2 text-center text-[clamp(0.625rem,3.05vw,0.875rem)] whitespace-nowrap sm:gap-x-2.5 sm:px-4">
+        <span className="inline-flex items-center gap-1.5 font-semibold text-heading sm:gap-2">
+          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold-400 sm:h-2 sm:w-2" />
           {t.banner.text}
         </span>
         <a
