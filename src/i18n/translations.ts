@@ -49,6 +49,23 @@ export interface Strings {
       next: string
       score: (right: number, total: number) => string
       restart: string
+      prev: string
+      review: string
+      jumpTo: (n: number) => string
+      retryWrong: (n: number) => string
+      allCorrect: string
+      customSet: (n: number) => string
+      playWholeDeck: string
+    }
+    select: {
+      start: string
+      cancel: string
+      all: string
+      none: string
+      chosen: (n: number) => string
+      makePuzzle: (n: number) => string
+      needFour: string
+      toggle: (word: string) => string
     }
     flash: { flipHint: string; prev: string; next: string; counter: (i: number, n: number) => string }
     menu: { deck: string; login: string; signup: string; logout: string; open: string }
@@ -378,6 +395,23 @@ const vi: Strings = {
       next: 'Câu tiếp theo',
       score: (right: number, total: number) => `Đúng ${right}/${total} câu`,
       restart: 'Chơi lại',
+      prev: 'Câu trước',
+      review: 'Đang xem lại câu đã trả lời',
+      jumpTo: (n: number) => `Tới câu ${n}`,
+      retryWrong: (n: number) => `Làm lại ${n} câu sai`,
+      allCorrect: 'Đúng hết, không còn câu nào để làm lại.',
+      customSet: (n: number) => `Bộ tự chọn · ${n} từ`,
+      playWholeDeck: 'Chơi toàn bộ deck',
+    },
+    select: {
+      start: 'Chọn từ',
+      cancel: 'Xong',
+      all: 'Chọn tất cả',
+      none: 'Bỏ chọn',
+      chosen: (n: number) => `Đã chọn ${n} từ`,
+      makePuzzle: (n: number) => `Gộp thành bộ puzzle (${n})`,
+      needFour: 'Cần ít nhất 4 từ để tạo một bộ puzzle.',
+      toggle: (word: string) => `Chọn từ ${word}`,
     },
     flash: {
       flipHint: 'Nhấn để lật thẻ',
@@ -1028,6 +1062,23 @@ const en: Strings = {
       next: 'Next question',
       score: (right: number, total: number) => `${right}/${total} correct`,
       restart: 'Play again',
+      prev: 'Previous',
+      review: 'Reviewing an answered question',
+      jumpTo: (n: number) => `Go to question ${n}`,
+      retryWrong: (n: number) => `Retry ${n} you got wrong`,
+      allCorrect: 'All correct - nothing to retry.',
+      customSet: (n: number) => `Your set · ${n} words`,
+      playWholeDeck: 'Play the whole deck',
+    },
+    select: {
+      start: 'Select words',
+      cancel: 'Done',
+      all: 'Select all',
+      none: 'Clear',
+      chosen: (n: number) => `${n} selected`,
+      makePuzzle: (n: number) => `Make a puzzle set (${n})`,
+      needFour: 'Pick at least 4 words to make a puzzle set.',
+      toggle: (word: string) => `Select ${word}`,
     },
     flash: {
       flipHint: 'Click to flip',

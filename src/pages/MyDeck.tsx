@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../lib/auth'
 import { createFirestoreDeck } from '../deck/firestoreDeck'
 import type { DeckWord, WordStatus } from '../deck/DeckSource'
-import WordList from '../components/study/WordList'
+import WordList, { MIN_PUZZLE_WORDS } from '../components/study/WordList'
 import PuzzleMode from '../components/study/PuzzleMode'
 import FlashcardMode from '../components/study/FlashcardMode'
 import InstallButton from '../components/ui/InstallButton'
@@ -28,6 +28,14 @@ export default function MyDeck() {
   const [tab, setTab] = useState<Tab>('words')
   const [words, setWords] = useState<DeckWord[] | null>(null)
   const [error, setError] = useState(false)
+
+  // Building a puzzle out of specific words: `selected` is what is ticked in
+  // the list, `puzzleWords` is the set handed to the Puzzle tab once confirmed.
+  // Keeping them separate means ticking more words does not disturb a game
+  // already in progress.
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [puzzleWords, setPuzzleWords] = useState<string[] | null>(null)
 
   const reload = useCallback(() => {
     let cancelled = false
@@ -68,9 +76,35 @@ export default function MyDeck() {
     { id: 'flashcards', label: t.deck.tabs.flashcards },
   ]
 
-  // Study modes only quiz words still being learned.
-  const learning = (words ?? []).filter((w) => w.status === 'saved')
-  const known = (words ?? []).filter((w) => w.status === 'known')
+  // Study modes only quiz words still being learned. Memoized because these
+  // arrays are props to PuzzleMode, which reshuffles its questions whenever
+  // they change identity - a fresh array on every render would reshuffle the
+  // game underneath a player.
+  const learning = useMemo(() => (words ?? []).filter((w) => w.status === 'saved'), [words])
+  const known = useMemo(() => (words ?? []).filter((w) => w.status === 'known'), [words])
+
+  const toggleSelect = (word: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur)
+      if (next.has(word)) next.delete(word)
+      else next.add(word)
+      return next
+    })
+
+  const makePuzzle = () => {
+    setPuzzleWords([...selected])
+    setSelecting(false)
+    setTab('puzzle')
+  }
+
+  // A word can be removed or marked known while a custom set is live, so the
+  // set is resolved against the current deck rather than being frozen at the
+  // moment it was made.
+  const customSet = useMemo(
+    () => (puzzleWords ? learning.filter((w) => puzzleWords.includes(w.word)) : null),
+    [puzzleWords, learning],
+  )
+  const puzzleQuestions = customSet && customSet.length >= MIN_PUZZLE_WORDS ? customSet : learning
 
   // Values stay in heading ink; the small dot beside the label carries the
   // status identity (gold = learning, green = known).
@@ -170,9 +204,38 @@ export default function MyDeck() {
 
             <div className="mt-6">
               {tab === 'words' ? (
-                <WordList words={words} onRemove={handleRemove} onSetStatus={handleSetStatus} />
+                <WordList
+                  words={words}
+                  onRemove={handleRemove}
+                  onSetStatus={handleSetStatus}
+                  selecting={selecting}
+                  selected={selected}
+                  onToggleSelecting={() => setSelecting((s) => !s)}
+                  onToggleSelect={toggleSelect}
+                  onSelectAll={(all) => setSelected(new Set(all))}
+                  onClearSelection={() => setSelected(new Set())}
+                  onMakePuzzle={makePuzzle}
+                />
               ) : tab === 'puzzle' ? (
-                <PuzzleMode words={learning} />
+                <>
+                  {puzzleQuestions === customSet && customSet && (
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
+                      <span className="text-sm font-semibold text-accent">
+                        {t.deck.puzzle.customSet(customSet.length)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPuzzleWords(null)}
+                        className="rounded-full border border-line-strong px-3.5 py-1.5 text-xs font-semibold text-body transition-colors hover:border-accent hover:text-accent"
+                      >
+                        {t.deck.puzzle.playWholeDeck}
+                      </button>
+                    </div>
+                  )}
+                  {/* Wrong answers always come from the whole learning list, so
+                      a four-word set still offers believable options. */}
+                  <PuzzleMode words={puzzleQuestions} pool={learning} />
+                </>
               ) : (
                 <FlashcardMode words={learning} />
               )}
