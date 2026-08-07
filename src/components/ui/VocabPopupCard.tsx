@@ -15,6 +15,17 @@ interface VocabPopupCardProps {
 
 const NAVY = '#19355d'
 
+/**
+ * The card is authored at full size and rendered at 95%, the way the
+ * extension's `.vm-card` is. One knob beats scaling forty hardcoded px values,
+ * and `zoom` (unlike `transform: scale`) shrinks the layout box, so the demos
+ * still measure the card correctly and the hero's `-rotate-1` is left alone.
+ *
+ * Kept in step by hand with `.vm-card` in the extension's content.css and with
+ * CARD_WIDTH in demo/kit/useAnchoredCard.ts — three places, two builds.
+ */
+const CARD_ZOOM = 0.95
+
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 // Same glyph the extension injects for its pronunciation button.
@@ -66,6 +77,7 @@ export default function VocabPopupCard({
 
   return (
     <div
+      style={{ zoom: CARD_ZOOM }}
       className={`relative w-[312px] max-w-full overflow-hidden rounded-2xl border-2 border-[#19355d] bg-[#fffdf6] text-left text-[#1c2c47] shadow-[0_3px_10px_rgba(15,31,61,0.08)] ${className}`}
     >
       {onClose && (
