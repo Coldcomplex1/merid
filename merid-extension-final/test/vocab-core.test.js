@@ -205,8 +205,8 @@ test('postWordCap follows the published table', () => {
     // reader asked for locked-in), a normal article tops out at three.
     const table = [
         //  words  casual focused locked
-        [10, 1, 2, 2],
-        [200, 1, 2, 2],
+        [10, 1, 2, 3],
+        [200, 1, 2, 3],
         [201, 1, 2, 3],
         [1000, 1, 2, 3],
         [1001, 2, 3, 4],
@@ -230,6 +230,19 @@ test('postWordCap accepts a stored frequency as well as a level name', () => {
     assert.strictEqual(C.postWordCap(63, 500), C.postWordCap('focused', 500));
     // and legacy level names keep working
     assert.strictEqual(C.postWordCap('heavy', 500), C.postWordCap('locked', 500));
+});
+
+test('the three levels differ at every post length', () => {
+    // Short posts used to give focused and locked-in the same allowance. A
+    // social feed is nothing but short posts, so on the sites people use most
+    // the slider did nothing at all. Every row must separate all three.
+    for (const words of [10, 60, 200, 201, 800, 1000, 1500, 2000, 2500, 9000]) {
+        const casual = C.postWordCap('casual', words);
+        const focused = C.postWordCap('focused', words);
+        const locked = C.postWordCap('locked', words);
+        assert.ok(focused > casual, `focused must beat casual at ${words} (${focused} vs ${casual})`);
+        assert.ok(locked > focused, `locked must beat focused at ${words} (${locked} vs ${focused})`);
+    }
 });
 
 test('postWordCap keeps growing past the table instead of flatlining', () => {
@@ -275,6 +288,17 @@ test('spreadAllowance releases the budget as the scan moves down the post', () =
     // Degenerate inputs must not stall the scan.
     assert.strictEqual(C.spreadAllowance(3, 10, 0), 3);        // unmeasured post
     assert.strictEqual(C.spreadAllowance(0, 10, 100), 0);      // off stays off
+});
+
+test('spreadAllowance does not hold anything back on a short post', () => {
+    // A feed post is one screenful: there is no "further down" to spread
+    // across, and rationing it just means a post that could show two shows one.
+    for (const words of [10, 60, 120, C.SPREAD_FROM_WORDS]) {
+        assert.strictEqual(C.spreadAllowance(3, 0, words), 3, `${words} words, nothing scanned yet`);
+        assert.strictEqual(C.spreadAllowance(3, 1, words), 3, `${words} words, one word in`);
+    }
+    // Just past the threshold rationing resumes.
+    assert.strictEqual(C.spreadAllowance(3, 1, C.SPREAD_FROM_WORDS + 1), 1);
 });
 
 test('postCandidateCap leaves room for the context check to reject words', () => {

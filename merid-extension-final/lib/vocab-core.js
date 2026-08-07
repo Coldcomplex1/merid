@@ -223,9 +223,14 @@
      * This table is the whole policy - to retune how much Merid translates,
      * change these numbers and nothing else.
      */
+    // Every level must differ from its neighbours in EVERY row. It is not
+    // enough for the table to make sense in aggregate: short posts used to give
+    // focused and locked-in the same two words, and since a social feed is
+    // nothing but short posts, dragging the slider to locked-in changed
+    // literally nothing on the sites people use most.
     const POST_WORD_CAPS = [
         // maxWords, casual, focused, locked
-        { upTo: 200, casual: 1, focused: 2, locked: 2 },
+        { upTo: 200, casual: 1, focused: 2, locked: 3 },
         { upTo: 1000, casual: 1, focused: 2, locked: 3 },
         { upTo: 2000, casual: 2, focused: 3, locked: 4 },
         { upTo: Infinity, casual: 3, focused: 4, locked: 5 }
@@ -347,10 +352,19 @@
      * short post still gets its first word immediately rather than waiting
      * until the reader is halfway through it.
      */
+    // Below this a post is a single screenful and gets its whole allowance at
+    // once; above it the allowance is released as the scan works down.
+    const SPREAD_FROM_WORDS = 150;
+
     function spreadAllowance(cap, wordsSeen, totalWords) {
         if (!(cap > 0)) return 0;
         const total = Number(totalWords) || 0;
         if (total <= 0) return cap;                 // unmeasured: do not hold back
+        // A short post is one screenful - there is no "further down the page"
+        // to spread across, and holding words back only means a feed post that
+        // could show two shows one. Spreading is for pieces long enough to
+        // scroll through.
+        if (total <= SPREAD_FROM_WORDS) return cap;
         const seen = Math.max(0, Number(wordsSeen) || 0);
         const share = Math.ceil(cap * Math.min(1, seen / total));
         return Math.max(1, Math.min(cap, share));
@@ -786,7 +800,7 @@
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
         INTENSITY_LEVELS, INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
         normalizeIntensity, POST_WORD_CAPS, postWordCap, countWords,
-        CANDIDATE_SURPLUS, postCandidateCap, pickSpread, spreadAllowance,
+        CANDIDATE_SURPLUS, postCandidateCap, pickSpread, spreadAllowance, SPREAD_FROM_WORDS,
         LONG_POST_WORDS_PER_EXTRA, LONG_POST_FROM,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,

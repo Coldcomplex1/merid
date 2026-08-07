@@ -5,8 +5,8 @@
 //   1. Posts far down the feed still get their words context-checked. The old
 //      three-requests-per-page cap meant everything past the first few screens
 //      shipped whatever the dataset picked, unverified.
-//   2. Each post stays within its allowance, and no headword is used twice
-//      across the whole session - not just within one post.
+//   2. Each post stays within its allowance, a word never repeats inside one
+//      post, and a word that does come back is well clear of its last outing.
 //   3. A single post left alone on screen is checked within 20 seconds, even
 //      though it is nowhere near a full batch.
 //
@@ -20,10 +20,10 @@ import fs from 'node:fs';
 const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
 // Vietnamese meanings pulled straight out of dataset-C1.csv, so the matching
-// under test is the real thing. Every phrase on the page is distinct: repeats
-// would be collapsed by the one-per-session rule and the feed would stop
-// proving anything about reach. Each post carries several of them, which is
-// what lets the scan over-provision candidates and the cap prune them back -
+// under test is the real thing. Every phrase on the page is distinct, so this
+// fixture measures reach rather than repetition control (e2e/spread.mjs covers
+// a feed that reuses its vocabulary). Each post carries several phrases, which
+// is what lets the scan over-provision candidates and the cap prune them back -
 // with one phrase per post there is nothing to choose between.
 const POSTS = 40;
 const PHRASES_PER_POST = 3;
@@ -242,7 +242,7 @@ check(deepState && deepState.survivors > 0,
 // Posts are checked, then cut back to the cap. Only posts that have scrolled
 // out of view are guaranteed to be pruned - a span still on screen keeps its
 // word until the reader moves past it, on purpose.
-const OFFSCREEN_CAP = 2;   // locked-in, posts this short
+const OFFSCREEN_CAP = 3;   // locked-in, posts this short (POST_WORD_CAPS row 1)
 const prunable = await page.$$eval('[role="article"]', (posts) =>
     posts
         .filter((p) => {
@@ -262,11 +262,33 @@ const empty = prunable.filter((n) => n === 0).length;
 check(empty === 0, 'no post was left with nothing after the check',
     `${empty} of ${prunable.length} posts empty`);
 
-const words = await page.$$eval('.vocab-master-highlight',
-    els => els.map(e => (e.dataset.word || '').toLowerCase()));
-const duplicates = words.filter((w, i) => words.indexOf(w) !== i);
-check(duplicates.length === 0, 'no headword appears twice in the whole session',
-    duplicates.length ? [...new Set(duplicates)].join(', ') : `${words.length} unique`);
+// Repetition is governed by two rules now, not one ban. Inside a post a word
+// appears exactly once; across the page it may come back, but only well after
+// the reader has moved on - a page-wide ban starved long feeds of vocabulary.
+const byPost = await page.$$eval('[role="article"]', (posts) =>
+    posts.map((p) => ({
+        index: Number(p.dataset.postIndex),
+        words: [...p.querySelectorAll('.vocab-master-highlight')]
+            .map((e) => (e.dataset.word || '').toLowerCase())
+    })));
+
+const repeatedInsideAPost = byPost.filter((p) => new Set(p.words).size !== p.words.length);
+check(repeatedInsideAPost.length === 0, 'no word appears twice within one post',
+    repeatedInsideAPost.map((p) => p.index).join(', ') || 'none');
+
+// Any word that does come back must be several posts away from its last
+// outing, or the feed reads as if it is repeating itself.
+const lastSeenIn = new Map();
+let tooClose = [];
+for (const post of byPost.sort((a, b) => a.index - b.index)) {
+    for (const w of post.words) {
+        const prev = lastSeenIn.get(w);
+        if (prev !== undefined && post.index - prev < 3) tooClose.push(`${w} (posts ${prev}->${post.index})`);
+        lastSeenIn.set(w, post.index);
+    }
+}
+check(tooClose.length === 0, 'a repeated word is well clear of its last outing',
+    tooClose.slice(0, 4).join(', ') || 'none');
 
 // --- 5. The status badge showed up, and got out of the way afterwards ---
 const badge = await page.evaluate(() => {

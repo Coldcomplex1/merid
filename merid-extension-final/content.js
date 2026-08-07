@@ -69,11 +69,58 @@ let knownPosts = new Set();
 // Which post a span belongs to, for pruning after its verdict arrives.
 let spanPost = new WeakMap();
 
-// Headwords (and the Vietnamese text they replaced) already used somewhere on
-// this page visit. A word is worth meeting once: seeing "apprehend" swapped in
-// twenty posts of the same feed is noise, not practice, and it wastes an AI
-// check slot per copy. Reset on every init().
-let takenThisPage = new Set();
+// Repetition control.
+//
+// Within one post or article a word appears exactly once - meeting
+// "apprehend" three times in the same piece is noise, not practice. That is an
+// exact per-container rule.
+//
+// Across the page it is a cool-down, not a ban. A ban is right for an article,
+// which ends; an endless feed does not, and banning drained the vocabulary as
+// the reader scrolled: the common words went in the first few posts and
+// everything after was left with whatever rare word it happened to contain.
+// A word may come back once this many other swaps have gone by, which on a
+// feed is far enough apart to read as variety rather than repetition.
+const WORD_COOLDOWN_SWAPS = 12;
+let takenInPost = new WeakMap();   // container -> Set of words used in it
+let wordLastUsedAt = new Map();    // word -> the swap number it last appeared at
+let swapCount = 0;
+
+/** Words used in `container`, created on first use. */
+function postTakenSet(container) {
+    let set = takenInPost.get(container);
+    if (!set) { set = new Set(); takenInPost.set(container, set); }
+    return set;
+}
+
+/** True when a word is free to use here: unused in this post, and not one of
+ *  the last few shown anywhere on the page. */
+function wordAvailable(container, wl, ml) {
+    const used = takenInPost.get(container);
+    if (used && (used.has(wl) || used.has(ml))) return false;
+    for (const key of [wl, ml]) {
+        const at = wordLastUsedAt.get(key);
+        if (at !== undefined && swapCount - at < WORD_COOLDOWN_SWAPS) return false;
+    }
+    return true;
+}
+
+function claimWord(container, wl, ml) {
+    const used = postTakenSet(container);
+    used.add(wl);
+    used.add(ml);
+    swapCount++;
+    wordLastUsedAt.set(wl, swapCount);
+    if (ml && ml !== wl) wordLastUsedAt.set(ml, swapCount);
+}
+
+/** Hand a word back - it was crowded out rather than judged wrong. */
+function releaseWord(container, wl, ml) {
+    const used = container && takenInPost.get(container);
+    if (used) { used.delete(wl); used.delete(ml); }
+    wordLastUsedAt.delete(wl);
+    if (ml) wordLastUsedAt.delete(ml);
+}
 
 const FORBIDDEN_TAGS = new Set([
     'script', 'style', 'textarea', 'input', 'select', 'noscript', 'code', 'pre',
@@ -104,7 +151,9 @@ function init() {
     knownPosts = new Set();
     spanPost = new WeakMap();
     containerCache = new WeakMap();
-    takenThisPage = new Set();
+    takenInPost = new WeakMap();
+    wordLastUsedAt = new Map();
+    swapCount = 0;
     aiCheckedPairs = new Set();
     aiRequestsSent = 0;
     aiQueue = [];
@@ -389,10 +438,10 @@ function processTextNode(node, vocabMap) {
             continue;
         }
 
-        // One appearance per word, per page visit. Keyed both ways so the same
-        // Vietnamese phrase is never swapped twice, and the same English
-        // headword never shows up twice from two different source phrases.
-        if (takenThisPage.has(wl) || takenThisPage.has(ml)) {
+        // Once per post, and not again anywhere for a while. Keyed both ways so
+        // the same Vietnamese phrase is never swapped twice, and the same
+        // English headword never shows up twice from two different sources.
+        if (!wordAvailable(container, wl, ml)) {
             out.push(makeTextNode(matchedText));
             i += size - 1;
             continue;
@@ -414,9 +463,8 @@ function processTextNode(node, vocabMap) {
         span.dataset.level = item.dataset || '';
         applyDisplayMode(span);
 
-        // Claim the word for this page visit before anything else can.
-        takenThisPage.add(wl);
-        takenThisPage.add(ml);
+        // Claim the word before anything else can.
+        claimWord(container, wl, ml);
 
         if (!shownThisPage.has(wl)) {
             shownThisPage.add(wl);
@@ -823,7 +871,7 @@ function flushAiQueue() {
             // Prefer upgrading to the word the AI suggested over dropping the
             // slot entirely - but only when that word is a real entry in the
             // loaded dataset, so the tooltip still has something to show.
-            const entry = findVocabEntry((res.betters || [])[i]);
+            const entry = findVocabEntry((res.betters || [])[i], spanPost.get(g.spans[0]));
             if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
             else { revertSpans(g.spans); reverted++; }
         });
@@ -959,15 +1007,16 @@ let pendingUpgrades = [];
 let upgradeScrollBound = false;
 let upgradeRaf = null;
 
-/** Case-insensitive lookup of an English headword in the loaded dataset. */
-function findVocabEntry(word) {
+/** Case-insensitive lookup of an English headword in the loaded dataset.
+ *  `container` is the post the word would land in, so an upgrade cannot create
+ *  a duplicate inside it. */
+function findVocabEntry(word, container) {
     const w = String(word || '').toLowerCase().trim();
     if (!w) return null;
     // Never suggest a word the user has already dismissed or told us they know.
     if (knownSet.has(w)) return null;
-    // Nor one already showing elsewhere on the page - an upgrade that creates a
-    // duplicate defeats the one-appearance-per-word rule.
-    if (takenThisPage.has(w)) return null;
+    // Nor one already in this post, or shown a moment ago somewhere else.
+    if (container && !wordAvailable(container, w, w)) return null;
     return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
 }
 
@@ -994,9 +1043,12 @@ function applyUpgrade(span, entry) {
     const wl = (entry.word || '').toLowerCase();
     // The upgraded word now occupies this slot; the word it displaced is gone
     // from the page, so release its claim.
+    const container = spanPost.get(span);
     const previous = (span.dataset.aiFrom || '').toLowerCase();
-    if (previous && previous !== wl) takenThisPage.delete(previous);
-    takenThisPage.add(wl);
+    if (container) {
+        if (previous && previous !== wl) releaseWord(container, previous, previous);
+        claimWord(container, wl, (span.dataset.original || '').toLowerCase());
+    }
     if (!shownThisPage.has(wl)) {
         shownThisPage.add(wl);
         queueProfileEvent(entry.word, 'shown', entry.dataset);
@@ -1020,8 +1072,9 @@ function applyEdit(span, job) {
     if (job.entry) { applyUpgrade(span, job.entry); return; }
     // Give the word back to the page only once it has actually left it.
     if (job.release) {
-        takenThisPage.delete((span.dataset.word || '').toLowerCase());
-        takenThisPage.delete((span.dataset.original || '').toLowerCase());
+        releaseWord(spanPost.get(span),
+            (span.dataset.word || '').toLowerCase(),
+            (span.dataset.original || '').toLowerCase());
     }
     revertSpans([span]);
 }
