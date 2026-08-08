@@ -9,7 +9,7 @@ import InstallButton from '../ui/InstallButton'
 import MeridMark from '../ui/MeridMark'
 
 export default function Navbar() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -112,6 +112,14 @@ export default function Navbar() {
                   <div className="my-2 border-t border-line" />
                 </div>
 
+                {/* A real <a>, not a <Link>: /blog is prerendered static HTML
+                    the client router has no route for, so a <Link> would fall
+                    through to the catch-all and render the homepage. Lives in
+                    the menu rather than the inline row because that row is
+                    measured to fit exactly six Vietnamese labels at 1152px. */}
+                <a href={lang === 'vi' ? '/blog' : '/en/blog'} className={menuItem}>
+                  Blog
+                </a>
                 <Link to="/my-deck" className={menuItem}>
                   {t.deck.menu.deck}
                 </Link>

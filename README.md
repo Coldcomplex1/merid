@@ -43,10 +43,23 @@ src/
     sections/
       AnnouncementBanner.tsx  Navbar.tsx  Hero.tsx  LiveDemo.tsx  Features.tsx
       PanelShowcase.tsx  HowItWorks.tsx  Benefits.tsx  Faq.tsx  FinalCta.tsx  Footer.tsx
+  content/
+    publish.config.ts        # blog schedule, URLs, author. The one file to edit.
+    schema.ts  loader.ts     # frontmatter validation, live/pending split
+    blog/<slug>.<lang>.mdx   # the posts themselves
+  blog/                      # SSR-only components; see docs/BLOG.md before editing
+scripts/prerender.mjs        # renders published posts to static HTML in dist/
 ```
 
 ## Notable behavior
 
+- **Blog**: `/blog` (Vietnamese) and `/en/blog` (English) are **not** SPA routes. Posts are
+  MDX in `src/content/blog/`, rendered to static HTML at build time and served straight off
+  the filesystem with no framework JavaScript, because the AI crawlers this content targets
+  do not execute JS. Publishing is a `publishAt` date in frontmatter plus a daily cron that
+  triggers a rebuild. **Read [`docs/BLOG.md`](docs/BLOG.md) before touching anything under
+  `src/blog/` or `src/content/`** — those files must render without a browser, and links
+  from the SPA into `/blog` have to be plain `<a href>` rather than react-router `<Link>`.
 - **Install links**: every "Add to Chrome" / "Install" action links to the official Chrome
   Web Store listing. The URL is defined once in `src/config.ts` (`CHROME_STORE_URL`); change it
   there if the listing ever moves (see the comment in that file).

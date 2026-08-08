@@ -4,6 +4,10 @@ dist
 .DS_Store
 npm-debug.log*
 
+# Blog SSR bundle: an intermediate build artifact consumed by
+# scripts/prerender.mjs and never deployed. Rebuilt by `npm run blog:ssr`.
+.blog-ssr
+
 # Environment files — never commit real Firebase config/secrets (.env.local is
 # already covered by *.local; this catches every other .env variant).
 .env

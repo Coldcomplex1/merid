@@ -317,6 +317,56 @@ body {
 }
 
 @layer components {
+  /*
+   * Long-form article body for prerendered blog posts.
+   *
+   * Written by hand rather than pulling in @tailwindcss/typography, for the same
+   * reason .wiki-link and .hl-en live here: the site has exactly one stylesheet
+   * and one set of tokens, and a plugin would bring its own greys that then have
+   * to be overridden back to ours in both themes.
+   *
+   * Only the rules that element-level styling in src/blog/mdx-components.tsx
+   * cannot reach belong here: spacing between adjacent blocks, and the two
+   * places where Merid's own reading conventions show up in prose.
+   */
+  .prose-merid {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+  .prose-merid > :first-child {
+    margin-top: 0;
+  }
+  /* Two headings in a row should breathe less than a heading after a paragraph. */
+  .prose-merid h2 + h3,
+  .prose-merid h3 + h4 {
+    margin-top: 1rem;
+  }
+  /* A serif face for pull quotes, matching the demo's reading surface. */
+  .prose-merid blockquote {
+    font-family: var(--font-wiki);
+    font-size: 1.0625rem;
+  }
+  /* An English word standing in for a Vietnamese one, the thing Merid does. */
+  .prose-merid .swap {
+    font-weight: 700;
+    color: var(--color-ink);
+    padding: 0 2px;
+    border-radius: 3px;
+    background-image: linear-gradient(
+      0deg,
+      var(--color-gold-300) 0 0.3em,
+      rgb(255 231 163 / 0.55) 0.3em 100%
+    );
+  }
+  [data-theme='dark'] .prose-merid .swap {
+    color: var(--color-navy-950);
+  }
+  /* Footnote-ish asides set smaller and quieter than body copy. */
+  .prose-merid .note {
+    font-size: 0.9375rem;
+    color: var(--color-muted);
+  }
+
   /* Wikipedia-style demo text */
   .wiki-link {
     color: var(--color-wiki-blue);
