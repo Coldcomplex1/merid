@@ -26,6 +26,16 @@ import { sanitizeArticleHtml } from './sanitize.js'
 
 const THEME_BG = { light: '#faf8f2', dark: '#0e1628' }
 
+/**
+ * The site stylesheet, at a stable path written by scripts/copy-blog-css.mjs.
+ *
+ * Deliberately not the hashed asset name: dist/ is not on the serverless
+ * function's filesystem, so looking the hash up at request time never worked and
+ * left every blog page unstyled. Vercel purges its CDN on deploy, so a stable
+ * name does not go stale.
+ */
+const STYLESHEET = '/blog.css'
+
 /** Copied from index.html so blog pages pick up the saved theme before paint.
  *  Keep in sync with index.html and src/theme/ThemeContext.tsx. */
 const THEME_BOOTSTRAP = `(function(){try{var saved=localStorage.getItem('merid-theme');var theme=saved==='light'||saved==='dark'?saved:window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var root=document.documentElement;root.setAttribute('data-theme',theme);root.style.colorScheme=theme;root.style.backgroundColor=theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}';var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}');}catch(e){}})();`
@@ -89,10 +99,6 @@ function softwareApplicationSchema(lang) {
 // Document shell
 // ---------------------------------------------------------------------------
 
-/**
- * @param {object} opts
- * @param {string[]} opts.cssHrefs Hashed stylesheet(s) from the SPA build.
- */
 export function renderDocument(opts) {
   const head = [
     '<meta charset="UTF-8" />',
@@ -137,7 +143,7 @@ export function renderDocument(opts) {
     head.push(`<meta property="article:author" content="${esc(AUTHOR.name)}" />`)
   }
 
-  for (const href of opts.cssHrefs) head.push(`<link rel="stylesheet" href="${esc(href)}" />`)
+  head.push(`<link rel="stylesheet" href="${STYLESHEET}" />`)
   for (const schema of opts.schemas ?? []) {
     head.push(`<script type="application/ld+json">${jsonLd(schema)}</script>`)
   }
@@ -229,7 +235,7 @@ function authorBox(lang) {
  * The excerpt sits above everything so a model reading the raw HTML top-down
  * meets a summary before any preamble.
  */
-export function renderPostPage(post, counterpart, cssHrefs) {
+export function renderPostPage(post, counterpart) {
   const lang = post.lang
   const t = STRINGS[lang]
 
@@ -354,7 +360,6 @@ export function renderPostPage(post, counterpart, cssHrefs) {
     ogImage: cover,
     ogImageAlt: post.coverAlt || post.title,
     schemas,
-    cssHrefs,
     publishedTime: post.publishedAt,
     modifiedTime: post.updatedAt || post.publishedAt,
     body: chrome(lang, article, counterpart ? postPath(counterpart.lang, counterpart.slug) : null),
@@ -365,7 +370,7 @@ export function renderPostPage(post, counterpart, cssHrefs) {
 // Index page
 // ---------------------------------------------------------------------------
 
-export function renderIndexPage(lang, posts, cssHrefs) {
+export function renderIndexPage(lang, posts) {
   const t = STRINGS[lang]
 
   const list = posts.length
@@ -428,7 +433,6 @@ export function renderIndexPage(lang, posts, cssHrefs) {
       },
       softwareApplicationSchema(lang),
     ],
-    cssHrefs,
     body: chrome(lang, inner, indexPath(lang === 'vie' ? 'en' : 'vie')),
   })
 }
@@ -437,7 +441,7 @@ export function renderIndexPage(lang, posts, cssHrefs) {
 // 404
 // ---------------------------------------------------------------------------
 
-export function renderNotFound(lang, cssHrefs) {
+export function renderNotFound(lang) {
   const t = STRINGS[lang] ?? STRINGS.vie
   const safeLang = STRINGS[lang] ? lang : 'vie'
 
@@ -458,7 +462,6 @@ export function renderNotFound(lang, cssHrefs) {
     // A 404 is already excluded from indexing by its status code; the tag makes
     // it explicit for anything that renders the body regardless.
     noindex: true,
-    cssHrefs,
     body: chrome(safeLang, inner, null),
   })
 }

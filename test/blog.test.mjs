@@ -274,12 +274,10 @@ function samplePost(overrides = {}) {
     }
 }
 
-const CSS = ['/assets/index-abc.css']
-
 test('the article body is in the raw HTML, not assembled by JavaScript', () => {
     // The single most important property of this whole system: the crawlers this
     // content targets do not run JS, so the words have to be in the bytes.
-    const html = renderPostPage(samplePost(), null, CSS)
+    const html = renderPostPage(samplePost(), null)
     assert.ok(html.includes('Đoạn thân bài nằm trong HTML thô.'))
     assert.ok(html.includes('Câu hỏi đầu tiên'))
     // No bundle, no hydration, no framework runtime.
@@ -287,7 +285,7 @@ test('the article body is in the raw HTML, not assembled by JavaScript', () => {
 })
 
 test('the excerpt precedes the table of contents and the body in the DOM', () => {
-    const html = renderPostPage(samplePost(), null, CSS)
+    const html = renderPostPage(samplePost(), null)
     const lede = html.indexOf('Một đoạn tóm tắt ngắn.')
     const toc = html.indexOf('blog-toc')
     const body = html.indexOf('Đoạn thân bài')
@@ -297,44 +295,43 @@ test('the excerpt precedes the table of contents and the body in the DOM', () =>
 })
 
 test('SEO fields override their fallbacks', () => {
-    const html = renderPostPage(samplePost(), null, CSS)
+    const html = renderPostPage(samplePost(), null)
     assert.match(html, /<title>SEO title<\/title>/)
     assert.match(html, /<meta name="description" content="SEO description for the meta tag\." \/>/)
 })
 
 test('title and description fall back when no SEO fields are set', () => {
-    const html = renderPostPage(samplePost({ seoTitle: '', seoDescription: '' }), null, CSS)
+    const html = renderPostPage(samplePost({ seoTitle: '', seoDescription: '' }), null)
     assert.match(html, /<title>Bài thử nghiệm<\/title>/)
     assert.match(html, /content="Một đoạn tóm tắt ngắn\."/)
 })
 
 test('canonical is self-referencing unless overridden', () => {
-    const plain = renderPostPage(samplePost(), null, CSS)
+    const plain = renderPostPage(samplePost(), null)
     assert.match(plain, /<link rel="canonical" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem" \/>/)
 
     const syndicated = renderPostPage(
         samplePost({ canonicalUrl: 'https://medium.com/@x/y' }),
         null,
-        CSS,
     )
     assert.match(syndicated, /<link rel="canonical" href="https:\/\/medium\.com\/@x\/y" \/>/)
 })
 
 test('hreflang appears only when the counterpart is actually published', () => {
-    const alone = renderPostPage(samplePost(), null, CSS)
+    const alone = renderPostPage(samplePost(), null)
     assert.ok(
         !alone.includes('rel="alternate" hreflang'),
         'an alternate pointing at a page that does not exist is worse than none',
     )
 
-    const paired = renderPostPage(samplePost(), { lang: 'en', slug: 'test-post' }, CSS)
+    const paired = renderPostPage(samplePost(), { lang: 'en', slug: 'test-post' })
     assert.match(paired, /hreflang="vi" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem"/)
     assert.match(paired, /hreflang="en" href="https:\/\/merid\.site\/blog\/en\/test-post"/)
     assert.match(paired, /hreflang="x-default" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem"/)
 })
 
 test('Article JSON-LD carries a Person author with sameAs links', () => {
-    const html = renderPostPage(samplePost(), null, CSS)
+    const html = renderPostPage(samplePost(), null)
     const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
         .map((m) => JSON.parse(m[1].replace(/\\u003c/g, '<')))
 
@@ -351,13 +348,12 @@ test('Article JSON-LD carries a Person author with sameAs links', () => {
 })
 
 test('FAQPage JSON-LD appears only when the post has FAQ entries', () => {
-    const without = renderPostPage(samplePost(), null, CSS)
+    const without = renderPostPage(samplePost(), null)
     assert.ok(!without.includes('FAQPage'))
 
     const withFaq = renderPostPage(
         samplePost({ faq: [{ question: 'Q?', answer: 'A.' }] }),
         null,
-        CSS,
     )
     const faq = [...withFaq.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
         .map((m) => JSON.parse(m[1].replace(/\\u003c/g, '<')))
@@ -368,31 +364,39 @@ test('FAQPage JSON-LD appears only when the post has FAQ entries', () => {
 })
 
 test('a title containing markup cannot break out of the JSON-LD block', () => {
-    const html = renderPostPage(samplePost({ title: 'A </script><script>alert(1)</script>' }), null, CSS)
+    const html = renderPostPage(samplePost({ title: 'A </script><script>alert(1)</script>' }), null)
     assert.ok(!html.includes('</script><script>alert(1)'), 'the title must not close the JSON-LD script')
     assert.ok(html.includes('\\u003c'), 'angle brackets in JSON-LD must be escaped')
 })
 
 test('the index lists posts and links them at the right URLs', () => {
-    const html = renderIndexPage('vie', [samplePost()], CSS)
+    const html = renderIndexPage('vie', [samplePost()])
     assert.ok(html.includes('href="/blog/vie/bai-thu-nghiem"'))
     assert.ok(html.includes('Bài thử nghiệm'))
     assert.match(html, /<link rel="canonical" href="https:\/\/merid\.site\/blog" \/>/)
 })
 
 test('an empty index renders a real empty state rather than a blank page', () => {
-    const html = renderIndexPage('en', [], CSS)
+    const html = renderIndexPage('en', [])
     assert.ok(html.includes('No posts yet'))
     assert.match(html, /<link rel="canonical" href="https:\/\/merid\.site\/blog\/en" \/>/)
 })
 
 test('the 404 page is marked noindex', () => {
-    const html = renderNotFound('vie', CSS)
+    const html = renderNotFound('vie')
     assert.match(html, /<meta name="robots" content="noindex, follow" \/>/)
 })
 
-test('every page links the SPA stylesheet and sets the right html lang', () => {
-    assert.ok(renderPostPage(samplePost(), null, CSS).includes('<link rel="stylesheet" href="/assets/index-abc.css" />'))
-    assert.match(renderPostPage(samplePost(), null, CSS), /<html lang="vi">/)
-    assert.match(renderPostPage(samplePost({ lang: 'en' }), null, CSS), /<html lang="en">/)
+test('every page links the stable stylesheet and sets the right html lang', () => {
+    // Stable rather than hashed: dist/ is not on the serverless function's
+    // filesystem, so a hashed name could never be looked up at request time.
+    for (const html of [
+        renderPostPage(samplePost(), null),
+        renderIndexPage('vie', [samplePost()]),
+        renderNotFound('vie'),
+    ]) {
+        assert.ok(html.includes('<link rel="stylesheet" href="/blog.css" />'), 'must link /blog.css')
+    }
+    assert.match(renderPostPage(samplePost(), null), /<html lang="vi">/)
+    assert.match(renderPostPage(samplePost({ lang: 'en' }), null), /<html lang="en">/)
 })

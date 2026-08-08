@@ -7,6 +7,11 @@ now having forgotten all of it.
 other time. There is no schedule, no cron job, and no automation anywhere in this
 system.
 
+**Every published post exists in both languages.** A topic is the unit that goes
+live: the Vietnamese post and the English one, together. Publish publishes both,
+Unpublish unpublishes both, and the database itself refuses a lone published
+post — not just the admin screen.
+
 | I want to… | Go to |
 |---|---|
 | Write and publish a post | [2. Posting](#2-posting-every-time) |
@@ -102,6 +107,17 @@ and broadcast events. Anything claiming otherwise is calling a dead URL.
 
 The whole loop, start to finish.
 
+### 2.0 The shape of the work
+
+You write **two posts per topic**, and they publish together. In practice:
+
+1. Write the Vietnamese post, **Save draft**.
+2. Write the English post, pick the same **Topic**, **Save draft**.
+3. **Publish both.**
+
+Neither can go live alone. Saving drafts one at a time is fine and expected —
+that is how you build up to a pair.
+
 ### 2.1 Open the admin
 
 [merid.site/admin/blog](https://merid.site/admin/blog) → **+ New post**.
@@ -133,17 +149,19 @@ answer to the question in your title.
 
 **Cover image** — see [section 3](#3-images).
 
+**Topic** — the field that pairs this post with its other-language version. On
+the first post of a pair, press **Start a new topic from the title**. On the
+second, choose the first from the dropdown. Until both exist, Publish stays
+disabled and says why.
+
 **Tags** — comma separated. They show on the card and become `keywords` in the
 structured data.
 
 **Content** — Markdown. See 2.5.
 
-**SEO and translation pairing** (collapsed) — SEO title and description default to
-the title and excerpt, so only fill them if you want something different.
-**Translation key** is worth understanding: put the *same* value on the Vietnamese
-and English versions of one topic and the two pages declare each other as
-translations, which stops Google treating them as duplicates. Leave it blank for a
-post that stands alone.
+**SEO** (collapsed) — SEO title and description default to the title and excerpt,
+so only fill them if you want something different. Canonical URL is for when the
+piece was published somewhere else first.
 
 ### 2.4 Writing the body
 
@@ -174,12 +192,13 @@ Come back to it any time from the admin list.
 
 ### 2.7 Publish
 
-**Publish.**
+**Publish both.** Only available once the topic has both languages.
 
-The post is live at `merid.site/blog/vie/your-slug` (or `/en/`) **immediately** —
-a brand-new URL was never cached, so there is nothing stale to wait for.
+Both posts are live immediately at `merid.site/blog/vie/your-slug` and
+`merid.site/blog/en/your-slug` — brand-new URLs were never cached, so there is
+nothing stale to wait for.
 
-Open it and check it on a phone.
+Open both and check them on a phone.
 
 ### 2.8 The one timing surprise
 
@@ -378,8 +397,9 @@ update instantly since nothing caches them.
 
 ### Unpublish
 
-Admin → **Unpublish**. The post returns to draft and its URL starts returning 404
-within about five minutes.
+Admin → **Unpublish both**. **Both languages** return to draft and both URLs start
+returning 404 within about five minutes. Taking down only one would leave a
+published post with no pair, which is the state the rule forbids.
 
 The publish date is remembered, so republishing later restores the original date
 rather than pretending the post is new.
@@ -433,6 +453,17 @@ is unreadable to anyone who is not an admin, including someone calling the
 database API directly, so the render function *cannot* serve a draft even if it
 tried. Verified by tests in `test/firestore-rules.test.mjs`.
 
+**What enforces pairing.** The same rules. Publishing writes both languages in one
+batch, and each document's rule checks — with `getAfter()`, which sees the end of
+the batch — that its counterpart also ends up published. Publishing one alone is
+refused by the database, so the invariant survives someone editing a document in
+the Firebase console.
+
+**Why there is a `/api/blog-health`.** A serverless function that dies while
+loading reports `FUNCTION_INVOCATION_FAILED` and nothing else. That endpoint
+imports nothing that can fail, so it can always answer with which part is broken.
+Safe to delete once the blog has been stable for a while.
+
 **No build step for content.** Writing a post does not deploy anything. The site
 only rebuilds when you change code.
 
@@ -453,8 +484,8 @@ only rebuilds when you change code.
 **Tests:**
 
 ```bash
-npm run test:api      # slugs, markdown, sanitising, rendering (55 tests)
-npm run test:rules    # security rules, needs the Firebase emulator (28 tests)
+npm run test:api      # slugs, markdown, sanitising, rendering (37 tests)
+npm run test:rules    # security rules, needs the Firebase emulator (37 tests)
 ```
 
 ---
@@ -512,7 +543,29 @@ The render function could not find the site's stylesheet, which happens if
 deliberately still render rather than erroring, so this shows up as ugly rather
 than broken.
 
+**The blog shows a Vercel error, or "This Serverless Function has crashed".**
+Load **[merid.site/api/blog-health](https://merid.site/api/blog-health)**. It
+reports which module failed to load, whether Firestore answers, and whether the
+stylesheet is deployed, in one page. That endpoint imports nothing that can fail,
+so it answers even when the blog itself cannot.
+
+**Publish is greyed out.**
+The topic only has one language. Hover it and it tells you which one is missing.
+Write the other version, give it the same **Topic**, save it, and Publish becomes
+available. Every published post needs both languages.
+
+**A topic is showing in red saying it breaks the pairing rule.**
+It was published before that rule existed, so it is live without a counterpart.
+Either write the missing language, or press **Unpublish both**. It will keep
+serving until you do one of those.
+
+**The blog renders but has no styling at all.**
+`dist/blog.css` did not make it into the deploy. It is produced by
+`scripts/copy-blog-css.mjs`, which runs as part of `npm run build`. Check the
+Vercel build log for the `copy-blog-css` line, and check
+`/api/blog-health` — it reports the stylesheet's HTTP status directly.
+
 **Everything is broken and I want to know if it is me.**
-Run `npm run test:api`. If those 55 tests pass, the rendering and slug logic are
+Run `npm run test:api`. If those tests pass, the rendering and slug logic are
 fine and the problem is configuration — almost always rules not deployed, or the
-admin document.
+admin document. Then load `/api/blog-health` for the deployed side.

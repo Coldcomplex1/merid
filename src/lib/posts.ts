@@ -17,6 +17,8 @@ import {
   orderBy,
   query,
   setDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore'
 import { firestoreDb } from './firebase'
 import { slugify, findFreeSlug, postId } from '../../api/_lib/slug.js'
@@ -50,8 +52,32 @@ export interface Post {
   updatedAt: string
   /** Links the vie/en versions of one topic, which is what drives hreflang. */
   translationKey?: string
+  /**
+   * The other language's slug for this topic.
+   *
+   * Redundant with translationKey from the application's point of view, but not
+   * from the database's: security rules can fetch a known document path and
+   * cannot run a query, so this is what lets them verify the pair is published
+   * too. Maintained automatically by savePost, never typed by hand.
+   */
+  counterpartSlug?: string
   faq?: FaqEntry[]
   canonicalUrl?: string
+}
+
+/** A topic: the vie and en versions of one piece of writing. */
+export interface Topic {
+  translationKey: string
+  vie: Post | null
+  en: Post | null
+}
+
+/** Why a topic cannot be published, or null when it can. */
+export function publishBlocker(topic: Topic): string | null {
+  if (!topic.translationKey) return 'This post has no topic, so it cannot be paired.'
+  if (!topic.vie) return 'Missing the Vietnamese version.'
+  if (!topic.en) return 'Missing the English version.'
+  return null
 }
 
 /** A blank post, so the editor never has to deal with undefined fields. */
@@ -159,6 +185,7 @@ function toDocument(post: Post): Record<string, unknown> {
   if (post.seoTitle.trim()) out.seoTitle = post.seoTitle.trim()
   if (post.seoDescription.trim()) out.seoDescription = post.seoDescription.trim()
   if (post.translationKey?.trim()) out.translationKey = post.translationKey.trim()
+  if (post.counterpartSlug?.trim()) out.counterpartSlug = post.counterpartSlug.trim()
   if (post.canonicalUrl?.trim()) out.canonicalUrl = post.canonicalUrl.trim()
   if (post.faq?.length) out.faq = post.faq
   if (post.publishedAt) out.publishedAt = post.publishedAt
@@ -185,27 +212,121 @@ export async function savePost(post: Post): Promise<string> {
   return id
 }
 
-/**
- * Publishes a post. `publishedAt` is stamped only the first time, so editing a
- * live post does not shuffle it back to the top of the listing.
- */
-export async function publishPost(post: Post): Promise<string> {
-  return savePost({
-    ...post,
-    status: 'published',
-    publishedAt: post.publishedAt || new Date().toISOString(),
+/** The other language's post for the same topic, or null. */
+export async function findCounterpart(post: Post): Promise<Post | null> {
+  if (!post.translationKey?.trim()) return null
+  const otherLang: PostLang = post.lang === 'vie' ? 'en' : 'vie'
+  const snap = await getDocs(
+    query(
+      postsCollection(),
+      where('translationKey', '==', post.translationKey.trim()),
+      where('lang', '==', otherLang),
+    ),
+  )
+  const found = snap.docs[0]
+  return found ? { ...(found.data() as Omit<Post, 'id'>), id: found.id } : null
+}
+
+/** Groups posts into topics, so the admin can reason about pairs rather than files. */
+export function groupIntoTopics(posts: Post[]): Topic[] {
+  const byKey = new Map<string, Topic>()
+
+  for (const post of posts) {
+    // A post with no topic still needs somewhere to live in the list, or it
+    // becomes invisible in the one screen meant to surface exactly that problem.
+    const key = post.translationKey?.trim() || `__unpaired__${post.id}`
+    const topic = byKey.get(key) ?? { translationKey: post.translationKey?.trim() ?? '', vie: null, en: null }
+    topic[post.lang] = post
+    byKey.set(key, topic)
+  }
+
+  return [...byKey.values()].sort((a, b) => {
+    const at = a.vie?.updatedAt ?? a.en?.updatedAt ?? ''
+    const bt = b.vie?.updatedAt ?? b.en?.updatedAt ?? ''
+    return bt.localeCompare(at)
   })
 }
 
 /**
- * Returns a post to draft.
+ * Publishes both languages of a topic, together, in one batch.
+ *
+ * Together is not a convenience. The rules verify with getAfter() that the
+ * counterpart ends the write published, so two separate writes would each be
+ * refused: at the moment of the first, the second is still a draft. Which is
+ * the point, since a lone published post is exactly what the pairing rule
+ * exists to prevent.
+ *
+ * `publishedAt` is stamped only the first time, so editing a live topic does not
+ * shuffle it back to the top of the listing.
+ */
+export async function publishTopic(topic: Topic): Promise<void> {
+  const blocker = publishBlocker(topic)
+  if (blocker) throw new Error(blocker)
+
+  const vie = topic.vie as Post
+  const en = topic.en as Post
+  const now = new Date().toISOString()
+  const batch = writeBatch(firestoreDb())
+
+  for (const [post, other] of [
+    [vie, en],
+    [en, vie],
+  ] as const) {
+    batch.set(
+      doc(postsCollection(), postId(post.lang, post.slug)),
+      toDocument({
+        ...post,
+        counterpartSlug: other.slug,
+        status: 'published',
+        publishedAt: post.publishedAt || now,
+      }),
+    )
+  }
+
+  await batch.commit()
+}
+
+/**
+ * Returns both languages of a topic to draft, together.
+ *
+ * Both, because taking down one language would leave the other published
+ * without a pair, which is the state the rule forbids. The rules would refuse
+ * the half-write anyway; doing it in one batch means the admin never has to
+ * discover that by failing.
  *
  * `publishedAt` is kept rather than cleared: republishing later should restore
- * the original date instead of pretending the post is new, and the rules only
- * require the field to exist while the status is published.
+ * the original date instead of pretending the post is new.
  */
-export async function unpublishPost(post: Post): Promise<string> {
-  return savePost({ ...post, status: 'draft' })
+export async function unpublishTopic(topic: Topic): Promise<void> {
+  const batch = writeBatch(firestoreDb())
+
+  for (const post of [topic.vie, topic.en]) {
+    if (!post) continue
+    batch.set(doc(postsCollection(), postId(post.lang, post.slug)), toDocument({ ...post, status: 'draft' }))
+  }
+
+  await batch.commit()
+}
+
+/** Saves one post as a draft, linking it to its counterpart if one exists. */
+export async function saveDraft(post: Post): Promise<string> {
+  const counterpart = await findCounterpart(post)
+
+  if (!counterpart) return savePost({ ...post, status: 'draft' })
+
+  // Writing both sides links the pair from whichever end was saved second, so
+  // counterpartSlug can never be set on only one of them.
+  const batch = writeBatch(firestoreDb())
+  batch.set(
+    doc(postsCollection(), postId(post.lang, post.slug)),
+    toDocument({ ...post, status: 'draft', counterpartSlug: counterpart.slug }),
+  )
+  batch.set(
+    doc(postsCollection(), postId(counterpart.lang, counterpart.slug)),
+    toDocument({ ...counterpart, counterpartSlug: post.slug }),
+  )
+  await batch.commit()
+  return postId(post.lang, post.slug)
 }
 
 export async function deletePost(id: string): Promise<void> {

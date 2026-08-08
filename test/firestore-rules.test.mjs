@@ -346,6 +346,19 @@ function postPayload(extra = {}) {
   }
 }
 
+/** A post that satisfies the pairing rule: has a topic and names its partner. */
+function pairedPayload(lang, slug, partnerSlug, extra = {}) {
+  return postPayload({
+    lang,
+    slug,
+    translationKey: 'chu-de',
+    counterpartSlug: partnerSlug,
+    ...extra,
+  })
+}
+
+const PUBLISHED = { status: 'published', publishedAt: new Date().toISOString() }
+
 /** Seeds documents with rules bypassed, so a test can start from a given state. */
 async function seed(fn) {
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -420,15 +433,26 @@ test('a signed-in non-admin cannot create, edit, publish or delete', async () =>
 test('an admin can run the whole lifecycle', async () => {
   await env.clearFirestore()
   await makeAdmin()
-  const ref = doc(db(ADMIN), 'posts', 'vie__bai-viet')
+  const client = db(ADMIN)
+  const vieRef = doc(client, 'posts', 'vie__bai-viet')
+  const enRef = doc(client, 'posts', 'en__the-post')
 
-  await assertSucceeds(setDoc(ref, postPayload()))
-  await assertSucceeds(setDoc(ref, postPayload({ title: 'Đã sửa' })))
-  await assertSucceeds(setDoc(ref, postPayload({
-    status: 'published', publishedAt: new Date().toISOString(),
-  })))
-  await assertSucceeds(setDoc(ref, postPayload()))            // unpublish
-  await assertSucceeds(deleteDoc(ref))
+  await assertSucceeds(setDoc(vieRef, pairedPayload('vie', 'bai-viet', 'the-post')))
+  await assertSucceeds(setDoc(enRef, pairedPayload('en', 'the-post', 'bai-viet')))
+  await assertSucceeds(setDoc(vieRef, pairedPayload('vie', 'bai-viet', 'the-post', { title: 'Đã sửa' })))
+
+  // Publishing is a pair operation, so it is one batch.
+  const publish = writeBatch(client)
+  publish.set(vieRef, pairedPayload('vie', 'bai-viet', 'the-post', PUBLISHED))
+  publish.set(enRef, pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED))
+  await assertSucceeds(publish.commit())
+
+  const unpublish = writeBatch(client)
+  unpublish.set(vieRef, pairedPayload('vie', 'bai-viet', 'the-post'))
+  unpublish.set(enRef, pairedPayload('en', 'the-post', 'bai-viet'))
+  await assertSucceeds(unpublish.commit())
+
+  await assertSucceeds(deleteDoc(vieRef))
 })
 
 test('the document id must match the post it contains', async () => {
@@ -465,7 +489,7 @@ test('post shape is enforced at the DB boundary', async () => {
     postPayload({ excerpt: 'x'.repeat(401) }),          // oversized excerpt
     postPayload({ tags: Array(13).fill('t') }),         // too many tags
     postPayload({ views: 10 }),                         // unknown field
-    postPayload({ status: 'published' }),               // published with no publishedAt
+    pairedPayload('vie', 'bai-viet', 'the-post', { status: 'published' }), // published, no publishedAt
     { slug: 'bai-viet', lang: 'vie', title: 'x' },      // missing required fields
   ]
   let i = 0
@@ -496,4 +520,155 @@ test('a user can check their own admin status but cannot enumerate admins', asyn
   // But cannot read someone else's, or list the collection.
   await assertFails(getDoc(doc(db(ALICE), 'admins', ADMIN)))
   await assertFails(getDocs(collection(db(ALICE), 'admins')))
+})
+
+// ---------------------------------------------------------------------------
+// The pairing rule: every published post exists in both languages
+//
+// Enforced in the rules rather than only in the admin, because a rule the UI
+// merely encourages stops being true the first time anyone edits a document in
+// the Firebase console.
+// ---------------------------------------------------------------------------
+
+test('publishing one language on its own is refused', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const client = db(ADMIN)
+
+  // Both drafts exist and are correctly paired...
+  await assertSucceeds(setDoc(doc(client, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post')))
+  await assertSucceeds(setDoc(doc(client, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet')))
+
+  // ...but publishing just one leaves a live post whose pair is a draft.
+  await assertFails(
+    setDoc(doc(client, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post', PUBLISHED)),
+  )
+  await assertFails(
+    setDoc(doc(client, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED)),
+  )
+})
+
+test('publishing both in one batch succeeds', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const client = db(ADMIN)
+
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post'))
+    await setDoc(doc(raw, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet'))
+  })
+
+  // getAfter() sees the end state of the batch, so both being published at once
+  // satisfies each document's check. This is the only way to go live.
+  const batch = writeBatch(client)
+  batch.set(doc(client, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post', PUBLISHED))
+  batch.set(doc(client, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED))
+  await assertSucceeds(batch.commit())
+})
+
+test('publishing with a counterpart that does not exist is refused', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  await assertFails(
+    setDoc(
+      doc(db(ADMIN), 'posts', 'vie__bai-viet'),
+      pairedPayload('vie', 'bai-viet', 'nonexistent', PUBLISHED),
+    ),
+  )
+})
+
+test('a published post cannot be created without pairing fields', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const client = db(ADMIN)
+
+  // No translationKey at all.
+  await assertFails(setDoc(doc(client, 'posts', 'vie__bai-viet'), postPayload(PUBLISHED)))
+  // A topic but no named counterpart, so the rules cannot verify the pair.
+  await assertFails(
+    setDoc(doc(client, 'posts', 'vie__bai-viet'), postPayload({ translationKey: 'chu-de', ...PUBLISHED })),
+  )
+  // Empty topic string is not a topic.
+  await assertFails(
+    setDoc(
+      doc(client, 'posts', 'vie__bai-viet'),
+      postPayload({ translationKey: '', counterpartSlug: 'x', ...PUBLISHED }),
+    ),
+  )
+})
+
+test('drafts do not need a pair, so writing one language first works', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  // Otherwise there would be no way to start: the first half of a pair could
+  // never be saved, because its partner does not exist yet.
+  await assertSucceeds(setDoc(doc(db(ADMIN), 'posts', 'vie__bai-viet'), postPayload()))
+})
+
+test('a legacy published post with no pair can still be unpublished and deleted', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+
+  // Exactly the state of the post that was published before this rule existed.
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__te'), postPayload({ slug: 'te', ...PUBLISHED }))
+  })
+
+  const ref = doc(db(ADMIN), 'posts', 'vie__te')
+
+  // The carve-out that matters: pairing fields are required only while
+  // published. Without it this document would fail every write and be stuck
+  // live forever, which is worse than the state the rule set out to prevent.
+  await assertSucceeds(setDoc(ref, postPayload({ slug: 'te' })))
+  await assertSucceeds(deleteDoc(ref))
+})
+
+test('a legacy published post cannot be edited while staying published', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__te'), postPayload({ slug: 'te', ...PUBLISHED }))
+  })
+
+  // Editing it in place while leaving it live would perpetuate the violation.
+  await assertFails(
+    setDoc(doc(db(ADMIN), 'posts', 'vie__te'), postPayload({ slug: 'te', title: 'Edited', ...PUBLISHED })),
+  )
+})
+
+test('unpublishing both in one batch succeeds', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const client = db(ADMIN)
+
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post', PUBLISHED))
+    await setDoc(doc(raw, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED))
+  })
+
+  const batch = writeBatch(client)
+  batch.set(doc(client, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post'))
+  batch.set(doc(client, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet'))
+  await assertSucceeds(batch.commit())
+})
+
+test('unpublishing one half is allowed, and the other half is then unpublishable', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const client = db(ADMIN)
+
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post', PUBLISHED))
+    await setDoc(doc(raw, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED))
+  })
+
+  // Going to draft never needs a pair, so this is permitted at the database
+  // level; the admin does both together so it cannot happen by accident.
+  await assertSucceeds(
+    setDoc(doc(client, 'posts', 'vie__bai-viet'), pairedPayload('vie', 'bai-viet', 'the-post')),
+  )
+  // And the survivor can no longer be re-saved as published on its own.
+  await assertFails(
+    setDoc(doc(client, 'posts', 'en__the-post'), pairedPayload('en', 'the-post', 'bai-viet', PUBLISHED)),
+  )
 })

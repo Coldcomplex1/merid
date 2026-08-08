@@ -1,22 +1,15 @@
 {
   "redirects": [
-    {
-      "source": "/en/blog",
-      "destination": "/blog/en",
-      "permanent": true
-    },
-    {
-      "source": "/en/blog/:slug",
-      "destination": "/blog/en/:slug",
-      "permanent": true
-    }
+    { "source": "/en/blog", "destination": "/blog/en", "permanent": true },
+    { "source": "/en/blog/:slug", "destination": "/blog/en/:slug", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/blog", "destination": "/api/blog-render" },
-    { "source": "/blog/:lang", "destination": "/api/blog-render" },
-    { "source": "/blog/:lang/:slug", "destination": "/api/blog-render" },
-    { "source": "/sitemap.xml", "destination": "/api/blog-render" },
-    { "source": "/llms.txt", "destination": "/api/blog-render" },
+    { "source": "/blog", "destination": "/api/blog-render?route=index&lang=vie" },
+    { "source": "/blog/vie", "destination": "/api/blog-render?route=redirect" },
+    { "source": "/blog/:lang", "destination": "/api/blog-render?route=index&lang=:lang" },
+    { "source": "/blog/:lang/:slug", "destination": "/api/blog-render?route=post&lang=:lang&slug=:slug" },
+    { "source": "/sitemap.xml", "destination": "/api/blog-render?route=sitemap" },
+    { "source": "/llms.txt", "destination": "/api/blog-render?route=llms" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -238,16 +238,40 @@ service cloud.firestore {
     // than returning drafts.
     match /posts/{postId} {
       allow get, list: if resource.data.status == 'published' || isBlogAdmin();
-      allow create: if isBlogAdmin() && validPost() && postIdMatchesPayload(postId);
+      allow create: if isBlogAdmin() && validPost() && postIdMatchesPayload(postId)
+                    && pairIsPublishedToo();
       allow update: if isBlogAdmin() && validPost() && postIdMatchesPayload(postId)
                     && request.resource.data.slug == resource.data.slug
-                    && request.resource.data.lang == resource.data.lang;
+                    && request.resource.data.lang == resource.data.lang
+                    && pairIsPublishedToo();
       allow delete: if isBlogAdmin();
 
       // The id encodes lang and slug, so a mismatched payload would make the
       // document unreachable at its own URL. Checked here so it cannot happen.
       function postIdMatchesPayload(id) {
         return id == request.resource.data.lang + '__' + request.resource.data.slug;
+      }
+
+      // Every published post must exist in both languages.
+      //
+      // Enforced here rather than only in the admin, because a rule the UI
+      // merely encourages is a rule that stops being true the first time
+      // anyone edits a document in the Firebase console.
+      //
+      // getAfter() is what makes this workable: it sees the state at the end of
+      // the batch, so publishing both languages in one writeBatch passes, while
+      // publishing one on its own is refused. The counterpart's document path
+      // has to be computable, which is why counterpartSlug is stored - rules
+      // can fetch a known path but cannot run a query, and the two languages
+      // deliberately have different slugs.
+      function pairIsPublishedToo() {
+        return request.resource.data.status != 'published'
+          || getAfter(/databases/$(database)/documents/posts/$(pairId())).data.status == 'published';
+      }
+
+      function pairId() {
+        return (request.resource.data.lang == 'vie' ? 'en' : 'vie')
+          + '__' + request.resource.data.counterpartSlug;
       }
 
       // Shape check at the database boundary, so a bug in the editor cannot
@@ -260,7 +284,8 @@ service cloud.firestore {
                                'author', 'tags', 'coverImage', 'coverAlt',
                                'seoTitle', 'seoDescription', 'status',
                                'publishedAt', 'createdAt', 'updatedAt',
-                               'translationKey', 'faq', 'canonicalUrl'])
+                               'translationKey', 'counterpartSlug', 'faq',
+                               'canonicalUrl'])
           && d.lang in ['vie', 'en']
           && d.status in ['draft', 'published']
           && d.slug is string && d.slug.size() >= 1 && d.slug.size() <= 120
@@ -273,7 +298,19 @@ service cloud.firestore {
           && (!('faq' in d) || (d.faq is list && d.faq.size() <= 20))
           // A published post must carry the date the renderer sorts and
           // <time>-stamps it by, so "published with no date" is unrepresentable.
-          && (d.status != 'published' || 'publishedAt' in d);
+          && (d.status != 'published' || 'publishedAt' in d)
+          // Pairing fields are required only while published, deliberately.
+          //
+          // Requiring them always would strand any pre-existing published post
+          // that has no pair: it could never be edited and never be dragged
+          // back to draft, because every write would fail validation. A rule
+          // that makes a document permanently stuck is worse than the state it
+          // was trying to prevent, so unpublishing is always allowed.
+          && (d.status != 'published' || (
+                'translationKey' in d && d.translationKey is string && d.translationKey.size() > 0
+                && 'counterpartSlug' in d && d.counterpartSlug is string
+                && d.counterpartSlug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+             ));
       }
     }
 

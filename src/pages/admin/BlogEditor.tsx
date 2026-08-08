@@ -12,12 +12,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   emptyPost,
+  findCounterpart,
   getPost,
-  publishPost,
-  savePost,
+  listAllPosts,
+  publishTopic,
+  saveDraft,
   slugify,
   suggestSlug,
-  unpublishPost,
+  unpublishTopic,
   type Post,
   type PostLang,
 } from '../../lib/posts'
@@ -61,6 +63,10 @@ export default function BlogEditor() {
   const [slugTouched, setSlugTouched] = useState(Boolean(id))
   const [pasteText, setPasteText] = useState('')
   const [pasteNotes, setPasteNotes] = useState<string[]>([])
+  /** The other language's post for this topic, when one exists. */
+  const [counterpart, setCounterpart] = useState<Post | null>(null)
+  /** Posts in the other language that have no partner yet, for the Topic picker. */
+  const [pairable, setPairable] = useState<Post[]>([])
 
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -93,6 +99,43 @@ export default function BlogEditor() {
     setStatus('')
   }, [])
 
+  const refreshCounterpart = useCallback(async (current: Post) => {
+    setCounterpart(await findCounterpart(current).catch(() => null))
+  }, [])
+
+  // Which existing posts this one could pair with: the other language, and not
+  // already spoken for. Loaded once, because the list only changes when you
+  // create a post, and you are not doing that from inside this screen.
+  useEffect(() => {
+    let active = true
+    listAllPosts()
+      .then((all) => {
+        if (!active) return
+        const keysWithBoth = new Set(
+          all
+            .filter((p) => p.translationKey)
+            .map((p) => p.translationKey)
+            .filter((key) => {
+              const group = all.filter((p) => p.translationKey === key)
+              return group.some((p) => p.lang === 'vie') && group.some((p) => p.lang === 'en')
+            }),
+        )
+        setPairable(all.filter((p) => !p.translationKey || !keysWithBoth.has(p.translationKey)))
+      })
+      .catch(() => setPairable([]))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!post.translationKey || !post.slug) {
+      setCounterpart(null)
+      return
+    }
+    void refreshCounterpart(post)
+  }, [post.translationKey, post.lang, post.slug, refreshCounterpart])
+
   // On a new post the slug tracks the title until the author edits it by hand.
   // On an existing post it never moves: the slug is the post's address, and
   // changing it silently would break every link that already points at it.
@@ -111,12 +154,26 @@ export default function BlogEditor() {
     return ''
   }
 
-  async function run(action: (post: Post) => Promise<unknown>, done: string) {
+  /** Saves, then runs an optional follow-up (publish/unpublish) on the pair. */
+  async function run(
+    after: ((saved: Post) => Promise<unknown>) | null,
+    done: string,
+    { requirePair = false } = {},
+  ) {
     const problem = validate()
     if (problem) {
       setError(problem)
       return
     }
+    if (requirePair && !counterpart) {
+      setError(
+        'Every published post needs both languages. Write the ' +
+          (post.lang === 'vie' ? 'English' : 'Vietnamese') +
+          ' version with the same topic first, then publish from the admin list.',
+      )
+      return
+    }
+
     setBusy(true)
     setError('')
     try {
@@ -130,9 +187,13 @@ export default function BlogEditor() {
           setPost(next)
         }
       }
-      await action(next)
+
+      await saveDraft(next)
+      if (after) await after(next)
+
       setStatus(done)
       if (isNew) navigate(`/admin/blog/${next.lang}__${next.slug}/edit`, { replace: true })
+      else await refreshCounterpart(next)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'That did not save.')
     } finally {
@@ -348,6 +409,63 @@ export default function BlogEditor() {
           </div>
         </div>
 
+        {/* Pairing, surfaced as a first-class field rather than buried in the
+            SEO section, because a post cannot publish without it. */}
+        <div
+          className={`rounded-xl border p-4 ${
+            counterpart ? 'border-line' : 'border-gold-500/50 bg-gold-200/15'
+          }`}
+        >
+          <label className={LABEL} htmlFor="topic">
+            Topic
+          </label>
+          <p className={HINT}>
+            Every published post needs a Vietnamese and an English version. The topic is what links
+            them.
+          </p>
+
+          <select
+            id="topic"
+            className={INPUT}
+            value={post.translationKey ?? ''}
+            onChange={(e) => set('translationKey', e.target.value)}
+          >
+            <option value="">— pick or start a topic —</option>
+            {post.translationKey &&
+            !pairable.some((p) => p.translationKey === post.translationKey) ? (
+              <option value={post.translationKey}>{post.translationKey}</option>
+            ) : null}
+            {pairable
+              .filter((p) => p.lang !== post.lang && p.translationKey)
+              .map((p) => (
+                <option key={p.id} value={p.translationKey}>
+                  Pair with {p.lang}: {p.title}
+                </option>
+              ))}
+          </select>
+
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={!post.title.trim()}
+              onClick={() => set('translationKey', slugify(post.title))}
+              className="rounded-full border border-line-strong px-3 py-1 text-xs font-bold text-heading transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
+            >
+              Start a new topic from the title
+            </button>
+            {counterpart ? (
+              <span className="text-xs font-semibold text-heading">
+                Paired with {counterpart.lang}: {counterpart.title}
+              </span>
+            ) : (
+              <span className="text-xs text-muted">
+                No {post.lang === 'vie' ? 'English' : 'Vietnamese'} version yet, so this cannot
+                publish.
+              </span>
+            )}
+          </div>
+        </div>
+
         <div>
           <label className={LABEL} htmlFor="excerpt">
             Excerpt
@@ -538,23 +656,6 @@ export default function BlogEditor() {
             </div>
 
             <div>
-              <label className={LABEL} htmlFor="translationKey">
-                Translation key
-              </label>
-              <input
-                id="translationKey"
-                className={INPUT}
-                value={post.translationKey ?? ''}
-                onChange={(e) => set('translationKey', e.target.value)}
-                placeholder="toucan-vietnamese-support"
-              />
-              <p className={HINT}>
-                Put the same value on the Vietnamese and English versions of one topic and they
-                link to each other with hreflang. Leave blank if this post stands alone.
-              </p>
-            </div>
-
-            <div>
               <label className={LABEL} htmlFor="canonicalUrl">
                 Canonical URL
               </label>
@@ -570,11 +671,11 @@ export default function BlogEditor() {
         </details>
       </div>
 
-      <div className="sticky bottom-0 mt-10 flex flex-wrap gap-3 border-t border-line bg-canvas/95 py-4 backdrop-blur">
+      <div className="sticky bottom-0 mt-10 flex flex-wrap items-center gap-3 border-t border-line bg-canvas/95 py-4 backdrop-blur">
         <button
           type="button"
           disabled={busy || uploading !== ''}
-          onClick={() => run((p: Post) => savePost({ ...p, status: 'draft' }), 'Draft saved.')}
+          onClick={() => run(null, 'Draft saved.')}
           className="rounded-full border border-line-strong px-5 py-2.5 font-bold text-heading transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
         >
           Save draft
@@ -592,28 +693,50 @@ export default function BlogEditor() {
           <button
             type="button"
             disabled={busy || uploading !== ''}
-            onClick={() => run((p: Post) => unpublishPost(p), 'Unpublished. The URL now returns 404.')}
+            onClick={() =>
+              run(
+                async (saved) => unpublishTopic({
+                  translationKey: saved.translationKey ?? '',
+                  vie: saved.lang === 'vie' ? saved : counterpart,
+                  en: saved.lang === 'en' ? saved : counterpart,
+                }),
+                'Unpublished. Both languages are drafts again and the URLs now 404.',
+              )
+            }
             className="rounded-full border border-line-strong px-5 py-2.5 font-bold text-heading transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
           >
-            Unpublish
+            Unpublish both
           </button>
         ) : null}
 
         <button
           type="button"
-          disabled={busy || uploading !== ''}
+          disabled={busy || uploading !== '' || !counterpart}
+          title={counterpart ? undefined : 'Both languages must exist before a topic can publish.'}
           onClick={() =>
             run(
-              (p: Post) => publishPost(p),
+              async (saved) => publishTopic({
+                translationKey: saved.translationKey ?? '',
+                vie: saved.lang === 'vie' ? saved : counterpart,
+                en: saved.lang === 'en' ? saved : counterpart,
+              }),
               post.status === 'published'
                 ? 'Saved. Changes to a live post can take up to five minutes to appear.'
-                : 'Published. It is live at its URL now.',
+                : 'Published, both languages. They are live at their URLs now.',
+              { requirePair: true },
             )
           }
-          className="rounded-full bg-gold-400 px-6 py-2.5 font-bold text-navy-900 transition-colors hover:bg-gold-300 disabled:opacity-50"
+          className="rounded-full bg-gold-400 px-6 py-2.5 font-bold text-navy-900 transition-colors hover:bg-gold-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {post.status === 'published' ? 'Save changes' : 'Publish'}
+          {post.status === 'published' ? 'Save changes' : 'Publish both'}
         </button>
+
+        {!counterpart ? (
+          <span className="text-sm text-muted">
+            Needs a {post.lang === 'vie' ? 'Vietnamese and English' : 'Vietnamese'} pair before it
+            can go live.
+          </span>
+        ) : null}
       </div>
     </div>
   )
