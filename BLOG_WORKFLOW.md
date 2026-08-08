@@ -50,13 +50,21 @@ That document's existence *is* your admin access. There is no UID anywhere in th
 code, which means granting or revoking access is this one action and never a
 deploy.
 
-**Check it worked:** go to [merid.site/admin/blog](https://merid.site/admin/blog).
-You should see the admin screen with an empty post list.
+**This document does nothing on its own.** Until you finish 1.4, no rule permits
+anyone to read it, so the admin still refuses you. Creating the document and
+deploying the rules are two halves of one step — do both, then check.
 
-**If instead you see "Not an admin account":** the document ID does not match your
-UID. The most common cause is a stray space when pasting, or letting Firebase
-auto-generate the ID. The error screen prints the UID it expected, so compare it
-against what you created.
+**Check it worked** *(after 1.4, not before)*: go to
+[merid.site/admin/blog](https://merid.site/admin/blog). You should see the admin
+screen with an empty post list.
+
+The screen names its own cause when it refuses:
+
+| What it says | What is wrong | Fix |
+|---|---|---|
+| **The security rules are not deployed** | Firestore will not answer the admin question at all. Your document is probably fine. | Do 1.4. |
+| **Not an admin account** | Firestore answered: no document for this UID. The ID does not match — usually a stray space from pasting, or a Firebase auto-generated ID. | Recreate it with the exact UID the screen prints. |
+| **Could not reach Firestore** | The check never completed. Not a verdict about your account. | Check the connection or a blocking extension, then reload. |
 
 ### 1.3 Turn on Storage (for image uploads)
 
@@ -462,9 +470,17 @@ npm run test:rules    # security rules, needs the Firebase emulator (28 tests)
 ## 8. Troubleshooting
 
 **"Not an admin account" when I open the admin.**
-The `admins/<uid>` document does not exist or its ID does not match your UID. The
-error screen shows the UID it expected — compare it against the document ID in
-Firestore. A trailing space from pasting is the usual culprit. See 1.2.
+Firestore answered the question, and there is no `admins/<uid>` document for this
+account — so the document ID does not match your UID. The error screen shows the
+UID it expected; compare it against the document ID in Firestore. A trailing
+space from pasting is the usual culprit. See 1.2.
+
+**"The security rules are not deployed" when I open the admin.**
+Exactly what it says, and the usual reason a freshly created `admins` document
+appears to do nothing. Firestore is refusing to let you read even your own admin
+document, which only the default-deny does, so the rules in `firestore.rules`
+were never uploaded. Run `firebase deploy --only firestore:rules,storage` (see
+1.4) and reload. Do not touch the `admins` document — it is not the problem.
 
 **I published but the post is not on /blog.**
 Wait a minute and refresh; the listing caches for 60 seconds. If it is still
