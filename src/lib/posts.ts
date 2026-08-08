@@ -8,6 +8,7 @@
 // Reads on the public site do not come through here at all - they go through
 // api/blog-render.js, which fetches over REST and renders HTML so crawlers that
 // do not run JavaScript can still see the words.
+import { FirebaseError } from 'firebase/app'
 import {
   collection,
   deleteDoc,
@@ -107,24 +108,43 @@ function postsCollection() {
 }
 
 /**
- * Whether this user may manage the blog.
+ * Why the admin screen is or is not available to this user.
+ *
+ * `rules-not-deployed` exists because the two ways of failing need different
+ * fixes and used to be indistinguishable. Collapsing them into `false` sent
+ * people to re-check a document ID that was correct all along.
+ */
+export type AdminStatus = 'admin' | 'not-admin' | 'rules-not-deployed' | 'unreachable'
+
+/**
+ * Whether this user may manage the blog, and if not, why not.
  *
  * Admin rights are the existence of an `admins/{uid}` document, created by hand
  * in the Firebase console. That keeps every UID out of the repository and makes
  * granting or revoking access one console action rather than a deploy.
  *
- * This read is only what decides whether to *render* the admin. A user who
- * forces their way to the route still cannot write anything, because the same
- * check runs inside the security rules.
+ * A user reading *their own* admins document is allowed by the rules whether or
+ * not that document exists (firestore.rules: `allow get: if request.auth.uid ==
+ * uid`, asserted in test/firestore-rules.test.mjs). So a missing grant comes
+ * back as a successful read of a missing document, never as a denial - which
+ * makes `permission-denied` here mean the rules being consulted are not the ones
+ * in this repo. On a fresh project that means they were never uploaded, and the
+ * bottom-of-file default-deny is answering instead.
+ *
+ * This read only decides what to *render*. A user who forces their way to the
+ * route still cannot write anything, because the same check runs in the rules.
  */
-export async function checkIsAdmin(uid: string): Promise<boolean> {
+export async function checkIsAdmin(uid: string): Promise<AdminStatus> {
   try {
     const snap = await getDoc(doc(firestoreDb(), 'admins', uid))
-    return snap.exists()
-  } catch {
-    // Rules deny reads of other people's admin docs, which surfaces as an
-    // exception rather than an empty result. Not an admin either way.
-    return false
+    return snap.exists() ? 'admin' : 'not-admin'
+  } catch (err) {
+    if (err instanceof FirebaseError && err.code === 'permission-denied') {
+      return 'rules-not-deployed'
+    }
+    // Offline, blocked by an extension, project misconfigured: unknown, but
+    // emphatically not an answer about who this user is.
+    return 'unreachable'
   }
 }
 

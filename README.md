@@ -45,7 +45,7 @@ src/
       PanelShowcase.tsx  HowItWorks.tsx  Benefits.tsx  Faq.tsx  FinalCta.tsx  Footer.tsx
   pages/admin/               # private blog CMS (list + editor), see BLOG_WORKFLOW.md
   lib/posts.ts               # blog post CRUD against Firestore
-  lib/blogImages.ts          # image upload to Firebase Storage
+  lib/blogImages.ts          # image upload, signed server-side (see api/blog-upload-signature.js)
 api/
   blog-render.js             # serves every public /blog URL as finished HTML
   _lib/blog-html.js          # post -> full HTML page (meta, JSON-LD, hreflang)

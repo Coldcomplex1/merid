@@ -10,6 +10,10 @@ import crypto from 'node:crypto';
 import { todayKey, secondsUntilReset } from '../api/_lib/quota.js';
 import { _internal as gem } from '../api/_lib/gemini.js';
 import { verifyIdToken } from '../api/_lib/verify.js';
+import { signUploadParams, uploadTarget, signatureAlgorithm } from '../api/_lib/cloudinary.js';
+import { slugify } from '../api/_lib/slug.js';
+import { readJsonBody } from '../api/_lib/http.js';
+import { EventEmitter } from 'node:events';
 
 // ---------------------------------------------------------------------------
 // Model ranking
@@ -206,4 +210,288 @@ test('a token with no subject is rejected', async () => {
     await assert.rejects(
         () => verifyIdToken(makeToken({ sub: '' }), PROJECT),
         (e) => e.code === 'no-subject');
+});
+
+// ---------------------------------------------------------------------------
+// Cloudinary upload signatures
+//
+// The signature is the whole security boundary for image upload: it is what
+// lets the api_secret stay on the server while the browser still uploads
+// directly. Getting the string-to-sign wrong fails closed (Cloudinary rejects
+// it), but getting the *scope* wrong fails open, so the destination parameters
+// are pinned here too.
+// ---------------------------------------------------------------------------
+
+test("the signature matches Cloudinary's own documented example", () => {
+    // From cloudinary.com/documentation/authentication_signatures: signing
+    // "public_id=sample_image&timestamp=1315060510" with the secret "abcd".
+    // A golden vector from the vendor beats any amount of self-consistent
+    // testing, because it catches a wrong algorithm rather than a wrong call.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd'),
+        'b4ad47fb4e25c7bf5f92a20089f9db59bc302313');
+});
+
+test('parameters Cloudinary never signs are excluded, and order does not matter', () => {
+    const expected = 'b4ad47fb4e25c7bf5f92a20089f9db59bc302313';
+
+    // Same two signed parameters, declared last, surrounded by the four
+    // Cloudinary leaves out of the string-to-sign.
+    assert.equal(
+        signUploadParams({
+            file: 'blob:whatever',
+            cloud_name: 'merid',
+            resource_type: 'image',
+            api_key: '123456789',
+            timestamp: 1315060510,
+            public_id: 'sample_image',
+        }, 'abcd'),
+        expected);
+});
+
+test('empty values are dropped rather than signed as an empty pair', () => {
+    // Cloudinary omits absent parameters from its own string-to-sign, so
+    // signing "folder=" here would produce a signature the server disagrees
+    // with - and an upload button that always fails.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510, folder: '' }, 'abcd'),
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd'));
+});
+
+test('a different secret produces a different signature', () => {
+    assert.notEqual(
+        signUploadParams({ public_id: 'x', timestamp: 1 }, 'abcd'),
+        signUploadParams({ public_id: 'x', timestamp: 1 }, 'abce'));
+});
+
+test('signing without a secret throws instead of producing a usable signature', () => {
+    // A missing env var must not degrade into a signature computed against the
+    // empty string, which would be a valid-looking value that never works.
+    assert.throws(() => signUploadParams({ timestamp: 1 }, ''), /missing-api-secret/);
+    assert.throws(() => signUploadParams({ timestamp: 1 }, undefined), /missing-api-secret/);
+});
+
+test('the upload destination is derived server-side, not taken from the caller', () => {
+    const now = Date.UTC(2026, 7, 8);
+
+    // A caller trying to escape the blog folder gets slugified, not obeyed:
+    // the traversal collapses into an ordinary name.
+    const escape = uploadTarget('../../../etc/passwd.png', slugify, now);
+    assert.equal(escape.folder, 'blog/2026');
+    assert.ok(!escape.publicId.includes('/'), 'public_id must not contain a path separator');
+    assert.ok(!escape.publicId.includes('..'), 'public_id must not contain a traversal');
+
+    // A name that slugifies to nothing still yields a usable id.
+    assert.match(uploadTarget('???.png', slugify, now).publicId, /^image-/);
+    assert.match(uploadTarget('', slugify, now).publicId, /^image-/);
+
+    // The year comes from the clock, so January uploads do not land in last
+    // year's folder.
+    assert.equal(uploadTarget('a.png', slugify, Date.UTC(2027, 0, 1)).folder, 'blog/2027');
+});
+
+test('re-uploading the same filename never reuses the same public_id', () => {
+    // Cached URLs are immutable by design: the same name at a later moment must
+    // become a new asset, or a corrected image silently serves the old bytes.
+    const first = uploadTarget('cover.png', slugify, 1_000_000);
+    const second = uploadTarget('cover.png', slugify, 2_000_000);
+    assert.notEqual(first.publicId, second.publicId);
+    assert.match(first.publicId, /^cover-/);
+});
+
+test('the signature hash follows the account, and defaults to Cloudinary\'s own default', () => {
+    // SHA-1 is what a standard account expects. Defaulting to SHA-256 would be
+    // the stronger-sounding choice and would break every upload until the
+    // account owner asked Cloudinary to switch.
+    assert.equal(signatureAlgorithm({}), 'sha1');
+    assert.equal(signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'sha256' }), 'sha256');
+    assert.equal(signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'SHA256' }), 'sha256');
+
+    // The default still reproduces the vendor's documented vector.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd',
+            signatureAlgorithm({})),
+        'b4ad47fb4e25c7bf5f92a20089f9db59bc302313');
+});
+
+test('an unrecognised hash is refused rather than silently downgraded', () => {
+    // Falling back to sha1 on a typo would produce signatures Cloudinary
+    // rejects, with nothing pointing at the misspelt variable as the cause.
+    assert.throws(() => signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'md5' }),
+        /bad-signature-algorithm:md5/);
+    assert.throws(() => signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'sha-256' }),
+        /bad-signature-algorithm/);
+    assert.throws(() => signUploadParams({ timestamp: 1 }, 'secret', 'md5'),
+        /bad-signature-algorithm:md5/);
+});
+
+test('sha256 produces a different, longer signature than sha1', () => {
+    const params = { public_id: 'sample_image', timestamp: 1315060510 };
+    const one = signUploadParams(params, 'abcd', 'sha1');
+    const two = signUploadParams(params, 'abcd', 'sha256');
+    assert.equal(one.length, 40);
+    assert.equal(two.length, 64);
+    assert.notEqual(one, two);
+});
+
+// ---------------------------------------------------------------------------
+// Request body reading
+//
+// This is the shape of a bug that does not fail, it hangs: read the stream on
+// a body the runtime already parsed and the request never answers, leaving the
+// admin's upload button spinning forever with no error to show. Each runtime
+// shape gets a test because "handle one and assume the rest" is exactly how
+// that shipped.
+// ---------------------------------------------------------------------------
+
+/** A request whose stream has already been consumed - 'end' fired long ago. */
+function endedStreamRequest(body) {
+    const req = new EventEmitter();
+    req.body = body;
+    // Nothing will ever emit again. A reader that listens here waits forever.
+    return req;
+}
+
+test('a body Vercel already parsed is used as-is, without touching the stream', async () => {
+    // The regression: this must resolve. Before the fix it hung, because the
+    // reader iterated a stream that had already ended.
+    const parsed = await readJsonBody(endedStreamRequest({ filename: 'cover.png' }));
+    assert.deepEqual(parsed, { filename: 'cover.png' });
+});
+
+test('a body handed over as a string or Buffer is parsed', async () => {
+    assert.deepEqual(
+        await readJsonBody(endedStreamRequest('{"filename":"a.png"}')),
+        { filename: 'a.png' });
+    assert.deepEqual(
+        await readJsonBody(endedStreamRequest(Buffer.from('{"filename":"b.png"}'))),
+        { filename: 'b.png' });
+});
+
+test('an unparsed body is read off the stream', async () => {
+    const req = new EventEmitter();
+    const promise = readJsonBody(req);
+    req.emit('data', '{"filename":');
+    req.emit('data', '"c.png"}');
+    req.emit('end');
+    assert.deepEqual(await promise, { filename: 'c.png' });
+});
+
+test('an empty body is an empty object, not a crash', async () => {
+    assert.deepEqual(await readJsonBody(endedStreamRequest('')), {});
+    assert.deepEqual(await readJsonBody(endedStreamRequest('   ')), {});
+});
+
+test('a dead stream times out instead of waiting forever', async () => {
+    // No parsed body and a stream that will never emit again: the runtime shape
+    // that hung production. It must end in an error the caller can act on, not
+    // in a promise nobody ever settles. Short timeout so the suite stays fast;
+    // the default is ten seconds.
+    await assert.rejects(
+        () => readJsonBody(endedStreamRequest(undefined), 50),
+        (e) => e.code === 'body-read-timeout');
+});
+
+test('the upload endpoint survives an unreadable body rather than hanging on it', async () => {
+    // Degrading to a generic filename beats a spinner that never stops. The
+    // endpoint catches body failures for exactly this reason.
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+
+    // The endpoint checks its configuration before anything else, so give it a
+    // complete one; otherwise this asserts the config guard, not the body read.
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+    process.env.CLOUDINARY_API_KEY = 'key';
+    process.env.CLOUDINARY_API_SECRET = 'secret';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    const req = endedStreamRequest(undefined);
+    req.method = 'POST';
+    req.headers = {};
+    try {
+        await handler(req, res);
+    } finally {
+        process.env = saved;
+    }
+    // Rejected on the token, having never blocked on the body.
+    assert.equal(res.code, 401);
+    assert.match(String(res.body), /unauthorized/);
+});
+
+test('a non-object JSON body does not masquerade as one', async () => {
+    // "null" and "42" parse fine but must not reach a caller expecting fields.
+    assert.deepEqual(await readJsonBody(endedStreamRequest('null')), {});
+    assert.deepEqual(await readJsonBody(endedStreamRequest('42')), {});
+});
+
+test('malformed JSON rejects rather than resolving to something wrong', async () => {
+    await assert.rejects(() => readJsonBody(endedStreamRequest('{not json')));
+});
+
+test('a stream error rejects instead of hanging', async () => {
+    const req = new EventEmitter();
+    const promise = readJsonBody(req);
+    req.emit('error', new Error('socket-died'));
+    await assert.rejects(() => promise, /socket-died/);
+});
+
+test('configuration values are trimmed, so an invisible newline cannot break uploads', async () => {
+    // The failure this prevents: Cloudinary answers "Invalid cloud_name
+    // jcklpfxz" for a value that really is "jcklpfxz\n". The name in the error
+    // looks correct, so the evidence points away from the actual cause.
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = '  jcklpfxz\n';
+    process.env.CLOUDINARY_API_KEY = ' key ';
+    process.env.CLOUDINARY_API_SECRET = '\tsecret\n';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    try {
+        await handler({ method: 'POST', headers: { authorization: 'Bearer a.b.c' } }, res);
+    } finally {
+        process.env = saved;
+    }
+
+    // Padding trimmed away, so it got past configuration and failed on the
+    // token instead - which is the only thing wrong with this request.
+    assert.equal(res.code, 401);
+});
+
+test('a cloud name that cannot be one is named here, not blamed on Cloudinary', async () => {
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = '"jcklpfxz"';   // quotes kept by Vercel
+    process.env.CLOUDINARY_API_KEY = 'key';
+    process.env.CLOUDINARY_API_SECRET = 'secret';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    try {
+        await handler({ method: 'POST', headers: { authorization: 'Bearer a.b.c' } }, res);
+    } finally {
+        process.env = saved;
+    }
+
+    assert.equal(res.code, 500);
+    const body = JSON.parse(res.body);
+    assert.equal(body.reason, 'cloud-name-invalid');
+    // Quoted in the reply so the stray characters are visible rather than guessed.
+    assert.match(body.cloudName, /\\"jcklpfxz\\"/);
 });

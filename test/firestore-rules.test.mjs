@@ -516,7 +516,14 @@ test('a user can check their own admin status but cannot enumerate admins', asyn
   await makeAdmin()
   // The admin UI reads its own doc to decide whether to render.
   await assertSucceeds(getDoc(doc(db(ADMIN), 'admins', ADMIN)))
-  await assertSucceeds(getDoc(doc(db(ALICE), 'admins', ALICE)))
+
+  // A non-admin's own read must *succeed and report absence*, never be denied.
+  // RequireAdmin leans on that: because a missing grant looks like this and not
+  // like a denial, it can treat permission-denied as "these rules were never
+  // deployed" and say so, instead of blaming the admin document. Tightening
+  // this to require existence would break that diagnosis, not just this test.
+  const missing = await assertSucceeds(getDoc(doc(db(ALICE), 'admins', ALICE)))
+  assert.equal(missing.exists(), false)
   // But cannot read someone else's, or list the collection.
   await assertFails(getDoc(doc(db(ALICE), 'admins', ADMIN)))
   await assertFails(getDocs(collection(db(ALICE), 'admins')))

@@ -55,38 +55,91 @@ That document's existence *is* your admin access. There is no UID anywhere in th
 code, which means granting or revoking access is this one action and never a
 deploy.
 
-**Check it worked:** go to [merid.site/admin/blog](https://merid.site/admin/blog).
-You should see the admin screen with an empty post list.
+**This document does nothing on its own.** Until you finish 1.4, no rule permits
+anyone to read it, so the admin still refuses you. Creating the document and
+deploying the rules are two halves of one step — do both, then check.
 
-**If instead you see "Not an admin account":** the document ID does not match your
-UID. The most common cause is a stray space when pasting, or letting Firebase
-auto-generate the ID. The error screen prints the UID it expected, so compare it
-against what you created.
+**Check it worked** *(after 1.4, not before)*: go to
+[merid.site/admin/blog](https://merid.site/admin/blog). You should see the admin
+screen with an empty post list.
 
-### 1.3 Turn on Storage (for image uploads)
+The screen names its own cause when it refuses:
 
-1. Left sidebar → **Build → Storage**.
-2. Click **Get started** and accept the defaults.
-3. When it finishes, look at the bucket name at the top of the page. It is either
-   `merid-49dd5.firebasestorage.app` or `merid-49dd5.appspot.com`.
-4. Open `src/lib/firebase.ts` and check that `storageBucket` matches what you
-   just read. **This is the one value in the repo that was guessed rather than
-   read off the console**, so it is worth thirty seconds now instead of a
-   confusing upload failure later. If it differs, correct it and deploy.
+| What it says | What is wrong | Fix |
+|---|---|---|
+| **The security rules are not deployed** | Firestore will not answer the admin question at all. Your document is probably fine. | Do 1.4. |
+| **Not an admin account** | Firestore answered: no document for this UID. The ID does not match — usually a stray space from pasting, or a Firebase auto-generated ID. | Recreate it with the exact UID the screen prints. |
+| **Could not reach Firestore** | The check never completed. Not a verdict about your account. | Check the connection or a blocking extension, then reload. |
+
+### 1.3 Cloudinary, for image uploads *(optional)*
+
+**Skip this and the blog still works.** Everything except the Upload button
+works without it, and you can add images by committing them — see
+[3. Images](#3-images). Come back when committing images starts to annoy you.
+
+Images do not live in Firebase. Cloud Storage now requires a billing account
+(the Blaze plan) even to store a single file, and a blog does not need a billing
+relationship to hold a dozen screenshots. Cloudinary's free tier needs no card.
+
+1. Sign up at [cloudinary.com](https://cloudinary.com/users/register_free).
+2. From the dashboard copy three values: **Cloud name**, **API Key**, **API
+   Secret**.
+3. Vercel dashboard → project **merid** → **Settings** → **Environment
+   Variables**. Add each row: paste Key, paste Value, tick the environments,
+   **Save**.
+
+   | Key | Value |
+   |---|---|
+   | `CLOUDINARY_CLOUD_NAME` | your cloud name |
+   | `CLOUDINARY_API_KEY` | your API key |
+   | `CLOUDINARY_API_SECRET` | your API secret |
+   | `FIREBASE_PROJECT_ID` | `merid-49dd5` — already set if the AI proxy is running |
+   | `CLOUDINARY_SIGNATURE_ALGORITHM` | *(leave unset)* `sha1` unless Cloudinary has switched your account to `sha256` |
+
+   **Which environments to tick:** **Production** is the one that matters —
+   it is `merid.site`, and leaving it unticked is the single most common way to
+   end up with variables that exist but never arrive. Tick **Preview** as well
+   so branch deploys behave the same. **Development** only affects
+   `vercel dev` on your own machine and can be left alone.
+
+   **Do not wrap values in quotes.** Vercel stores the value literally, so
+   `"abc123"` makes the quote marks part of the secret and every signature
+   comes out wrong. Same trap as `GEMINI_API_KEYS` in `docs/AI_PROXY_SETUP.md`.
+
+4. **Redeploy — this is not optional.** Environment variables only reach a
+   build that starts *after* they are saved; the running deploy cannot see
+   them. **Deployments → the top one → ⋯ → Redeploy.**
+
+**The secret goes in Vercel and nowhere else.** Not in the repo, not in a
+`VITE_` variable, not pasted into a chat. Anything named `VITE_*` is compiled
+into the JavaScript that every visitor downloads, which for a secret means
+publishing it.
+
+That is the whole reason `/api/blog-upload-signature` exists. The browser cannot
+upload on its own: it asks that endpoint, which verifies your Firebase ID token,
+checks `admins/{uid}`, and returns a signature good for one file in one folder.
+Cloudinary's simpler option — an unsigned upload preset — would put the
+credentials in the bundle instead, where anyone reading it could upload to the
+account from `curl`. Same admin list as everything else, still defined in exactly
+one place.
 
 ### 1.4 Deploy the security rules
 
-The rules files in the repo do nothing until they are uploaded.
+`firestore.rules` does nothing until it is uploaded. **Until you do this, the
+admin refuses you** no matter how correct your `admins` document is.
 
 ```bash
 npm install -g firebase-tools     # once, if you do not have it
 firebase login
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules
 ```
 
 **Check it worked:** in the Firebase console, **Firestore Database → Rules**
-should show a `match /posts/{postId}` block, and **Storage → Rules** should show a
-`match /blog/{allPaths=**}` block.
+should show a `match /posts/{postId}` block.
+
+No storage rules to deploy — images are Cloudinary's problem now, and
+`firebase.json` no longer mentions storage. (A `firebase deploy` naming
+`storage` fails on a project without Storage enabled, which is why it is gone.)
 
 ### 1.5 Tell Google the site exists
 
@@ -221,7 +274,17 @@ Two upload buttons, and they do different things:
 - **Insert image** above the content box → drops an image into the article **at
   your cursor**, so position the cursor first.
 
-Both accept any image file and give you a URL back automatically.
+Both accept any image file and give you a URL back automatically. They need
+Cloudinary configured (1.3); without it they report exactly which environment
+variable is missing rather than just failing.
+
+**If you have not set up Cloudinary,** use one of the two routes below instead —
+both work with nothing configured:
+
+- **Commit the image.** Drop the file in `public/blog/`, push, and type the path
+  into the image field: `/blog/your-image.png`. Vercel serves it. This costs a
+  deploy per image, which is the only thing the Upload button buys you.
+- **Paste any URL** the image already lives at (3.5).
 
 ### 3.2 Size, which is the thing people get wrong
 
@@ -479,13 +542,15 @@ only rebuilds when you change code.
 | `api/_lib/blog-config.js` | URLs, author, and the site's own strings |
 | `src/pages/admin/` | The admin screens |
 | `src/lib/posts.ts` | Reading and writing posts from the browser |
-| `firestore.rules`, `storage.rules` | Who may do what. The real security boundary |
+| `firestore.rules` | Who may do what. The real security boundary |
+| `api/blog-upload-signature.js` | Authorises one image upload, holds the Cloudinary secret |
+| `api/_lib/cloudinary.js` | Builds the upload signature |
 
 **Tests:**
 
 ```bash
-npm run test:api      # slugs, markdown, sanitising, rendering (37 tests)
-npm run test:rules    # security rules, needs the Firebase emulator (37 tests)
+npm run test:api      # slugs, markdown, sanitising, rendering, upload signatures
+npm run test:rules    # security rules and pairing, needs the Firebase emulator
 ```
 
 ---
@@ -493,9 +558,17 @@ npm run test:rules    # security rules, needs the Firebase emulator (37 tests)
 ## 8. Troubleshooting
 
 **"Not an admin account" when I open the admin.**
-The `admins/<uid>` document does not exist or its ID does not match your UID. The
-error screen shows the UID it expected — compare it against the document ID in
-Firestore. A trailing space from pasting is the usual culprit. See 1.2.
+Firestore answered the question, and there is no `admins/<uid>` document for this
+account — so the document ID does not match your UID. The error screen shows the
+UID it expected; compare it against the document ID in Firestore. A trailing
+space from pasting is the usual culprit. See 1.2.
+
+**"The security rules are not deployed" when I open the admin.**
+Exactly what it says, and the usual reason a freshly created `admins` document
+appears to do nothing. Firestore is refusing to let you read even your own admin
+document, which only the default-deny does, so the rules in `firestore.rules`
+were never uploaded. Run `firebase deploy --only firestore:rules` (see 1.4)
+and reload. Do not touch the `admins` document — it is not the problem.
 
 **I published but the post is not on /blog.**
 Wait a minute and refresh; the listing caches for 60 seconds. If it is still
@@ -510,13 +583,45 @@ Either it is still a draft, or the URL is wrong. The admin list shows each post'
 exact URL under its title. Note the language segment: `/blog/vie/...` not
 `/blog/...`.
 
-**Image upload fails with "Storage refused the upload".**
-Either the `admins/<uid>` document is missing, or `storage.rules` was never
-deployed. Run `firebase deploy --only storage`. See 1.4.
+**Image upload says the server is missing something.**
+It names the environment variable. Add it in Vercel → Settings → Environment
+Variables and redeploy. See 1.3. The secret belongs there and nowhere else.
 
-**Image upload fails mentioning the bucket.**
-The bucket name in `src/lib/firebase.ts` does not match the real one. Check
-Firebase console → Storage. See 1.3 — this is the one value that was guessed.
+**Image upload says Cloudinary refused it.**
+The message is Cloudinary's own. "Invalid signature" almost always means
+`CLOUDINARY_API_SECRET` in Vercel does not match the one on the Cloudinary
+dashboard — copy it again and redeploy.
+
+**Image upload says "Invalid cloud_name" for a name that looks correct.**
+Because it was correct, plus an invisible character. A trailing newline or
+space survives the paste into Vercel, and Cloudinary prints the name without it,
+so the error looks like it contradicts itself. The server now trims every
+configuration value, so this should not recur; if it does, the value contains
+something stranger than whitespace and the upload error will quote it back to
+you.
+
+**Image upload says my session expired.**
+The Firebase ID token aged out while the tab sat open. Reload and retry.
+
+**Image upload says the server did not answer in time.**
+The signature request got no reply within 20 seconds. Retry once; if it repeats,
+the function is failing rather than being slow — check the Vercel deployment
+logs for `/api/blog-upload-signature`.
+
+**Image upload says it timed out reaching Cloudinary.**
+The image itself did not finish uploading within three minutes. Usually a weak
+connection; export the image smaller and retry.
+
+**The Upload button spins forever and never stops.**
+It cannot any more, and if it ever does that is a bug worth reporting rather
+than a setting to change. Every step of the upload is now bounded and every
+bound reports a reason. This used to happen because the server read the request
+body in a way that never finished on Vercel; the button had no failure to show,
+so it just kept spinning.
+
+**I do not want to set up Cloudinary at all.**
+Then do not. Commit images to `public/blog/` and type the path into the image
+field. See 3.1.
 
 **"A post's language and slug are part of its address and cannot be changed."**
 Working as intended. Create a new post instead; see section 6.

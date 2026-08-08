@@ -4,13 +4,21 @@
 // a browser, but adding a picture would still mean committing a file and waiting
 // for a deploy.
 //
-// Files go to Firebase Storage under blog/<year>/, which the same admins/{uid}
-// document gates (storage.rules). Images already committed under
-// public/blog/screenshots stay valid: they are just paths, and the editor
-// accepts a pasted path or URL as readily as an upload.
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { firebaseStorage } from './firebase'
-import { slugify } from '../../api/_lib/slug.js'
+// Files go to Cloudinary, but this file cannot upload anything on its own: no
+// credential for that account exists in the bundle. It asks
+// /api/blog-upload-signature first, which checks admins/{uid} and returns a
+// signature scoped to one path, then sends the bytes straight to Cloudinary.
+// Two requests instead of one, in exchange for the account secret never being
+// shipped to a browser.
+//
+// The bytes skip our own server on purpose - a serverless function has a body
+// size limit that a photo can exceed, and proxying would spend bandwidth to
+// achieve nothing that the signature does not already achieve.
+//
+// Images already committed under public/blog/screenshots stay valid: they are
+// just paths, and the editor accepts a pasted path or URL as readily as an
+// upload.
+import { firebaseAuth } from './firebase'
 
 /**
  * Widest image worth serving. Article images render at roughly 720 CSS pixels,
@@ -23,10 +31,38 @@ import { slugify } from '../../api/_lib/slug.js'
 const MAX_WIDTH = 1600
 const JPEG_QUALITY = 0.85
 
-/** Storage rejects anything larger; the downscale below should keep us far under. */
+/** Refused before upload; the downscale below should keep us far under. */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 export class ImageUploadError extends Error {}
+
+/**
+ * Nothing on this path may wait forever.
+ *
+ * The button has one visible state for "working", and a promise that never
+ * settles leaves it there permanently with no error and no way back - the user
+ * cannot tell a slow upload from a dead one. Every await below is therefore
+ * bounded, and every bound fails loudly.
+ *
+ * The upload allowance is the generous one: a 5 MB image on a weak connection
+ * is slow, not broken.
+ */
+const SIGNATURE_TIMEOUT_MS = 20_000
+const UPLOAD_TIMEOUT_MS = 180_000
+const ENCODE_TIMEOUT_MS = 20_000
+
+async function fetchWithin(url: string, init: RequestInit, ms: number, onTimeout: string) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) throw new ImageUploadError(onTimeout)
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 /**
  * Redraws an oversized image onto a canvas at MAX_WIDTH.
@@ -67,8 +103,20 @@ async function downscale(file: File): Promise<Blob> {
   ctx.drawImage(bitmap, 0, 0, width, height)
   bitmap.close()
 
+  // toBlob takes a callback with no failure path of its own: a browser that
+  // never calls back (out of memory on a huge canvas, say) would hang the whole
+  // upload. Falling back to the original file after a wait costs some bytes and
+  // keeps the button alive.
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY)
+    const timer = setTimeout(() => resolve(null), ENCODE_TIMEOUT_MS)
+    canvas.toBlob(
+      (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      'image/jpeg',
+      JPEG_QUALITY,
+    )
   })
 
   // If the re-encode came out bigger (common for flat-colour screenshots),
@@ -77,12 +125,78 @@ async function downscale(file: File): Promise<Blob> {
   return blob
 }
 
+interface UploadGrant {
+  cloudName: string
+  apiKey: string
+  timestamp: number
+  signature: string
+  folder: string
+  publicId: string
+}
+
+/**
+ * Asks our own server to authorise one upload.
+ *
+ * Every refusal here is a different problem with a different fix, so each says
+ * which one it is rather than collapsing into "upload failed".
+ */
+async function requestUploadGrant(filename: string): Promise<UploadGrant> {
+  const user = firebaseAuth().currentUser
+  if (!user) throw new ImageUploadError('You are signed out. Sign in again and retry.')
+
+  const idToken = await user.getIdToken()
+
+  const response = await fetchWithin(
+    '/api/blog-upload-signature',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ filename }),
+    },
+    SIGNATURE_TIMEOUT_MS,
+    'The server did not answer the upload request in time. Retry, and if it keeps happening check the Vercel deployment logs.',
+  )
+
+  if (response.ok) return (await response.json()) as UploadGrant
+
+  const detail = await response.json().catch(
+    () => ({}) as { code?: string; missing?: string[]; reason?: string; cloudName?: string },
+  )
+
+  if (detail.reason === 'cloud-name-invalid') {
+    throw new ImageUploadError(
+      `CLOUDINARY_CLOUD_NAME is set to ${detail.cloudName}, which is not a usable cloud name. Copy it again from the Cloudinary dashboard (Product Environment → Cloud name) into Vercel, then redeploy.`,
+    )
+  }
+
+  if (detail.code === 'rules-not-deployed') {
+    throw new ImageUploadError(
+      'The server could not check your admin status because firestore.rules was never deployed. Run "firebase deploy --only firestore:rules". See BLOG_WORKFLOW.md section 1.4.',
+    )
+  }
+  if (detail.code === 'not-admin') {
+    throw new ImageUploadError(
+      'This account is not on the blog admin list, so it cannot upload images. See BLOG_WORKFLOW.md section 1.2.',
+    )
+  }
+  if (detail.code === 'server-misconfigured') {
+    throw new ImageUploadError(
+      `The server is missing ${(detail.missing || []).join(', ') || 'its Cloudinary configuration'}. Add it in the Vercel project's environment variables. See BLOG_WORKFLOW.md section 1.3.`,
+    )
+  }
+  if (response.status === 401) {
+    throw new ImageUploadError('Your session expired. Reload the page and sign in again.')
+  }
+  throw new ImageUploadError(`Could not authorise the upload (HTTP ${response.status}).`)
+}
+
 /**
  * Uploads an image and returns its public URL.
  *
  * The filename is derived from the original so uploads stay recognisable in the
- * Storage console, with a short timestamp suffix so re-uploading a corrected
- * version never silently serves the old one from cache.
+ * Cloudinary console, with a short timestamp suffix so re-uploading a corrected
+ * version never silently serves the old one from cache. The server picks the
+ * final path; this only suggests a name.
  */
 export async function uploadBlogImage(file: File): Promise<string> {
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -92,38 +206,46 @@ export async function uploadBlogImage(file: File): Promise<string> {
   }
 
   const blob = await downscale(file)
+  const grant = await requestUploadGrant(file.name)
 
-  const dot = file.name.lastIndexOf('.')
-  const stem = dot > 0 ? file.name.slice(0, dot) : file.name
-  const isJpeg = blob.type === 'image/jpeg' && blob !== file
-  const extension = isJpeg ? 'jpg' : dot > 0 ? file.name.slice(dot + 1).toLowerCase() : 'png'
-  const name = `${slugify(stem) || 'image'}-${Date.now().toString(36)}.${extension}`
+  // Exactly the parameters the server signed. Changing any of them here - the
+  // folder above all - invalidates the signature and Cloudinary refuses the
+  // upload, which is what keeps the destination the server's decision.
+  const form = new FormData()
+  form.append('file', blob)
+  form.append('api_key', grant.apiKey)
+  form.append('timestamp', String(grant.timestamp))
+  form.append('signature', grant.signature)
+  form.append('folder', grant.folder)
+  form.append('public_id', grant.publicId)
 
-  const path = `blog/${new Date().getUTCFullYear()}/${name}`
-
+  let response: Response
   try {
-    const storageRef = ref(firebaseStorage(), path)
-    await uploadBytes(storageRef, blob, {
-      contentType: blob.type || file.type,
-      // A year, because the timestamped filename means a given URL's bytes
-      // never change.
-      cacheControl: 'public, max-age=31536000, immutable',
-    })
-    return await getDownloadURL(storageRef)
+    response = await fetchWithin(
+      `https://api.cloudinary.com/v1_1/${grant.cloudName}/image/upload`,
+      { method: 'POST', body: form },
+      UPLOAD_TIMEOUT_MS,
+      'The upload to Cloudinary timed out. Check your connection, or export the image smaller and retry.',
+    )
   } catch (error) {
-    const code = (error as { code?: string })?.code ?? ''
-    if (code === 'storage/unauthorized') {
-      throw new ImageUploadError(
-        'Storage refused the upload. Check that your admins/<uid> document exists and that storage.rules has been deployed. See BLOG_WORKFLOW.md.',
-      )
-    }
-    if (code === 'storage/unknown' || code.includes('bucket')) {
-      throw new ImageUploadError(
-        'Could not reach the storage bucket. Confirm the bucket name in the Firebase console matches storageBucket in src/lib/firebase.ts. See BLOG_WORKFLOW.md.',
-      )
-    }
+    if (error instanceof ImageUploadError) throw error
+    throw new ImageUploadError('Could not reach Cloudinary. Check your connection and retry.')
+  }
+
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as {
+      error?: { message?: string }
+    } | null
     throw new ImageUploadError(
-      error instanceof Error ? error.message : 'Upload failed for an unknown reason.',
+      detail?.error?.message
+        ? `Cloudinary refused the upload: ${detail.error.message}`
+        : `Cloudinary refused the upload (HTTP ${response.status}).`,
     )
   }
+
+  const result = (await response.json()) as { secure_url?: string }
+  if (!result.secure_url) {
+    throw new ImageUploadError('Cloudinary accepted the upload but returned no URL.')
+  }
+  return result.secure_url
 }
