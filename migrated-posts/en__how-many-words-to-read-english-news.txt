@@ -1,27 +1,21 @@
----
-title: How many words do you need to read English news?
-description: The total matters less than the ratio. Here is the coverage threshold that decides whether you are reading or decoding, and how to cross it.
-slug: how-many-words-to-read-english-news
-lang: en
-translationKey: vocabulary-size-for-news
-publishAt: '2026-08-29'
-targetKeyword: how many words to read english news
-answer: There is no single number, but there is a threshold. Once you know about ninety-eight percent of the words on a page, roughly one unknown word every fifty, you can read straight through and infer the rest from context. Below that you are decoding rather than reading.
-cover: /blog/screenshots/no-flashcards.png
-coverAlt: A card reading no flashcards first, no more boring word lists
-faq:
-  - question: Is memorising a three thousand word list faster?
-    answer: Faster on paper, slower in practice. Most words learned outside a sentence fall out again within weeks. Words met in real context stay longer.
-  - question: Which list should I start with?
-    answer: SAT if you are sitting the SAT. C1 first and C2 later if you want to read news comfortably and write better. Do not switch all three on in your first week.
-  - question: How long until I notice a difference?
-    answer: I am not going to give you a number, because it depends entirely on how much you read per day. The first measurable thing is the size of your own deck.
-related:
-  - toucan-vs-merid
----
-
-import { Todo } from '../../blog/mdx-components'
-
+TITLE: How many words do you need to read English news?
+SLUG: how-many-words-to-read-english-news
+LANG: en
+EXCERPT: There is no single number, but there is a threshold. Once you know about ninety-eight percent of the words on a page, roughly one unknown word every fifty, you can read straight through and infer the rest from context. Below that you are decoding rather than reading.
+SEO TITLE: How many words do you need to read English news?
+SEO DESCRIPTION: The total matters less than the ratio. Here is the coverage threshold that decides whether you are reading or decoding, and how to cross it.
+TAGS: how many words to read english news
+TRANSLATION KEY: vocabulary-size-for-news
+COVER IMAGE: /blog/screenshots/no-flashcards.png
+COVER ALT: A card reading no flashcards first, no more boring word lists
+FAQ:
+Q: Is memorising a three thousand word list faster?
+A: Faster on paper, slower in practice. Most words learned outside a sentence fall out again within weeks. Words met in real context stay longer.
+Q: Which list should I start with?
+A: SAT if you are sitting the SAT. C1 first and C2 later if you want to read news comfortably and write better. Do not switch all three on in your first week.
+Q: How long until I notice a difference?
+A: I am not going to give you a number, because it depends entirely on how much you read per day. The first measurable thing is the size of your own deck.
+ARTICLE:
 This question usually gets answered with a round number. Three thousand words.
 Five thousand. I think the number is the least interesting part of it, so this
 post is about the part that actually decides whether you can read the article.
@@ -41,12 +35,7 @@ Still exhausting. Around ninety-eight percent you are down to one unknown word i
 fifty, so every two or three sentences, and that is the point where you can guess
 from context instead of stopping.
 
-<Todo kind="stat">
-  Add the specific word-family count that corresponds to ninety-eight percent
-  coverage of journalistic prose, with the research citation. Deliberately left
-  blank rather than guessed, since this is exactly the kind of number that needs
-  a real source.
-</Todo>
+> **TODO_STAT** — Add the specific word-family count that corresponds to ninety-eight percent coverage of journalistic prose, with the research citation. Deliberately left blank rather than guessed, since this is exactly the kind of number that needs a real source.
 
 ## Why is ninety-five to ninety-eight the hard part?
 

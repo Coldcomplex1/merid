@@ -208,6 +208,75 @@ service cloud.firestore {
       }
     }
 
+    // Blog admin allowlist. One document per admin, created by hand in the
+    // Firebase console; the document's existence IS the grant, so no UID and no
+    // credential ever lands in the repository. Clients may check their own
+    // status (the admin UI needs to know whether to render), but nobody can
+    // write here from the outside - promoting an admin is a console action.
+    match /admins/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    function isBlogAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Blog posts. Document id is "<lang>__<slug>", which makes the public
+    // lookup a direct get() and makes slug collision a single existence check.
+    //
+    // These rules are the actual authorization boundary. The admin screen is
+    // just a UI; hiding it protects nothing. A draft is unreadable here even to
+    // someone calling the Firestore REST API by hand, which is what lets the
+    // public renderer fetch unauthenticated and still never leak an unpublished
+    // post.
+    //
+    // Note on `list`: rules cannot filter a query, they can only reject it. An
+    // anonymous list therefore only succeeds when the query itself carries
+    // where('status','==','published') - any broader query fails closed rather
+    // than returning drafts.
+    match /posts/{postId} {
+      allow get, list: if resource.data.status == 'published' || isBlogAdmin();
+      allow create: if isBlogAdmin() && validPost() && postIdMatchesPayload(postId);
+      allow update: if isBlogAdmin() && validPost() && postIdMatchesPayload(postId)
+                    && request.resource.data.slug == resource.data.slug
+                    && request.resource.data.lang == resource.data.lang;
+      allow delete: if isBlogAdmin();
+
+      // The id encodes lang and slug, so a mismatched payload would make the
+      // document unreachable at its own URL. Checked here so it cannot happen.
+      function postIdMatchesPayload(id) {
+        return id == request.resource.data.lang + '__' + request.resource.data.slug;
+      }
+
+      // Shape check at the database boundary, so a bug in the editor cannot
+      // write a post the renderer will choke on.
+      function validPost() {
+        let d = request.resource.data;
+        return d.keys().hasAll(['slug', 'lang', 'title', 'excerpt', 'content',
+                                'author', 'status', 'createdAt', 'updatedAt'])
+          && d.keys().hasOnly(['slug', 'lang', 'title', 'excerpt', 'content',
+                               'author', 'tags', 'coverImage', 'coverAlt',
+                               'seoTitle', 'seoDescription', 'status',
+                               'publishedAt', 'createdAt', 'updatedAt',
+                               'translationKey', 'faq', 'canonicalUrl'])
+          && d.lang in ['vie', 'en']
+          && d.status in ['draft', 'published']
+          && d.slug is string && d.slug.size() >= 1 && d.slug.size() <= 120
+          && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 200
+          && d.excerpt is string && d.excerpt.size() <= 400
+          && d.content is string && d.content.size() <= 200000
+          && d.author is string && d.author.size() <= 100
+          && (!('tags' in d) || (d.tags is list && d.tags.size() <= 12))
+          && (!('faq' in d) || (d.faq is list && d.faq.size() <= 20))
+          // A published post must carry the date the renderer sorts and
+          // <time>-stamps it by, so "published with no date" is unrepresentable.
+          && (d.status != 'published' || 'publishedAt' in d);
+      }
+    }
+
     // Default deny: anything not explicitly matched above is unreachable.
     match /{document=**} {
       allow read, write: if false;

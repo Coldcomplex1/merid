@@ -1,27 +1,21 @@
----
-title: Toucan có hỗ trợ tiếng Việt không?
-description: Toucan không có tiếng Việt trong danh sách ngôn ngữ, và lý do thật sự nằm ở chiều dịch chứ không phải ở việc thiếu một cái tên trong danh sách.
-slug: toucan-co-ho-tro-tieng-viet-khong
-lang: vi
-translationKey: toucan-vietnamese-support
-publishAt: '2026-08-08'
-targetKeyword: toucan hỗ trợ tiếng việt
-answer: Không. Tiếng Việt không nằm trong danh sách ngôn ngữ của Toucan. Nhưng vấn đề lớn hơn là chiều dịch. Toucan được làm cho người đọc trang tiếng Anh rồi thay vài từ sang tiếng Tây Ban Nha hay tiếng Pháp. Người Việt học tiếng Anh cần đúng chiều ngược lại.
-cover: /blog/screenshots/wikipedia-amalgamate.png
-coverAlt: Trang Wikipedia tiếng Việt với một từ đã được thay bằng từ tiếng Anh
-faq:
-  - question: Toucan có miễn phí không?
-    answer: Toucan có bản miễn phí và có gói trả phí. Bạn nên xem trực tiếp trang của họ vì giá và giới hạn của từng gói có thể đổi.
-  - question: Nếu Toucan thêm tiếng Việt thì sao?
-    answer: Thì vẫn phải xem họ thêm tiếng Việt ở vai trò nào. Thêm vào danh sách ngôn ngữ để học là một chuyện, hỗ trợ tiếng Việt làm ngôn ngữ nền trên trang bạn đang đọc lại là chuyện khác.
-  - question: Mình đang học tiếng Nhật thì Toucan có hợp không?
-    answer: Hợp, nếu bạn đọc web bằng tiếng Anh. Toucan làm rất tốt việc đó. Merid không thay thế Toucan cho trường hợp này.
-related:
-  - toucan-vs-merid
----
-
-import { Todo } from '../../blog/mdx-components'
-
+TITLE: Toucan có hỗ trợ tiếng Việt không?
+SLUG: toucan-co-ho-tro-tieng-viet-khong
+LANG: vie
+EXCERPT: Không. Tiếng Việt không nằm trong danh sách ngôn ngữ của Toucan. Nhưng vấn đề lớn hơn là chiều dịch. Toucan được làm cho người đọc trang tiếng Anh rồi thay vài từ sang tiếng Tây Ban Nha hay tiếng Pháp. Người Việt học tiếng Anh cần đúng chiều ngược lại.
+SEO TITLE: Toucan có hỗ trợ tiếng Việt không?
+SEO DESCRIPTION: Toucan không có tiếng Việt trong danh sách ngôn ngữ, và lý do thật sự nằm ở chiều dịch chứ không phải ở việc thiếu một cái tên trong danh sách.
+TAGS: toucan hỗ trợ tiếng việt
+TRANSLATION KEY: toucan-vietnamese-support
+COVER IMAGE: /blog/screenshots/wikipedia-amalgamate.png
+COVER ALT: Trang Wikipedia tiếng Việt với một từ đã được thay bằng từ tiếng Anh
+FAQ:
+Q: Toucan có miễn phí không?
+A: Toucan có bản miễn phí và có gói trả phí. Bạn nên xem trực tiếp trang của họ vì giá và giới hạn của từng gói có thể đổi.
+Q: Nếu Toucan thêm tiếng Việt thì sao?
+A: Thì vẫn phải xem họ thêm tiếng Việt ở vai trò nào. Thêm vào danh sách ngôn ngữ để học là một chuyện, hỗ trợ tiếng Việt làm ngôn ngữ nền trên trang bạn đang đọc lại là chuyện khác.
+Q: Mình đang học tiếng Nhật thì Toucan có hợp không?
+A: Hợp, nếu bạn đọc web bằng tiếng Anh. Toucan làm rất tốt việc đó. Merid không thay thế Toucan cho trường hợp này.
+ARTICLE:
 Câu trả lời ngắn nằm ngay ở khối trên. Phần còn lại của bài này nói về chuyện ít
 người để ý hơn, và cũng là lý do mình ngồi viết Merid thay vì chờ Toucan cập nhật.
 
@@ -36,11 +30,7 @@ thể thêm bớt ngôn ngữ bất cứ lúc nào. Toucan giờ thuộc Babbel,
 nhất để tra là trang trợ giúp của Babbel hoặc chính mục mô tả trên Chrome Web
 Store.
 
-<Todo kind="stat">
-  Xác nhận lại danh sách ngôn ngữ nền (base language) mà Toucan hỗ trợ, không
-  phải danh sách ngôn ngữ để học. Mình không mở được trang gốc lúc viết bài, hai
-  nguồn thứ cấp thì khớp nhau nhưng vẫn nên dẫn nguồn gốc.
-</Todo>
+> **TODO_STAT** — Xác nhận lại danh sách ngôn ngữ nền (base language) mà Toucan hỗ trợ, không phải danh sách ngôn ngữ để học. Mình không mở được trang gốc lúc viết bài, hai nguồn thứ cấp thì khớp nhau nhưng vẫn nên dẫn nguồn gốc.
 
 ## Vì sao danh sách ngôn ngữ chưa phải là vấn đề chính?
 
@@ -103,7 +93,7 @@ viên ở TP.HCM, và mình đã bỏ dở mọi app học từ vựng từng t�
 chúng dở, mà vì cái nào cũng bắt mình mở nó ra rồi mới học được.
 
 Merid chạy trên trang bạn vốn đã mở. Đây là Wikipedia tiếng Việt, và từ *kết hợp*
-đã thành <span className="swap">amalgamate</span>.
+đã thành <span class="swap">amalgamate</span>.
 
 ![Wikipedia tiếng Việt với từ kết hợp được thay bằng amalgamate, kèm thẻ giải nghĩa](/blog/screenshots/wikipedia-amalgamate.png)
 
@@ -130,7 +120,7 @@ mà bạn bè quanh mình thật sự nhắm tới, chứ không phải vì chú
 
 Có một chi tiết mình thích ở phần kiểm tra ngữ cảnh. Merid có thể hỏi lại AI xem
 từ vừa thay có thật sự hợp với câu đó không. Trong ảnh dưới, nó tự đổi *amorous*
-thành <span className="swap">captivate</span> trong một bài về Messi và Ronaldo,
+thành <span class="swap">captivate</span> trong một bài về Messi và Ronaldo,
 vì *amorous* sai nghĩa ở câu đó.
 
 ![Bài Facebook về Messi và Ronaldo, thẻ Merid hiện dòng AI context check swapped this amorous thành captivate](/blog/screenshots/facebook-captivate.png)

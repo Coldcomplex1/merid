@@ -43,23 +43,29 @@ src/
     sections/
       AnnouncementBanner.tsx  Navbar.tsx  Hero.tsx  LiveDemo.tsx  Features.tsx
       PanelShowcase.tsx  HowItWorks.tsx  Benefits.tsx  Faq.tsx  FinalCta.tsx  Footer.tsx
-  content/
-    publish.config.ts        # blog schedule, URLs, author. The one file to edit.
-    schema.ts  loader.ts     # frontmatter validation, live/pending split
-    blog/<slug>.<lang>.mdx   # the posts themselves
-  blog/                      # SSR-only components; see docs/BLOG.md before editing
-scripts/prerender.mjs        # renders published posts to static HTML in dist/
+  pages/admin/               # private blog CMS (list + editor), see BLOG_WORKFLOW.md
+  lib/posts.ts               # blog post CRUD against Firestore
+  lib/blogImages.ts          # image upload to Firebase Storage
+api/
+  blog-render.js             # serves every public /blog URL as finished HTML
+  _lib/blog-html.js          # post -> full HTML page (meta, JSON-LD, hreflang)
+  _lib/markdown.js           # Markdown -> HTML, shared by server and admin preview
+  _lib/slug.js               # slugs, with Vietnamese diacritic handling
 ```
 
 ## Notable behavior
 
-- **Blog**: `/blog` (Vietnamese) and `/en/blog` (English) are **not** SPA routes. Posts are
-  MDX in `src/content/blog/`, rendered to static HTML at build time and served straight off
-  the filesystem with no framework JavaScript, because the AI crawlers this content targets
-  do not execute JS. Publishing is a `publishAt` date in frontmatter plus a daily cron that
-  triggers a rebuild. **Read [`docs/BLOG.md`](docs/BLOG.md) before touching anything under
-  `src/blog/` or `src/content/`** — those files must render without a browser, and links
-  from the SPA into `/blog` have to be plain `<a href>` rather than react-router `<Link>`.
+- **Blog**: `/blog/vie/[slug]` and `/blog/en/[slug]` are **not** SPA routes. Posts live in
+  Firestore and are written through a private CMS at `/admin/blog`; `api/blog-render.js`
+  turns each request into finished HTML with **zero framework JavaScript on the page**,
+  because the AI crawlers this content targets do not execute JS. Publishing is manual and
+  immediate: a post goes live when someone presses Publish, and there is no schedule, cron,
+  or background job anywhere in the system. Drafts return a real 404 and are absent from the
+  sitemap, enforced by Firestore rules rather than by the UI. **Read
+  [`BLOG_WORKFLOW.md`](BLOG_WORKFLOW.md) before touching any of it.** Two things are easy to
+  break: links from the SPA into `/blog` must be plain `<a href>` rather than react-router
+  `<Link>` (the client router has no `/blog` route), and blog page styling lives as real CSS
+  in `src/index.css` because Tailwind never scans the Node function that emits that markup.
 - **Install links**: every "Add to Chrome" / "Install" action links to the official Chrome
   Web Store listing. The URL is defined once in `src/config.ts` (`CHROME_STORE_URL`); change it
   there if the listing ever moves (see the comment in that file).
@@ -81,7 +87,8 @@ scripts/prerender.mjs        # renders published posts to static HTML in dist/
 
 - **Routing** (`App.tsx`): `/` is the landing page, `/tutorial` is the walkthrough. A small
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
-  rewrites all paths to `index.html` so deep links work in production.
+  routes `/blog/*`, `/sitemap.xml` and `/llms.txt` to `api/blog-render.js`, and rewrites
+  everything else to `index.html` so deep links work in production.
 - **Live demo** (`LiveDemo.tsx`): the Vietnamese page is data-driven. Each vocab entry is
   tagged with datasets and a frequency tier, so switching the dataset (SAT/C1/C2/All) or moving
   the intensity slider visibly changes which words are replaced. Hovering/clicking a highlighted

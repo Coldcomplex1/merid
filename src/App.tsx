@@ -15,6 +15,9 @@ import AuthPage from './pages/AuthPage'
 import Welcome from './pages/Welcome'
 import Goodbye from './pages/Goodbye'
 import PrivacyPolicy from './pages/PrivacyPolicy'
+import RequireAdmin from './pages/admin/RequireAdmin'
+import BlogAdmin from './pages/admin/BlogAdmin'
+import BlogEditor from './pages/admin/BlogEditor'
 
 /** Scrolls to the hash target on navigation (e.g. /#demo from the tutorial page), else to top. */
 function ScrollManager() {
@@ -76,6 +79,42 @@ export default function App() {
                   element={
                     <RequireAuth>
                       <MyDeck />
+                    </RequireAuth>
+                  }
+                />
+
+                {/* Blog admin. Lives at /admin/blog rather than /blog/admin
+                    because every path under /blog is served by the prerendering
+                    function (api/blog-render.js) and never reaches this router.
+                    RequireAdmin only decides what to render; the actual
+                    authorization is in firestore.rules. */}
+                <Route
+                  path="/admin/blog"
+                  element={
+                    <RequireAuth>
+                      <RequireAdmin>
+                        <BlogAdmin />
+                      </RequireAdmin>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/admin/blog/new"
+                  element={
+                    <RequireAuth>
+                      <RequireAdmin>
+                        <BlogEditor />
+                      </RequireAdmin>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/admin/blog/:id/edit"
+                  element={
+                    <RequireAuth>
+                      <RequireAdmin>
+                        <BlogEditor />
+                      </RequireAdmin>
                     </RequireAuth>
                   }
                 />

@@ -9,6 +9,12 @@
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    // The blog admin imports the same slugify and Markdown renderer the server
+    // uses, from api/_lib. Sharing the implementation is the point: a slug or a
+    // preview that differed between browser and server would produce a post
+    // whose URL does not match its own link. checkJs stays off, so those files
+    // are read for types but not type-checked as if they were TypeScript.
+    "allowJs": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -20,5 +26,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src", "api/_lib/slug.js", "api/_lib/markdown.js"]
 }

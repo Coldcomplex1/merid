@@ -9,7 +9,18 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  deleteDoc,
+  where,
+  writeBatch,
+  serverTimestamp,
+} from 'firebase/firestore'
 
 let env
 
@@ -307,4 +318,182 @@ test('feedback schema is enforced at the DB boundary', async () => {
   for (const payload of cases) {
     await assertFails(setDoc(doc(db(null), 'feedback', `bad${i++}`), payload))
   }
+})
+
+// ---------------------------------------------------------------------------
+// Blog posts
+//
+// This is where "a draft is not public" is actually decided. The admin UI and
+// the render function both assume these rules hold; if they do not, hiding the
+// admin screen buys nothing and the public renderer would happily serve drafts.
+// ---------------------------------------------------------------------------
+
+const ADMIN = 'admin-uid'
+
+function postPayload(extra = {}) {
+  const now = new Date().toISOString()
+  return {
+    slug: 'bai-viet',
+    lang: 'vie',
+    title: 'Bài viết',
+    excerpt: 'Tóm tắt.',
+    content: '## Heading\n\nBody.',
+    author: 'Van Quyet Doan',
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    ...extra,
+  }
+}
+
+/** Seeds documents with rules bypassed, so a test can start from a given state. */
+async function seed(fn) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await fn(ctx.firestore())
+  })
+}
+
+async function makeAdmin() {
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'admins', ADMIN), { grantedAt: new Date().toISOString() })
+  })
+}
+
+test('anyone may read a published post, nobody may read a draft', async () => {
+  await env.clearFirestore()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__live'), postPayload({
+      slug: 'live', status: 'published', publishedAt: new Date().toISOString(),
+    }))
+    await setDoc(doc(raw, 'posts', 'vie__draft'), postPayload({ slug: 'draft' }))
+  })
+
+  // The public renderer fetches unauthenticated, so this is the real path.
+  await assertSucceeds(getDoc(doc(db(null), 'posts', 'vie__live')))
+  await assertFails(getDoc(doc(db(null), 'posts', 'vie__draft')))
+  // Being signed in is not being an admin.
+  await assertFails(getDoc(doc(db(ALICE), 'posts', 'vie__draft')))
+})
+
+test('an admin may read drafts', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__draft'), postPayload({ slug: 'draft' }))
+  })
+  await assertSucceeds(getDoc(doc(db(ADMIN), 'posts', 'vie__draft')))
+})
+
+test('a public list must filter to published, or it is refused entirely', async () => {
+  await env.clearFirestore()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__live'), postPayload({
+      slug: 'live', status: 'published', publishedAt: new Date().toISOString(),
+    }))
+    await setDoc(doc(raw, 'posts', 'vie__draft'), postPayload({ slug: 'draft' }))
+  })
+
+  const posts = collection(db(null), 'posts')
+  // Rules cannot filter a query, only reject it: an unfiltered list would have
+  // to return the draft, so the whole query fails rather than leaking it.
+  await assertFails(getDocs(posts))
+  await assertSucceeds(getDocs(query(posts, where('status', '==', 'published'))))
+})
+
+test('a signed-in non-admin cannot create, edit, publish or delete', async () => {
+  await env.clearFirestore()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__bai-viet'), postPayload())
+  })
+
+  await assertFails(setDoc(doc(db(ALICE), 'posts', 'vie__new'), postPayload({ slug: 'new' })))
+  await assertFails(setDoc(doc(db(ALICE), 'posts', 'vie__bai-viet'), postPayload({ title: 'Hijacked' })))
+  await assertFails(setDoc(doc(db(ALICE), 'posts', 'vie__bai-viet'), postPayload({
+    status: 'published', publishedAt: new Date().toISOString(),
+  })))
+  await assertFails(deleteDoc(doc(db(ALICE), 'posts', 'vie__bai-viet')))
+
+  // And an anonymous visitor certainly cannot.
+  await assertFails(setDoc(doc(db(null), 'posts', 'vie__anon'), postPayload({ slug: 'anon' })))
+})
+
+test('an admin can run the whole lifecycle', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const ref = doc(db(ADMIN), 'posts', 'vie__bai-viet')
+
+  await assertSucceeds(setDoc(ref, postPayload()))
+  await assertSucceeds(setDoc(ref, postPayload({ title: 'Đã sửa' })))
+  await assertSucceeds(setDoc(ref, postPayload({
+    status: 'published', publishedAt: new Date().toISOString(),
+  })))
+  await assertSucceeds(setDoc(ref, postPayload()))            // unpublish
+  await assertSucceeds(deleteDoc(ref))
+})
+
+test('the document id must match the post it contains', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  // The id encodes the URL, so a mismatch would strand the post at an address
+  // nothing resolves to.
+  await assertFails(setDoc(doc(db(ADMIN), 'posts', 'vie__wrong'), postPayload({ slug: 'bai-viet' })))
+  await assertFails(setDoc(doc(db(ADMIN), 'posts', 'en__bai-viet'), postPayload({ lang: 'vie' })))
+  await assertSucceeds(setDoc(doc(db(ADMIN), 'posts', 'vie__bai-viet'), postPayload()))
+})
+
+test('a post cannot move to a different URL once created', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  await seed(async (raw) => {
+    await setDoc(doc(raw, 'posts', 'vie__bai-viet'), postPayload())
+  })
+  // Changing slug or lang in place would silently break every existing link.
+  await assertFails(setDoc(doc(db(ADMIN), 'posts', 'vie__bai-viet'), postPayload({ slug: 'khac' })))
+  await assertFails(setDoc(doc(db(ADMIN), 'posts', 'vie__bai-viet'), postPayload({ lang: 'en' })))
+})
+
+test('post shape is enforced at the DB boundary', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  const cases = [
+    postPayload({ lang: 'fr' }),                        // unsupported language
+    postPayload({ status: 'scheduled' }),               // no such status; nothing schedules
+    postPayload({ slug: 'Không Hợp Lệ' }),              // slug must be url-safe kebab-case
+    postPayload({ slug: '' }),                          // empty slug
+    postPayload({ title: '' }),                         // empty title
+    postPayload({ title: 'x'.repeat(201) }),            // oversized title
+    postPayload({ excerpt: 'x'.repeat(401) }),          // oversized excerpt
+    postPayload({ tags: Array(13).fill('t') }),         // too many tags
+    postPayload({ views: 10 }),                         // unknown field
+    postPayload({ status: 'published' }),               // published with no publishedAt
+    { slug: 'bai-viet', lang: 'vie', title: 'x' },      // missing required fields
+  ]
+  let i = 0
+  for (const payload of cases) {
+    const id = `${payload.lang ?? 'vie'}__${payload.slug ?? 'bai-viet'}`
+    await assertFails(setDoc(doc(db(ADMIN), 'posts', id), payload), `case ${i++} should be refused`)
+  }
+})
+
+test('nobody can promote themselves to admin', async () => {
+  await env.clearFirestore()
+  // The admins collection is console-only on purpose: if it were writable from
+  // the client, every other rule here would be decoration.
+  await assertFails(setDoc(doc(db(ALICE), 'admins', ALICE), { grantedAt: 'now' }))
+  await assertFails(setDoc(doc(db(null), 'admins', ALICE), { grantedAt: 'now' }))
+
+  await makeAdmin()
+  await assertFails(setDoc(doc(db(ADMIN), 'admins', ALICE), { grantedAt: 'now' }))
+  await assertFails(deleteDoc(doc(db(ADMIN), 'admins', ADMIN)))
+})
+
+test('a user can check their own admin status but cannot enumerate admins', async () => {
+  await env.clearFirestore()
+  await makeAdmin()
+  // The admin UI reads its own doc to decide whether to render.
+  await assertSucceeds(getDoc(doc(db(ADMIN), 'admins', ADMIN)))
+  await assertSucceeds(getDoc(doc(db(ALICE), 'admins', ALICE)))
+  // But cannot read someone else's, or list the collection.
+  await assertFails(getDoc(doc(db(ALICE), 'admins', ADMIN)))
+  await assertFails(getDocs(collection(db(ALICE), 'admins')))
 })

@@ -1,27 +1,21 @@
----
-title: Cần bao nhiêu từ vựng để đọc báo tiếng Anh?
-description: Con số bạn cần không quan trọng bằng tỷ lệ từ bạn hiểu trên một trang. Bài này giải thích ngưỡng đó và cách đi tới nó mà không phải học thuộc list.
-slug: can-bao-nhieu-tu-vung-doc-bao-tieng-anh
-lang: vi
-translationKey: vocabulary-size-for-news
-publishAt: '2026-08-29'
-targetKeyword: cần bao nhiêu từ vựng để đọc báo tiếng anh
-answer: Không có một con số duy nhất, nhưng có một ngưỡng. Khi bạn hiểu khoảng chín mươi tám phần trăm số từ trên trang, tức là chỉ vấp một từ lạ trong mỗi năm mươi từ, bạn đọc được liền mạch và đoán được nghĩa phần còn lại. Dưới ngưỡng đó thì bạn đang dịch chứ không phải đọc.
-cover: /blog/screenshots/no-flashcards.png
-coverAlt: Thẻ với dòng chữ không cần flashcard trước, không còn list từ nhàm chán
-faq:
-  - question: Học thuộc list ba nghìn từ có nhanh hơn không?
-    answer: Nhanh hơn trên giấy, chậm hơn trên thực tế, vì phần lớn từ học rời khỏi ngữ cảnh sẽ rơi lại trong vài tuần. Từ gặp trong câu thật thì bám lâu hơn.
-  - question: Mình nên bắt đầu từ bộ nào?
-    answer: Nếu bạn đang ôn SAT thì bộ SAT. Nếu bạn muốn đọc báo và viết học thuật thì C1 trước, C2 sau. Đừng bật cả ba cùng lúc trong tuần đầu.
-  - question: Bao lâu thì thấy khác?
-    answer: Cái này mình không đưa con số vì mỗi người đọc một lượng khác nhau mỗi ngày. Thứ đo được sớm nhất là số từ trong bộ thẻ của bạn.
-related:
-  - toucan-vs-merid
----
-
-import { Todo } from '../../blog/mdx-components'
-
+TITLE: Cần bao nhiêu từ vựng để đọc báo tiếng Anh?
+SLUG: can-bao-nhieu-tu-vung-doc-bao-tieng-anh
+LANG: vie
+EXCERPT: Không có một con số duy nhất, nhưng có một ngưỡng. Khi bạn hiểu khoảng chín mươi tám phần trăm số từ trên trang, tức là chỉ vấp một từ lạ trong mỗi năm mươi từ, bạn đọc được liền mạch và đoán được nghĩa phần còn lại. Dưới ngưỡng đó thì bạn đang dịch chứ không phải đọc.
+SEO TITLE: Cần bao nhiêu từ vựng để đọc báo tiếng Anh?
+SEO DESCRIPTION: Con số bạn cần không quan trọng bằng tỷ lệ từ bạn hiểu trên một trang. Bài này giải thích ngưỡng đó và cách đi tới nó mà không phải học thuộc list.
+TAGS: cần bao nhiêu từ vựng để đọc báo tiếng anh
+TRANSLATION KEY: vocabulary-size-for-news
+COVER IMAGE: /blog/screenshots/no-flashcards.png
+COVER ALT: Thẻ với dòng chữ không cần flashcard trước, không còn list từ nhàm chán
+FAQ:
+Q: Học thuộc list ba nghìn từ có nhanh hơn không?
+A: Nhanh hơn trên giấy, chậm hơn trên thực tế, vì phần lớn từ học rời khỏi ngữ cảnh sẽ rơi lại trong vài tuần. Từ gặp trong câu thật thì bám lâu hơn.
+Q: Mình nên bắt đầu từ bộ nào?
+A: Nếu bạn đang ôn SAT thì bộ SAT. Nếu bạn muốn đọc báo và viết học thuật thì C1 trước, C2 sau. Đừng bật cả ba cùng lúc trong tuần đầu.
+Q: Bao lâu thì thấy khác?
+A: Cái này mình không đưa con số vì mỗi người đọc một lượng khác nhau mỗi ngày. Thứ đo được sớm nhất là số từ trong bộ thẻ của bạn.
+ARTICLE:
 Câu hỏi này hay bị trả lời bằng một con số tròn trịa, kiểu ba nghìn từ hay năm
 nghìn từ. Mình nghĩ con số không phải thứ đáng bàn nhất, và bài này nói về thứ
 đáng bàn hơn.
@@ -41,11 +35,7 @@ từ mỗi câu. Vẫn mệt. Tới khoảng chín mươi tám phần trăm thì
 năm mươi từ, khoảng hai ba câu mới gặp một lần, và tới đây bạn đoán được nghĩa từ
 ngữ cảnh mà không cần dừng lại.
 
-<Todo kind="stat">
-  Bổ sung con số cụ thể về số họ từ (word family) tương ứng với ngưỡng chín mươi
-  tám phần trăm cho văn bản báo chí, kèm nguồn nghiên cứu. Mình cố tình không tự
-  điền số vì đây là loại con số phải dẫn nguồn thật.
-</Todo>
+> **TODO_STAT** — Bổ sung con số cụ thể về số họ từ (word family) tương ứng với ngưỡng chín mươi tám phần trăm cho văn bản báo chí, kèm nguồn nghiên cứu. Mình cố tình không tự điền số vì đây là loại con số phải dẫn nguồn thật.
 
 ## Vì sao khoảng cách từ chín mươi lăm lên chín mươi tám lại khó?
 

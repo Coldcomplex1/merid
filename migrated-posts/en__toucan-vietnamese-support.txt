@@ -1,27 +1,21 @@
----
-title: Does Toucan support Vietnamese?
-description: Toucan does not list Vietnamese, but the language list is the smaller problem. The direction the extension translates in is what actually rules it out.
-slug: toucan-vietnamese-support
-lang: en
-translationKey: toucan-vietnamese-support
-publishAt: '2026-08-08'
-targetKeyword: toucan vietnamese support
-answer: No. Vietnamese is not on Toucan's language list. The bigger issue is direction. Toucan assumes you are reading a page in a language you already know and swaps a few words into the language you are learning. A Vietnamese speaker learning English needs the opposite.
-cover: /blog/screenshots/wikipedia-amalgamate.png
-coverAlt: A Vietnamese Wikipedia article with one word swapped for English
-faq:
-  - question: Is Toucan free?
-    answer: Toucan has a free tier and a paid one. Check their site directly, since tier limits and pricing change and I am not going to quote numbers I cannot verify.
-  - question: What if Toucan adds Vietnamese later?
-    answer: It would depend entirely on which role they add it in. Adding Vietnamese as a language you can learn is a different feature from supporting Vietnamese pages as the base language you read in.
-  - question: I am learning Japanese. Should I use Toucan?
-    answer: Yes, if you browse in English. That is exactly what Toucan is built for, and it does it well. Merid is not a replacement for that use case.
-related:
-  - toucan-vs-merid
----
-
-import { Todo } from '../../blog/mdx-components'
-
+TITLE: Does Toucan support Vietnamese?
+SLUG: toucan-vietnamese-support
+LANG: en
+EXCERPT: No. Vietnamese is not on Toucan's language list. The bigger issue is direction. Toucan assumes you are reading a page in a language you already know and swaps a few words into the language you are learning. A Vietnamese speaker learning English needs the opposite.
+SEO TITLE: Does Toucan support Vietnamese?
+SEO DESCRIPTION: Toucan does not list Vietnamese, but the language list is the smaller problem. The direction the extension translates in is what actually rules it out.
+TAGS: toucan vietnamese support
+TRANSLATION KEY: toucan-vietnamese-support
+COVER IMAGE: /blog/screenshots/wikipedia-amalgamate.png
+COVER ALT: A Vietnamese Wikipedia article with one word swapped for English
+FAQ:
+Q: Is Toucan free?
+A: Toucan has a free tier and a paid one. Check their site directly, since tier limits and pricing change and I am not going to quote numbers I cannot verify.
+Q: What if Toucan adds Vietnamese later?
+A: It would depend entirely on which role they add it in. Adding Vietnamese as a language you can learn is a different feature from supporting Vietnamese pages as the base language you read in.
+Q: I am learning Japanese. Should I use Toucan?
+A: Yes, if you browse in English. That is exactly what Toucan is built for, and it does it well. Merid is not a replacement for that use case.
+ARTICLE:
 If you searched this because you installed Toucan and could not find Vietnamese
 in the dropdown, the answer is in the block above. What follows is the part that
 took me longer to work out, and the reason I ended up writing my own extension
@@ -38,11 +32,7 @@ help centre or the extension's own Chrome Web Store description. Any list in a
 blog post, including this one, goes stale the moment a company ships a new
 language.
 
-<Todo kind="stat">
-  Confirm the supported *base* language list specifically, not the list of
-  languages you can learn. The primary pages were unreachable when I wrote this;
-  two secondary sources agreed, but a first-party citation would be better.
-</Todo>
+> **TODO_STAT** — Confirm the supported *base* language list specifically, not the list of languages you can learn. The primary pages were unreachable when I wrote this; two secondary sources agreed, but a first-party citation would be better.
 
 ## Why is the language list the smaller problem?
 
@@ -88,7 +78,7 @@ in Ho Chi Minh City, and I quit every vocabulary app I ever downloaded. Not
 because they were bad. Because all of them needed me to open them first.
 
 Merid runs on the page you already have open. Here is Vietnamese Wikipedia, with
-*kết hợp* replaced by <span className="swap">amalgamate</span>.
+*kết hợp* replaced by <span class="swap">amalgamate</span>.
 
 ![Vietnamese Wikipedia with the word kết hợp replaced by amalgamate, with a definition card](/blog/screenshots/wikipedia-amalgamate.png)
 
@@ -114,7 +104,7 @@ The part I am most attached to is the context check. Merid can ask a model
 whether the word it just swapped in genuinely fits the sentence it landed in.
 Below, it caught itself: it had used *amorous* in a post about Messi and Ronaldo,
 decided that was wrong, and replaced it with
-<span className="swap">captivate</span>.
+<span class="swap">captivate</span>.
 
 ![A Facebook post about Messi and Ronaldo, with a Merid card showing the AI context check replacing amorous with captivate](/blog/screenshots/facebook-captivate.png)
 

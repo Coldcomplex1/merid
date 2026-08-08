@@ -1,25 +1,21 @@
----
-title: Toucan và Merid, cái nào hợp với bạn hơn?
-description: So sánh thẳng hai extension thay từ khi lướt web, dựa trên chiều dịch, bộ từ vựng và nơi xử lý, để bạn biết cái nào làm đúng việc bạn cần.
-slug: toucan-vs-merid
-lang: vi
-translationKey: toucan-vs-merid
-publishAt: '2026-08-20'
-targetKeyword: toucan vs merid
-answer: Chọn Toucan nếu bạn đọc web bằng tiếng Anh và muốn học tiếng Tây Ban Nha, Pháp, Nhật hay Hàn. Chọn Merid nếu bạn đọc web tiếng Việt và muốn tăng vốn từ tiếng Anh. Hai cái làm ngược chiều nhau, nên gần như không có ai phải phân vân giữa chúng.
-cover: /blog/screenshots/vnexpress-pulchritude.png
-coverAlt: Bài VnExpress với một từ tiếng Việt đã được thay bằng từ tiếng Anh
-faq:
-  - question: Cài cả hai cùng lúc được không?
-    answer: Được, vì chúng hoạt động trên những trang khác nhau. Nhưng nếu bạn đọc chủ yếu bằng tiếng Việt thì Toucan sẽ gần như không chạy.
-  - question: Merid có bản trả phí không?
-    answer: Không. Phần thay từ chạy trên máy bạn nên nó không tốn gì của mình để bạn dùng nhiều.
-  - question: Toucan mạnh hơn ở điểm nào?
-    answer: Toucan có nhiều ngôn ngữ hơn hẳn, có một công ty đứng sau, và có tuổi đời dài hơn. Nếu ngôn ngữ bạn học nằm trong danh sách của họ thì đó là lựa chọn chín hơn.
-related:
-  - toucan-co-ho-tro-tieng-viet-khong
----
-
+TITLE: Toucan và Merid, cái nào hợp với bạn hơn?
+SLUG: toucan-vs-merid
+LANG: vie
+EXCERPT: Chọn Toucan nếu bạn đọc web bằng tiếng Anh và muốn học tiếng Tây Ban Nha, Pháp, Nhật hay Hàn. Chọn Merid nếu bạn đọc web tiếng Việt và muốn tăng vốn từ tiếng Anh. Hai cái làm ngược chiều nhau, nên gần như không có ai phải phân vân giữa chúng.
+SEO TITLE: Toucan và Merid, cái nào hợp với bạn hơn?
+SEO DESCRIPTION: So sánh thẳng hai extension thay từ khi lướt web, dựa trên chiều dịch, bộ từ vựng và nơi xử lý, để bạn biết cái nào làm đúng việc bạn cần.
+TAGS: toucan vs merid
+TRANSLATION KEY: toucan-vs-merid
+COVER IMAGE: /blog/screenshots/vnexpress-pulchritude.png
+COVER ALT: Bài VnExpress với một từ tiếng Việt đã được thay bằng từ tiếng Anh
+FAQ:
+Q: Cài cả hai cùng lúc được không?
+A: Được, vì chúng hoạt động trên những trang khác nhau. Nhưng nếu bạn đọc chủ yếu bằng tiếng Việt thì Toucan sẽ gần như không chạy.
+Q: Merid có bản trả phí không?
+A: Không. Phần thay từ chạy trên máy bạn nên nó không tốn gì của mình để bạn dùng nhiều.
+Q: Toucan mạnh hơn ở điểm nào?
+A: Toucan có nhiều ngôn ngữ hơn hẳn, có một công ty đứng sau, và có tuổi đời dài hơn. Nếu ngôn ngữ bạn học nằm trong danh sách của họ thì đó là lựa chọn chín hơn.
+ARTICLE:
 Mình viết bài so sánh này với một chút ngại, vì mình là tác giả của một trong hai
 bên. Nên mình sẽ nói trước phần bất lợi cho mình, rồi mới tới phần còn lại.
 
@@ -84,7 +80,7 @@ và tự sửa nếu không hợp.
 ![Bài Facebook về Messi và Ronaldo, thẻ Merid ghi AI context check swapped this amorous thành captivate](/blog/screenshots/facebook-captivate.png)
 
 Trong ảnh đó nó đã đặt *amorous* vào chỗ từ say đắm, rồi tự nhận là sai và đổi
-sang <span className="swap">captivate</span>. Cả hai từ đều dịch được thành say
+sang <span class="swap">captivate</span>. Cả hai từ đều dịch được thành say
 đắm, nhưng chỉ một từ đúng khi đang nói về hai cầu thủ bóng đá.
 
 ## Mức độ thay từ nên để bao nhiêu?

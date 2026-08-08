@@ -1,0 +1,48 @@
+# Merid, https://merid.site
+#
+# The blog exists to be read and cited, including by models. Crawl it.
+# Blog pages are server-rendered as complete HTML, so a crawler that does not
+# execute JavaScript still gets the whole article.
+
+User-agent: *
+Allow: /
+Disallow: /my-deck
+Disallow: /admin/
+Disallow: /login
+Disallow: /signup
+Disallow: /api/
+
+# Named explicitly because several of these ignore a bare "User-agent: *" allow,
+# and because being listed is the clearest signal that this content is meant to
+# be read and cited rather than merely tolerated.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+Sitemap: https://merid.site/sitemap.xml

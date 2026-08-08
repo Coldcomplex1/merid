@@ -1,25 +1,21 @@
----
-title: Toucan vs Merid, written by the person who built one
-description: A direct comparison of two word-swapping browser extensions, covering translation direction, word lists and where the work runs, plus what mine does worse.
-slug: toucan-vs-merid
-lang: en
-translationKey: toucan-vs-merid
-publishAt: '2026-08-20'
-targetKeyword: toucan vs merid
-answer: Use Toucan if you read the web in English and want to learn Spanish, French, Japanese or Korean. Use Merid if you read the web in Vietnamese and want more English vocabulary. They run in opposite directions, so almost nobody genuinely has to choose between them.
-cover: /blog/screenshots/vnexpress-pulchritude.png
-coverAlt: A Vietnamese news article with one word swapped for English
-faq:
-  - question: Can I install both?
-    answer: Yes, since they act on different pages. But if you mostly read Vietnamese, Toucan will have almost nothing to do.
-  - question: Does Merid have a paid tier?
-    answer: No. Word replacement runs on your own machine, so heavy use costs me nothing and there is nothing to meter.
-  - question: Where is Toucan clearly stronger?
-    answer: Language coverage, maturity, and having a company behind it. If the language you are learning is on their list, that is the more finished product.
-related:
-  - toucan-vietnamese-support
----
-
+TITLE: Toucan vs Merid, written by the person who built one
+SLUG: toucan-vs-merid
+LANG: en
+EXCERPT: Use Toucan if you read the web in English and want to learn Spanish, French, Japanese or Korean. Use Merid if you read the web in Vietnamese and want more English vocabulary. They run in opposite directions, so almost nobody genuinely has to choose between them.
+SEO TITLE: Toucan vs Merid, written by the person who built one
+SEO DESCRIPTION: A direct comparison of two word-swapping browser extensions, covering translation direction, word lists and where the work runs, plus what mine does worse.
+TAGS: toucan vs merid
+TRANSLATION KEY: toucan-vs-merid
+COVER IMAGE: /blog/screenshots/vnexpress-pulchritude.png
+COVER ALT: A Vietnamese news article with one word swapped for English
+FAQ:
+Q: Can I install both?
+A: Yes, since they act on different pages. But if you mostly read Vietnamese, Toucan will have almost nothing to do.
+Q: Does Merid have a paid tier?
+A: No. Word replacement runs on your own machine, so heavy use costs me nothing and there is nothing to meter.
+Q: Where is Toucan clearly stronger?
+A: Language coverage, maturity, and having a company behind it. If the language you are learning is on their list, that is the more finished product.
+ARTICLE:
 I am the author of one of these two extensions, so treat this accordingly. I have
 put the part that reflects badly on me first, which is the only way a comparison
 like this is worth reading.
@@ -86,7 +82,7 @@ actually fits, and correct itself when it does not.
 ![A Facebook post about Messi and Ronaldo where the Merid card shows the context check replacing amorous with captivate](/blog/screenshots/facebook-captivate.png)
 
 In that screenshot it had used *amorous*, decided that was wrong for a sentence
-about two footballers, and swapped in <span className="swap">captivate</span>.
+about two footballers, and swapped in <span class="swap">captivate</span>.
 Both map to the same Vietnamese phrase. Only one of them belongs in that sentence.
 
 ## How aggressive should the swapping be?

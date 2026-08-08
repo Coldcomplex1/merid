@@ -1,198 +1,398 @@
-// Unit tests for the blog's scheduling endpoints.
+// Unit tests for the blog's pure pieces: slugs, Markdown, sanitisation, the
+// paste format, and the rendered HTML.
 //
-// The whole publishing mechanism is "a date in frontmatter, plus a rebuild".
-// That is only trustworthy if two things hold: the queue reports live vs pending
-// against a real clock, and the cron endpoint cannot be used by anyone else to
-// trigger deploys. Both are tested here against a frozen clock and a stub hook,
-// so neither depends on the wall clock or on reaching Vercel.
-import { test } from 'node:test';
-import assert from 'node:assert';
-import http from 'node:http';
+// The parts that need a database live in test/firestore-rules.test.mjs (the
+// security boundary) and are exercised against the emulator, because that is
+// where "a draft is unreachable" is actually decided.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
 
-// Endpoint modules read env at import time, so each test that needs different
-// settings imports a fresh copy via a cache-busting query string.
-const freshImport = (path) => import(`${path}?t=${Math.random()}`);
+import { findFreeSlug, postId, slugify } from '../api/_lib/slug.js'
+import { extractToc, readingMinutes, stripTags, toHtml } from '../api/_lib/markdown.js'
+import { sanitizeArticleHtml } from '../api/_lib/sanitize.js'
+import { formatStructuredPost, parseStructuredPost } from '../api/_lib/structured-post.js'
+import { renderIndexPage, renderNotFound, renderPostPage } from '../api/_lib/blog-html.js'
 
-/** Minimal stand-in for Vercel's (req, res) pair. */
-function mockRes() {
+// ---------------------------------------------------------------------------
+// Slugs
+// ---------------------------------------------------------------------------
+
+test('Vietnamese titles produce readable ASCII slugs', () => {
+    // The whole reason slugify normalises rather than stripping: a naive
+    // [^a-z0-9] filter turns this into "hc-t-vng-ting-anh".
+    assert.equal(slugify('Học từ vựng tiếng Anh'), 'hoc-tu-vung-tieng-anh')
+    assert.equal(slugify('Toucan có hỗ trợ tiếng Việt không?'), 'toucan-co-ho-tro-tieng-viet-khong')
+    assert.equal(slugify('Cần bao nhiêu từ vựng để đọc báo?'), 'can-bao-nhieu-tu-vung-de-doc-bao')
+})
+
+test('đ becomes d, since NFD leaves it intact', () => {
+    // đ is its own letter, not a d carrying a diacritic, so normalisation alone
+    // does not touch it. Without the explicit map it would be stripped entirely.
+    assert.equal(slugify('Đọc báo mỗi ngày'), 'doc-bao-moi-ngay')
+    assert.equal(slugify('đường'), 'duong')
+})
+
+test('punctuation and runs of whitespace collapse to single hyphens', () => {
+    assert.equal(slugify('  Multiple   spaces & symbols!!  '), 'multiple-spaces-symbols')
+    assert.equal(slugify('a---b'), 'a-b')
+    assert.equal(slugify('!!!'), '')
+})
+
+test('a slug never ends in a hyphen, even when truncated', () => {
+    const slug = slugify('a'.repeat(70) + ' ' + 'b'.repeat(40))
+    assert.ok(slug.length <= 80)
+    assert.ok(!slug.endsWith('-'), `"${slug}" must not end in a hyphen`)
+})
+
+test('the document id encodes the URL', () => {
+    assert.equal(postId('vie', 'hoc-tu-vung'), 'vie__hoc-tu-vung')
+})
+
+test('a colliding slug gets a numeric suffix', async () => {
+    const taken = new Set(['bai-viet', 'bai-viet-2'])
+    const free = await findFreeSlug('Bài viết', (s) => Promise.resolve(taken.has(s)))
+    assert.equal(free, 'bai-viet-3')
+})
+
+test('editing a post does not walk its own slug forward', async () => {
+    // Without the currentSlug check, every save of an existing post would see
+    // its own slug as taken and rename it foo -> foo-2 -> foo-3.
+    const taken = new Set(['bai-viet'])
+    const free = await findFreeSlug('Bài viết', (s) => Promise.resolve(taken.has(s)), 'bai-viet')
+    assert.equal(free, 'bai-viet')
+})
+
+// ---------------------------------------------------------------------------
+// Markdown
+// ---------------------------------------------------------------------------
+
+test('headings get ids derived from the same slugify the URLs use', () => {
+    const html = toHtml('## Câu hỏi đầu tiên là gì?')
+    assert.match(html, /<h2 id="cau-hoi-dau-tien-la-gi"/)
+})
+
+test('the table of contents is read back out of the rendered HTML', () => {
+    // Deriving it from the output rather than the source is what guarantees the
+    // anchors resolve: there is only one slugifier involved, not two agreeing.
+    const html = toHtml('## First\n\ntext\n\n## Second\n\ntext\n\n### Not in the TOC')
+    const toc = extractToc(html)
+    assert.equal(toc.length, 2)
+    assert.deepEqual(toc.map((e) => e.label), ['First', 'Second'])
+    for (const entry of toc) {
+        assert.ok(html.includes(`id="${entry.id}"`), `${entry.id} must exist on the page`)
+    }
+})
+
+test('images render as figures with the alt text as a caption', () => {
+    const html = toHtml('![A deck of 25 words](/blog/screenshots/my-deck.png)')
+    assert.match(html, /<figure>/)
+    assert.match(html, /alt="A deck of 25 words"/)
+    assert.match(html, /<figcaption>A deck of 25 words<\/figcaption>/)
+    assert.match(html, /loading="lazy"/)
+})
+
+test('tables are wrapped so they scroll instead of widening the page', () => {
+    const html = toHtml('| a | b |\n| --- | --- |\n| 1 | 2 |')
+    assert.match(html, /<div class="table-scroll">/)
+    assert.match(html, /<th>a<\/th>/)
+    assert.match(html, /<td>2<\/td>/)
+})
+
+test('external links open safely, internal ones do not', () => {
+    const external = toHtml('[x](https://example.com)')
+    assert.match(external, /rel="noopener noreferrer"/)
+    assert.match(external, /target="_blank"/)
+
+    for (const href of ['/tutorial', 'https://merid.site/tutorial']) {
+        assert.ok(
+            !toHtml(`[x](${href})`).includes('target="_blank"'),
+            `${href} is internal and should not open in a new tab`,
+        )
+    }
+})
+
+test('reading time is never zero and counts Vietnamese faster', () => {
+    const text = Array(300).fill('word').join(' ')
+    assert.ok(readingMinutes(text, 'en') > readingMinutes(text, 'vie'))
+    assert.equal(readingMinutes('one word', 'vie'), 1)
+    assert.equal(readingMinutes('', 'en'), 1)
+})
+
+test('stripTags leaves the words and drops the markup', () => {
+    assert.equal(stripTags('<p>Hello <strong>there</strong></p>'), 'Hello there')
+    assert.equal(stripTags('<script>evil()</script>text'), 'text')
+})
+
+// ---------------------------------------------------------------------------
+// Sanitisation
+// ---------------------------------------------------------------------------
+
+test('scripts and event handlers never survive to a public page', () => {
+    // Markdown permits raw HTML by design, so this is reachable without any
+    // compromise: it only takes one careless paste.
+    const dirty = toHtml('Hello <script>alert(1)</script> and <img src=x onerror="alert(2)">')
+    const clean = sanitizeArticleHtml(dirty)
+    assert.ok(!clean.includes('<script'), 'script tag must be removed')
+    assert.ok(!clean.includes('alert(1)'), 'script body must be removed')
+    assert.ok(!clean.includes('onerror'), 'event handler must be stripped')
+    assert.ok(clean.includes('Hello'), 'surrounding text must survive')
+})
+
+test('javascript: and data: URLs are refused', () => {
+    for (const href of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {
+        const clean = sanitizeArticleHtml(`<a href="${href}">click</a>`)
+        assert.ok(!clean.includes('javascript:'), `${href} must not survive`)
+        assert.ok(!clean.includes('data:text/html'), `${href} must not survive`)
+    }
+})
+
+test('the classes the stylesheet defines are kept, arbitrary ones are not', () => {
+    const clean = sanitizeArticleHtml(
+        '<span class="swap">captivate</span><span class="evil">x</span>',
+    )
+    assert.match(clean, /class="swap"/)
+    assert.ok(!clean.includes('evil'), 'undeclared classes should be dropped')
+})
+
+test('ordinary article markup passes through untouched', () => {
+    const html = toHtml(
+        '## Heading\n\nA paragraph with **bold** and [a link](/x).\n\n| a |\n| --- |\n| 1 |\n\n![alt](/img.png)',
+    )
+    const clean = sanitizeArticleHtml(html)
+    for (const fragment of ['<h2 id=', '<strong>', '<table>', '<figure>', 'table-scroll']) {
+        assert.ok(clean.includes(fragment), `${fragment} should survive sanitisation`)
+    }
+})
+
+// ---------------------------------------------------------------------------
+// The paste format
+// ---------------------------------------------------------------------------
+
+const SAMPLE = `TITLE: Toucan có hỗ trợ tiếng Việt không?
+SLUG: toucan-co-ho-tro-tieng-viet-khong
+LANG: vie
+EXCERPT: Không, và lý do nằm ở chiều dịch.
+SEO TITLE: Toucan có hỗ trợ tiếng Việt không?
+SEO DESCRIPTION: Toucan không có tiếng Việt trong danh sách.
+TAGS: toucan, học từ vựng
+TRANSLATION KEY: toucan-vietnamese-support
+COVER IMAGE IDEA: a screenshot of the language dropdown
+FAQ:
+Q: Toucan có miễn phí không?
+A: Có bản miễn phí.
+Q: Còn tiếng Nhật?
+A: Có.
+ARTICLE:
+## Câu hỏi đầu tiên
+
+Nội dung: có dấu hai chấm ở đây.
+
+## TITLE: this looks like a field but is a heading`
+
+test('a structured paste fills every field', () => {
+    const { fields } = parseStructuredPost(SAMPLE)
+    assert.equal(fields.title, 'Toucan có hỗ trợ tiếng Việt không?')
+    assert.equal(fields.slug, 'toucan-co-ho-tro-tieng-viet-khong')
+    assert.equal(fields.lang, 'vie')
+    assert.equal(fields.translationKey, 'toucan-vietnamese-support')
+    assert.deepEqual(fields.tags, ['toucan', 'học từ vựng'])
+    assert.equal(fields.faq.length, 2)
+    assert.deepEqual(fields.faq[0], { question: 'Toucan có miễn phí không?', answer: 'Có bản miễn phí.' })
+})
+
+test('ARTICLE swallows everything after it, colons and all', () => {
+    // This is why ARTICLE comes last. A heading or a colon inside the body must
+    // never be mistaken for a field header.
+    const { fields } = parseStructuredPost(SAMPLE)
+    assert.match(fields.content, /^## Câu hỏi đầu tiên/)
+    assert.ok(fields.content.includes('Nội dung: có dấu hai chấm ở đây.'))
+    assert.ok(
+        fields.content.includes('## TITLE: this looks like a field but is a heading'),
+        'a heading that resembles a field header must stay in the body',
+    )
+})
+
+test('the cover image idea is reported, not imported as a URL', () => {
+    const { fields, warnings } = parseStructuredPost(SAMPLE)
+    assert.equal(fields.coverImage, undefined)
+    assert.ok(warnings.some((w) => w.includes('Cover image idea')))
+})
+
+test('plain Markdown with no headers is treated as the body', () => {
+    const { fields } = parseStructuredPost('## Just a heading\n\nAnd a paragraph.')
+    assert.equal(fields.content, '## Just a heading\n\nAnd a paragraph.')
+    assert.equal(fields.title, undefined)
+})
+
+test('lang accepts vi as well as vie, since both are natural to type', () => {
+    assert.equal(parseStructuredPost('TITLE: x\nLANG: vi\nARTICLE:\nbody').fields.lang, 'vie')
+    assert.equal(parseStructuredPost('TITLE: x\nLANG: vie\nARTICLE:\nbody').fields.lang, 'vie')
+    assert.equal(parseStructuredPost('TITLE: x\nLANG: en\nARTICLE:\nbody').fields.lang, 'en')
+})
+
+test('format and parse round-trip', () => {
+    const post = {
+        title: 'A title',
+        slug: 'a-title',
+        lang: 'en',
+        excerpt: 'An excerpt.',
+        seoTitle: 'SEO title',
+        seoDescription: 'SEO description.',
+        tags: ['one', 'two'],
+        translationKey: 'key',
+        faq: [{ question: 'Q1?', answer: 'A1.' }],
+        content: '## Heading\n\nBody text.',
+    }
+    const { fields } = parseStructuredPost(formatStructuredPost(post))
+    for (const key of ['title', 'slug', 'lang', 'excerpt', 'seoTitle', 'seoDescription', 'translationKey', 'content']) {
+        assert.equal(fields[key], post[key], `${key} must survive the round trip`)
+    }
+    assert.deepEqual(fields.tags, post.tags)
+    assert.deepEqual(fields.faq, post.faq)
+})
+
+// ---------------------------------------------------------------------------
+// Rendered pages
+// ---------------------------------------------------------------------------
+
+function samplePost(overrides = {}) {
     return {
-        headers: {},
-        statusCode: 0,
-        body: '',
-        setHeader(k, v) { this.headers[k] = v; },
-        status(c) { this.statusCode = c; return this; },
-        send(b) { this.body = b; return this; },
-        json() { return JSON.parse(this.body); }
-    };
+        slug: 'bai-thu-nghiem',
+        lang: 'vie',
+        title: 'Bài thử nghiệm',
+        excerpt: 'Một đoạn tóm tắt ngắn.',
+        content: '## Câu hỏi đầu tiên\n\nĐoạn thân bài nằm trong HTML thô.\n\n## Câu thứ hai\n\nĐoạn nữa.',
+        author: 'Van Quyet Doan',
+        status: 'published',
+        publishedAt: '2026-08-08T00:00:00Z',
+        updatedAt: '2026-08-08T00:00:00Z',
+        tags: ['toucan'],
+        seoTitle: 'SEO title',
+        seoDescription: 'SEO description for the meta tag.',
+        translationKey: 'test',
+        ...overrides,
+    }
 }
 
-const PAST = '2020-01-01';
-const FUTURE = '2099-01-01';
+const CSS = ['/assets/index-abc.css']
 
-// ---------------------------------------------------------------------------
-// publish-queue
-// ---------------------------------------------------------------------------
+test('the article body is in the raw HTML, not assembled by JavaScript', () => {
+    // The single most important property of this whole system: the crawlers this
+    // content targets do not run JS, so the words have to be in the bytes.
+    const html = renderPostPage(samplePost(), null, CSS)
+    assert.ok(html.includes('Đoạn thân bài nằm trong HTML thô.'))
+    assert.ok(html.includes('Câu hỏi đầu tiên'))
+    // No bundle, no hydration, no framework runtime.
+    assert.ok(!html.includes('type="module"'), 'a blog page must ship no module script')
+})
 
-test('the queue splits live from pending on publishAt', async () => {
-    const { default: handler } = await freshImport('../api/publish-queue.js');
-    const res = mockRes();
-    handler({ method: 'GET', url: '/api/publish-queue', headers: {} }, res);
+test('the excerpt precedes the table of contents and the body in the DOM', () => {
+    const html = renderPostPage(samplePost(), null, CSS)
+    const lede = html.indexOf('Một đoạn tóm tắt ngắn.')
+    const toc = html.indexOf('blog-toc')
+    const body = html.indexOf('Đoạn thân bài')
+    assert.ok(lede > 0 && toc > 0 && body > 0)
+    assert.ok(lede < toc, 'the excerpt must come before the contents list')
+    assert.ok(toc < body, 'the contents list must come before the body')
+})
 
-    assert.strictEqual(res.statusCode, 200);
-    const body = res.json();
-    assert.strictEqual(body.ok, true);
+test('SEO fields override their fallbacks', () => {
+    const html = renderPostPage(samplePost(), null, CSS)
+    assert.match(html, /<title>SEO title<\/title>/)
+    assert.match(html, /<meta name="description" content="SEO description for the meta tag\." \/>/)
+})
 
-    const now = Date.now();
-    for (const post of body.live) {
-        assert.ok(Date.parse(`${post.publishAt}T00:00:00Z`) <= now,
-            `${post.slug}.${post.lang} is listed live but its date has not passed`);
-    }
-    for (const post of body.pending) {
-        assert.ok(Date.parse(`${post.publishAt}T00:00:00Z`) > now,
-            `${post.slug}.${post.lang} is listed pending but its date has passed`);
-    }
-    assert.strictEqual(body.counts.live + body.counts.pending, body.counts.total);
-});
+test('title and description fall back when no SEO fields are set', () => {
+    const html = renderPostPage(samplePost({ seoTitle: '', seoDescription: '' }), null, CSS)
+    assert.match(html, /<title>Bài thử nghiệm<\/title>/)
+    assert.match(html, /content="Một đoạn tóm tắt ngắn\."/)
+})
 
-test('nextPublishAt is the soonest pending date, and carries every post on it', async () => {
-    const { default: handler } = await freshImport('../api/publish-queue.js');
-    const res = mockRes();
-    handler({ method: 'GET', url: '/api/publish-queue', headers: {} }, res);
-    const body = res.json();
+test('canonical is self-referencing unless overridden', () => {
+    const plain = renderPostPage(samplePost(), null, CSS)
+    assert.match(plain, /<link rel="canonical" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem" \/>/)
 
-    if (!body.pending.length) {
-        assert.strictEqual(body.nextPublishAt, null);
-        return;
-    }
+    const syndicated = renderPostPage(
+        samplePost({ canonicalUrl: 'https://medium.com/@x/y' }),
+        null,
+        CSS,
+    )
+    assert.match(syndicated, /<link rel="canonical" href="https:\/\/medium\.com\/@x\/y" \/>/)
+})
 
-    // Pending must be sorted soonest-first, so the head is the next date.
-    assert.strictEqual(body.nextPublishAt, body.pending[0].publishAt);
-    // Both languages of a topic share a date, so nextPosts is normally the pair.
-    for (const post of body.nextPosts) {
-        assert.strictEqual(post.publishAt, body.nextPublishAt);
-    }
-    const onThatDate = body.pending.filter((p) => p.publishAt === body.nextPublishAt);
-    assert.strictEqual(body.nextPosts.length, onThatDate.length);
-});
+test('hreflang appears only when the counterpart is actually published', () => {
+    const alone = renderPostPage(samplePost(), null, CSS)
+    assert.ok(
+        !alone.includes('rel="alternate" hreflang'),
+        'an alternate pointing at a page that does not exist is worse than none',
+    )
 
-test('the queue refuses anything but a read', async () => {
-    const { default: handler } = await freshImport('../api/publish-queue.js');
-    const res = mockRes();
-    handler({ method: 'DELETE', url: '/api/publish-queue', headers: {} }, res);
-    assert.strictEqual(res.statusCode, 405);
-});
+    const paired = renderPostPage(samplePost(), { lang: 'en', slug: 'test-post' }, CSS)
+    assert.match(paired, /hreflang="vi" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem"/)
+    assert.match(paired, /hreflang="en" href="https:\/\/merid\.site\/blog\/en\/test-post"/)
+    assert.match(paired, /hreflang="x-default" href="https:\/\/merid\.site\/blog\/vie\/bai-thu-nghiem"/)
+})
 
-// ---------------------------------------------------------------------------
-// cron/rebuild
-// ---------------------------------------------------------------------------
+test('Article JSON-LD carries a Person author with sameAs links', () => {
+    const html = renderPostPage(samplePost(), null, CSS)
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+        .map((m) => JSON.parse(m[1].replace(/\\u003c/g, '<')))
 
-/**
- * Runs the cron handler with a given environment, restoring env afterwards so
- * tests cannot leak settings into each other.
- */
-async function runCron({ secret, hookUrl, authorization, posts }) {
-    const saved = { ...process.env };
-    process.env.CRON_SECRET = secret ?? '';
-    process.env.VERCEL_DEPLOY_HOOK_URL = hookUrl ?? '';
+    const article = blocks.find((b) => b['@type'] === 'Article')
+    assert.ok(article, 'an Article node must be present')
+    assert.equal(article.author['@type'], 'Person')
+    assert.equal(article.author.name, 'Van Quyet Doan')
+    assert.ok(article.author.sameAs.some((u) => u.includes('chromewebstore')))
+    assert.ok(article.author.sameAs.some((u) => u.includes('linkedin')))
+    assert.equal(article.datePublished, '2026-08-08T00:00:00Z')
+    assert.equal(article.inLanguage, 'vi-VN')
 
-    if (posts) {
-        const manifest = await import('../api/_generated/posts.js');
-        manifest.posts.length = 0;
-        manifest.posts.push(...posts);
-    }
+    assert.ok(blocks.some((b) => b['@type'] === 'BreadcrumbList'))
+})
 
-    const { default: handler } = await freshImport('../api/cron/rebuild.js');
-    const res = mockRes();
-    await handler({ method: 'GET', headers: { authorization: authorization ?? '' } }, res);
+test('FAQPage JSON-LD appears only when the post has FAQ entries', () => {
+    const without = renderPostPage(samplePost(), null, CSS)
+    assert.ok(!without.includes('FAQPage'))
 
-    process.env = saved;
-    return res;
-}
+    const withFaq = renderPostPage(
+        samplePost({ faq: [{ question: 'Q?', answer: 'A.' }] }),
+        null,
+        CSS,
+    )
+    const faq = [...withFaq.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+        .map((m) => JSON.parse(m[1].replace(/\\u003c/g, '<')))
+        .find((b) => b['@type'] === 'FAQPage')
+    assert.ok(faq)
+    assert.equal(faq.mainEntity[0].name, 'Q?')
+    assert.equal(faq.mainEntity[0].acceptedAnswer.text, 'A.')
+})
 
-test('an unset CRON_SECRET fails closed rather than running unprotected', async () => {
-    const res = await runCron({ secret: '', authorization: 'Bearer anything' });
-    assert.strictEqual(res.statusCode, 500);
-    assert.strictEqual(res.json().code, 'server-misconfigured');
-});
+test('a title containing markup cannot break out of the JSON-LD block', () => {
+    const html = renderPostPage(samplePost({ title: 'A </script><script>alert(1)</script>' }), null, CSS)
+    assert.ok(!html.includes('</script><script>alert(1)'), 'the title must not close the JSON-LD script')
+    assert.ok(html.includes('\\u003c'), 'angle brackets in JSON-LD must be escaped')
+})
 
-test('a wrong or missing bearer token is rejected', async () => {
-    for (const authorization of ['', 'Bearer wrong', 'Basic hunter2', 'Bearer ']) {
-        const res = await runCron({ secret: 'right', hookUrl: 'https://example.invalid', authorization });
-        assert.strictEqual(res.statusCode, 401, `"${authorization}" must not authorize`);
-    }
-});
+test('the index lists posts and links them at the right URLs', () => {
+    const html = renderIndexPage('vie', [samplePost()], CSS)
+    assert.ok(html.includes('href="/blog/vie/bai-thu-nghiem"'))
+    assert.ok(html.includes('Bài thử nghiệm'))
+    assert.match(html, /<link rel="canonical" href="https:\/\/merid\.site\/blog" \/>/)
+})
 
-test('a token of the wrong length is rejected without throwing', async () => {
-    // timingSafeEqual throws on length mismatch, so the length check has to come
-    // first; this is the case that would 500 instead of 401 if it did not.
-    const res = await runCron({ secret: 'a-long-secret', hookUrl: 'https://example.invalid', authorization: 'Bearer x' });
-    assert.strictEqual(res.statusCode, 401);
-});
+test('an empty index renders a real empty state rather than a blank page', () => {
+    const html = renderIndexPage('en', [], CSS)
+    assert.ok(html.includes('No posts yet'))
+    assert.match(html, /<link rel="canonical" href="https:\/\/merid\.site\/blog\/en" \/>/)
+})
 
-test('a day with nothing due does not trigger a deploy', async () => {
-    const res = await runCron({
-        secret: 'right',
-        hookUrl: 'https://example.invalid',
-        authorization: 'Bearer right',
-        posts: [{ slug: 'later', lang: 'vi', translationKey: 'later', title: 'Later', publishAt: FUTURE, url: 'https://merid.site/blog/later' }]
-    });
+test('the 404 page is marked noindex', () => {
+    const html = renderNotFound('vie', CSS)
+    assert.match(html, /<meta name="robots" content="noindex, follow" \/>/)
+})
 
-    assert.strictEqual(res.statusCode, 200);
-    const body = res.json();
-    assert.strictEqual(body.triggered, false);
-    assert.strictEqual(body.nextPublishAt, FUTURE);
-});
-
-test('a post that went live long ago does not re-trigger a deploy', async () => {
-    // Without the lookback window every nightly run would redeploy forever.
-    const res = await runCron({
-        secret: 'right',
-        hookUrl: 'https://example.invalid',
-        authorization: 'Bearer right',
-        posts: [{ slug: 'old', lang: 'vi', translationKey: 'old', title: 'Old', publishAt: PAST, url: 'https://merid.site/blog/old' }]
-    });
-    assert.strictEqual(res.json().triggered, false);
-});
-
-test('a post crossing its date POSTs the deploy hook exactly once', async () => {
-    const hits = [];
-    const server = http.createServer((req, res) => {
-        hits.push(req.method);
-        res.writeHead(201).end('{}');
-    });
-    await new Promise((resolve) => server.listen(0, resolve));
-    const hookUrl = `http://127.0.0.1:${server.address().port}/deploy`;
-
-    const today = new Date().toISOString().slice(0, 10);
-    const res = await runCron({
-        secret: 'right',
-        hookUrl,
-        authorization: 'Bearer right',
-        posts: [
-            { slug: 'today', lang: 'vi', translationKey: 'k', title: 'Today', publishAt: today, url: 'https://merid.site/blog/today' },
-            { slug: 'today', lang: 'en', translationKey: 'k', title: 'Today', publishAt: today, url: 'https://merid.site/en/blog/today' }
-        ]
-    });
-
-    server.close();
-
-    assert.strictEqual(res.statusCode, 200);
-    const body = res.json();
-    assert.strictEqual(body.triggered, true);
-    // Both languages are reported, but only one deploy is triggered for them.
-    assert.strictEqual(body.published.length, 2);
-    assert.deepStrictEqual(hits, ['POST']);
-});
-
-test('a due post with no deploy hook configured is an error, not a silent no-op', async () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const res = await runCron({
-        secret: 'right',
-        hookUrl: '',
-        authorization: 'Bearer right',
-        posts: [{ slug: 'today', lang: 'vi', translationKey: 'k', title: 'Today', publishAt: today, url: 'https://merid.site/blog/today' }]
-    });
-
-    assert.strictEqual(res.statusCode, 500);
-    assert.strictEqual(res.json().code, 'server-misconfigured');
-});
+test('every page links the SPA stylesheet and sets the right html lang', () => {
+    assert.ok(renderPostPage(samplePost(), null, CSS).includes('<link rel="stylesheet" href="/assets/index-abc.css" />'))
+    assert.match(renderPostPage(samplePost(), null, CSS), /<html lang="vi">/)
+    assert.match(renderPostPage(samplePost({ lang: 'en' }), null, CSS), /<html lang="en">/)
+})
