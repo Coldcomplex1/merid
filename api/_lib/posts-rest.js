@@ -97,6 +97,17 @@ export async function fetchPublishedPosts(lang) {
   })
 
   if (!response.ok) {
+    // 403 here has one overwhelmingly likely cause on a fresh deploy: the rules
+    // in firestore.rules were never uploaded, so the posts collection is still
+    // covered by the default-deny at the bottom of the file. Verified against
+    // production: an unauthenticated read returns 403 PERMISSION_DENIED rather
+    // than 401, which confirms rules are what is being evaluated.
+    if (response.status === 403) {
+      throw new Error(
+        'Firestore denied the read. The security rules have probably not been deployed: ' +
+          'run "firebase deploy --only firestore:rules". See BLOG_WORKFLOW.md section 1.4.',
+      )
+    }
     throw new Error(`Firestore query failed: HTTP ${response.status}`)
   }
 
