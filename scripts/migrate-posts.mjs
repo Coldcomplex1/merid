@@ -83,13 +83,14 @@ function unquote(value) {
 /**
  * MDX to Markdown.
  *
- * Only two constructs need translating, because the posts were written against
- * a deliberately small component set:
+ * Three constructs need translating, because the posts were written against a
+ * deliberately small component set:
  *   - the `import { Todo }` line, which has no meaning outside MDX
  *   - <Todo kind="stat">…</Todo>, which becomes a blockquote so the marker stays
  *     visible in the admin and on the page rather than vanishing silently
- * <span className="swap"> survives as-is: the sanitiser allows span.swap and the
- * stylesheet still defines it.
+ *   - <span className="swap">word</span>, which becomes ==word==. Raw HTML in a
+ *     post is escaped now (see api/_lib/markdown.js), so the span would render
+ *     as visible angle brackets; ==…== is the supported syntax for it.
  */
 function mdxToMarkdown(body) {
   return body
@@ -99,6 +100,9 @@ function mdxToMarkdown(body) {
       const text = inner.trim().replace(/\s+/g, ' ')
       return `> **${label}** — ${text}`
     })
+    // The gold-highlighted English word, as a Markdown extension rather than
+    // raw HTML. Runs before the className rewrite so it catches both spellings.
+    .replace(/<span\s+class(?:Name)?="swap">([\s\S]*?)<\/span>/g, (_, inner) => `==${inner.trim()}==`)
     .replace(/className=/g, 'class=')
     .replace(/\n{3,}/g, '\n\n')
     .trim()

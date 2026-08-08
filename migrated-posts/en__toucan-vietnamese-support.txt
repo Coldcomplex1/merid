@@ -78,7 +78,7 @@ in Ho Chi Minh City, and I quit every vocabulary app I ever downloaded. Not
 because they were bad. Because all of them needed me to open them first.
 
 Merid runs on the page you already have open. Here is Vietnamese Wikipedia, with
-*kết hợp* replaced by <span class="swap">amalgamate</span>.
+*kết hợp* replaced by ==amalgamate==.
 
 ![Vietnamese Wikipedia with the word kết hợp replaced by amalgamate, with a definition card](/blog/screenshots/wikipedia-amalgamate.png)
 
@@ -104,7 +104,7 @@ The part I am most attached to is the context check. Merid can ask a model
 whether the word it just swapped in genuinely fits the sentence it landed in.
 Below, it caught itself: it had used *amorous* in a post about Messi and Ronaldo,
 decided that was wrong, and replaced it with
-<span class="swap">captivate</span>.
+==captivate==.
 
 ![A Facebook post about Messi and Ronaldo, with a Merid card showing the AI context check replacing amorous with captivate](/blog/screenshots/facebook-captivate.png)
 

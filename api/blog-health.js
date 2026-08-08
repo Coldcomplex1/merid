@@ -15,11 +15,9 @@
 
 const CHECKS = [
   { name: 'marked', spec: 'marked', probe: (m) => typeof m.marked?.parse === 'function' },
-  { name: 'sanitize-html', spec: 'sanitize-html', probe: (m) => typeof m.default === 'function' },
   { name: 'blog-config', spec: './_lib/blog-config.js', probe: (m) => Array.isArray(m.LANGS) },
   { name: 'slug', spec: './_lib/slug.js', probe: (m) => typeof m.slugify === 'function' },
   { name: 'markdown', spec: './_lib/markdown.js', probe: (m) => typeof m.toHtml === 'function' },
-  { name: 'sanitize', spec: './_lib/sanitize.js', probe: (m) => typeof m.sanitizeArticleHtml === 'function' },
   { name: 'posts-rest', spec: './_lib/posts-rest.js', probe: (m) => typeof m.fetchPost === 'function' },
   { name: 'blog-html', spec: './_lib/blog-html.js', probe: (m) => typeof m.renderPostPage === 'function' },
 ]

@@ -21,8 +21,8 @@
 //
 // Everything below the imports is inside a try, and the only things imported at
 // the top level are Node built-ins and blog-config.js, which is nothing but
-// constants. Modules with real dependencies (marked, sanitize-html) are pulled
-// in with await import() inside the handler.
+// constants. Modules with a real dependency behind them (marked) are pulled in
+// with await import() inside the handler.
 //
 // That is not stylistic. A failure while loading a module cannot be caught by a
 // try inside the handler, because the module never finishes loading and the

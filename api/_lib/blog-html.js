@@ -22,7 +22,6 @@ import {
   postPath,
 } from './blog-config.js'
 import { extractToc, readingMinutes, stripTags, toHtml } from './markdown.js'
-import { sanitizeArticleHtml } from './sanitize.js'
 
 const THEME_BG = { light: '#faf8f2', dark: '#0e1628' }
 
@@ -239,7 +238,7 @@ export function renderPostPage(post, counterpart) {
   const lang = post.lang
   const t = STRINGS[lang]
 
-  const bodyHtml = sanitizeArticleHtml(toHtml(post.content))
+  const bodyHtml = toHtml(post.content)
   const toc = extractToc(bodyHtml)
   const minutes = readingMinutes(stripTags(bodyHtml), lang)
 
@@ -376,7 +375,7 @@ export function renderIndexPage(lang, posts) {
   const list = posts.length
     ? `<ul class="blog-list">${posts
         .map((post) => {
-          const minutes = readingMinutes(stripTags(sanitizeArticleHtml(toHtml(post.content))), lang)
+          const minutes = readingMinutes(stripTags(toHtml(post.content)), lang)
           const cover = post.coverImage
             ? `<img class="blog-card-cover" src="${esc(post.coverImage)}" alt="${esc(post.coverAlt || '')}" loading="lazy" decoding="async" />`
             : ''

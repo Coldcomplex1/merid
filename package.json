@@ -13,7 +13,7 @@
     "audit": "npm audit --audit-level=high",
     "emulators": "firebase emulators:start --only auth,firestore",
     "test:rules": "firebase emulators:exec --only firestore --project merid-rules-test \"node --test test/firestore-rules.test.mjs\"",
-    "test:api": "node --test test/api.test.mjs test/blog.test.mjs",
+    "test:api": "node --test test/api.test.mjs test/blog.test.mjs test/engines.test.mjs",
     "test": "npm run test:api"
   },
   "dependencies": {
@@ -23,8 +23,7 @@
     "marked": "^18.0.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router": "^8.3.0",
-    "sanitize-html": "^2.17.6"
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

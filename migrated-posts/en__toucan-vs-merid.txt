@@ -82,7 +82,7 @@ actually fits, and correct itself when it does not.
 ![A Facebook post about Messi and Ronaldo where the Merid card shows the context check replacing amorous with captivate](/blog/screenshots/facebook-captivate.png)
 
 In that screenshot it had used *amorous*, decided that was wrong for a sentence
-about two footballers, and swapped in <span class="swap">captivate</span>.
+about two footballers, and swapped in ==captivate==.
 Both map to the same Vietnamese phrase. Only one of them belongs in that sentence.
 
 ## How aggressive should the swapping be?

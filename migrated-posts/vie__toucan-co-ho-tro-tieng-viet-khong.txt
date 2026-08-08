@@ -93,7 +93,7 @@ viên ở TP.HCM, và mình đã bỏ dở mọi app học từ vựng từng t�
 chúng dở, mà vì cái nào cũng bắt mình mở nó ra rồi mới học được.
 
 Merid chạy trên trang bạn vốn đã mở. Đây là Wikipedia tiếng Việt, và từ *kết hợp*
-đã thành <span class="swap">amalgamate</span>.
+đã thành ==amalgamate==.
 
 ![Wikipedia tiếng Việt với từ kết hợp được thay bằng amalgamate, kèm thẻ giải nghĩa](/blog/screenshots/wikipedia-amalgamate.png)
 
@@ -120,7 +120,7 @@ mà bạn bè quanh mình thật sự nhắm tới, chứ không phải vì chú
 
 Có một chi tiết mình thích ở phần kiểm tra ngữ cảnh. Merid có thể hỏi lại AI xem
 từ vừa thay có thật sự hợp với câu đó không. Trong ảnh dưới, nó tự đổi *amorous*
-thành <span class="swap">captivate</span> trong một bài về Messi và Ronaldo,
+thành ==captivate== trong một bài về Messi và Ronaldo,
 vì *amorous* sai nghĩa ở câu đó.
 
 ![Bài Facebook về Messi và Ronaldo, thẻ Merid hiện dòng AI context check swapped this amorous thành captivate](/blog/screenshots/facebook-captivate.png)

@@ -8,8 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { findFreeSlug, postId, slugify } from '../api/_lib/slug.js'
-import { extractToc, readingMinutes, stripTags, toHtml } from '../api/_lib/markdown.js'
-import { sanitizeArticleHtml } from '../api/_lib/sanitize.js'
+import { extractToc, readingMinutes, safeUrl, stripTags, toHtml } from '../api/_lib/markdown.js'
 import { formatStructuredPost, parseStructuredPost } from '../api/_lib/structured-post.js'
 import { renderIndexPage, renderNotFound, renderPostPage } from '../api/_lib/blog-html.js'
 
@@ -124,43 +123,75 @@ test('stripTags leaves the words and drops the markup', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sanitisation
+// Safety
+//
+// There is no sanitiser any more. Raw HTML is escaped rather than emitted, so
+// every tag on a page came from a renderer in markdown.js, and URLs go through
+// safeUrl(). These tests guard that property directly, because it is the whole
+// reason no sanitiser is needed.
 // ---------------------------------------------------------------------------
 
-test('scripts and event handlers never survive to a public page', () => {
+test('raw HTML in a post is escaped, never emitted', () => {
     // Markdown permits raw HTML by design, so this is reachable without any
     // compromise: it only takes one careless paste.
-    const dirty = toHtml('Hello <script>alert(1)</script> and <img src=x onerror="alert(2)">')
-    const clean = sanitizeArticleHtml(dirty)
-    assert.ok(!clean.includes('<script'), 'script tag must be removed')
-    assert.ok(!clean.includes('alert(1)'), 'script body must be removed')
-    assert.ok(!clean.includes('onerror'), 'event handler must be stripped')
-    assert.ok(clean.includes('Hello'), 'surrounding text must survive')
+    const html = toHtml('Hello <script>alert(1)</script> and <img src=x onerror="alert(2)">')
+
+    // What matters is that no *tag* survives. The characters "onerror=" may
+    // still appear, because they are now visible text inside an escaped tag,
+    // and text cannot execute.
+    assert.ok(!html.includes('<script'), 'script tag must not survive')
+    assert.ok(!html.includes('<img'), 'img tag must not survive')
+    assert.match(html, /&lt;script&gt;/, 'it should be visible as text instead')
+    assert.match(html, /&lt;img[^>]*&gt;/, 'the img should be escaped, quotes and all')
+    assert.ok(html.includes('Hello'), 'surrounding text must survive')
 })
 
-test('javascript: and data: URLs are refused', () => {
-    for (const href of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {
-        const clean = sanitizeArticleHtml(`<a href="${href}">click</a>`)
-        assert.ok(!clean.includes('javascript:'), `${href} must not survive`)
-        assert.ok(!clean.includes('data:text/html'), `${href} must not survive`)
+test('block-level raw HTML is escaped too', () => {
+    // Block and inline HTML are separate token types in marked; missing either
+    // would leave a hole.
+    const html = toHtml('<div onclick="evil()">block</div>')
+    assert.ok(!html.includes('<div'), 'block-level HTML must not survive')
+    assert.match(html, /&lt;div/)
+})
+
+test('javascript: and data: URLs are refused in links and images', () => {
+    for (const url of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x']) {
+        const link = toHtml(`[click](${url})`)
+        assert.ok(!link.includes('href='), `${url} must not become a link`)
+        assert.ok(link.includes('click'), 'the text should survive as plain words')
+
+        const image = toHtml(`![alt](${url})`)
+        assert.ok(!image.includes('<img'), `${url} must not become an image`)
     }
 })
 
-test('the classes the stylesheet defines are kept, arbitrary ones are not', () => {
-    const clean = sanitizeArticleHtml(
-        '<span class="swap">captivate</span><span class="evil">x</span>',
-    )
-    assert.match(clean, /class="swap"/)
-    assert.ok(!clean.includes('evil'), 'undeclared classes should be dropped')
+test('safeUrl allows exactly what a post legitimately needs', () => {
+    for (const url of ['https://example.com', 'http://example.com', '/tutorial', '#anchor', 'mailto:a@b.c', '?q=1']) {
+        assert.equal(safeUrl(url), url, `${url} should be allowed`)
+    }
+    for (const url of ['javascript:alert(1)', '  javascript:alert(1)  ', 'data:text/html,x', 'vbscript:x', 'file:///etc/passwd']) {
+        assert.equal(safeUrl(url), '', `${url} should be refused`)
+    }
+    assert.equal(safeUrl(''), '')
+    assert.equal(safeUrl(undefined), '')
 })
 
-test('ordinary article markup passes through untouched', () => {
+test('==word== marks a swapped English word', () => {
+    // Replaces the raw <span class="swap"> the posts used to carry, which would
+    // now be escaped like any other raw HTML.
+    assert.match(toHtml('the word ==captivate== fits'), /<span class="swap">captivate<\/span>/)
+    // Inline markup still works inside it.
+    assert.match(toHtml('==**bold**=='), /<span class="swap"><strong>bold<\/strong><\/span>/)
+    // A lone == is not a swap.
+    assert.ok(!toHtml('2 == 2 is true').includes('class="swap"'))
+})
+
+test('ordinary article markup is untouched by any of this', () => {
     const html = toHtml(
         '## Heading\n\nA paragraph with **bold** and [a link](/x).\n\n| a |\n| --- |\n| 1 |\n\n![alt](/img.png)',
     )
-    const clean = sanitizeArticleHtml(html)
-    for (const fragment of ['<h2 id=', '<strong>', '<table>', '<figure>', 'table-scroll']) {
-        assert.ok(clean.includes(fragment), `${fragment} should survive sanitisation`)
+    for (const fragment of ['<h2 id=', '<strong>', '<table>', '<figure>', 'table-scroll', 'href="/x"']) {
+        assert.ok(html.includes(fragment), `${fragment} should render normally`)
     }
 })
 

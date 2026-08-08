@@ -80,7 +80,7 @@ và tự sửa nếu không hợp.
 ![Bài Facebook về Messi và Ronaldo, thẻ Merid ghi AI context check swapped this amorous thành captivate](/blog/screenshots/facebook-captivate.png)
 
 Trong ảnh đó nó đã đặt *amorous* vào chỗ từ say đắm, rồi tự nhận là sai và đổi
-sang <span class="swap">captivate</span>. Cả hai từ đều dịch được thành say
+sang ==captivate==. Cả hai từ đều dịch được thành say
 đắm, nhưng chỉ một từ đúng khi đang nói về hai cầu thủ bóng đá.
 
 ## Mức độ thay từ nên để bao nhiêu?

@@ -221,6 +221,15 @@ piece was published somewhere else first.
 Markdown. `##` for section headings, `**bold**`, `[text](url)`, `- ` for bullets,
 and `|` tables.
 
+**`==word==` highlights an English word** the way Merid does in the extension:
+`từ ==captivate== hợp hơn` renders *captivate* on a gold underline.
+
+**Raw HTML does not work, on purpose.** Typing `<span>` or `<div>` into a post
+shows the angle brackets as visible text rather than doing anything. That is
+what removes the need for a sanitiser: nothing you type can become a tag, so
+nothing dangerous can reach a reader even by accident. Markdown covers
+everything a post needs; `==word==` covers the one thing it did not.
+
 Two habits that matter more than anything else in this file:
 
 - **Phrase every `##` heading as a question someone would actually type.**
@@ -516,6 +525,14 @@ is unreadable to anyone who is not an admin, including someone calling the
 database API directly, so the render function *cannot* serve a draft even if it
 tried. Verified by tests in `test/firestore-rules.test.mjs`.
 
+**Why raw HTML is escaped.** Blog pages have no sanitiser. Instead every tag on
+a page is produced by a renderer function in `api/_lib/markdown.js`, and raw HTML
+in a post is escaped. Unsafe markup is unrepresentable rather than filtered out
+afterwards, which is a stronger guarantee and one fewer dependency in the
+function. Link and image URLs are separately restricted to `http`, `https`,
+`mailto` and site-relative paths, since escaping does nothing about
+`javascript:`.
+
 **What enforces pairing.** The same rules. Publishing writes both languages in one
 batch, and each document's rule checks — with `getAfter()`, which sees the end of
 the batch — that its counterpart also ends up published. Publishing one alone is
@@ -647,6 +664,10 @@ The render function could not find the site's stylesheet, which happens if
 `dist/.vite/manifest.json` is missing from the deploy. Redeploy. The pages
 deliberately still render rather than erroring, so this shows up as ugly rather
 than broken.
+
+**A `<span>` or other HTML I typed shows up as visible angle brackets.**
+Working as intended — see 2.4. Use `==word==` for the gold highlight; for
+anything else, Markdown.
 
 **The blog shows a Vercel error, or "This Serverless Function has crashed".**
 Load **[merid.site/api/blog-health](https://merid.site/api/blog-health)**. It
