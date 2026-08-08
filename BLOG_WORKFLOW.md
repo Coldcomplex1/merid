@@ -559,7 +559,15 @@ Variables and redeploy. See 1.3. The secret belongs there and nowhere else.
 **Image upload says Cloudinary refused it.**
 The message is Cloudinary's own. "Invalid signature" almost always means
 `CLOUDINARY_API_SECRET` in Vercel does not match the one on the Cloudinary
-dashboard — copy it again, watching for a trailing space, and redeploy.
+dashboard — copy it again and redeploy.
+
+**Image upload says "Invalid cloud_name" for a name that looks correct.**
+Because it was correct, plus an invisible character. A trailing newline or
+space survives the paste into Vercel, and Cloudinary prints the name without it,
+so the error looks like it contradicts itself. The server now trims every
+configuration value, so this should not recur; if it does, the value contains
+something stranger than whitespace and the upload error will quote it back to
+you.
 
 **Image upload says my session expired.**
 The Firebase ID token aged out while the tab sat open. Reload and retry.

@@ -49,13 +49,32 @@ async function adminStatus(projectId, uid, idToken) {
   return 'unreachable';
 }
 
+/**
+ * Read a configuration value, trimmed.
+ *
+ * A trailing space or newline survives a copy-paste into Vercel and is then
+ * invisible everywhere you would look for it. The dashboard field shows
+ * nothing, and Cloudinary's rejection prints the value looking exactly right -
+ * "Invalid cloud_name jcklpfxz" for a value that really is `jcklpfxz\n`. On the
+ * secret it is worse: the signature comes out wrong and the error blames the
+ * signature. Neither is falsifiable by reading the value, so trim it and delete
+ * the whole class of failure.
+ */
+function readEnv(name) {
+  const raw = process.env[name];
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+/** What a Cloudinary cloud name may contain. Anything else is a paste accident. */
+const CLOUD_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, code: 'method' });
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const projectId = readEnv('FIREBASE_PROJECT_ID');
+  const cloudName = readEnv('CLOUDINARY_CLOUD_NAME');
+  const apiKey = readEnv('CLOUDINARY_API_KEY');
+  const apiSecret = readEnv('CLOUDINARY_API_SECRET');
 
   if (!projectId || !cloudName || !apiKey || !apiSecret) {
     // Name the missing variables: the alternative is an upload button that
@@ -69,6 +88,19 @@ export default async function handler(req, res) {
       .filter(([, value]) => !value)
       .map(([name]) => name);
     return send(res, 500, { ok: false, code: 'server-misconfigured', missing });
+  }
+
+  // A cloud name goes straight into the upload URL, so a bad one comes back as
+  // Cloudinary's "Invalid cloud_name", which is true but points at the wrong
+  // place. Reject it here, where we can say it is our configuration.
+  if (!CLOUD_NAME_PATTERN.test(cloudName)) {
+    return send(res, 500, {
+      ok: false,
+      code: 'server-misconfigured',
+      reason: 'cloud-name-invalid',
+      // Public, and quoted so anything odd is visible rather than inferred.
+      cloudName: JSON.stringify(cloudName),
+    });
   }
 
   const auth = String(req.headers.authorization || '');

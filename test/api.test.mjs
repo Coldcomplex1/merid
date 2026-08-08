@@ -440,3 +440,58 @@ test('a stream error rejects instead of hanging', async () => {
     req.emit('error', new Error('socket-died'));
     await assert.rejects(() => promise, /socket-died/);
 });
+
+test('configuration values are trimmed, so an invisible newline cannot break uploads', async () => {
+    // The failure this prevents: Cloudinary answers "Invalid cloud_name
+    // jcklpfxz" for a value that really is "jcklpfxz\n". The name in the error
+    // looks correct, so the evidence points away from the actual cause.
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = '  jcklpfxz\n';
+    process.env.CLOUDINARY_API_KEY = ' key ';
+    process.env.CLOUDINARY_API_SECRET = '\tsecret\n';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    try {
+        await handler({ method: 'POST', headers: { authorization: 'Bearer a.b.c' } }, res);
+    } finally {
+        process.env = saved;
+    }
+
+    // Padding trimmed away, so it got past configuration and failed on the
+    // token instead - which is the only thing wrong with this request.
+    assert.equal(res.code, 401);
+});
+
+test('a cloud name that cannot be one is named here, not blamed on Cloudinary', async () => {
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = '"jcklpfxz"';   // quotes kept by Vercel
+    process.env.CLOUDINARY_API_KEY = 'key';
+    process.env.CLOUDINARY_API_SECRET = 'secret';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    try {
+        await handler({ method: 'POST', headers: { authorization: 'Bearer a.b.c' } }, res);
+    } finally {
+        process.env = saved;
+    }
+
+    assert.equal(res.code, 500);
+    const body = JSON.parse(res.body);
+    assert.equal(body.reason, 'cloud-name-invalid');
+    // Quoted in the reply so the stray characters are visible rather than guessed.
+    assert.match(body.cloudName, /\\"jcklpfxz\\"/);
+});

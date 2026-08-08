@@ -159,7 +159,15 @@ async function requestUploadGrant(filename: string): Promise<UploadGrant> {
 
   if (response.ok) return (await response.json()) as UploadGrant
 
-  const detail = await response.json().catch(() => ({}) as { code?: string; missing?: string[] })
+  const detail = await response.json().catch(
+    () => ({}) as { code?: string; missing?: string[]; reason?: string; cloudName?: string },
+  )
+
+  if (detail.reason === 'cloud-name-invalid') {
+    throw new ImageUploadError(
+      `CLOUDINARY_CLOUD_NAME is set to ${detail.cloudName}, which is not a usable cloud name. Copy it again from the Cloudinary dashboard (Product Environment → Cloud name) into Vercel, then redeploy.`,
+    )
+  }
 
   if (detail.code === 'rules-not-deployed') {
     throw new ImageUploadError(
