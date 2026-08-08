@@ -140,8 +140,20 @@ firebase login
 firebase deploy --only firestore:rules
 ```
 
-**Check it worked:** in the Firebase console, **Firestore Database → Rules**
-should show a `match /posts/{postId}` block.
+**Check it worked:** the console's **Firestore Database → Rules** tab lists each
+published ruleset with the time it went live. The top entry should say *just
+now*. That is the only check that works every time, because it asks when the
+rules were published rather than what they contain.
+
+Looking for a `match /posts/{postId}` block instead proves nothing: that block
+has been there since the blog was first built, so it shows up whether or not
+today's deploy landed. This page used to say exactly that, which meant a stale
+ruleset passed its own verification — a check that cannot fail is worse than no
+check, because it hands out confidence without evidence.
+
+If you want to confirm the contents too, search the published rules for
+`counterpartSlug`. That arrived with paired publishing, so anything older than
+that change will not have it.
 
 No storage rules to deploy — images are Cloudinary's problem now, and
 `firebase.json` no longer mentions storage. (A `firebase deploy` naming
@@ -656,9 +668,11 @@ different.
 
 **A draft is visible to the public.**
 It should be impossible: the rules deny it and there are tests for exactly this.
-If you can genuinely reproduce it, unpublish everything and check that
-`firestore.rules` was actually deployed (Firebase console → Firestore → Rules
-should show a `match /posts/{postId}` block).
+If you can genuinely reproduce it, unpublish everything and check when
+`firestore.rules` was last deployed — Firebase console → Firestore → Rules
+shows the publish time of the live ruleset. If it predates the last change to
+that file in git, the database is enforcing an older set of rules than the one
+you have been reading. See 1.4.
 
 **Google has not indexed a post.**
 Indexing takes days to weeks and is not something you can force. Confirm the post
