@@ -1,0 +1,136 @@
+---
+title: Does Toucan support Vietnamese?
+description: Toucan does not list Vietnamese, but the language list is the smaller problem. The direction the extension translates in is what actually rules it out.
+slug: toucan-vietnamese-support
+lang: en
+translationKey: toucan-vietnamese-support
+publishAt: '2026-08-08'
+targetKeyword: toucan vietnamese support
+answer: No. Vietnamese is not on Toucan's language list. The bigger issue is direction. Toucan assumes you are reading a page in a language you already know and swaps a few words into the language you are learning. A Vietnamese speaker learning English needs the opposite.
+cover: /blog/screenshots/wikipedia-amalgamate.png
+coverAlt: A Vietnamese Wikipedia article with one word swapped for English
+faq:
+  - question: Is Toucan free?
+    answer: Toucan has a free tier and a paid one. Check their site directly, since tier limits and pricing change and I am not going to quote numbers I cannot verify.
+  - question: What if Toucan adds Vietnamese later?
+    answer: It would depend entirely on which role they add it in. Adding Vietnamese as a language you can learn is a different feature from supporting Vietnamese pages as the base language you read in.
+  - question: I am learning Japanese. Should I use Toucan?
+    answer: Yes, if you browse in English. That is exactly what Toucan is built for, and it does it well. Merid is not a replacement for that use case.
+related:
+  - toucan-vs-merid
+---
+
+import { Todo } from '../../blog/mdx-components'
+
+If you searched this because you installed Toucan and could not find Vietnamese
+in the dropdown, the answer is in the block above. What follows is the part that
+took me longer to work out, and the reason I ended up writing my own extension
+instead of waiting for an update.
+
+## Is Vietnamese on Toucan's language list?
+
+It is not. Toucan's published list covers Spanish, French, German, Italian,
+Portuguese, Japanese, Korean, Hindi, Hebrew, Arabic, Chinese and English.
+Vietnamese does not appear on it.
+
+Toucan is owned by Babbel now, so the authoritative place to check is the Babbel
+help centre or the extension's own Chrome Web Store description. Any list in a
+blog post, including this one, goes stale the moment a company ships a new
+language.
+
+<Todo kind="stat">
+  Confirm the supported *base* language list specifically, not the list of
+  languages you can learn. The primary pages were unreachable when I wrote this;
+  two secondary sources agreed, but a first-party citation would be better.
+</Todo>
+
+## Why is the language list the smaller problem?
+
+Because Toucan translates in one direction, and adding a language name would not
+change that direction. Toucan assumes the page in front of you is written in a
+language you already read comfortably, and it swaps a handful of those words into
+the language you are studying.
+
+For Toucan's core user that means an English-language page and a Spanish word
+appearing in it. You read a news article, *bread* comes out as *pan*, and one
+word lands.
+
+Now invert every part of that. The pages a Vietnamese reader opens all day are
+VnExpress, Tuổi Trẻ, Vietnamese Wikipedia, Vietnamese Facebook. The language they
+want is English. So the swap has to run from Vietnamese into English, on a
+Vietnamese page.
+
+That is not one missing menu item. It is a different product.
+
+## Can I just set English as the language to learn?
+
+You can select it, but it will not do what you want. English is on Toucan's list
+of languages you can learn. The catch is that the page you are reading has to be
+in a language Toucan handles as your base, and Vietnamese is not one of them.
+
+Which means the only way to make Toucan swap words for you is to already be
+reading the web in English. If you can comfortably read a full English page, your
+vocabulary problem has moved on to something else.
+
+I mention this because several Vietnamese-language write-ups about Toucan skip
+it. They list the features, praise the idea, and leave the reader to discover
+after installing that there is nothing for them to select. The idea genuinely is
+good. It was just not built for this reader.
+
+## So what should a Vietnamese learner use instead?
+
+Something that runs Vietnamese to English. It has to read a Vietnamese page,
+choose a few words worth replacing, and drop an English word in their place
+without wrecking the sentence.
+
+That is what I built, and I built it because I could not find one. I am a student
+in Ho Chi Minh City, and I quit every vocabulary app I ever downloaded. Not
+because they were bad. Because all of them needed me to open them first.
+
+Merid runs on the page you already have open. Here is Vietnamese Wikipedia, with
+*kết hợp* replaced by <span className="swap">amalgamate</span>.
+
+![Vietnamese Wikipedia with the word kết hợp replaced by amalgamate, with a definition card](/blog/screenshots/wikipedia-amalgamate.png)
+
+## How is Merid actually different?
+
+Three ways: the direction of the swap, the word lists, and where the work
+happens. Toucan serves English speakers learning something else. Merid serves
+Vietnamese speakers learning English. Everything else follows from that.
+
+| | Toucan | Merid |
+| --- | --- | --- |
+| Swap direction | Page language into your target language | Vietnamese into English |
+| Pages it works on | Pages in a language Toucan supports | Vietnamese pages you read anyway |
+| Word lists | Toucan's own levels | SAT, C1, C2, or a list you build |
+| Where it runs | Per Toucan's description | Word replacement happens on your machine |
+| Price | Free tier plus paid plans | Free |
+
+Merid ships three lists, SAT, C1 and C2. I picked those three because they are
+the three targets the people around me are actually aiming at, not because they
+were the easiest to assemble.
+
+The part I am most attached to is the context check. Merid can ask a model
+whether the word it just swapped in genuinely fits the sentence it landed in.
+Below, it caught itself: it had used *amorous* in a post about Messi and Ronaldo,
+decided that was wrong, and replaced it with
+<span className="swap">captivate</span>.
+
+![A Facebook post about Messi and Ronaldo, with a Merid card showing the AI context check replacing amorous with captivate](/blog/screenshots/facebook-captivate.png)
+
+Anything worth keeping goes to your deck with one click. That screenshot is my
+own deck as it stood: twenty-five words, fifteen still in progress, ten marked
+known.
+
+![The Merid deck page showing 25 words, 15 learning and 10 known](/blog/screenshots/my-deck.png)
+
+## Is it worth waiting for Toucan to add Vietnamese?
+
+If you are learning Spanish or Japanese and you browse in English, do not wait
+for anything. Toucan works today and does its job well. This post is not an
+argument that Toucan is bad.
+
+If you are Vietnamese and you want more English vocabulary while reading
+Vietnamese news, waiting for a name to appear in a dropdown will not help. The
+thing that needs to change is not the list, it is the direction. That has to be
+built from scratch, which is the part I already did.
