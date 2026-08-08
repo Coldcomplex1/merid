@@ -79,17 +79,30 @@ relationship to hold a dozen screenshots. Cloudinary's free tier needs no card.
 1. Sign up at [cloudinary.com](https://cloudinary.com/users/register_free).
 2. From the dashboard copy three values: **Cloud name**, **API Key**, **API
    Secret**.
-3. In the [Vercel project](https://vercel.com) → **Settings → Environment
-   Variables**, add:
+3. Vercel dashboard → project **merid** → **Settings** → **Environment
+   Variables**. Add each row: paste Key, paste Value, tick the environments,
+   **Save**.
 
-   | Name | Value |
+   | Key | Value |
    |---|---|
    | `CLOUDINARY_CLOUD_NAME` | your cloud name |
    | `CLOUDINARY_API_KEY` | your API key |
    | `CLOUDINARY_API_SECRET` | your API secret |
-   | `FIREBASE_PROJECT_ID` | `merid-49dd5` (likely already set) |
+   | `FIREBASE_PROJECT_ID` | `merid-49dd5` — already set if the AI proxy is running |
 
-4. Redeploy so the new variables are picked up.
+   **Which environments to tick:** **Production** is the one that matters —
+   it is `merid.site`, and leaving it unticked is the single most common way to
+   end up with variables that exist but never arrive. Tick **Preview** as well
+   so branch deploys behave the same. **Development** only affects
+   `vercel dev` on your own machine and can be left alone.
+
+   **Do not wrap values in quotes.** Vercel stores the value literally, so
+   `"abc123"` makes the quote marks part of the secret and every signature
+   comes out wrong. Same trap as `GEMINI_API_KEYS` in `docs/AI_PROXY_SETUP.md`.
+
+4. **Redeploy — this is not optional.** Environment variables only reach a
+   build that starts *after* they are saved; the running deploy cannot see
+   them. **Deployments → the top one → ⋯ → Redeploy.**
 
 **The secret goes in Vercel and nowhere else.** Not in the repo, not in a
 `VITE_` variable, not pasted into a chat. Anything named `VITE_*` is compiled
