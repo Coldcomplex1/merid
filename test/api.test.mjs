@@ -10,6 +10,8 @@ import crypto from 'node:crypto';
 import { todayKey, secondsUntilReset } from '../api/_lib/quota.js';
 import { _internal as gem } from '../api/_lib/gemini.js';
 import { verifyIdToken } from '../api/_lib/verify.js';
+import { signUploadParams, uploadTarget } from '../api/_lib/cloudinary.js';
+import { slugify } from '../api/_lib/slug.js';
 
 // ---------------------------------------------------------------------------
 // Model ranking
@@ -206,4 +208,91 @@ test('a token with no subject is rejected', async () => {
     await assert.rejects(
         () => verifyIdToken(makeToken({ sub: '' }), PROJECT),
         (e) => e.code === 'no-subject');
+});
+
+// ---------------------------------------------------------------------------
+// Cloudinary upload signatures
+//
+// The signature is the whole security boundary for image upload: it is what
+// lets the api_secret stay on the server while the browser still uploads
+// directly. Getting the string-to-sign wrong fails closed (Cloudinary rejects
+// it), but getting the *scope* wrong fails open, so the destination parameters
+// are pinned here too.
+// ---------------------------------------------------------------------------
+
+test("the signature matches Cloudinary's own documented example", () => {
+    // From cloudinary.com/documentation/authentication_signatures: signing
+    // "public_id=sample_image&timestamp=1315060510" with the secret "abcd".
+    // A golden vector from the vendor beats any amount of self-consistent
+    // testing, because it catches a wrong algorithm rather than a wrong call.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd'),
+        'b4ad47fb4e25c7bf5f92a20089f9db59bc302313');
+});
+
+test('parameters Cloudinary never signs are excluded, and order does not matter', () => {
+    const expected = 'b4ad47fb4e25c7bf5f92a20089f9db59bc302313';
+
+    // Same two signed parameters, declared last, surrounded by the four
+    // Cloudinary leaves out of the string-to-sign.
+    assert.equal(
+        signUploadParams({
+            file: 'blob:whatever',
+            cloud_name: 'merid',
+            resource_type: 'image',
+            api_key: '123456789',
+            timestamp: 1315060510,
+            public_id: 'sample_image',
+        }, 'abcd'),
+        expected);
+});
+
+test('empty values are dropped rather than signed as an empty pair', () => {
+    // Cloudinary omits absent parameters from its own string-to-sign, so
+    // signing "folder=" here would produce a signature the server disagrees
+    // with - and an upload button that always fails.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510, folder: '' }, 'abcd'),
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd'));
+});
+
+test('a different secret produces a different signature', () => {
+    assert.notEqual(
+        signUploadParams({ public_id: 'x', timestamp: 1 }, 'abcd'),
+        signUploadParams({ public_id: 'x', timestamp: 1 }, 'abce'));
+});
+
+test('signing without a secret throws instead of producing a usable signature', () => {
+    // A missing env var must not degrade into a signature computed against the
+    // empty string, which would be a valid-looking value that never works.
+    assert.throws(() => signUploadParams({ timestamp: 1 }, ''), /missing-api-secret/);
+    assert.throws(() => signUploadParams({ timestamp: 1 }, undefined), /missing-api-secret/);
+});
+
+test('the upload destination is derived server-side, not taken from the caller', () => {
+    const now = Date.UTC(2026, 7, 8);
+
+    // A caller trying to escape the blog folder gets slugified, not obeyed:
+    // the traversal collapses into an ordinary name.
+    const escape = uploadTarget('../../../etc/passwd.png', slugify, now);
+    assert.equal(escape.folder, 'blog/2026');
+    assert.ok(!escape.publicId.includes('/'), 'public_id must not contain a path separator');
+    assert.ok(!escape.publicId.includes('..'), 'public_id must not contain a traversal');
+
+    // A name that slugifies to nothing still yields a usable id.
+    assert.match(uploadTarget('???.png', slugify, now).publicId, /^image-/);
+    assert.match(uploadTarget('', slugify, now).publicId, /^image-/);
+
+    // The year comes from the clock, so January uploads do not land in last
+    // year's folder.
+    assert.equal(uploadTarget('a.png', slugify, Date.UTC(2027, 0, 1)).folder, 'blog/2027');
+});
+
+test('re-uploading the same filename never reuses the same public_id', () => {
+    // Cached URLs are immutable by design: the same name at a later moment must
+    // become a new asset, or a corrected image silently serves the old bytes.
+    const first = uploadTarget('cover.png', slugify, 1_000_000);
+    const second = uploadTarget('cover.png', slugify, 2_000_000);
+    assert.notEqual(first.publicId, second.publicId);
+    assert.match(first.publicId, /^cover-/);
 });
