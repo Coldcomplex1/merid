@@ -37,6 +37,34 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 export class ImageUploadError extends Error {}
 
 /**
+ * Nothing on this path may wait forever.
+ *
+ * The button has one visible state for "working", and a promise that never
+ * settles leaves it there permanently with no error and no way back - the user
+ * cannot tell a slow upload from a dead one. Every await below is therefore
+ * bounded, and every bound fails loudly.
+ *
+ * The upload allowance is the generous one: a 5 MB image on a weak connection
+ * is slow, not broken.
+ */
+const SIGNATURE_TIMEOUT_MS = 20_000
+const UPLOAD_TIMEOUT_MS = 180_000
+const ENCODE_TIMEOUT_MS = 20_000
+
+async function fetchWithin(url: string, init: RequestInit, ms: number, onTimeout: string) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) throw new ImageUploadError(onTimeout)
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
  * Redraws an oversized image onto a canvas at MAX_WIDTH.
  *
  * PNG screenshots are re-encoded as JPEG only when they are photographic in
@@ -75,8 +103,20 @@ async function downscale(file: File): Promise<Blob> {
   ctx.drawImage(bitmap, 0, 0, width, height)
   bitmap.close()
 
+  // toBlob takes a callback with no failure path of its own: a browser that
+  // never calls back (out of memory on a huge canvas, say) would hang the whole
+  // upload. Falling back to the original file after a wait costs some bytes and
+  // keeps the button alive.
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY)
+    const timer = setTimeout(() => resolve(null), ENCODE_TIMEOUT_MS)
+    canvas.toBlob(
+      (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      'image/jpeg',
+      JPEG_QUALITY,
+    )
   })
 
   // If the re-encode came out bigger (common for flat-colour screenshots),
@@ -106,11 +146,16 @@ async function requestUploadGrant(filename: string): Promise<UploadGrant> {
 
   const idToken = await user.getIdToken()
 
-  const response = await fetch('/api/blog-upload-signature', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ filename }),
-  })
+  const response = await fetchWithin(
+    '/api/blog-upload-signature',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ filename }),
+    },
+    SIGNATURE_TIMEOUT_MS,
+    'The server did not answer the upload request in time. Retry, and if it keeps happening check the Vercel deployment logs.',
+  )
 
   if (response.ok) return (await response.json()) as UploadGrant
 
@@ -168,11 +213,14 @@ export async function uploadBlogImage(file: File): Promise<string> {
 
   let response: Response
   try {
-    response = await fetch(`https://api.cloudinary.com/v1_1/${grant.cloudName}/image/upload`, {
-      method: 'POST',
-      body: form,
-    })
-  } catch {
+    response = await fetchWithin(
+      `https://api.cloudinary.com/v1_1/${grant.cloudName}/image/upload`,
+      { method: 'POST', body: form },
+      UPLOAD_TIMEOUT_MS,
+      'The upload to Cloudinary timed out. Check your connection, or export the image smaller and retry.',
+    )
+  } catch (error) {
+    if (error instanceof ImageUploadError) throw error
     throw new ImageUploadError('Could not reach Cloudinary. Check your connection and retry.')
   }
 

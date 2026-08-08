@@ -19,6 +19,7 @@
 import { verifyIdToken } from './_lib/verify.js';
 import { signUploadParams, uploadTarget, signatureAlgorithm } from './_lib/cloudinary.js';
 import { slugify } from './_lib/slug.js';
+import { readJsonBody, sendJson as send } from './_lib/http.js';
 
 /**
  * Whether this uid is a blog admin, asked with the caller's own token.
@@ -46,13 +47,6 @@ async function adminStatus(projectId, uid, idToken) {
   if (response.status === 404) return 'not-admin';
   if (response.status === 403) return 'rules-not-deployed';
   return 'unreachable';
-}
-
-function send(res, status, body) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  // A signature is per-user and single-use; a shared cache must never hold one.
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(status).send(JSON.stringify(body));
 }
 
 export default async function handler(req, res) {
@@ -94,15 +88,14 @@ export default async function handler(req, res) {
     return send(res, status === 'not-admin' ? 403 : 503, { ok: false, code: status });
   }
 
+  // Via the shared reader, never by iterating the stream: Vercel usually
+  // pre-parses the body, and a stream that has already ended never delivers a
+  // second 'end' to a listener attached afterwards. Getting that wrong does not
+  // fail, it hangs - the browser sits on "Uploading…" until the user gives up.
   let filename = '';
   try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const raw = Buffer.concat(chunks).toString('utf8');
-    if (raw.trim()) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.filename === 'string') filename = parsed.filename;
-    }
+    const body = await readJsonBody(req);
+    if (typeof body.filename === 'string') filename = body.filename;
   } catch {
     // A missing or unreadable body only costs a nicer filename.
     filename = '';

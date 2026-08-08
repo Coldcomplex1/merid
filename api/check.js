@@ -15,6 +15,7 @@
 import { verifyIdToken } from './_lib/verify.js';
 import { consume, isConfigured as quotaConfigured } from './_lib/quota.js';
 import { generate } from './_lib/gemini.js';
+import { readJsonBody, sendJson as send } from './_lib/http.js';
 
 // A signed-in reader is a known, recoverable identity; an anonymous one is a
 // device that can mint a fresh id by reinstalling. The lower anonymous
@@ -43,43 +44,6 @@ const VERDICT_SCHEMA = {
 
 function clip(v, n) {
   return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-}
-
-/**
- * Read the request body as JSON, whatever shape the runtime hands it over in.
- *
- * Vercel's Node runtime usually pre-parses a JSON body into `req.body`, but
- * that depends on the content-type header surviving the hop and on the runtime
- * version. When it does not parse, `req.body` is a string - or absent, and the
- * body is still sitting unread on the stream. Handling one of those three and
- * assuming the rest is how an endpoint passes every local test and then answers
- * 400 to every real request.
- */
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body;
-
-  let raw = '';
-  if (typeof req.body === 'string') raw = req.body;
-  else if (Buffer.isBuffer(req.body)) raw = req.body.toString('utf8');
-  else if (typeof req.on === 'function') {
-    raw = await new Promise((resolve, reject) => {
-      let acc = '';
-      req.on('data', chunk => { acc += chunk; });
-      req.on('end', () => resolve(acc));
-      req.on('error', reject);
-    });
-  }
-
-  if (!raw.trim()) return {};
-  const parsed = JSON.parse(raw);
-  return (parsed && typeof parsed === 'object') ? parsed : {};
-}
-
-function send(res, status, body) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  // Never let a shared cache hold a per-user answer.
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(status).send(JSON.stringify(body));
 }
 
 export default async function handler(req, res) {

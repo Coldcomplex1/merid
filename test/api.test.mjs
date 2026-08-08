@@ -12,6 +12,8 @@ import { _internal as gem } from '../api/_lib/gemini.js';
 import { verifyIdToken } from '../api/_lib/verify.js';
 import { signUploadParams, uploadTarget, signatureAlgorithm } from '../api/_lib/cloudinary.js';
 import { slugify } from '../api/_lib/slug.js';
+import { readJsonBody } from '../api/_lib/http.js';
+import { EventEmitter } from 'node:events';
 
 // ---------------------------------------------------------------------------
 // Model ranking
@@ -330,4 +332,111 @@ test('sha256 produces a different, longer signature than sha1', () => {
     assert.equal(one.length, 40);
     assert.equal(two.length, 64);
     assert.notEqual(one, two);
+});
+
+// ---------------------------------------------------------------------------
+// Request body reading
+//
+// This is the shape of a bug that does not fail, it hangs: read the stream on
+// a body the runtime already parsed and the request never answers, leaving the
+// admin's upload button spinning forever with no error to show. Each runtime
+// shape gets a test because "handle one and assume the rest" is exactly how
+// that shipped.
+// ---------------------------------------------------------------------------
+
+/** A request whose stream has already been consumed - 'end' fired long ago. */
+function endedStreamRequest(body) {
+    const req = new EventEmitter();
+    req.body = body;
+    // Nothing will ever emit again. A reader that listens here waits forever.
+    return req;
+}
+
+test('a body Vercel already parsed is used as-is, without touching the stream', async () => {
+    // The regression: this must resolve. Before the fix it hung, because the
+    // reader iterated a stream that had already ended.
+    const parsed = await readJsonBody(endedStreamRequest({ filename: 'cover.png' }));
+    assert.deepEqual(parsed, { filename: 'cover.png' });
+});
+
+test('a body handed over as a string or Buffer is parsed', async () => {
+    assert.deepEqual(
+        await readJsonBody(endedStreamRequest('{"filename":"a.png"}')),
+        { filename: 'a.png' });
+    assert.deepEqual(
+        await readJsonBody(endedStreamRequest(Buffer.from('{"filename":"b.png"}'))),
+        { filename: 'b.png' });
+});
+
+test('an unparsed body is read off the stream', async () => {
+    const req = new EventEmitter();
+    const promise = readJsonBody(req);
+    req.emit('data', '{"filename":');
+    req.emit('data', '"c.png"}');
+    req.emit('end');
+    assert.deepEqual(await promise, { filename: 'c.png' });
+});
+
+test('an empty body is an empty object, not a crash', async () => {
+    assert.deepEqual(await readJsonBody(endedStreamRequest('')), {});
+    assert.deepEqual(await readJsonBody(endedStreamRequest('   ')), {});
+});
+
+test('a dead stream times out instead of waiting forever', async () => {
+    // No parsed body and a stream that will never emit again: the runtime shape
+    // that hung production. It must end in an error the caller can act on, not
+    // in a promise nobody ever settles. Short timeout so the suite stays fast;
+    // the default is ten seconds.
+    await assert.rejects(
+        () => readJsonBody(endedStreamRequest(undefined), 50),
+        (e) => e.code === 'body-read-timeout');
+});
+
+test('the upload endpoint survives an unreadable body rather than hanging on it', async () => {
+    // Degrading to a generic filename beats a spinner that never stops. The
+    // endpoint catches body failures for exactly this reason.
+    const { default: handler } = await import('../api/blog-upload-signature.js');
+
+    // The endpoint checks its configuration before anything else, so give it a
+    // complete one; otherwise this asserts the config guard, not the body read.
+    const saved = { ...process.env };
+    process.env.FIREBASE_PROJECT_ID = 'merid-49dd5';
+    process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+    process.env.CLOUDINARY_API_KEY = 'key';
+    process.env.CLOUDINARY_API_SECRET = 'secret';
+
+    const res = {
+        code: 0, body: null, headers: {},
+        setHeader(k, v) { this.headers[k] = v; },
+        status(c) { this.code = c; return this; },
+        send(b) { this.body = b; return this; },
+    };
+    const req = endedStreamRequest(undefined);
+    req.method = 'POST';
+    req.headers = {};
+    try {
+        await handler(req, res);
+    } finally {
+        process.env = saved;
+    }
+    // Rejected on the token, having never blocked on the body.
+    assert.equal(res.code, 401);
+    assert.match(String(res.body), /unauthorized/);
+});
+
+test('a non-object JSON body does not masquerade as one', async () => {
+    // "null" and "42" parse fine but must not reach a caller expecting fields.
+    assert.deepEqual(await readJsonBody(endedStreamRequest('null')), {});
+    assert.deepEqual(await readJsonBody(endedStreamRequest('42')), {});
+});
+
+test('malformed JSON rejects rather than resolving to something wrong', async () => {
+    await assert.rejects(() => readJsonBody(endedStreamRequest('{not json')));
+});
+
+test('a stream error rejects instead of hanging', async () => {
+    const req = new EventEmitter();
+    const promise = readJsonBody(req);
+    req.emit('error', new Error('socket-died'));
+    await assert.rejects(() => promise, /socket-died/);
 });

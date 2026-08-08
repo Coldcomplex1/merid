@@ -564,6 +564,22 @@ dashboard — copy it again, watching for a trailing space, and redeploy.
 **Image upload says my session expired.**
 The Firebase ID token aged out while the tab sat open. Reload and retry.
 
+**Image upload says the server did not answer in time.**
+The signature request got no reply within 20 seconds. Retry once; if it repeats,
+the function is failing rather than being slow — check the Vercel deployment
+logs for `/api/blog-upload-signature`.
+
+**Image upload says it timed out reaching Cloudinary.**
+The image itself did not finish uploading within three minutes. Usually a weak
+connection; export the image smaller and retry.
+
+**The Upload button spins forever and never stops.**
+It cannot any more, and if it ever does that is a bug worth reporting rather
+than a setting to change. Every step of the upload is now bounded and every
+bound reports a reason. This used to happen because the server read the request
+body in a way that never finished on Vercel; the button had no failure to show,
+so it just kept spinning.
+
 **I do not want to set up Cloudinary at all.**
 Then do not. Commit images to `public/blog/` and type the path into the image
 field. See 3.1.
