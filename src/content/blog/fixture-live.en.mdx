@@ -1,0 +1,34 @@
+---
+title: Published fixture post
+description: A throwaway post used to exercise the prerender pipeline, checking frontmatter validation, the table of contents, FAQ output and hreflang pairing.
+slug: fixture-live
+lang: en
+translationKey: fixture-live
+publishAt: '2026-01-01'
+targetKeyword: fixture
+answer: This is the fixture post's answer block. It exists to check that the block lands first in the DOM, ahead of the table of contents and ahead of the body, exactly as the post template intends. Nothing here means anything beyond exercising the build.
+faq:
+  - question: Is this a real post?
+    answer: No. It is a fixture and gets deleted once the pipeline is proven.
+---
+
+## Does the answer block land first in the DOM?
+
+Yes. The answer block renders immediately after the title and before the table of
+contents, so a model reading the raw HTML top-down reaches the answer before any
+introduction.
+
+This paragraph is filler. Its only job is to produce enough text to confirm that
+the content really does live in the static HTML file rather than in an empty div
+waiting on JavaScript.
+
+## Is the table of contents generated from the H2s?
+
+Yes. The table of contents is built by reading the H2 tags back out of the
+rendered HTML, so its ids always match the ids on the page.
+
+| Thing to check | Expectation |
+| --- | --- |
+| Static HTML | Full text present in the file |
+| Table of contents | Derived from H2s |
+| hreflang | Points at the Vietnamese version |

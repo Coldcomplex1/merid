@@ -4,7 +4,7 @@ import InstallButton from '../ui/InstallButton'
 import MeridMark from '../ui/MeridMark'
 
 export default function Footer() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
 
   const links = [
     { label: t.footer.demo, to: '/#demo' },
@@ -33,6 +33,15 @@ export default function Footer() {
               {link.label}
             </Link>
           ))}
+          {/* A real <a>, not a <Link>: /blog is prerendered static HTML that the
+              client router knows nothing about, so a <Link> would match the
+              catch-all route and render the homepage instead. */}
+          <a
+            href={lang === 'vi' ? '/blog' : '/en/blog'}
+            className="transition-colors hover:text-accent"
+          >
+            Blog
+          </a>
           <InstallButton label={t.footer.install} variant="link" className="text-accent hover:text-accent-hover" />
           <Link to="/privacy-policy" className="transition-colors hover:text-accent">
             {t.footer.privacy}

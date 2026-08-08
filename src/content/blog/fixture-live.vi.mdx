@@ -1,0 +1,33 @@
+---
+title: Bài fixture đã đăng
+description: Bài viết giả dùng để kiểm tra pipeline prerender, kiểm tra frontmatter, mục lục, FAQ và hreflang trước khi viết bài thật cho blog Merid.
+slug: fixture-live
+lang: vi
+translationKey: fixture-live
+publishAt: '2026-01-01'
+targetKeyword: fixture
+answer: Đây là khối trả lời của bài fixture. Nó tồn tại để kiểm tra rằng khối này nằm đầu tiên trong DOM, trước mục lục và trước phần thân bài, đúng như thiết kế của trang bài viết. Nội dung ở đây không có ý nghĩa gì khác ngoài việc kiểm thử pipeline.
+faq:
+  - question: Bài này có thật không?
+    answer: Không. Đây là bài fixture, sẽ bị xoá sau khi pipeline chạy đúng.
+---
+
+## Khối trả lời có nằm đầu DOM không?
+
+Có. Khối trả lời được render ngay sau tiêu đề và trước cả mục lục, nên một mô hình
+đọc HTML thô từ trên xuống sẽ gặp câu trả lời trước mọi đoạn dẫn nhập.
+
+Đoạn này chỉ để lấp chỗ. Mục đích duy nhất của nó là tạo ra đủ văn bản để kiểm tra
+rằng nội dung thật sự nằm trong file HTML tĩnh chứ không phải trong một div rỗng
+chờ JavaScript dựng lên.
+
+## Mục lục có tự sinh từ các H2 không?
+
+Có. Mục lục được dựng bằng cách đọc lại các thẻ H2 từ HTML đã render, nên id trong
+mục lục luôn khớp với id trên trang.
+
+| Thứ cần kiểm tra | Kỳ vọng |
+| --- | --- |
+| HTML tĩnh | Có đủ chữ trong file |
+| Mục lục | Sinh từ H2 |
+| hreflang | Trỏ sang bản tiếng Anh |

@@ -1,5 +1,20 @@
 {
   "rewrites": [
+    { "source": "/blog", "destination": "/blog/index.html" },
+    { "source": "/blog/:slug", "destination": "/blog/:slug/index.html" },
+    { "source": "/en/blog", "destination": "/en/blog/index.html" },
+    { "source": "/en/blog/:slug", "destination": "/en/blog/:slug/index.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [{ "path": "/api/cron/rebuild", "schedule": "0 2 * * *" }],
+  "headers": [
+    {
+      "source": "/blog/screenshots/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(sitemap.xml|rss.xml|llms.txt|robots.txt)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, s-maxage=3600" }]
+    }
   ]
 }

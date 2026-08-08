@@ -14,6 +14,10 @@ import '@fontsource/be-vietnam-pro/600.css'
 import '@fontsource/be-vietnam-pro/700.css'
 import '@fontsource/be-vietnam-pro/800.css'
 import '@fontsource/be-vietnam-pro/400-italic.css'
+// Lora 400 upright is loaded for long-form blog copy: pull quotes were the only
+// serif upright on the site before, and they were being synthesised from the 600
+// because no regular weight was ever imported.
+import '@fontsource/lora/400.css'
 import '@fontsource/lora/600.css'
 import '@fontsource/lora/700.css'
 import '@fontsource/lora/400-italic.css'
