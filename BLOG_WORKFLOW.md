@@ -89,6 +89,7 @@ relationship to hold a dozen screenshots. Cloudinary's free tier needs no card.
    | `CLOUDINARY_API_KEY` | your API key |
    | `CLOUDINARY_API_SECRET` | your API secret |
    | `FIREBASE_PROJECT_ID` | `merid-49dd5` — already set if the AI proxy is running |
+   | `CLOUDINARY_SIGNATURE_ALGORITHM` | *(leave unset)* `sha1` unless Cloudinary has switched your account to `sha256` |
 
    **Which environments to tick:** **Production** is the one that matters —
    it is `merid.site`, and leaving it unticked is the single most common way to

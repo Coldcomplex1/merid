@@ -17,7 +17,7 @@
 // every upload and it is not a credential on its own. api_secret is what turns
 // it into one, and that never leaves here.
 import { verifyIdToken } from './_lib/verify.js';
-import { signUploadParams, uploadTarget } from './_lib/cloudinary.js';
+import { signUploadParams, uploadTarget, signatureAlgorithm } from './_lib/cloudinary.js';
 import { slugify } from './_lib/slug.js';
 
 /**
@@ -111,10 +111,19 @@ export default async function handler(req, res) {
   const timestamp = Math.floor(Date.now() / 1000);
   const { folder, publicId } = uploadTarget(filename, slugify);
 
-  const signature = signUploadParams(
-    { folder, public_id: publicId, timestamp },
-    apiSecret,
-  );
+  let signature;
+  try {
+    signature = signUploadParams(
+      { folder, public_id: publicId, timestamp },
+      apiSecret,
+      signatureAlgorithm(),
+    );
+  } catch (e) {
+    // Only reachable via a misspelt CLOUDINARY_SIGNATURE_ALGORITHM. Say so:
+    // the alternative is an upload that fails at Cloudinary with "Invalid
+    // Signature" and no hint that a typo here is the cause.
+    return send(res, 500, { ok: false, code: 'server-misconfigured', reason: e.message });
+  }
 
   return send(res, 200, {
     ok: true,

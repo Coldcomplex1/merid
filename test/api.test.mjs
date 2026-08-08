@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { todayKey, secondsUntilReset } from '../api/_lib/quota.js';
 import { _internal as gem } from '../api/_lib/gemini.js';
 import { verifyIdToken } from '../api/_lib/verify.js';
-import { signUploadParams, uploadTarget } from '../api/_lib/cloudinary.js';
+import { signUploadParams, uploadTarget, signatureAlgorithm } from '../api/_lib/cloudinary.js';
 import { slugify } from '../api/_lib/slug.js';
 
 // ---------------------------------------------------------------------------
@@ -295,4 +295,39 @@ test('re-uploading the same filename never reuses the same public_id', () => {
     const second = uploadTarget('cover.png', slugify, 2_000_000);
     assert.notEqual(first.publicId, second.publicId);
     assert.match(first.publicId, /^cover-/);
+});
+
+test('the signature hash follows the account, and defaults to Cloudinary\'s own default', () => {
+    // SHA-1 is what a standard account expects. Defaulting to SHA-256 would be
+    // the stronger-sounding choice and would break every upload until the
+    // account owner asked Cloudinary to switch.
+    assert.equal(signatureAlgorithm({}), 'sha1');
+    assert.equal(signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'sha256' }), 'sha256');
+    assert.equal(signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'SHA256' }), 'sha256');
+
+    // The default still reproduces the vendor's documented vector.
+    assert.equal(
+        signUploadParams({ public_id: 'sample_image', timestamp: 1315060510 }, 'abcd',
+            signatureAlgorithm({})),
+        'b4ad47fb4e25c7bf5f92a20089f9db59bc302313');
+});
+
+test('an unrecognised hash is refused rather than silently downgraded', () => {
+    // Falling back to sha1 on a typo would produce signatures Cloudinary
+    // rejects, with nothing pointing at the misspelt variable as the cause.
+    assert.throws(() => signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'md5' }),
+        /bad-signature-algorithm:md5/);
+    assert.throws(() => signatureAlgorithm({ CLOUDINARY_SIGNATURE_ALGORITHM: 'sha-256' }),
+        /bad-signature-algorithm/);
+    assert.throws(() => signUploadParams({ timestamp: 1 }, 'secret', 'md5'),
+        /bad-signature-algorithm:md5/);
+});
+
+test('sha256 produces a different, longer signature than sha1', () => {
+    const params = { public_id: 'sample_image', timestamp: 1315060510 };
+    const one = signUploadParams(params, 'abcd', 'sha1');
+    const two = signUploadParams(params, 'abcd', 'sha256');
+    assert.equal(one.length, 40);
+    assert.equal(two.length, 64);
+    assert.notEqual(one, two);
 });
