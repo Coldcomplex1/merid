@@ -214,6 +214,43 @@ function toDocument(post: Post): Record<string, unknown> {
 }
 
 /**
+ * Turns a refused write into a message that names the fix.
+ *
+ * Firestore says "Missing or insufficient permissions" for every denial, which
+ * is the least useful thing it could say to someone who *is* an admin and is
+ * doing something ordinary. The overwhelmingly likely cause is that
+ * firestore.rules on the project is older than the code writing against it:
+ * pushing to the repository deploys the site, and never the rules.
+ *
+ * That has already cost an afternoon once. A write that adds a field the
+ * deployed rules do not list in hasOnly() is refused with no hint about which
+ * field or which rules, and it only shows up on the *second* post of a pair,
+ * because that is the first write to carry counterpartSlug.
+ */
+function explainWriteFailure(error: unknown): Error {
+  if (error instanceof FirebaseError && error.code === 'permission-denied') {
+    return new Error(
+      'Firestore refused this write. Almost always this means the security rules on the ' +
+        'project are older than the app: deploying the site does not deploy firestore.rules. ' +
+        'Run this from the repository, then try again:\n\n' +
+        '    firebase deploy --only firestore:rules\n\n' +
+        'If the rules are already current, check that your admins/<uid> document still exists. ' +
+        'See BLOG_WORKFLOW.md section 1.4.',
+    )
+  }
+  return error instanceof Error ? error : new Error(String(error))
+}
+
+/** Runs a Firestore write, replacing an opaque denial with an actionable one. */
+async function write<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action()
+  } catch (error) {
+    throw explainWriteFailure(error)
+  }
+}
+
+/**
  * Creates or overwrites a post.
  *
  * The document id encodes lang and slug, so changing either would strand the old
@@ -228,7 +265,7 @@ export async function savePost(post: Post): Promise<string> {
       'A post\'s language and slug are part of its address and cannot be changed after it is created. Create a new post instead.',
     )
   }
-  await setDoc(doc(postsCollection(), id), toDocument(post))
+  await write(() => setDoc(doc(postsCollection(), id), toDocument(post)))
   return id
 }
 
@@ -303,7 +340,7 @@ export async function publishTopic(topic: Topic): Promise<void> {
     )
   }
 
-  await batch.commit()
+  await write(() => batch.commit())
 }
 
 /**
@@ -325,7 +362,7 @@ export async function unpublishTopic(topic: Topic): Promise<void> {
     batch.set(doc(postsCollection(), postId(post.lang, post.slug)), toDocument({ ...post, status: 'draft' }))
   }
 
-  await batch.commit()
+  await write(() => batch.commit())
 }
 
 /** Saves one post as a draft, linking it to its counterpart if one exists. */
@@ -345,10 +382,10 @@ export async function saveDraft(post: Post): Promise<string> {
     doc(postsCollection(), postId(counterpart.lang, counterpart.slug)),
     toDocument({ ...counterpart, counterpartSlug: post.slug }),
   )
-  await batch.commit()
+  await write(() => batch.commit())
   return postId(post.lang, post.slug)
 }
 
 export async function deletePost(id: string): Promise<void> {
-  await deleteDoc(doc(postsCollection(), id))
+  await write(() => deleteDoc(doc(postsCollection(), id)))
 }

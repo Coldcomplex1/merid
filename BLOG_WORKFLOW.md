@@ -128,6 +128,12 @@ one place.
 `firestore.rules` does nothing until it is uploaded. **Until you do this, the
 admin refuses you** no matter how correct your `admins` document is.
 
+> **This is not only a first-time step.** Pushing to the repository deploys the
+> *site*; it never deploys the rules. Any change to `firestore.rules` needs the
+> command below run again, or the app will be writing fields the database has
+> not been told to allow. That failure looks like "Missing or insufficient
+> permissions" on a save, from an account that is definitely an admin.
+
 ```bash
 npm install -g firebase-tools     # once, if you do not have it
 firebase login
@@ -664,6 +670,16 @@ The render function could not find the site's stylesheet, which happens if
 `dist/.vite/manifest.json` is missing from the deploy. Redeploy. The pages
 deliberately still render rather than erroring, so this shows up as ugly rather
 than broken.
+
+**"Missing or insufficient permissions" when I save a post.**
+The rules on the project are older than the app. Deploying the site does not
+deploy `firestore.rules`. Run `firebase deploy --only firestore:rules` from the
+repository and try again.
+
+Two tells that this is what it is: the *first* post of a pair saves fine and the
+*second* one fails, because the second is the first write to carry the field a
+newer rule allows; and the admin screen itself still works, since reading is
+governed by an older rule that has not changed.
 
 **A `<span>` or other HTML I typed shows up as visible angle brackets.**
 Working as intended — see 2.4. Use `==word==` for the gold highlight; for
