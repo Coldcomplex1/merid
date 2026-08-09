@@ -120,6 +120,12 @@ Until step 3 is done nothing is recorded and `/admin` shows a panel naming the
 missing variables. Nothing else on the site is affected either way - the
 counter fails silently by design and can never break a page.
 
+**Ranges.** 7 / 30 / 90 days, or **All** — everything since the first day
+anything was recorded. The dated ranges also show each tile's change against
+the period before it; All has no period before it, so it shows no change
+figures. Counts are kept for about 400 days and then expire on their own, which
+is also as far back as All can reach.
+
 **What the numbers are worth.** They are directional, not audited. Content
 blockers drop some beacons, installs and uninstalls depend on Chrome managing
 to open a tab, and "Add to Chrome" clicks cannot see anyone who found the

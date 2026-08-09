@@ -17,8 +17,8 @@ process.env.ANALYTICS_SALT = 'test-salt';
 process.env.FIREBASE_PROJECT_ID = PROJECT;
 
 const {
-    EVENT_TYPES, PLACEMENTS, REASONS,
-    clientIp, dayOffset, dayRange, isBot, isConfigured,
+    EVENT_TYPES, PLACEMENTS, REASONS, MAX_ALL_TIME_DAYS,
+    allTimeDays, clientIp, dayOffset, dayRange, isBot, isConfigured,
     normalizeEvent, normalizeLang, normalizePath, normalizePlacement, normalizePost,
     normalizeRef, readRange, record, visitorHash, withinRate,
     _internal, _resetTtlMemo,
@@ -526,6 +526,80 @@ test('the day range is clamped, so it can never be free text in a key', async ()
     for (const [asked, expected] of [[0, 1], [-5, 1], [10_000, 90], ['abc', 30], [45, 45]]) {
         const r = await callSummary({ token: makeToken(), days: asked });
         assert.strictEqual(r.body.range.days, expected, `days=${asked}`);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// All time
+// ---------------------------------------------------------------------------
+
+test('all time spans from the first day recorded to today', async () => {
+    const now = Date.parse('2026-08-09T12:00:00Z');
+    nextResults = [{ result: '2026-08-01' }];
+    assert.strictEqual(await allTimeDays(now), 9, 'inclusive of both ends');
+
+    nextResults = [{ result: '2026-08-09' }];
+    assert.strictEqual(await allTimeDays(now), 1, 'switched on today is one day');
+});
+
+test('all time survives a missing or nonsense "since" marker', async () => {
+    const now = Date.parse('2026-08-09T12:00:00Z');
+    for (const since of [null, '', 'not-a-date', '2026-13-45']) {
+        nextResults = [{ result: since }];
+        assert.strictEqual(await allTimeDays(now), 1, `since=${since}`);
+    }
+});
+
+test('all time is capped at the data\'s own TTL', async () => {
+    // Days older than the TTL have expired, so reading further back could only
+    // ever cost commands and return nothing.
+    nextResults = [{ result: '2019-01-01' }];
+    const span = await allTimeDays(Date.parse('2026-08-09T12:00:00Z'));
+    assert.strictEqual(span, MAX_ALL_TIME_DAYS);
+    assert.ok(span >= 365 && span <= 400, `${span} should be about a year`);
+});
+
+test('all time reads no previous period, so it costs half the commands', async () => {
+    await readRange(30, Date.now(), { comparePrevious: false }).catch(() => {});
+    const withoutPrevious = sent[0].length;
+
+    sent = [];
+    await readRange(30).catch(() => {});
+    const withPrevious = sent[0].length;
+
+    assert.ok(withoutPrevious < withPrevious);
+    // One HGETALL per day plus one union PFCOUNT is what the previous period costs.
+    assert.strictEqual(withPrevious - withoutPrevious, 31);
+});
+
+test('all time reports zero for the previous period rather than a bogus delta', async () => {
+    nextResults = new Array(200).fill({ result: null });
+    const summary = await readRange(5, Date.now(), { comparePrevious: false });
+    assert.strictEqual(summary.previous.pageviews, 0);
+    assert.strictEqual(summary.previous.uniques, 0);
+    assert.strictEqual(summary.series.length, 5);
+});
+
+test('days=all resolves server-side and is flagged in the response', async () => {
+    // The span must come out as a number before it goes anywhere near a key.
+    nextResults = [{ result: '2026-08-01' }];
+    const r = await callSummary({ token: makeToken(), days: 'all' });
+    assert.strictEqual(r.code, 200);
+    assert.strictEqual(r.body.allTime, true);
+    assert.ok(Number.isInteger(r.body.range.days));
+    assert.ok(r.body.range.days >= 1);
+
+    // A normal range is not flagged, and still carries a comparison.
+    const normal = await callSummary({ token: makeToken(), days: 30 });
+    assert.strictEqual(normal.body.allTime, false);
+    assert.strictEqual(normal.body.range.days, 30);
+});
+
+test('"all" is the only non-numeric range accepted; anything else falls back', async () => {
+    for (const bad of ['everything', 'all-time', '../../etc', 'Infinity', 'NaN']) {
+        const r = await callSummary({ token: makeToken(), days: bad });
+        assert.strictEqual(r.body.allTime, false, `days=${bad} must not mean all time`);
+        assert.strictEqual(r.body.range.days, 30, `days=${bad} should fall back to the default`);
     }
 });
 

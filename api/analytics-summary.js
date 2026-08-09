@@ -11,11 +11,12 @@
 import { verifyIdToken } from './_lib/verify.js';
 import { adminStatus, adminRefusal } from './_lib/admin.js';
 import { sendJson as send } from './_lib/http.js';
-import { isConfigured, readRange } from './_lib/analytics.js';
+import { allTimeDays, isConfigured, readRange } from './_lib/analytics.js';
 import { missingEnv } from './_lib/redis.js';
 
-/** A dashboard load costs a few hundred Redis commands; 90 days is the ceiling
- *  that keeps one careless refresh from being expensive. */
+/** A dashboard load costs a few Redis commands per day in the range, so 90 is
+ *  the ceiling for an ordinary request. `days=all` is the one way past it, and
+ *  it is bounded by the data's own TTL rather than by a number picked here. */
 const MAX_DAYS = 90;
 const DEFAULT_DAYS = 30;
 
@@ -54,13 +55,17 @@ export default async function handler(req, res) {
   }
 
   // The range is a key fragment, so it is a number derived from a number and
-  // never free text.
-  const raw = Number.parseInt(String(req.query?.days ?? DEFAULT_DAYS), 10);
+  // never free text. "all" is the one non-numeric value accepted, and it too
+  // resolves to a number before it goes anywhere near a key.
+  const asked = String(req.query?.days ?? DEFAULT_DAYS);
+  const allTime = asked === 'all';
+  const raw = Number.parseInt(asked, 10);
   const days = Number.isFinite(raw) ? Math.min(MAX_DAYS, Math.max(1, raw)) : DEFAULT_DAYS;
 
   try {
-    const summary = await readRange(days);
-    return send(res, 200, { ok: true, ...summary });
+    const span = allTime ? await allTimeDays() : days;
+    const summary = await readRange(span, Date.now(), { comparePrevious: !allTime });
+    return send(res, 200, { ok: true, allTime, ...summary });
   } catch {
     return send(res, 503, { ok: false, code: 'store-unreachable' });
   }

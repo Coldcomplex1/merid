@@ -25,6 +25,8 @@ interface Totals {
 
 interface Summary {
   ok: true
+  /** True when the range was resolved from the first day ever recorded. */
+  allTime: boolean
   range: { from: string; to: string; days: number }
   since: string | null
   totals: Totals
@@ -51,11 +53,17 @@ type State =
   | { status: 'ready'; data: Summary }
   | { status: 'failed'; failure: Failure }
 
-const RANGES = [7, 30, 90] as const
+/** 'all' asks the server to work the span out from the first day it recorded. */
+type Range = 7 | 30 | 90 | 'all'
 
+const RANGES: Range[] = [7, 30, 90, 'all']
+
+const rangeLabel = (r: Range) => (r === 'all' ? 'All' : `${r}d`)
+
+/** All time can be hundreds of days, and costs a few commands per day. */
 const REQUEST_TIMEOUT_MS = 20_000
 
-async function fetchSummary(idToken: string, days: number): Promise<Summary> {
+async function fetchSummary(idToken: string, days: Range): Promise<Summary> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   try {
@@ -174,11 +182,11 @@ function FailurePanel({ failure, onRetry }: { failure: Failure; onRetry: () => v
 
 export default function Analytics() {
   const { user } = useAuth()
-  const [days, setDays] = useState<number>(30)
+  const [days, setDays] = useState<Range>(30)
   const [state, setState] = useState<State>({ status: 'loading' })
 
   const load = useCallback(
-    async (range: number) => {
+    async (range: Range) => {
       if (!user) return
       setState({ status: 'loading' })
       try {
@@ -209,7 +217,10 @@ export default function Analytics() {
   }
 
   const { data } = state
-  const { totals, previous } = data
+  const { totals } = data
+  // All time has no period before it, so the server does not read one and the
+  // tiles must not imply a comparison exists.
+  const previous = data.allTime ? null : data.previous
   const stillInstalled = totals.installs - totals.uninstalls
   const nothingYet = totals.pageviews === 0 && totals.cta === 0 && totals.installs === 0
 
@@ -219,8 +230,18 @@ export default function Analytics() {
         <div>
           <h1 className="text-2xl font-extrabold text-heading">Visitors</h1>
           <p className="mt-1 text-sm text-muted">
-            {data.range.from} to {data.range.to}
-            {data.since && ` · counting since ${data.since}`}
+            {data.allTime ? (
+              <>
+                All time
+                {data.since ? ` · everything since ${data.since}` : ''}
+                {data.range.days > 1 && ` · ${data.range.days} days`}
+              </>
+            ) : (
+              <>
+                {data.range.from} to {data.range.to}
+                {data.since && ` · counting since ${data.since}`}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -230,11 +251,12 @@ export default function Analytics() {
                 key={r}
                 type="button"
                 onClick={() => setDays(r)}
+                aria-pressed={r === days}
                 className={`px-3.5 py-1.5 text-sm font-bold transition-colors ${
                   r === days ? 'bg-accent text-canvas' : 'text-muted hover:text-accent'
                 }`}
               >
-                {r}d
+                {rangeLabel(r)}
               </button>
             ))}
           </div>
@@ -256,8 +278,9 @@ export default function Analytics() {
 
       {nothingYet && (
         <p className="mt-6 rounded-2xl border border-dashed border-line px-5 py-4 text-sm text-muted">
-          Nothing recorded in this range yet. If the counter went live recently, give it a day — and
-          note that visits to /admin are never counted.
+          {data.allTime
+            ? 'Nothing recorded yet. If the counter went live recently, give it a day — and note that visits to /admin are never counted.'
+            : 'Nothing recorded in this range yet. Try All, and note that visits to /admin are never counted.'}
         </p>
       )}
 
@@ -265,21 +288,21 @@ export default function Analytics() {
         <Tile
           label="Unique visitors"
           value={totals.uniques}
-          before={previous.uniques}
+          before={previous?.uniques}
           note="Approximate, deduplicated across the range."
         />
-        <Tile label="Page views" value={totals.pageviews} before={previous.pageviews} />
-        <Tile label="Add to Chrome clicks" value={totals.cta} before={previous.cta} />
+        <Tile label="Page views" value={totals.pageviews} before={previous?.pageviews} />
+        <Tile label="Add to Chrome clicks" value={totals.cta} before={previous?.cta} />
         <Tile
           label="Installs"
           value={totals.installs}
-          before={previous.installs}
+          before={previous?.installs}
           note="First visits to /welcome, which the extension opens once on a fresh install."
         />
         <Tile
           label="Uninstalls"
           value={totals.uninstalls}
-          before={previous.uninstalls}
+          before={previous?.uninstalls}
           note="First visits to /goodbye, the extension's uninstall URL."
         />
         <Tile label="Net installs" value={stillInstalled} />

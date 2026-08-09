@@ -28,6 +28,11 @@ const NS = 'merid:a';
 
 /** ~400 days. Long enough for a year-over-year look, short enough to self-trim. */
 const TTL_SECONDS = 34_560_000;
+const TTL_DAYS = Math.floor(TTL_SECONDS / 86_400);
+
+/** The ceiling on an "all time" range. Days older than the TTL have expired, so
+ *  reading further back cannot return anything - it would only cost commands. */
+export const MAX_ALL_TIME_DAYS = TTL_DAYS;
 
 /** Upstash bills per command even inside a pipeline; ingest sits on a page load. */
 const WRITE_TIMEOUT_MS = 1500;
@@ -449,17 +454,43 @@ const EMPTY_TOTALS = () => ({
 });
 
 /**
+ * How many days "all time" covers: the first day ever recorded, through today.
+ *
+ * Costs one command, and has to run before the main read because the range it
+ * returns is what that read is built from. Capped at the TTL, since anything
+ * older has already expired. With nothing recorded yet it is a single day, and
+ * the dashboard's empty state takes over.
+ */
+export async function allTimeDays(now = Date.now()) {
+  const res = await pipeline([['GET', sinceKey()]], 'analytics', { timeoutMs: READ_TIMEOUT_MS });
+  const since = res?.[0]?.result;
+  if (!since || !/^\d{4}-\d{2}-\d{2}$/.test(since)) return 1;
+
+  const start = Date.parse(`${since}T00:00:00Z`);
+  if (!Number.isFinite(start)) return 1;
+
+  const span = Math.floor((Date.parse(`${todayKey(now)}T00:00:00Z`) - start) / 86_400_000) + 1;
+  return Math.min(MAX_ALL_TIME_DAYS, Math.max(1, span));
+}
+
+/**
  * Everything the dashboard shows, in one round trip.
  *
- * The previous period of equal length is read alongside so each tile can show a
- * delta. Sorted sets are merged here in JS rather than with ZUNIONSTORE so this
- * stays strictly read-only: no temporary key, and nothing an admin page does can
+ * `comparePrevious` reads the preceding period of equal length so each tile can
+ * show a delta. All-time turns it off: there is no period before the first one,
+ * so the comparison would be meaningless, and it halves the commands on exactly
+ * the range where there are most of them.
+ *
+ * Sorted sets are merged here in JS rather than with ZUNIONSTORE so this stays
+ * strictly read-only: no temporary key, and nothing an admin page does can
  * disturb the data it is reading.
  */
-export async function readRange(days, now = Date.now()) {
+export async function readRange(days, now = Date.now(), { comparePrevious = true } = {}) {
   const current = dayRange(now, days);
   const previous = [];
-  for (let i = days * 2 - 1; i >= days; i--) previous.push(dayOffset(now, i));
+  if (comparePrevious) {
+    for (let i = days * 2 - 1; i >= days; i--) previous.push(dayOffset(now, i));
+  }
 
   const commands = [];
   for (const day of current) commands.push(['HGETALL', dayKey(day)]);
@@ -469,7 +500,7 @@ export async function readRange(days, now = Date.now()) {
   // a visitor who came back on three days counts once. This is the single
   // reason a HyperLogLog beats a plain set here.
   commands.push(['PFCOUNT', ...current.map(uniqueKey)]);
-  commands.push(['PFCOUNT', ...previous.map(uniqueKey)]);
+  if (previous.length) commands.push(['PFCOUNT', ...previous.map(uniqueKey)]);
   for (const day of current) {
     commands.push(['ZRANGE', refKey(day), '0', String(TOP_PER_DAY - 1), 'REV', 'WITHSCORES']);
   }
@@ -486,7 +517,7 @@ export async function readRange(days, now = Date.now()) {
   const previousHashes = previous.map(() => decodeHash(at(cursor++)));
   const dailyUniques = current.map(() => Number(at(cursor++)) || 0);
   const rangeUniques = Number(at(cursor++)) || 0;
-  const previousUniques = Number(at(cursor++)) || 0;
+  const previousUniques = previous.length ? Number(at(cursor++)) || 0 : 0;
 
   const refs = new Map();
   for (let i = 0; i < current.length; i++) decodeZset(at(cursor++), refs);
