@@ -17,37 +17,10 @@
 // every upload and it is not a credential on its own. api_secret is what turns
 // it into one, and that never leaves here.
 import { verifyIdToken } from './_lib/verify.js';
+import { adminStatus } from './_lib/admin.js';
 import { signUploadParams, uploadTarget, signatureAlgorithm } from './_lib/cloudinary.js';
 import { slugify } from './_lib/slug.js';
 import { readJsonBody, sendJson as send } from './_lib/http.js';
-
-/**
- * Whether this uid is a blog admin, asked with the caller's own token.
- *
- * Reading admins/{uid} with the user's credentials rather than a service
- * account keeps this endpoint secret-free (the same reasoning as verify.js
- * avoiding firebase-admin) and means the rules stay the authority: the read
- * only succeeds because `allow get: if request.auth.uid == uid` permits it.
- *
- * The three outcomes are kept apart because they need different fixes, and
- * collapsing them is what made this exact problem hard to diagnose before:
- *   200 -> the grant exists
- *   404 -> read allowed, no such document: signed in but not an admin
- *   403 -> the read itself was refused, which for a user's own document only
- *          happens when firestore.rules was never deployed
- */
-async function adminStatus(projectId, uid, idToken) {
-  const url =
-    `https://firestore.googleapis.com/v1/projects/${projectId}` +
-    `/databases/(default)/documents/admins/${encodeURIComponent(uid)}`;
-
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
-
-  if (response.ok) return 'admin';
-  if (response.status === 404) return 'not-admin';
-  if (response.status === 403) return 'rules-not-deployed';
-  return 'unreachable';
-}
 
 /**
  * Read a configuration value, trimmed.

@@ -1,9 +1,10 @@
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
 import MeridMark from '../components/ui/MeridMark'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { trackUninstallReasons } from '../lib/analytics'
 import {
   FEEDBACK_COMMENT_MAX,
   submitUninstallFeedback,
@@ -146,6 +147,8 @@ export default function Goodbye() {
   const [picked, setPicked] = useState<Set<FeedbackReason>>(new Set())
   const [comment, setComment] = useState('')
   const [state, setState] = useState<SubmitState>('idle')
+  /** The reasons have been counted once; a retry must not count them again. */
+  const tallied = useRef(false)
 
   const toggle = (id: FeedbackReason) => {
     setPicked((prev) => {
@@ -165,6 +168,17 @@ export default function Goodbye() {
       return
     }
     setState('sending')
+
+    // Counted before the write and independently of whether it lands: the
+    // survey itself goes into a collection firestore.rules makes unreadable on
+    // purpose, so this counter is the only way the breakdown reaches /admin -
+    // and if Firestore is down, the reason is still worth knowing. The ref
+    // guard keeps the retry button from counting the same answers twice.
+    if (!tallied.current) {
+      tallied.current = true
+      trackUninstallReasons(reasons, lang)
+    }
+
     try {
       await submitUninstallFeedback({ reasons, comment, lang })
       setState('done')
@@ -311,7 +325,7 @@ export default function Goodbye() {
             <h2 className="text-3xl font-extrabold tracking-tight text-heading">{s.reinstallTitle}</h2>
             <p className="mx-auto mt-3 max-w-md text-body">{s.reinstallBody}</p>
             <div className="mt-6">
-              <InstallButton label={s.ctaReinstall} variant="primary" />
+              <InstallButton label={s.ctaReinstall} where="goodbye" variant="primary" />
             </div>
           </div>
         </Reveal>

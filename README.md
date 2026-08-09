@@ -66,9 +66,27 @@ api/
   break: links from the SPA into `/blog` must be plain `<a href>` rather than react-router
   `<Link>` (the client router has no `/blog` route), and blog page styling lives as real CSS
   in `src/index.css` because Tailwind never scans the Node function that emits that markup.
+  Still **zero framework JavaScript**: the page's only scripts are the theme bootstrap, the
+  JSON-LD blocks, the language sync and the visitor beacon, none of which render anything —
+  turn JavaScript off and the markup is unchanged. Blog views are counted from that beacon rather
+  than inside `api/blog-render.js`, because these responses are CDN-cached (`s-maxage=300`)
+  and a server-side count would only ever see cache misses.
 - **Install links**: every "Add to Chrome" / "Install" action links to the official Chrome
   Web Store listing. The URL is defined once in `src/config.ts` (`CHROME_STORE_URL`); change it
-  there if the listing ever moves (see the comment in that file).
+  there if the listing ever moves (see the comment in that file). The link is never wrapped or
+  redirected — the click counter below fires alongside the navigation, not in front of it.
+- **Visitor counts** (`/admin`): the site keeps its own counters — page views, unique visitors,
+  "Add to Chrome" clicks by placement, real installs and uninstalls (first hits on `/welcome` and
+  `/goodbye`, the two pages the extension opens), uninstall reasons, referring domains and blog
+  post views. First-party and cookieless: no third-party script, no identifier, and no IP address
+  or user-agent ever stored — a returning visitor is deduplicated through a one-way daily hash fed
+  into a HyperLogLog. `api/pulse.js` takes the beacons (always 204, silently no-ops when
+  unconfigured) and `api/analytics-summary.js` reads them back for admins only. Counts live in
+  Upstash Redis, the same store as the AI-check quota, so this needs `UPSTASH_REDIS_REST_URL` and
+  `UPSTASH_REDIS_REST_TOKEN`; without them nothing is recorded and `/admin` shows a setup panel.
+  `src/lib/analytics.ts` is the client half — **adding a new "Add to Chrome" button means passing
+  a `where` prop**, which `tsc` enforces. The extension is not involved and was not changed.
+  Anything counted here must also be described in the privacy policy (section 7, both languages).
 - **Languages**: Vietnamese is the default; the navbar VI/EN toggle switches all marketing
   copy and persists in `localStorage` (`merid-lang`). Strings live in
   `src/i18n/translations.ts`; the tiny provider is `src/i18n/LanguageContext.tsx`. Product

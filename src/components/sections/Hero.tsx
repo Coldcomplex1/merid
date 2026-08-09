@@ -32,7 +32,7 @@ export default function Hero() {
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">{t.hero.sub}</p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <InstallButton label={t.hero.ctaInstall} variant="primary" />
+            <InstallButton label={t.hero.ctaInstall} where="hero" variant="primary" />
             <a
               href="#demo"
               className="rounded-full border-2 border-line-strong px-7 py-3 text-base font-bold text-heading transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent active:scale-95"

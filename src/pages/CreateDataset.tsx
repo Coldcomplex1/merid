@@ -293,7 +293,7 @@ export default function CreateDataset() {
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-body">{s.outroSub}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <InstallButton label={s.ctaInstall} variant="primary" />
+              <InstallButton label={s.ctaInstall} where="create-dataset" variant="primary" />
               <Link
                 to="/tutorial"
                 className="rounded-full border-2 border-line-strong px-7 py-3 text-base font-bold text-heading transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent active:scale-95"

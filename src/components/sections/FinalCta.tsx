@@ -34,7 +34,7 @@ export default function FinalCta() {
 
         <Reveal delay={200}>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-            <InstallButton label={t.finalCta.ctaInstall} variant="primary" />
+            <InstallButton label={t.finalCta.ctaInstall} where="final-cta" variant="primary" />
             <a
               href="#demo"
               className="rounded-full border-2 border-line-strong px-7 py-3 text-base font-bold text-heading transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent active:scale-95"

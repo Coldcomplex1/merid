@@ -496,7 +496,7 @@ export default function Tutorial() {
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-body">{t.tutorial.outroSub}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <InstallButton label={t.tutorial.ctaInstall} variant="primary" />
+              <InstallButton label={t.tutorial.ctaInstall} where="tutorial" variant="primary" />
               <Link
                 to="/#demo"
                 className="rounded-full border-2 border-line-strong px-7 py-3 text-base font-bold text-heading transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent active:scale-95"

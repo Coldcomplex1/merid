@@ -570,7 +570,7 @@ only rebuilds when you change code.
 | File | Job |
 |---|---|
 | `api/blog-render.js` | Serves every public blog URL, the sitemap and llms.txt |
-| `api/_lib/blog-html.js` | Turns a post into a full HTML page |
+| `api/_lib/blog-html.js` | Turns a post into a full HTML page. Also carries the visitor beacon: a ~10-line inline script that counts the page view and any click on a store link, feeding `/admin`. Blog views are counted there rather than in `blog-render.js` because these pages are CDN-cached, so the function never runs on a cache hit. |
 | `api/_lib/markdown.js` | Markdown → HTML, shared by the server and the preview |
 | `api/_lib/sanitize.js` | Strips anything dangerous before a page goes public |
 | `api/_lib/slug.js` | Slugs, including the Vietnamese handling |

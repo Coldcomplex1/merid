@@ -77,7 +77,7 @@ export default function Navbar() {
             </Link>
           )}
           <span className="hidden sm:block">
-            <InstallButton label={t.nav.cta} variant="compact" />
+            <InstallButton label={t.nav.cta} where="navbar" variant="compact" />
           </span>
 
           {/* Hamburger: account + deck entry points (all breakpoints). */}
@@ -98,7 +98,7 @@ export default function Navbar() {
               <div className="absolute right-0 mt-2 w-60 rounded-xl border border-line bg-surface p-2 shadow-lift">
                 {/* Install CTA: the primary action, always available on mobile. */}
                 <div className="p-1 sm:hidden">
-                  <InstallButton label={t.nav.cta} variant="menu" />
+                  <InstallButton label={t.nav.cta} where="navbar-mobile" variant="menu" />
                 </div>
                 <div className="my-2 border-t border-line sm:hidden" />
 

@@ -1,15 +1,12 @@
-// Per-user daily quota, backed by Upstash Redis over HTTP.
-//
-// Redis rather than Firestore because the only operation needed is an atomic
-// counter, and INCR is exactly that - no read-modify-write, no transaction, no
-// service-account credentials. The HTTP API also works from a serverless
-// function without a connection pool, which a normal Redis client cannot.
+// Per-user daily quota, backed by Upstash Redis over HTTP (see _lib/redis.js
+// for why Redis and not Firestore).
 //
 // The counter is authoritative and lives here, NOT in the extension: a limit
 // the client keeps is a limit the client can reset.
+import { isConfigured as redisConfigured, pipeline as redisPipeline } from './redis.js';
 
-const URL_ENV = 'UPSTASH_REDIS_REST_URL';
-const TOKEN_ENV = 'UPSTASH_REDIS_REST_TOKEN';
+/** api/check.js decides whether to fail closed on exactly this code. */
+const ERR_CODE = 'quota-store';
 
 /** Days are UTC so the reset time is the same for every user, everywhere. */
 export function todayKey(now = Date.now()) {
@@ -24,22 +21,10 @@ export function secondsUntilReset(now = Date.now()) {
 }
 
 export function isConfigured() {
-  return !!(process.env[URL_ENV] && process.env[TOKEN_ENV]);
+  return redisConfigured();
 }
 
-async function pipeline(commands) {
-  const base = String(process.env[URL_ENV] || '').replace(/\/$/, '');
-  const resp = await fetch(`${base}/pipeline`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env[TOKEN_ENV]}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(commands)
-  });
-  if (!resp.ok) throw Object.assign(new Error('quota-store-unavailable'), { code: 'quota-store' });
-  return resp.json();
-}
+const pipeline = commands => redisPipeline(commands, ERR_CODE);
 
 /**
  * Count one request against `uid`'s daily allowance.

@@ -163,7 +163,7 @@ export default function MyDeck() {
             <h2 className="mt-3 text-xl font-bold text-heading">{t.deck.emptyTitle}</h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-body">{t.deck.empty}</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-              <InstallButton label={t.nav.cta} variant="compact" />
+              <InstallButton label={t.nav.cta} where="my-deck" variant="compact" />
               <Link
                 to="/tutorial"
                 className="text-sm font-semibold text-accent transition-colors hover:text-accent-hover hover:underline"

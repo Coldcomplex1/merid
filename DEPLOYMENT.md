@@ -84,7 +84,48 @@ survey submissions are rejected and the page shows its retry error.
 **Reading the survey answers:** Firebase Console → Firestore Database → the
 `feedback` collection. Each document has `reasons` (ticked options), an
 optional `comment`, `lang`, and `createdAt`. The collection is write-only for
-the public - only you, via the console, can read it.
+the public - only you, via the console, can read it. The free-text comments
+still live only there; the *counts* per reason also appear on `/admin`, so the
+console is only needed when you want to read what someone actually wrote.
+
+---
+
+## Visitor numbers: merid.site/admin
+
+`merid.site/admin` shows how many people reach the site, how many press "Add to
+Chrome", how many actually install, and how many uninstall. It is visible only
+to accounts that have an `admins/{uid}` document (the same list that controls
+the blog editor - see BLOG_WORKFLOW.md section 1.2).
+
+Counts are stored in **Upstash Redis**, which also backs the AI check's daily
+quota. If the AI check already works in production, this is configured and
+there is nothing to do. Otherwise, one time:
+
+1. Create a free database at [upstash.com](https://upstash.com) → **Redis** →
+   **Create database**. Any region near your visitors.
+2. On the database page, open the **REST API** section and copy the two values
+   labelled `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+3. Vercel → your project → **Settings → Environment Variables** → add both,
+   for **Production** (and Preview, if you want numbers from preview deploys).
+4. *(Optional)* Add `ANALYTICS_SALT` set to any long random string. It salts the
+   daily hash that counts a returning visitor once per day. Without it a
+   built-in constant is used, which works but is weaker.
+5. **Redeploy.**
+
+⚠️ Do **not** put a `VITE_` prefix on any of these. Vite inlines every `VITE_`
+variable into the JavaScript every visitor downloads, so `VITE_UPSTASH_...`
+would publish a write-capable database token to the whole internet.
+
+Until step 3 is done nothing is recorded and `/admin` shows a panel naming the
+missing variables. Nothing else on the site is affected either way - the
+counter fails silently by design and can never break a page.
+
+**What the numbers are worth.** They are directional, not audited. Content
+blockers drop some beacons, installs and uninstalls depend on Chrome managing
+to open a tab, and "Add to Chrome" clicks cannot see anyone who found the
+extension by searching the Chrome Web Store. Compare against the Chrome Web
+Store developer dashboard for ground truth. Your own visits to `/admin` are
+never counted.
 
 ---
 
@@ -150,3 +191,6 @@ look at the result online before merging it into the live site.
 | Vocabulary words & demo sentence | `src/data/vocab.ts` |
 | Colors, fonts, animations | `src/index.css` |
 | Page title & meta description | `index.html` |
+| Visitor dashboard | `src/pages/admin/Analytics.tsx` |
+| What gets counted, and what never is | `api/_lib/analytics.js` |
+| The click counter on install buttons | `src/lib/analytics.ts` |

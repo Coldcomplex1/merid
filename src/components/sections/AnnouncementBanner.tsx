@@ -1,5 +1,6 @@
 import { useLang } from '../../i18n/LanguageContext'
 import { CHROME_STORE_URL } from '../../config'
+import { trackInstallClick } from '../../lib/analytics'
 
 /** Slim launch banner at the very top of the page. It scrolls away with the
  *  page (the navbar below it is the sticky element), so it never obstructs
@@ -19,11 +20,15 @@ export default function AnnouncementBanner() {
           <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold-400 sm:h-2 sm:w-2" />
           {t.banner.text}
         </span>
+        {/* Not <InstallButton>: this is an inline text link with a trailing
+         *  glyph, nothing like that component's variants. It still reports to
+         *  the install funnel. */}
         <a
           href={CHROME_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 font-bold text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
+          onClick={() => trackInstallClick('banner')}
         >
           {t.banner.action}
           <span aria-hidden="true">→</span>

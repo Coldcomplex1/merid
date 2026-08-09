@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import { CHROME_STORE_URL } from '../config'
+import { trackInstallClick } from '../lib/analytics'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 import type { Lang } from '../i18n/translations'
 
@@ -48,12 +49,12 @@ interface Policy {
  * ───────────────────────────────────────────────────────────────────────── */
 
 const POLICY_VI: Policy = {
-  updated: 'Cập nhật lần cuối: ngày 22 tháng 7, 2026',
+  updated: 'Cập nhật lần cuối: ngày 9 tháng 8, 2026',
   title: 'Chính sách bảo mật',
   tocLabel: 'Nội dung',
   intro: [
     'Merid là một tiện ích mở rộng (extension) cho trình duyệt Chrome giúp người nói tiếng Việt học từ vựng tiếng Anh một cách tự nhiên: khi bạn đọc web, Merid thay một vài từ tiếng Việt bằng từ tiếng Anh tương ứng. Chính sách này giải thích chính xác Merid xử lý dữ liệu như thế nào — cả trên trang web merid.site lẫn trong tiện ích.',
-    'Nguyên tắc cốt lõi: ở trạng thái mặc định, Merid xử lý mọi thứ ngay bên trong trình duyệt của bạn và không gửi bất cứ dữ liệu nào đi đâu cả. Chỉ có hai tính năng tùy chọn — đồng bộ bộ thẻ (deck sync) và kiểm tra ngữ cảnh bằng AI — mới gửi một lượng dữ liệu giới hạn ra khỏi thiết bị, và chỉ sau khi chính bạn bật chúng lên. Merid không vận hành máy chủ riêng nào cả.',
+    'Nguyên tắc cốt lõi: ở trạng thái mặc định, Merid xử lý mọi thứ ngay bên trong trình duyệt của bạn và không gửi bất cứ dữ liệu nào đi đâu cả. Chỉ có hai tính năng tùy chọn — đồng bộ bộ thẻ (deck sync) và kiểm tra ngữ cảnh bằng AI — mới gửi một lượng dữ liệu giới hạn ra khỏi thiết bị, và chỉ sau khi chính bạn bật chúng lên. Tiện ích không gửi dữ liệu nào tới máy chủ của riêng Merid. Bản thân website merid.site có một bộ đếm lượt truy cập tổng hợp, không dùng cookie — xem Mục 7.',
   ],
   sections: [
     {
@@ -115,7 +116,7 @@ const POLICY_VI: Policy = {
         },
         {
           type: 'p',
-          text: 'Các đoạn văn bản này được gửi trực tiếp từ trình duyệt của bạn tới Google bằng khóa của bạn, không được tiện ích lưu lại, và không đi qua bất kỳ máy chủ Merid nào (không hề có máy chủ như vậy). Việc Google xử lý dữ liệu qua Gemini API tuân theo các điều khoản riêng của Google. Tắt tính năng này trong Cài đặt để dừng mọi yêu cầu ngay lập tức.',
+          text: 'Các đoạn văn bản này được gửi trực tiếp từ trình duyệt của bạn tới Google bằng khóa của bạn, không được tiện ích lưu lại, và không đi qua bất kỳ máy chủ nào của Merid. Việc Google xử lý dữ liệu qua Gemini API tuân theo các điều khoản riêng của Google. Tắt tính năng này trong Cài đặt để dừng mọi yêu cầu ngay lập tức.',
         },
       ],
     },
@@ -170,17 +171,58 @@ const POLICY_VI: Policy = {
           items: [
             'Google Firebase Authentication & Cloud Firestore — dùng cho đăng nhập và đồng bộ bộ thẻ tùy chọn. Dữ liệu được lưu trong dự án Firebase của Merid nhưng dưới tài khoản của bạn, được khóa bằng quy tắc bảo mật.',
             'Google Gemini API (Generative Language API) — dùng cho kiểm tra ngữ cảnh AI tùy chọn, chỉ khi bạn cung cấp khóa của mình.',
+            'Upstash Redis — nơi lưu các con số đếm của website merid.site (mô tả ở mục 7). Chỉ có các con số tổng được ghi vào đây, không có dữ liệu cá nhân nào.',
           ],
         },
         {
           type: 'p',
-          text: 'Merid không dùng dịch vụ phân tích (analytics), mạng quảng cáo, pixel theo dõi, hay công cụ đo lường bên thứ ba nào của bên thứ ba trên website hoặc trong tiện ích.',
+          text: 'Merid không dùng dịch vụ phân tích (analytics) của bên thứ ba, mạng quảng cáo, pixel theo dõi, hay công cụ đo lường bên thứ ba nào — trên website lẫn trong tiện ích. Không có mã của bên thứ ba nào chạy trên merid.site. Website có bộ đếm lượt truy cập của riêng mình, được mô tả ngay dưới đây.',
+        },
+      ],
+    },
+    {
+      id: 'website-counts',
+      heading: '7. Bộ đếm của merid.site',
+      blocks: [
+        {
+          type: 'p',
+          text: 'Để biết trang web có đang giúp được ai hay không, merid.site tự đếm một vài con số. Bộ đếm này do chúng tôi tự vận hành, không đặt cookie, không cấp cho bạn mã định danh nào, và không thể nhận ra bạn là ai.',
+        },
+        {
+          type: 'p',
+          text: 'Những gì được đếm — chỉ là các con số tổng, không gắn với người nào:',
+        },
+        {
+          type: 'ul',
+          items: [
+            'Số lượt xem mỗi trang (ví dụ trang chủ, trang hướng dẫn), và ngôn ngữ hiển thị (Việt hay Anh).',
+            'Số lần nút “Thêm vào Chrome” được bấm, và nút đó nằm ở vị trí nào trên trang.',
+            'Số lượt truy cập đầu tiên vào /welcome (trang tiện ích mở sau khi cài) và /goodbye (trang mở sau khi gỡ), tức số lượt cài và gỡ.',
+            'Lý do gỡ cài đặt bạn chọn trong bảng khảo sát ở trang /goodbye, nếu bạn có gửi.',
+            'Tên miền của trang đã dẫn bạn tới đây (ví dụ “google.com”) — chỉ tên miền, không bao giờ là đường dẫn đầy đủ hay tham số truy vấn.',
+          ],
+        },
+        {
+          type: 'p',
+          text: 'Những gì KHÔNG được lưu: địa chỉ IP, chuỗi nhận dạng trình duyệt, cookie, mã định danh xuyên trang, và lịch sử duyệt web của từng người. Không có hồ sơ cá nhân nào được tạo ra.',
+        },
+        {
+          type: 'note',
+          text: 'Để một người quay lại trong cùng một ngày chỉ được đếm một lần, máy chủ trộn địa chỉ IP và chuỗi trình duyệt của bạn với một chuỗi bí mật và ngày hôm đó, rồi băm một chiều. Kết quả được đưa thẳng vào một bộ đếm xác suất (HyperLogLog) — thứ chỉ giữ lại thống kê chứ không giữ lại thành viên — rồi bị bỏ đi. Chuỗi băm đó và các dữ liệu đầu vào của nó không được ghi ra bất kỳ đâu, và vì ngày là một phần đầu vào nên giá trị này đổi mỗi nửa đêm, không thể dùng để theo dõi bạn qua nhiều ngày.',
+        },
+        {
+          type: 'p',
+          text: 'Nếu trình duyệt của bạn gửi tín hiệu Do Not Track hoặc Global Privacy Control, chúng tôi không đếm gì cả.',
+        },
+        {
+          type: 'note',
+          text: 'Quan trọng: tất cả những điều trên chỉ diễn ra trên website merid.site. Tiện ích không gửi bất cứ thứ gì tới bộ đếm này, và không có thay đổi nào trong tiện ích liên quan đến nó.',
         },
       ],
     },
     {
       id: 'limited-use',
-      heading: '7. Cam kết sử dụng dữ liệu có giới hạn (Limited Use)',
+      heading: '8. Cam kết sử dụng dữ liệu có giới hạn (Limited Use)',
       blocks: [
         {
           type: 'p',
@@ -199,7 +241,7 @@ const POLICY_VI: Policy = {
     },
     {
       id: 'retention',
-      heading: '8. Lưu giữ và xóa dữ liệu',
+      heading: '9. Lưu giữ và xóa dữ liệu',
       blocks: [
         {
           type: 'p',
@@ -223,17 +265,17 @@ const POLICY_VI: Policy = {
     },
     {
       id: 'security',
-      heading: '9. Bảo mật',
+      heading: '10. Bảo mật',
       blocks: [
         {
           type: 'p',
-          text: 'Mọi liên lạc với các dịch vụ của Google (Firebase, Firestore, Gemini) đều qua kết nối mã hóa TLS. Dữ liệu đồng bộ được cô lập theo tài khoản bằng các quy tắc bảo mật phía máy chủ của Firestore để chỉ chủ tài khoản mới đọc/ghi được dữ liệu của mình. Vì Merid không vận hành máy chủ riêng, không có cơ sở dữ liệu do chúng tôi kiểm soát nào tập hợp dữ liệu người dùng.',
+          text: 'Mọi liên lạc với các dịch vụ của Google (Firebase, Firestore, Gemini) đều qua kết nối mã hóa TLS. Dữ liệu đồng bộ được cô lập theo tài khoản bằng các quy tắc bảo mật phía máy chủ của Firestore để chỉ chủ tài khoản mới đọc/ghi được dữ liệu của mình. Không có cơ sở dữ liệu nào do chúng tôi kiểm soát tập hợp dữ liệu người dùng: nơi duy nhất Merid tự vận hành là bộ đếm ở Mục 7, và nơi đó chỉ chứa các con số tổng.',
         },
       ],
     },
     {
       id: 'children',
-      heading: '10. Quyền riêng tư của trẻ em',
+      heading: '11. Quyền riêng tư của trẻ em',
       blocks: [
         {
           type: 'p',
@@ -243,7 +285,7 @@ const POLICY_VI: Policy = {
     },
     {
       id: 'changes',
-      heading: '11. Thay đổi chính sách',
+      heading: '12. Thay đổi chính sách',
       blocks: [
         {
           type: 'p',
@@ -253,7 +295,7 @@ const POLICY_VI: Policy = {
     },
     {
       id: 'contact',
-      heading: '12. Liên hệ',
+      heading: '13. Liên hệ',
       blocks: [
         {
           type: 'p',
@@ -269,12 +311,12 @@ const POLICY_VI: Policy = {
  * ───────────────────────────────────────────────────────────────────────── */
 
 const POLICY_EN: Policy = {
-  updated: 'Last updated: July 22, 2026',
+  updated: 'Last updated: August 9, 2026',
   title: 'Privacy Policy',
   tocLabel: 'Contents',
   intro: [
     'Merid is a Chrome browser extension that helps Vietnamese speakers learn English vocabulary naturally: as you read the web, Merid swaps a few Vietnamese words for their English equivalents. This policy explains exactly what Merid does with data — both on the merid.site website and inside the extension.',
-    'The core principle: in its default state Merid processes everything inside your browser and sends nothing anywhere. Only two optional features — deck sync and the AI context check — send limited data off your device, and only after you turn them on yourself. Merid runs no servers of its own.',
+    'The core principle: in its default state Merid processes everything inside your browser and sends nothing anywhere. Only two optional features — deck sync and the AI context check — send limited data off your device, and only after you turn them on yourself. The extension sends no data to servers Merid runs. The merid.site website itself keeps an aggregate, cookieless visitor count — see section 7.',
   ],
   sections: [
     {
@@ -336,7 +378,7 @@ const POLICY_EN: Policy = {
         },
         {
           type: 'p',
-          text: 'These snippets are sent directly from your browser to Google using your key, are not stored by the extension, and pass through no Merid server (there are none). Google’s handling of Gemini API data is governed by Google’s own terms. Turn the feature off in Settings to stop all such requests instantly.',
+          text: 'These snippets are sent directly from your browser to Google using your key, are not stored by the extension, and pass through no Merid server. Google’s handling of Gemini API data is governed by Google’s own terms. Turn the feature off in Settings to stop all such requests instantly.',
         },
       ],
     },
@@ -373,7 +415,7 @@ const POLICY_EN: Policy = {
             'The extension ships with no API keys and works fully without one.',
             'The optional AI context check uses your own Google Gemini API key, which you create yourself at aistudio.google.com and paste into Settings. The key is stored on your device (chrome.storage.local).',
             'If you sign in to the optional deck sync, the key is additionally backed up to your own account’s private Firestore document — protected by server-side security rules so only you can read it — purely so the feature keeps working when you sign in on another device. The key is only ever sent to Google endpoints (Gemini, Firestore) over TLS and is deleted from both places when you clear it in Settings.',
-            'There is no Merid backend or proxy; nothing passes through servers we run.',
+            'Your key goes straight from your browser to Google. It is never sent to Merid, and no server of ours sits between the two.',
           ],
         },
       ],
@@ -391,17 +433,58 @@ const POLICY_EN: Policy = {
           items: [
             'Google Firebase Authentication & Cloud Firestore — for the optional sign-in and deck sync. Data lives in Merid’s Firebase project but under your own account, locked down by security rules.',
             'Google Gemini API (Generative Language API) — for the optional AI context check, only when you supply your own key.',
+            'Upstash Redis — where the merid.site website keeps its own counts (described in section 7). Only totals are written there; no personal data of any kind.',
           ],
         },
         {
           type: 'p',
-          text: 'Merid uses no analytics, no ad networks, no tracking pixels, and no third-party measurement tools on the website or in the extension.',
+          text: 'Merid uses no third-party analytics, no ad networks, no tracking pixels, and no third-party measurement tools — neither on the website nor in the extension. No third-party code runs on merid.site at all. The website does keep a count of its own, described next.',
+        },
+      ],
+    },
+    {
+      id: 'website-counts',
+      heading: '7. The merid.site visitor count',
+      blocks: [
+        {
+          type: 'p',
+          text: 'To know whether the website is helping anyone, merid.site counts a few things itself. The counter is ours, it sets no cookie, it issues you no identifier, and it cannot work out who you are.',
+        },
+        {
+          type: 'p',
+          text: 'What is counted — totals only, never tied to a person:',
+        },
+        {
+          type: 'ul',
+          items: [
+            'How many times each page was viewed (the homepage, the tutorial, and so on), and which language was being shown.',
+            'How many times an “Add to Chrome” button was clicked, and which button on the page it was.',
+            'First visits to /welcome (the page the extension opens once after installing) and /goodbye (the page it opens after uninstalling) — in other words, installs and uninstalls.',
+            'The reasons you tick on the exit survey at /goodbye, if you send one.',
+            'The domain name of the site that linked you here (for example “google.com”) — the domain only, never the full address or its query string.',
+          ],
+        },
+        {
+          type: 'p',
+          text: 'What is NOT stored: your IP address, your browser’s user-agent string, cookies, cross-site identifiers, and any per-person browsing history. No profile of you is built.',
+        },
+        {
+          type: 'note',
+          text: 'So that one person returning during the same day is counted once, the server combines your IP address and browser string with a secret and the date, then hashes that one way. The result is fed straight into a probabilistic counter (a HyperLogLog), which keeps statistics rather than members, and is then discarded. Neither the hash nor its inputs is written down anywhere, and because the date is part of it the value changes every midnight, so it cannot be used to follow you from one day to the next.',
+        },
+        {
+          type: 'p',
+          text: 'If your browser sends a Do Not Track or Global Privacy Control signal, nothing is counted at all.',
+        },
+        {
+          type: 'note',
+          text: 'Important: all of the above happens on the merid.site website only. The extension sends nothing to this counter, and nothing about the extension changed to add it.',
         },
       ],
     },
     {
       id: 'limited-use',
-      heading: '7. Limited Use commitment',
+      heading: '8. Limited Use commitment',
       blocks: [
         {
           type: 'p',
@@ -420,7 +503,7 @@ const POLICY_EN: Policy = {
     },
     {
       id: 'retention',
-      heading: '8. Data retention and deletion',
+      heading: '9. Data retention and deletion',
       blocks: [
         {
           type: 'p',
@@ -444,17 +527,17 @@ const POLICY_EN: Policy = {
     },
     {
       id: 'security',
-      heading: '9. Security',
+      heading: '10. Security',
       blocks: [
         {
           type: 'p',
-          text: 'All communication with Google services (Firebase, Firestore, Gemini) uses encrypted TLS connections. Synced data is isolated per account by Firestore’s server-side security rules so only the account owner can read or write their own data. Because Merid runs no servers of its own, there is no database we control that pools user data.',
+          text: 'All communication with Google services (Firebase, Firestore, Gemini) uses encrypted TLS connections. Synced data is isolated per account by Firestore’s server-side security rules so only the account owner can read or write their own data. There is no database we control that pools user data: the only store Merid runs is the counter described in section 7, and it holds nothing but totals.',
         },
       ],
     },
     {
       id: 'children',
-      heading: '10. Children’s privacy',
+      heading: '11. Children’s privacy',
       blocks: [
         {
           type: 'p',
@@ -464,7 +547,7 @@ const POLICY_EN: Policy = {
     },
     {
       id: 'changes',
-      heading: '11. Changes to this policy',
+      heading: '12. Changes to this policy',
       blocks: [
         {
           type: 'p',
@@ -474,7 +557,7 @@ const POLICY_EN: Policy = {
     },
     {
       id: 'contact',
-      heading: '12. Contact',
+      heading: '13. Contact',
       blocks: [
         {
           type: 'p',
@@ -608,11 +691,14 @@ export default function PrivacyPolicy() {
             ← merid.site
           </Link>
           <span className="mx-3 text-muted">·</span>
+          {/* Not <InstallButton>: a plain footer link, but still part of the
+           *  install funnel. */}
           <a
             href={CHROME_STORE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-bold text-accent transition-colors hover:text-accent-hover"
+            onClick={() => trackInstallClick('privacy-policy')}
           >
             Chrome Web Store ↗
           </a>

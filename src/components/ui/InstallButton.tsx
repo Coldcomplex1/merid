@@ -1,10 +1,19 @@
 import ChromeIcon from './ChromeIcon'
 import { CHROME_STORE_URL } from '../../config'
+import { trackInstallClick, type Placement } from '../../lib/analytics'
 
 type Variant = 'primary' | 'compact' | 'menu' | 'link'
 
 interface InstallButtonProps {
   label: string
+  /**
+   * Which CTA this is, for the install funnel.
+   *
+   * Required, not optional-with-a-default: `npm run build` runs `tsc -b`, so a
+   * new call site that forgets it fails the build instead of quietly joining
+   * the funnel as an anonymous click.
+   */
+  where: Placement
   variant?: Variant
   /** Hide the Chrome glyph (e.g. tight inline contexts). Defaults to shown. */
   showIcon?: boolean
@@ -27,9 +36,15 @@ const VARIANTS: Record<Variant, string> = {
 const ICON_SIZE: Record<Variant, number> = { primary: 19, compact: 16, menu: 16, link: 15 }
 
 /** Canonical "Add Merid to Chrome" action. Always points at the official
- *  Chrome Web Store listing and opens in a new tab with a safe rel. */
+ *  Chrome Web Store listing and opens in a new tab with a safe rel.
+ *
+ *  Not every store link on the site comes through here: AnnouncementBanner and
+ *  PrivacyPolicy use their own anchors because their styling is nothing like
+ *  these variants. Both call trackInstallClick directly, so the funnel stays
+ *  complete - but do not assume this component is the only place to change. */
 export default function InstallButton({
   label,
+  where,
   variant = 'primary',
   showIcon = true,
   className = '',
@@ -40,6 +55,10 @@ export default function InstallButton({
       target="_blank"
       rel="noopener noreferrer"
       className={`${VARIANTS[variant]} ${className}`}
+      // Recorded alongside the navigation, never in front of it: no
+      // preventDefault, no programmatic redirect. If the counter throws, the
+      // link still works, which is the only part that actually matters.
+      onClick={() => trackInstallClick(where)}
     >
       {showIcon && <ChromeIcon size={ICON_SIZE[variant]} />}
       {label}

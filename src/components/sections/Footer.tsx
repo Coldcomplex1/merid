@@ -42,7 +42,7 @@ export default function Footer() {
           >
             Blog
           </a>
-          <InstallButton label={t.footer.install} variant="link" className="text-accent hover:text-accent-hover" />
+          <InstallButton label={t.footer.install} where="footer" variant="link" className="text-accent hover:text-accent-hover" />
           <Link to="/privacy-policy" className="transition-colors hover:text-accent">
             {t.footer.privacy}
           </Link>

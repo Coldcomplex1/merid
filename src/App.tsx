@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Outlet, Route, Routes, useLocation } from 'react-router'
 import { ThemeProvider } from './theme/ThemeContext'
-import { LanguageProvider } from './i18n/LanguageContext'
+import { LanguageProvider, useLang } from './i18n/LanguageContext'
 import { AuthProvider, RequireAuth } from './auth/AuthContext'
+import { trackPageView } from './lib/analytics'
 import AnnouncementBanner from './components/sections/AnnouncementBanner'
 import Navbar from './components/sections/Navbar'
 import Footer from './components/sections/Footer'
@@ -18,6 +19,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import RequireAdmin from './pages/admin/RequireAdmin'
 import BlogAdmin from './pages/admin/BlogAdmin'
 import BlogEditor from './pages/admin/BlogEditor'
+import Analytics from './pages/admin/Analytics'
 
 /** Scrolls to the hash target on navigation (e.g. /#demo from the tutorial page), else to top. */
 function ScrollManager() {
@@ -33,6 +35,28 @@ function ScrollManager() {
     }
     window.scrollTo(0, 0)
   }, [location])
+
+  return null
+}
+
+/** Counts one page view per navigation. Sibling of ScrollManager above, and for
+ *  the same reason: a null-rendering component is the tidiest way to subscribe
+ *  to the router.
+ *
+ *  Two deliberate differences from ScrollManager. It keys on `pathname` only,
+ *  so /#demo is not a second page view (ScrollManager *must* react to the hash).
+ *  And the ref suppresses React StrictMode's double effect in development,
+ *  whose symptom would otherwise be silently doubled numbers. */
+function AnalyticsTracker() {
+  const location = useLocation()
+  const { lang } = useLang()
+  const counted = useRef('')
+
+  useEffect(() => {
+    if (counted.current === location.pathname) return
+    counted.current = location.pathname
+    trackPageView(location.pathname, lang)
+  }, [location.pathname, lang])
 
   return null
 }
@@ -59,6 +83,7 @@ export default function App() {
         <AuthProvider>
           <BrowserRouter>
             <ScrollManager />
+            <AnalyticsTracker />
             <div className="min-h-screen bg-canvas text-body">
               <Routes>
                 <Route element={<SiteLayout />}>
@@ -79,6 +104,19 @@ export default function App() {
                   element={
                     <RequireAuth>
                       <MyDeck />
+                    </RequireAuth>
+                  }
+                />
+
+                {/* The visitor dashboard. /admin used to fall through to the
+                    catch-all below and render the marketing homepage. */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAuth>
+                      <RequireAdmin>
+                        <Analytics />
+                      </RequireAdmin>
                     </RequireAuth>
                   }
                 />

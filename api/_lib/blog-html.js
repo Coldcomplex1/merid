@@ -6,8 +6,9 @@
 //
 // Everything this emits must be complete without JavaScript. GPTBot, ClaudeBot
 // and PerplexityBot do not execute it, and they are the readers this content is
-// written for. The only <script> tags on a blog page are the theme bootstrap and
-// the JSON-LD block; neither renders anything.
+// written for. The <script> tags on a blog page are the theme bootstrap, the
+// JSON-LD blocks, the language-switch sync and the visitor beacon; not one of
+// them renders anything, so with JavaScript off the page is unchanged.
 import {
   AUTHOR,
   CWS_URL,
@@ -42,6 +43,22 @@ const THEME_BOOTSTRAP = `(function(){try{var saved=localStorage.getItem('merid-t
 /** Mirrors the language choice into the SPA's storage key, so following a link
  *  back into the app does not snap the reader to the other language. */
 const LANG_SYNC = `document.querySelectorAll('.js-lang-switch').forEach(function(a){a.addEventListener('click',function(){try{localStorage.setItem('merid-lang',a.dataset.lang)}catch(e){}})});`
+
+/**
+ * The visitor beacon: one page view, plus any click on a store link.
+ *
+ * Counted from the browser rather than inside blog-render.js on purpose. These
+ * responses are CDN-cached (s-maxage=300), so the function does not run on a
+ * cache hit - a server-side counter would be a cache-MISS counter, undercounting
+ * popular posts hardest and inverting the very ranking the top-posts table
+ * exists to show. It also means crawlers, which do not run this, stay out of a
+ * number that is meant to be about people.
+ *
+ * The React tracker's reasoning applies here too: text/plain keeps the beacon a
+ * CORS simple request, so it never needs a preflight it cannot complete. See
+ * src/lib/analytics.ts.
+ */
+const BEACON = `try{var s=function(o){try{navigator.sendBeacon('/api/pulse',new Blob([JSON.stringify(o)],{type:'text/plain;charset=UTF-8'}))}catch(e){}};s({type:'page',path:location.pathname,lang:document.documentElement.lang,ref:document.referrer});document.querySelectorAll('a[data-cta]').forEach(function(a){a.addEventListener('click',function(){s({type:'cta',where:a.dataset.cta,path:location.pathname})})})}catch(e){}`
 
 export function esc(value) {
   return String(value ?? '')
@@ -155,6 +172,7 @@ ${head.map((line) => `  ${line}`).join('\n')}
 <body>
 ${opts.body}
 <script>${LANG_SYNC}</script>
+<script>${BEACON}</script>
 </body>
 </html>
 `
@@ -203,7 +221,7 @@ function ctaBlock(lang) {
   <h2>${esc(t.ctaHeading)}</h2>
   <p>${esc(t.ctaBody)}</p>
   <p class="blog-cta-actions">
-    <a class="btn-gold" href="${esc(CWS_URL)}" target="_blank" rel="noopener noreferrer">${esc(t.ctaButton)}</a>
+    <a class="btn-gold" data-cta="blog-cta" href="${esc(CWS_URL)}" target="_blank" rel="noopener noreferrer">${esc(t.ctaButton)}</a>
     <a class="btn-outline" href="/#demo">${esc(t.ctaSecondary)}</a>
   </p>
 </section>`
@@ -216,7 +234,7 @@ function authorBox(lang) {
   <p class="blog-author-name">${esc(AUTHOR.name)}</p>
   <p>${esc(AUTHOR.bio[lang])}</p>
   <p class="blog-author-links">
-    <a href="${esc(CWS_URL)}" target="_blank" rel="noopener noreferrer">Merid on the Chrome Web Store</a>
+    <a data-cta="blog-author" href="${esc(CWS_URL)}" target="_blank" rel="noopener noreferrer">Merid on the Chrome Web Store</a>
     <a href="${esc(AUTHOR.sameAs[1])}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
   </p>
 </section>`
