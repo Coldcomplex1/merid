@@ -1,3 +1,4 @@
+import AwardsStrip from '../components/sections/AwardsStrip'
 import Hero from '../components/sections/Hero'
 import LiveDemo from '../components/sections/LiveDemo'
 import Features from '../components/sections/Features'
@@ -14,6 +15,7 @@ export default function Home() {
 
   return (
     <>
+      <AwardsStrip />
       <Hero />
       <LiveDemo />
       <Features />

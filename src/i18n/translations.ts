@@ -104,6 +104,15 @@ export interface Strings {
       }
     }
   }
+  /* The strip of award / "featured on" cards above the hero. The names of the
+     award and the platforms are proper nouns and live in the component; only
+     the labels around them are translated. */
+  awards: {
+    label: string
+    first: string
+    featuredOn: string
+    newTab: string
+  }
   hero: {
     eyebrow: string
     title1: string
@@ -478,6 +487,12 @@ const vi: Strings = {
     tutorial: 'Hướng dẫn',
     createDataset: 'Tạo bộ từ',
     cta: 'Thêm vào Chrome',
+  },
+  awards: {
+    label: 'Thành tích và ghi nhận',
+    first: 'Giải Nhất',
+    featuredOn: 'Có mặt trên',
+    newTab: 'mở trong tab mới',
   },
   hero: {
     eyebrow: 'Tiện ích Chrome cho người Việt học tiếng Anh',
@@ -1155,6 +1170,12 @@ const en: Strings = {
     tutorial: 'Tutorial',
     createDataset: 'Create dataset',
     cta: 'Add to Chrome',
+  },
+  awards: {
+    label: 'Awards and recognition',
+    first: '1st Place',
+    featuredOn: 'Featured on',
+    newTab: 'opens in a new tab',
   },
   hero: {
     eyebrow: 'Chrome extension for Vietnamese learners',

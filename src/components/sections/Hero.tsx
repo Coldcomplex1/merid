@@ -17,7 +17,7 @@ export default function Hero() {
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-16 pb-10 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-12">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-8 pb-10 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:pt-12 lg:pb-12">
         <div className="animate-fade-up">
           <p className="text-xs font-extrabold tracking-[0.22em] text-accent uppercase">
             {t.hero.eyebrow}
