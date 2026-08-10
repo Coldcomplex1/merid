@@ -370,7 +370,7 @@ export interface Strings {
 
 const vi: Strings = {
   meta: {
-    title: 'Merid: Học từ vựng tiếng Anh ngay khi đọc web tiếng Việt',
+    title: 'Merid: Học từ vựng tiếng Anh ngay khi lướt web tiếng Việt',
     tutorialTitle: 'Hướng dẫn: Cách dùng Merid',
     createDatasetTitle: 'Tạo bộ từ vựng riêng với AI - Merid',
     apiKeyGuideTitle: 'Dán API key của bạn để dùng Merid tốt nhất - Merid',
