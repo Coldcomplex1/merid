@@ -1,9 +1,13 @@
+/* A word swapped into the page. The gold underline and faint wash carry the
+   signal on their own, so the weight is inherited rather than set: the word
+   reads as part of the sentence it landed in, whatever weight that sentence
+   is, instead of sitting heavier than the text around it. */
 .vocab-master-highlight {
     border-bottom: 2px solid #f4be37;
     cursor: pointer;
     background-color: rgba(244, 190, 55, 0.08);
     padding: 0 1px;
-    font-weight: 600;
+    font-weight: inherit;
     transition: all 0.3s ease;
     text-decoration: none;
 }
@@ -105,6 +109,7 @@
     font-family: Georgia, "Times New Roman", serif;
     font-size: 14px;
     font-style: italic;
+    font-weight: 700;
     color: var(--vm-navy);
 }
 
@@ -130,6 +135,7 @@
 
 .vm-phon {
     font-size: 12.5px;
+    font-weight: 700;
     color: var(--vm-muted);
     letter-spacing: 0.01em;
 }
@@ -139,7 +145,7 @@
     font-size: 14px;
     line-height: 1.32;
     color: var(--vm-navy);
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* Synonym / antonym groups: navy-outlined container holding bordered chips. */
@@ -182,6 +188,7 @@
     margin-top: 12px;
     font-size: 13px;
     line-height: 1.4;
+    font-weight: 700;
     color: var(--vm-ink);
     text-align: left;
 }
@@ -225,7 +232,7 @@
     flex: 1;
     min-width: 0;
     font-size: 12.5px;
-    font-weight: 500;
+    font-weight: 700;
     color: var(--vm-navy);
 }
 
@@ -345,6 +352,7 @@
     border-radius: 0 8px 8px 0;
     font-size: 11.5px;
     line-height: 1.5;
+    font-weight: 700;
     color: var(--vm-navy);
 }
 

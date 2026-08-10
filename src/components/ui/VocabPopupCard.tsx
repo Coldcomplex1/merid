@@ -101,7 +101,7 @@ export default function VocabPopupCard({
           </h4>
           <div className="mt-[5px] flex items-center gap-[7px]">
             <span
-              className="text-sm italic"
+              className="text-sm font-bold italic"
               style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: NAVY }}
             >
               ({entry.pos})
@@ -114,11 +114,13 @@ export default function VocabPopupCard({
             >
               <SpeakerIcon />
             </button>
-            <span className="text-[12.5px] tracking-[0.01em] text-[#6c7c9c]">{entry.pron}</span>
+            <span className="text-[12.5px] font-bold tracking-[0.01em] text-[#6c7c9c]">
+              {entry.pron}
+            </span>
           </div>
         </div>
 
-        <p className="mt-[11px] text-sm leading-[1.32] font-semibold text-[#19355d]">
+        <p className="mt-[11px] text-sm leading-[1.32] font-bold text-[#19355d]">
           {entry.definition}
         </p>
 
@@ -149,7 +151,7 @@ export default function VocabPopupCard({
         )}
 
         {!compact && (
-          <p className="mt-3 text-[13px] leading-[1.4] text-[#1c2c47]">
+          <p className="mt-3 text-[13px] leading-[1.4] font-bold text-[#1c2c47]">
             {exampleParts.map((part, i) =>
               part.toLowerCase() === entry.word.toLowerCase() ? (
                 <strong
@@ -170,7 +172,7 @@ export default function VocabPopupCard({
             <span className="w-[84px] shrink-0 text-[9px] font-extrabold tracking-[0.09em] text-[#6c7c9c] uppercase">
               Vietnamese
             </span>
-            <span className="min-w-0 flex-1 text-[12.5px] font-medium text-[#19355d]">
+            <span className="min-w-0 flex-1 text-[12.5px] font-bold text-[#19355d]">
               {entry.viMeaning}
             </span>
           </div>
@@ -178,7 +180,7 @@ export default function VocabPopupCard({
             <span className="w-[84px] shrink-0 text-[9px] font-extrabold tracking-[0.09em] text-[#6c7c9c] uppercase">
               Replaced
             </span>
-            <span className="min-w-0 flex-1 text-[12.5px] font-medium text-[#19355d]">
+            <span className="min-w-0 flex-1 text-[12.5px] font-bold text-[#19355d]">
               {entry.vi}
             </span>
           </div>
