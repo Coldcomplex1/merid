@@ -11,7 +11,7 @@
     { "source": "/blog/:lang/:slug", "destination": "/api/blog-render?route=post&lang=:lang&slug=:slug" },
     { "source": "/sitemap.xml", "destination": "/api/blog-render?route=sitemap" },
     { "source": "/llms.txt", "destination": "/api/blog-render?route=llms" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/" }
   ],
   "headers": [
     {

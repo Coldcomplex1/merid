@@ -122,6 +122,62 @@ test('/blog/vie resolves to a redirect, not a second copy of the index', () => {
 })
 
 // ---------------------------------------------------------------------------
+// The SPA fallback
+// ---------------------------------------------------------------------------
+
+/** Router paths (src/App.tsx) that prerender-seo.mjs writes no file for, so the
+ *  catch-all rewrite is the only thing that can serve them. The signed-in half
+ *  of the site is all of it, plus whatever an unknown URL should be: the router
+ *  has a '*' route that renders the homepage, and it only ever runs if Vercel
+ *  hands the shell over instead of answering 404 itself. */
+const SHELL_ONLY_ROUTES = [
+    '/login',
+    '/signup',
+    '/my-deck',
+    '/admin',
+    '/admin/blog',
+    '/admin/blog/new',
+    '/admin/blog/abc123/edit',
+    '/a-url-nobody-has-ever-visited',
+]
+
+test('the SPA fallback points somewhere cleanUrls can actually serve', () => {
+    // cleanUrls serves dist/tutorial.html at /tutorial, which is the whole
+    // point of the prerender step above -- but it does that by making the built
+    // HTML addressable *only* at the extensionless path. A fallback pointing at
+    // /index.html then resolves to nothing, and every path in SHELL_ONLY_ROUTES
+    // answers Vercel's own 404 rather than the app. That shipped once: /admin
+    // and the rest of the signed-in site went dark the day cleanUrls landed,
+    // while the prerendered marketing pages kept working and hid it.
+    const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'))
+    const fallback = vercel.rewrites.at(-1)
+
+    assert.ok(vercel.cleanUrls, 'this test is about the cleanUrls interaction')
+    assert.ok(fallback.source.includes('(?!api/)'), 'the catch-all is no longer last')
+    assert.ok(
+        !fallback.destination.endsWith('.html'),
+        `the fallback points at ${fallback.destination}, which cleanUrls does not serve`,
+    )
+})
+
+test('the catch-all covers every path that has no file of its own', () => {
+    const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'))
+    const fallback = vercel.rewrites.at(-1)
+    // The source is written as a bare regex, so it reads as one here. Vercel
+    // compiles it with path-to-regexp, which for a pattern with no :params is
+    // the same match.
+    const covers = new RegExp(`^${fallback.source}$`)
+
+    for (const path of SHELL_ONLY_ROUTES) {
+        assert.ok(covers.test(path), `${path} would 404 instead of reaching the router`)
+    }
+
+    // The exclusion earns its keep: an unknown API path should stay a 404
+    // rather than be handed a copy of the HTML shell.
+    assert.ok(!covers.test('/api/not-a-function'))
+})
+
+// ---------------------------------------------------------------------------
 // Sitemap
 // ---------------------------------------------------------------------------
 
