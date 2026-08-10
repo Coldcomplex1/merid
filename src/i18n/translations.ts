@@ -112,6 +112,9 @@ export interface Strings {
     first: string
     featuredOn: string
     newTab: string
+    /* The one name in the strip that differs by language. The platforms are
+       proper nouns and stay in the component. */
+    tdtu: string
   }
   hero: {
     eyebrow: string
@@ -493,6 +496,7 @@ const vi: Strings = {
     first: 'Giải Nhất',
     featuredOn: 'Có mặt trên',
     newTab: 'mở trong tab mới',
+    tdtu: 'Sáng tạo Công nghệ TDTU 2026',
   },
   hero: {
     eyebrow: 'Tiện ích Chrome cho người Việt học tiếng Anh',
@@ -1176,6 +1180,7 @@ const en: Strings = {
     first: '1st Place',
     featuredOn: 'Featured on',
     newTab: 'opens in a new tab',
+    tdtu: 'TDTU Innovation Competition 2026',
   },
   hero: {
     eyebrow: 'Chrome extension for Vietnamese learners',
