@@ -35,7 +35,22 @@ Two **optional, off-by-default** features use the network once the user opts in:
   stops replacing words you already know. Optional cloud backup via sign-in.
 - **Per-site pause:** "Turn off on this site" in the popup keeps Merid away from
   sites where replacement is unwanted (banking, work tools…). Covers the site's
-  subdomains too.
+  subdomains too. Settings → **Sites** lists everything you have turned off and
+  lets you add a site you are not currently on.
+- **Built-in exclusions**, in two tiers:
+  - **Always off, not a setting** — messaging, email, banking and payments,
+    sign-in screens and password managers, health, tax/benefits/identity
+    services, and proctored exams. Merid never scans these pages, so nothing
+    from them reaches the AI context check either.
+  - **Off by default, one click to turn on** — dictionaries and translators,
+    documents you are writing, code editors and sandboxes, coursework and
+    language apps, and government sites generally (so `nasa.gov` is yours to
+    switch on, while `irs.gov` stays always off).
+
+  Matching is by hostname, which leaves an honest gap: Facebook, Instagram and
+  X serve DMs from the same host as the feed, so their messages are not covered.
+  Neither is anything self-hosted, like a work webmail on a company domain.
+  Turn those off yourself.
 - **Revert this page** button restores the original text with one click.
 - Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
 - **Localized UI:** English + Vietnamese (`_locales/`), following the browser language.
@@ -111,6 +126,10 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
 - If you enable the **AI context check** (optional, needs your own Gemini key),
   short sentence snippets around replaced words are sent to Google Gemini to
   verify fit. Nothing is proxied through Merid servers - there are none.
+- Merid **never runs on private pages** — email, messaging, banking, sign-in,
+  health, tax/benefits/identity services — so nothing from them is scanned or
+  sent, whatever the AI check is set to. The list is in `lib/vocab-core.js`
+  (`BLOCKED_BY_CATEGORY`) and shown in Settings → **Sites**.
 - You can **pause Merid per site**, **turn it off**, and **Delete all stored
   data** from Settings.
 

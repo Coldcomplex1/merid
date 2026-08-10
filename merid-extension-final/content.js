@@ -238,9 +238,11 @@ function startScan() {
                 return;
             }
 
-            // Per-site pause ("Turn off on this site" in the popup).
-            if (C.isSiteDisabled(location.hostname, settings.disabledSites)) {
-                log('[VM] Paused on this site - not processing.');
+            // Per-site pause ("Turn off on this site" in the popup), plus the
+            // built-in lists: sites Merid never runs on, and sites it ships off
+            // on until the reader turns them on (allowedSites).
+            if (C.isSiteDisabled(location.hostname, settings.disabledSites, settings.allowedSites)) {
+                log('[VM] Off on this site - not processing.');
                 return;
             }
 

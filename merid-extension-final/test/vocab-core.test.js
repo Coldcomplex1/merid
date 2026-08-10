@@ -534,3 +534,142 @@ test('withDefaults supplies an empty disabledSites list', () => {
     assert.deepStrictEqual(C.withDefaults({}).disabledSites, []);
     assert.deepStrictEqual(C.withDefaults({ disabledSites: ['a.com'] }).disabledSites, ['a.com']);
 });
+
+test('withDefaults supplies an empty allowedSites list', () => {
+    assert.deepStrictEqual(C.withDefaults({}).allowedSites, []);
+    assert.deepStrictEqual(C.withDefaults({ allowedSites: ['a.com'] }).allowedSites, ['a.com']);
+});
+
+// ---------------------------------------------------------------------------
+// Built-in site lists
+// ---------------------------------------------------------------------------
+
+// The three tests below guard the lists themselves rather than the matcher.
+// A bad entry pasted into either list is otherwise a silent production bug:
+// it either never matches or quietly takes out half the web.
+
+test('built-in host entries are stored in canonical form', () => {
+    const all = C.BUILTIN_BLOCKED_HOSTS.concat(C.DEFAULT_OFF_HOSTS);
+    for (const h of all) {
+        assert.strictEqual(h, C.canonicalHost(h), `${h} is not canonical`);
+        // A leading dot compares against host.endsWith('..gov') and never hits;
+        // schemes, paths and globs never match a hostname at all.
+        assert.ok(!/^[.*]|[/:*\s]/.test(h), `${h} is not a bare hostname`);
+    }
+});
+
+test('the two built-in lists do not overlap and hold no duplicates', () => {
+    const hard = C.BUILTIN_BLOCKED_HOSTS;
+    const soft = C.DEFAULT_OFF_HOSTS;
+    assert.strictEqual(new Set(hard).size, hard.length, 'duplicate in the blocked list');
+    assert.strictEqual(new Set(soft).size, soft.length, 'duplicate in the default-off list');
+    const both = hard.filter(h => soft.indexOf(h) !== -1);
+    assert.deepStrictEqual(both, [], 'a host cannot be in both tiers');
+    // Every category is labelled for the options page.
+    for (const key of Object.keys(C.BLOCKED_BY_CATEGORY)) {
+        assert.ok(C.SITE_CATEGORY_LABELS[key], `no label for ${key}`);
+    }
+    for (const key of Object.keys(C.DEFAULT_OFF_BY_CATEGORY)) {
+        assert.ok(C.SITE_CATEGORY_LABELS[key], `no label for ${key}`);
+    }
+});
+
+test('no built-in entry swallows a host Merid should still read', () => {
+    // An apex entry covers every subdomain, so 'google.com' in either list
+    // would silently take out Search, News, Books and Scholar with it.
+    const keep = ['google.com', 'microsoft.com', 'apple.com', 'yahoo.com',
+        'qq.com', 'github.com', 'gitlab.com', 'dropbox.com', 'edu', 'com',
+        'vnexpress.net', 'tuoitre.vn', 'bbc.com', 'wikipedia.org', 'medium.com',
+        'reddit.com', 'nytimes.com'];
+    for (const h of keep) {
+        assert.strictEqual(C.isSiteDisabled(h, [], []), false, `${h} must stay on`);
+    }
+});
+
+test('private sites are off no matter what the user lists say', () => {
+    const hard = ['mail.google.com', 'messenger.com', 'accounts.google.com',
+        'paypal.com', 'vietcombank.com.vn', 'proctorio.com', 'irs.gov'];
+    for (const h of hard) {
+        assert.strictEqual(C.isHostBlocked(h), true, `${h} should be blocked`);
+        // An allow entry cannot lift a built-in block.
+        assert.strictEqual(C.isSiteDisabled(h, [], [h]), true);
+        // and it holds across subdomains
+        assert.strictEqual(C.isSiteDisabled('secure.' + h, [], [h]), true);
+        // ...but only at a label boundary
+        assert.strictEqual(C.isHostBlocked('not' + h), false, `not${h} is a different site`);
+    }
+});
+
+test('default-off sites ship off and can be turned back on per host', () => {
+    assert.strictEqual(C.isSiteDisabled('docs.google.com', [], []), true);
+    assert.strictEqual(C.isSiteDisabled('docs.google.com', [], ['docs.google.com']), false);
+    // Allowing one host does not allow its whole category.
+    assert.strictEqual(C.isSiteDisabled('drive.google.com', [], ['docs.google.com']), true);
+    // Both sides are canonicalized before comparing.
+    assert.strictEqual(C.isSiteDisabled('WWW.DeepL.com', [], ['deepl.com']), false);
+    assert.strictEqual(C.isHostDefaultOff('quizlet.com'), true);
+    assert.strictEqual(C.isHostDefaultOff('mail.google.com'), false);
+    assert.strictEqual(C.isHostBlocked('docs.google.com'), false);
+});
+
+test('an explicit pause beats a stale allow entry', () => {
+    assert.strictEqual(
+        C.isSiteDisabled('docs.google.com', ['docs.google.com'], ['docs.google.com']), true);
+});
+
+test('TLD-level entries cover every label under them, at a boundary', () => {
+    // Government sites are default-off, not blocked: nasa.gov and nih.gov are
+    // some of the best free English reading there is, and a reader who wants
+    // them can say so.
+    assert.strictEqual(C.isSiteDisabled('nasa.gov', [], []), true);
+    assert.strictEqual(C.isSiteDisabled('nasa.gov', [], ['nasa.gov']), false);
+    assert.strictEqual(C.isSiteDisabled('dichvucong.gov.vn', [], []), true);
+    // ...while the named tax/benefits/identity services stay hard-blocked even
+    // though the gov TLD around them is only default-off.
+    assert.strictEqual(C.isHostBlocked('irs.gov'), true);
+    assert.strictEqual(C.isHostBlocked('nasa.gov'), false);
+    assert.strictEqual(C.isSiteDisabled('dichvucong.gov.vn', [], ['dichvucong.gov.vn']), true);
+    // Label boundary, same rule as the pause list.
+    assert.strictEqual(C.isSiteDisabled('notgov', [], []), false);
+    assert.strictEqual(C.isSiteDisabled('gov.example.com', [], []), false);
+});
+
+test('siteToggleState names the four states the popup renders', () => {
+    assert.strictEqual(C.siteToggleState('mail.google.com', [], []), 'blocked');
+    assert.strictEqual(C.siteToggleState('vnexpress.net', ['vnexpress.net'], []), 'paused');
+    assert.strictEqual(C.siteToggleState('docs.google.com', [], []), 'default-off');
+    assert.strictEqual(C.siteToggleState('docs.google.com', [], ['docs.google.com']), 'on');
+    assert.strictEqual(C.siteToggleState('vnexpress.net', [], []), 'on');
+});
+
+test('addSiteToList canonicalizes, dedupes and caps', () => {
+    assert.deepStrictEqual(C.addSiteToList([], 'WWW.A.com'), ['a.com']);
+    assert.deepStrictEqual(C.addSiteToList(['a.com'], 'a.com'), ['a.com']);
+    assert.deepStrictEqual(C.addSiteToList(['a.com'], 'www.a.com'), ['a.com']);
+    assert.deepStrictEqual(C.addSiteToList(['a.com'], ''), ['a.com']);
+    assert.deepStrictEqual(C.addSiteToList(undefined, 'a.com'), ['a.com']);
+    const full = Array.from({ length: C.MAX_SITE_LIST }, (_, i) => `s${i}.com`);
+    assert.strictEqual(C.addSiteToList(full, 'one-too-many.com').length, C.MAX_SITE_LIST);
+    // the input is never mutated
+    const before = ['a.com'];
+    C.addSiteToList(before, 'b.com');
+    assert.deepStrictEqual(before, ['a.com']);
+});
+
+test('removeSiteFromList drops every entry covering the host', () => {
+    assert.deepStrictEqual(C.removeSiteFromList(['a.com', 'b.com'], 'a.com'), ['b.com']);
+    // an apex entry covers the subdomain, so removing it re-enables all of them
+    assert.deepStrictEqual(C.removeSiteFromList(['a.com'], 'news.a.com'), []);
+    assert.deepStrictEqual(C.removeSiteFromList(['a.com'], 'nota.com'), ['a.com']);
+    assert.deepStrictEqual(C.removeSiteFromList([], 'a.com'), []);
+    const before = ['a.com'];
+    C.removeSiteFromList(before, 'a.com');
+    assert.deepStrictEqual(before, ['a.com']);
+});
+
+test('the two-argument isSiteDisabled call still fails safe', () => {
+    // popup/content pass three arguments now, but anything that predates
+    // allowedSites should leave a default-off site off rather than on.
+    assert.strictEqual(C.isSiteDisabled('docs.google.com', []), true);
+    assert.strictEqual(C.isSiteDisabled('vnexpress.net', []), false);
+});

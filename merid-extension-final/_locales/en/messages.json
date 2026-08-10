@@ -89,6 +89,15 @@
   "popupSiteAlwaysOffHint": {
     "message": "Merid never changes words on its own site."
   },
+  "popupSiteAlwaysOffPrivate": {
+    "message": "Merid never runs on private pages: email, chats, banking, sign-in, health and official services."
+  },
+  "popupSiteTurnOn": {
+    "message": "Turn on for this site"
+  },
+  "popupSiteDefaultOffHint": {
+    "message": "Merid starts off here — dictionaries, editors and tests read better unchanged."
+  },
   "popupViewDeck": {
     "message": "View my deck ↗"
   },

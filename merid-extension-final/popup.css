@@ -597,6 +597,21 @@ footer {
 
 .page-btn.off:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; border-color: rgba(239, 68, 68, 0.75); }
 
+/* Site that ships off (dictionary, editor, coursework). Nothing is wrong here
+   and nobody chose it, so it stays neutral rather than borrowing the red the
+   deliberate pause above uses. */
+.page-btn.off.muted {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.62);
+}
+
+.page-btn.off.muted:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+}
+
 /* "View my deck" - secondary link-out to merid.site/my-deck. Deliberately
    quieter than the extension toggle above it. */
 .btn-view-deck {

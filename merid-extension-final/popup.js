@@ -169,40 +169,58 @@ document.addEventListener('DOMContentLoaded', () => {
         pageActions.hidden = false;
         siteToggle.title = host;
 
-        // Merid never runs on its own site, and that is not the user's to
-        // change - offering a toggle that does nothing is worse than no toggle.
+        // Merid never runs on its own site or on private ones - email, chats,
+        // banking, sign-in, exams - and that is not the user's to change.
+        // Offering a toggle that does nothing is worse than no toggle.
         if (C.isHostBlocked(host)) {
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
             siteToggle.textContent = t('popupSiteAlwaysOff', 'Always off here');
-            siteToggle.title = t('popupSiteAlwaysOffHint', 'Merid never changes words on its own site.');
+            siteToggle.title = C.blockedCategory(host) === 'own'
+                ? t('popupSiteAlwaysOffHint', 'Merid never changes words on its own site.')
+                : t('popupSiteAlwaysOffPrivate',
+                    'Merid never runs on private pages: email, chats, banking, sign-in, health and official services.');
         } else {
             let disabledSites = [];
+            let allowedSites = [];
+            // Sites that ship off (dictionaries, editors, coursework) say so,
+            // rather than looking like the user paused them and forgot.
+            const defaultOff = C.isHostDefaultOff(host);
             const renderSiteToggle = () => {
-                const off = C.isSiteDisabled(host, disabledSites);
-                siteToggle.textContent = off
-                    ? t('popupSiteOn', 'Turn back on for this site')
-                    : t('popupSiteOff', 'Turn off on this site');
+                const state = C.siteToggleState(host, disabledSites, allowedSites);
+                const off = state !== 'on';
+                if (state === 'default-off') {
+                    siteToggle.textContent = t('popupSiteTurnOn', 'Turn on for this site');
+                    siteToggle.title = t('popupSiteDefaultOffHint',
+                        'Merid starts off here - dictionaries, editors and tests read better unchanged.');
+                } else {
+                    siteToggle.textContent = off
+                        ? t('popupSiteOn', 'Turn back on for this site')
+                        : t('popupSiteOff', 'Turn off on this site');
+                    siteToggle.title = host;
+                }
                 siteToggle.classList.toggle('off', off);
+                siteToggle.classList.toggle('muted', state === 'default-off');
             };
-            chrome.storage.sync.get(['disabledSites'], (s) => {
+            chrome.storage.sync.get(['disabledSites', 'allowedSites'], (s) => {
                 disabledSites = Array.isArray(s.disabledSites) ? s.disabledSites : [];
+                allowedSites = Array.isArray(s.allowedSites) ? s.allowedSites : [];
                 renderSiteToggle();
             });
 
             siteToggle.addEventListener('click', () => {
-                if (C.isSiteDisabled(host, disabledSites)) {
-                    // Drop every entry that covers this host (an apex entry also
-                    // covers its subdomains, so removing it re-enables all of them).
-                    disabledSites = disabledSites.filter(site => {
-                        const cs = C.canonicalHost(site);
-                        return !(host === cs || host.endsWith('.' + cs));
-                    });
+                const on = C.siteToggleState(host, disabledSites, allowedSites) === 'on';
+                if (on) {
+                    // Turning off: drop any allow entry, and only add a pause
+                    // entry where the site would otherwise run by default.
+                    allowedSites = C.removeSiteFromList(allowedSites, host);
+                    if (!defaultOff) disabledSites = C.addSiteToList(disabledSites, host);
                 } else {
-                    disabledSites = disabledSites.concat(host);
+                    disabledSites = C.removeSiteFromList(disabledSites, host);
+                    if (defaultOff) allowedSites = C.addSiteToList(allowedSites, host);
                 }
                 // Open tabs revert/re-scan on their own via storage.onChanged.
-                chrome.storage.sync.set({ disabledSites }, renderSiteToggle);
+                chrome.storage.sync.set({ disabledSites, allowedSites }, renderSiteToggle);
             });
         }
 

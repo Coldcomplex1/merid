@@ -95,6 +95,56 @@
             </div>
         </section>
 
+        <!-- SITES (where Merid runs) -->
+        <section class="card">
+            <h2>Sites</h2>
+            <p class="hint">Merid runs everywhere except the sites below. You can also
+                turn it off on the page you are reading from the toolbar popup.</p>
+
+            <div class="subsection">
+                <h3 class="subhead">Sites you turned off</h3>
+                <p class="hint" id="pausedEmpty" hidden>None yet.</p>
+                <ul class="custom-list" id="pausedList"></ul>
+                <div class="field">
+                    <label for="pauseInput">Turn Merid off on another site</label>
+                    <input type="text" id="pauseInput" maxlength="120" placeholder="example.com" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="pauseError" role="status" hidden></p>
+                </div>
+                <div class="auth-actions">
+                    <button class="btn" id="pauseAddBtn" type="button" disabled>Add site</button>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subhead">Off by default</h3>
+                <p class="hint">Dictionaries, translators, editors and coursework read
+                    better unchanged, so Merid starts off on them. Turn any of them back
+                    on from the popup while you are on the site.</p>
+                <p class="hint" id="allowedNone" hidden>You have not turned any of these back on.</p>
+                <ul class="custom-list" id="allowedList"></ul>
+                <details class="site-details">
+                    <summary>See the full list</summary>
+                    <div id="defaultOffCatalog"></div>
+                </details>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subhead">Always off</h3>
+                <p class="hint">Merid never changes words on private pages, and never
+                    sends anything from them for the AI context check. This part is not
+                    a setting.</p>
+                <details class="site-details">
+                    <summary>See the full list</summary>
+                    <div id="blockedCatalog"></div>
+                </details>
+                <p class="hint">Matching is by site name, so a service that shares a
+                    site with something else — Facebook, Instagram and X put messages on
+                    the same address as the feed — is not on this list. Neither is
+                    anything self-hosted, like a work webmail on a company address. Turn
+                    those off yourself above.</p>
+            </div>
+        </section>
+
         <!-- ACCOUNT & SYNC -->
         <section class="card" id="accountCard" hidden>
             <h2>Account &amp; sync</h2>
@@ -265,7 +315,8 @@
                 <li>To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit.</li>
                 <li>If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
                 <li>Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
-                <li>Your settings (selected dataset, display mode, intensity, on/off, paused sites) are stored on your device via <code>chrome.storage</code>.</li>
+                <li>Merid <strong>never runs at all</strong> on private pages - email, messaging, banking, sign-in, health and official services - so nothing from them is ever scanned or sent, whatever the AI check is set to. See <strong>Sites</strong> above for the full list.</li>
+                <li>Your settings (selected dataset, display mode, intensity, on/off, the sites you turned off and the default-off sites you turned back on) are stored on your device via <code>chrome.storage</code>.</li>
                 <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li>Turn the extension off any time from the popup - globally, or just for one site.</li>
             </ul>

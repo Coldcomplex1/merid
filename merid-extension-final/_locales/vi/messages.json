@@ -89,6 +89,15 @@
   "popupSiteAlwaysOffHint": {
     "message": "Merid không bao giờ đổi từ trên chính trang của mình."
   },
+  "popupSiteAlwaysOffPrivate": {
+    "message": "Merid không bao giờ chạy trên trang riêng tư: email, tin nhắn, ngân hàng, đăng nhập, sức khỏe và dịch vụ công."
+  },
+  "popupSiteTurnOn": {
+    "message": "Bật trên trang này"
+  },
+  "popupSiteDefaultOffHint": {
+    "message": "Merid mặc định tắt ở đây — từ điển, trình soạn thảo và bài kiểm tra nên giữ nguyên."
+  },
   "popupViewDeck": {
     "message": "Xem bộ thẻ của tôi ↗"
   },

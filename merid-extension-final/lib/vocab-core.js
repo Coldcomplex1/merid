@@ -111,6 +111,7 @@
         engEngMode: false,           // match English synonyms -> show headword
         datasetKey: 'sat',
         disabledSites: [],           // canonical hostnames the user paused Merid on
+        allowedSites: [],            // default-off hostnames the user turned back on
         // AI context check. ON by default now that it needs no setup from the
         // reader: Merid supplies the keys and meters usage server-side. It was
         // off while it required them to create their own API key, which made
@@ -131,18 +132,212 @@
     }
 
     /**
-     * Sites Merid never touches, regardless of settings. Our own site is here
-     * because reading about the extension while the extension rewrites the
-     * page is genuinely unpleasant - the marketing copy, the tutorial and the
-     * deck all say specific words on purpose, and swapping them makes the
-     * product look broken. The content-bridge script (sign-in + deck sync)
-     * still runs on merid.site; only the word swapping is off.
+     * Sites Merid never touches, regardless of settings, and that the user
+     * cannot switch back on. Two things put a site here:
+     *
+     *  - The page is private. The AI context check sends 180-character
+     *    sentence snippets off the device (background.js aiCheckContext), and
+     *    it is on by default. A DM thread, an inbox, a bank statement or a
+     *    government form is not ours to sample, so we never read those pages
+     *    at all rather than trusting a setting to be off.
+     *  - Getting a word wrong there costs real money or access - payment
+     *    flows, sign-in screens, password vaults.
+     *
+     * Our own site is here for a softer reason: reading about the extension
+     * while the extension rewrites the page is genuinely unpleasant - the
+     * marketing copy, the tutorial and the deck all say specific words on
+     * purpose, and swapping them makes the product look broken. The
+     * content-bridge script (sign-in + deck sync) still runs on merid.site;
+     * only the word swapping is off.
+     *
+     * Matching is hostname-only (see matchesHostList), which has one honest
+     * gap: Facebook, Instagram and X serve DMs and the feed from the same
+     * host, and the feed is one of the best surfaces Merid has. Those DMs
+     * cannot be excluded without losing the feed, so they are not here. Same
+     * for anything self-hosted - a company webmail, a school's Moodle, a
+     * hospital's patient portal on its own domain. The per-site pause in the
+     * popup covers those.
+     *
+     * An entry covers its subdomains, so apex hosts are used wherever the
+     * whole property is private, and specific subdomains where the parent is
+     * a fine thing to read (mail.google.com, not google.com).
      */
-    const BUILTIN_BLOCKED_HOSTS = ['merid.site'];
+    const BLOCKED_BY_CATEGORY = {
+        own: ['merid.site'],
+
+        messaging: [
+            'messenger.com', 'whatsapp.com', 'telegram.org', 't.me', 'zalo.me',
+            'discord.com', 'discordapp.com', 'slack.com', 'teams.microsoft.com',
+            'teams.live.com', 'chat.google.com', 'meet.google.com', 'zoom.us',
+            'messages.google.com', 'signal.org', 'line.me', 'viber.com',
+            'skype.com', 'wechat.com', 'weixin.qq.com', 'kakao.com'
+        ],
+
+        email: [
+            'mail.google.com', 'outlook.com', 'outlook.live.com',
+            'outlook.office.com', 'outlook.office365.com', 'mail.yahoo.com',
+            'proton.me', 'protonmail.com', 'icloud.com', 'fastmail.com',
+            'hey.com', 'tuta.com', 'tutanota.com', 'mail.zoho.com', 'mail.ru',
+            'mail.qq.com', 'mail.163.com'
+        ],
+
+        // Representative, not exhaustive - there is no complete list of the
+        // world's banks, and a missing one is not a bug. Readers pause anything
+        // else from the popup.
+        banking: [
+            'paypal.com', 'stripe.com', 'wise.com', 'revolut.com', 'venmo.com',
+            'cash.app', 'americanexpress.com', 'chase.com', 'bankofamerica.com',
+            'wellsfargo.com', 'citi.com', 'capitalone.com', 'hsbc.com',
+            'barclays.co.uk', 'fidelity.com', 'schwab.com', 'vanguard.com',
+            'robinhood.com', 'coinbase.com', 'binance.com', 'kraken.com',
+            'vietcombank.com.vn', 'techcombank.com.vn', 'vietinbank.vn',
+            'bidv.com.vn', 'agribank.com.vn', 'acb.com.vn', 'mbbank.com.vn',
+            'vpbank.com.vn', 'sacombank.com.vn', 'tpb.vn', 'vib.com.vn',
+            'hdbank.com.vn', 'msb.com.vn', 'ocb.com.vn', 'momo.vn',
+            'zalopay.vn', 'vnpay.vn', 'cake.vn', 'timo.vn'
+        ],
+
+        auth: [
+            'accounts.google.com', 'login.microsoftonline.com', 'login.live.com',
+            'appleid.apple.com', 'login.yahoo.com', 'okta.com', 'auth0.com',
+            'onelogin.com', 'duosecurity.com', 'authy.com', '1password.com',
+            'bitwarden.com', 'lastpass.com', 'dashlane.com', 'keepersecurity.com',
+            'nordpass.com'
+        ],
+
+        health: [
+            'nhs.uk', 'healthcare.gov', 'medicare.gov', 'teladoc.com',
+            'zocdoc.com', 'goodrx.com', '23andme.com'
+        ],
+
+        // Named services where the page is somebody's tax return, benefits
+        // claim or identity record. The general gov TLDs are the *soft* list
+        // below - blocking every *.gov outright would cost a reader nasa.gov
+        // and nih.gov, which are some of the best free English on the web.
+        publicServices: [
+            'irs.gov', 'ssa.gov', 'uscis.gov', 'studentaid.gov', 'login.gov',
+            'id.me', 'my.gov.au', 'dichvucong.gov.vn', 'thuedientu.gdt.gov.vn',
+            'baohiemxahoi.gov.vn', 'vneid.gov.vn'
+        ],
+
+        // Proctored exams are hard-blocked rather than default-off: an
+        // extension mutating the DOM mid-exam is an academic-integrity hazard,
+        // not a matter of taste.
+        exams: [
+            'proctorio.com', 'honorlock.com', 'examity.com', 'respondus.com',
+            'ets.org'
+        ]
+    };
+
+    const BUILTIN_BLOCKED_HOSTS = Object.freeze(
+        Object.values(BLOCKED_BY_CATEGORY).flat());
+
+    /**
+     * Sites Merid stays off on until the reader says otherwise. Nothing here is
+     * private - it is where a swapped word is simply wrong:
+     *
+     *  - Editors and code sandboxes: the text on screen is the reader's own
+     *    work, and a highlight over it reads as corruption. (content.js already
+     *    skips <code>, <pre> and contenteditable, which covers plain markup;
+     *    these are the editors that paint code into ordinary divs.)
+     *  - Dictionaries, translators and language apps: replacing the word being
+     *    looked up defeats the page.
+     *  - Coursework: an altered question is a worse answer.
+     *  - Government sites at large: mostly fine to read, occasionally a form.
+     *    Off by default, one click to read nasa.gov with Merid on.
+     *
+     * Unlike BUILTIN_BLOCKED_HOSTS these are a default, not a rule - the popup
+     * offers "Turn on for this site" and stores the choice in allowedSites.
+     */
+    const DEFAULT_OFF_BY_CATEGORY = {
+        documents: [
+            'docs.google.com', 'sheets.google.com', 'slides.google.com',
+            'drive.google.com', 'keep.google.com', 'office.com',
+            'office.live.com', 'onedrive.live.com', 'sharepoint.com',
+            'notion.so', 'notion.com', 'coda.io', 'quip.com', 'airtable.com',
+            'evernote.com', 'paper.dropbox.com', 'figma.com', 'canva.com',
+            'overleaf.com', 'grammarly.com', 'hackmd.io'
+        ],
+
+        // Deliberately not github.com or gitlab.com: READMEs, issues and PR
+        // descriptions are prime reading, and file blobs already land in
+        // <pre>/<code>, which the content script skips.
+        code: [
+            'github.dev', 'vscode.dev', 'codesandbox.io', 'stackblitz.com',
+            'replit.com', 'glitch.com', 'codepen.io', 'jsfiddle.net',
+            'jsbin.com', 'observablehq.com', 'gitpod.io', 'godbolt.org',
+            'colab.research.google.com', 'kaggle.com', 'leetcode.com',
+            'hackerrank.com', 'hackerearth.com', 'codility.com', 'codeforces.com'
+        ],
+
+        reference: [
+            'translate.google.com', 'deepl.com', 'translate.yandex.com',
+            'linguee.com', 'reverso.net', 'glosbe.com', 'wordreference.com',
+            'dictionary.com', 'thesaurus.com', 'merriam-webster.com',
+            'dictionary.cambridge.org', 'oxfordlearnersdictionaries.com',
+            'collinsdictionary.com', 'ldoceonline.com', 'oed.com',
+            'vocabulary.com', 'thefreedictionary.com', 'wiktionary.org',
+            'vdict.com', 'laban.vn', 'tratu.soha.vn'
+        ],
+
+        learning: [
+            'duolingo.com', 'memrise.com', 'busuu.com', 'babbel.com',
+            'quizlet.com', 'ankiweb.net', 'kahoot.it', 'quizizz.com',
+            'classroom.google.com', 'instructure.com', 'blackboard.com',
+            'moodlecloud.com', 'moodle.org', 'schoology.com', 'ielts.org',
+            'azota.vn', 'shub.edu.vn', 'olm.vn', 'hocmai.vn', 'onluyen.vn',
+            'vnedu.vn', 'k12online.vn'
+        ],
+
+        // These lean on the subdomain rule: 'gov' covers every *.gov host,
+        // 'gov.vn' every Vietnamese government site.
+        government: [
+            'gov', 'gov.vn', 'gov.uk', 'gov.au', 'gov.sg', 'gov.in', 'gov.hk',
+            'gov.my', 'gov.ph', 'gov.za', 'gov.ie', 'gov.br', 'gov.cn', 'mil',
+            'gc.ca', 'canada.ca', 'gouv.fr', 'bund.de', 'admin.ch', 'europa.eu',
+            'go.jp', 'go.kr', 'go.th', 'go.id', 'govt.nz', 'gob.mx'
+        ]
+    };
+
+    const DEFAULT_OFF_HOSTS = Object.freeze(
+        Object.values(DEFAULT_OFF_BY_CATEGORY).flat());
+
+    /** Headings for the built-in lists on the options page. */
+    const SITE_CATEGORY_LABELS = {
+        own: 'Merid',
+        messaging: 'Messaging and calls',
+        email: 'Email',
+        banking: 'Banking and payments',
+        auth: 'Sign-in and password managers',
+        health: 'Health',
+        publicServices: 'Tax, benefits and identity',
+        exams: 'Proctored exams',
+        documents: 'Documents you are writing',
+        code: 'Code editors and sandboxes',
+        reference: 'Dictionaries and translators',
+        learning: 'Coursework and language apps',
+        government: 'Government sites'
+    };
+
+    /** Longest list we will write to storage.sync (8 KB per item there). */
+    const MAX_SITE_LIST = 200;
 
     /** True when the host is on the built-in blocklist (not user-editable). */
     function isHostBlocked(hostname) {
         return matchesHostList(canonicalHost(hostname), BUILTIN_BLOCKED_HOSTS);
+    }
+
+    /** True when the host ships off by default but the reader may switch it on. */
+    function isHostDefaultOff(hostname) {
+        return matchesHostList(canonicalHost(hostname), DEFAULT_OFF_HOSTS);
+    }
+
+    /** Which built-in category blocks this host, or null. Drives popup copy. */
+    function blockedCategory(hostname) {
+        const host = canonicalHost(hostname);
+        if (!host) return null;
+        return Object.keys(BLOCKED_BY_CATEGORY)
+            .find(key => matchesHostList(host, BLOCKED_BY_CATEGORY[key])) || null;
     }
 
     /** Shared matcher: an entry covers its exact host and every subdomain. */
@@ -155,16 +350,67 @@
     }
 
     /**
-     * True when `hostname` is covered by the pause list OR by the built-in
-     * blocklist. An entry covers its exact host and every subdomain
-     * (news.example.com matches example.com), so pausing a site holds across
-     * its www/mobile/amp variants.
+     * True when Merid must not run on `hostname`. An entry in any list covers
+     * its exact host and every subdomain (news.example.com matches
+     * example.com), so pausing a site holds across its www/mobile/amp
+     * variants.
+     *
+     * Precedence, first match wins:
+     *   1. the built-in blocklist  -> off, and allowedSites cannot lift it
+     *   2. the reader's pause list -> off (an explicit pause beats an explicit
+     *      allow, which only matters if both lists were edited by hand)
+     *   3. the default-off list    -> off unless the host is in allowedSites
+     *   4. otherwise               -> on
+     *
+     * `allowedSites` is optional: callers that predate it (and the tests that
+     * cover the pause list on its own) pass two arguments, which leaves the
+     * default-off list simply off - the right answer for a caller that has no
+     * opinion.
      */
-    function isSiteDisabled(hostname, disabledSites) {
+    function isSiteDisabled(hostname, disabledSites, allowedSites) {
         const host = canonicalHost(hostname);
         if (!host) return false;
-        return matchesHostList(host, BUILTIN_BLOCKED_HOSTS) ||
-            matchesHostList(host, disabledSites);
+        if (matchesHostList(host, BUILTIN_BLOCKED_HOSTS)) return true;
+        if (matchesHostList(host, disabledSites)) return true;
+        return matchesHostList(host, DEFAULT_OFF_HOSTS) &&
+            !matchesHostList(host, allowedSites);
+    }
+
+    /**
+     * Which of the four site states the popup should render:
+     *   'blocked'     - built-in, no toggle
+     *   'paused'      - the reader turned it off
+     *   'default-off' - ships off, one click turns it on
+     *   'on'          - running
+     */
+    function siteToggleState(hostname, disabledSites, allowedSites) {
+        const host = canonicalHost(hostname);
+        if (matchesHostList(host, BUILTIN_BLOCKED_HOSTS)) return 'blocked';
+        if (matchesHostList(host, disabledSites)) return 'paused';
+        if (matchesHostList(host, DEFAULT_OFF_HOSTS)) {
+            return matchesHostList(host, allowedSites) ? 'on' : 'default-off';
+        }
+        return 'on';
+    }
+
+    /** Add a host to a site list: canonical, deduped, capped. Never mutates. */
+    function addSiteToList(list, hostname) {
+        const host = canonicalHost(hostname);
+        const current = Array.isArray(list) ? list.map(canonicalHost).filter(Boolean) : [];
+        if (!host || current.indexOf(host) !== -1) return current;
+        return current.concat(host).slice(0, MAX_SITE_LIST);
+    }
+
+    /**
+     * Drop every entry that covers `hostname`. An apex entry also covers its
+     * subdomains, so removing it re-enables all of them - which is what the
+     * reader means by "turn this back on". Never mutates.
+     */
+    function removeSiteFromList(list, hostname) {
+        const host = canonicalHost(hostname);
+        if (!host || !Array.isArray(list)) return Array.isArray(list) ? list.slice() : [];
+        return list.map(canonicalHost).filter(s =>
+            s && !(host === s || host.endsWith('.' + s)));
     }
 
     const REPLACEMENT_MODES = ['replace', 'highlight', 'beside'];
@@ -941,6 +1187,9 @@
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
+        isHostDefaultOff, DEFAULT_OFF_HOSTS, BLOCKED_BY_CATEGORY,
+        DEFAULT_OFF_BY_CATEGORY, SITE_CATEGORY_LABELS, blockedCategory,
+        siteToggleState, addSiteToList, removeSiteFromList, MAX_SITE_LIST,
         INTENSITY_LEVELS, INTENSITY_TO_FREQUENCY, intensityToFrequency, frequencyToIntensity,
         normalizeIntensity, POST_WORD_CAPS, postWordCap, countWords,
         CANDIDATE_SURPLUS, postCandidateCap, pickSpread, spreadAllowance, SPREAD_FROM_WORDS,
