@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import CopyButton from '../components/ui/CopyButton'
 import InstallButton from '../components/ui/InstallButton'
-import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { useLang, usePageMeta } from '../i18n/LanguageContext'
 import {
   buildDatasetPrompt,
   sanitizeTopic,
@@ -62,7 +62,7 @@ function FieldLabel({ children }: { children: ReactNode }) {
 export default function CreateDataset() {
   const { t } = useLang()
   const s = t.createDataset
-  usePageTitle(t.meta.createDatasetTitle)
+  usePageMeta(t.meta.createDatasetTitle, t.meta.createDatasetDescription)
 
   const [level, setLevel] = useState<Level>(DEFAULT_LEVEL)
   const [presetId, setPresetId] = useState<TopicPresetId>('everyday')

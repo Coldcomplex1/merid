@@ -4,7 +4,7 @@ import Reveal from '../components/ui/Reveal'
 import InstallButton from '../components/ui/InstallButton'
 import AiStudioSimulator from '../components/demo/AiStudioSimulator'
 import AiCheckBeforeAfter from '../components/demo/AiCheckBeforeAfter'
-import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { useLang, usePageMeta } from '../i18n/LanguageContext'
 
 const AI_STUDIO_URL = 'https://aistudio.google.com/apikey'
 
@@ -50,7 +50,7 @@ function NumberedSteps({ steps }: { steps: string[] }) {
 export default function ApiKeyGuide() {
   const { t } = useLang()
   const s = t.apiKeyGuide
-  usePageTitle(t.meta.apiKeyGuideTitle)
+  usePageMeta(t.meta.apiKeyGuideTitle, t.meta.apiKeyGuideDescription)
 
   return (
     <div className="relative overflow-hidden">

@@ -5,7 +5,8 @@
 //                          creating a duplicate of the index
 //   /blog/en               English index
 //   /blog/{lang}/{slug}    a post
-//   /sitemap.xml           published posts only
+//   /sitemap.xml           the whole site: homepage, marketing pages, published
+//                          posts. Nothing else generates one.
 //   /llms.txt              plain-language summary for models that fetch it
 //
 // Why a function rather than static files: posts live in Firestore so they can
@@ -33,7 +34,7 @@
 // an ordinary error with a message. ESM caches modules, so it costs one
 // resolution per cold start.
 // ---------------------------------------------------------------------------
-import { LANGS, SITE_URL } from './_lib/blog-config.js'
+import { LANGS, MARKETING_PATHS, SITE_URL } from './_lib/blog-config.js'
 
 // Listings change whenever something is published; a post changes only when
 // edited. Both are short enough that nothing feels stale and long enough that a
@@ -144,6 +145,13 @@ export default async function handler(req, res) {
         ...LANGS.map(
           (l) =>
             `  <url>\n    <loc>${xmlEscape(absolute(indexPath(l)))}</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>`,
+        ),
+        // The marketing pages are React routes, not posts, so nothing here can
+        // discover them. Listing them by hand is the only way they reach Google,
+        // and /llms.txt below has been advertising them all along.
+        ...MARKETING_PATHS.map(
+          (path) =>
+            `  <url>\n    <loc>${xmlEscape(absolute(path))}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>`,
         ),
       ]
 
