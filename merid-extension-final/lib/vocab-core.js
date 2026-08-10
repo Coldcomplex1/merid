@@ -443,9 +443,22 @@
         // Default to Vietnamese→English if nothing usable was passed.
         if (modeList.length === 0) modeList.push('vieEng');
 
-        const addKey = (key, item) => {
+        const compoundBigrams = new Set(SEED_COMPOUND_BIGRAMS);
+
+        // Every adjacent syllable pair inside a multi-syllable Vietnamese key is,
+        // by construction, a real Vietnamese compound - the dataset is its own
+        // compound dictionary. See `bareSyllableIsSafe` for what this is for.
+        const learnCompounds = (key) => {
+            const parts = key.split(' ');
+            for (let i = 0; i + 1 < parts.length; i++) {
+                compoundBigrams.add(parts[i] + ' ' + parts[i + 1]);
+            }
+        };
+
+        const addKey = (key, item, vietnamese) => {
             const k = normalizeKey(key);
             if (!k) return;
+            if (vietnamese && k.includes(' ')) learnCompounds(k);
             const arr = map.get(k);
             if (arr) {
                 if (!arr.some(e => e.word === item.word)) arr.push(item);
@@ -456,18 +469,149 @@
 
         (activeVocab || []).forEach(item => {
             if (modeList.includes('engEng')) {
-                (item.synonyms || '').split(',').forEach(s => addKey(s, item));
+                (item.synonyms || '').split(',').forEach(s => addKey(s, item, false));
             }
             if (modeList.includes('vieEng')) {
-                (item.vietnamese || '').split(',').forEach(s => addKey(s, item));
+                (item.vietnamese || '').split(',').forEach(s => addKey(s, item, true));
             }
         });
+        // Hung off the map rather than returned separately so every existing
+        // caller keeps working with a plain Map.
+        map.compoundBigrams = compoundBigrams;
         return map;
     }
 
     /**
+     * Longest Vietnamese phrase the scanner will try to match, in words.
+     *
+     * This used to be expressed in TOKENS, as a fixed [3,2,1] walk, and since
+     * `tokenize` emits every whitespace run as its own token a 3-token window is
+     * two words at most. Vietnamese is written one syllable per word, so that
+     * ceiling meant no phrase longer than two syllables could ever match and the
+     * ~1,700 three-and-more-syllable Vietnamese keys in the shipped datasets were
+     * dead weight: the scanner walked past `Tổng Bí thư` and swapped the bare
+     * `thư`, which is what readers complained about. Five words covers every
+     * phrase in the datasets bar a long tail of full example sentences.
+     */
+    const MAX_PHRASE_WORDS = 5;
+
+    /**
+     * Word-token windows starting at `startIndex`, longest first.
+     *
+     * A phrase may only span whitespace: the moment a separator token carries
+     * anything else (a comma, a full stop, a bracket, a dash) the phrase has
+     * ended, so extension stops there. Returns token counts, since that is what
+     * the caller advances by.
+     */
+    function phraseWindowSizes(tokens, startIndex) {
+        const sizes = [];
+        let words = 0;
+        for (let i = startIndex; i < tokens.length && words < MAX_PHRASE_WORDS; i++) {
+            const token = tokens[i];
+            if (isWordToken(token)) {
+                words++;
+                sizes.push(i - startIndex + 1);
+                continue;
+            }
+            // `tokenize` emits empty strings between adjacent separators; they
+            // neither end a phrase nor count towards it.
+            if (token === '') continue;
+            if (!/^\s+$/.test(token)) break;
+        }
+        return sizes.reverse();
+    }
+
+    // Vietnamese titles and compounds common in news prose whose parts are not
+    // themselves multi-syllable dataset keys, so `buildVocabMap` cannot learn
+    // them from the CSVs. Kept deliberately short: the capitalisation rule in
+    // `bareSyllableIsSafe` already covers most titles, and this is the backstop
+    // for the ones a writer left lowercase.
+    const SEED_COMPOUND_BIGRAMS = [
+        'bí thư', 'tổng bí', 'thủ tướng', 'chủ tịch', 'phó chủ', 'phó thủ',
+        'đại sứ', 'bộ trưởng', 'thứ trưởng', 'tổng thống', 'tổng thư', 'thư ký',
+        'chính phủ', 'nhà nước', 'quốc hội', 'trung ương', 'bộ chính',
+        'thư viện', 'thư điện', 'công văn', 'văn phòng'
+    ];
+
+    /** True when `token` opens with an uppercase letter (Vietnamese included). */
+    function startsCapitalized(token) {
+        const first = (token || '').charAt(0);
+        return !!first && first !== first.toLowerCase() && first === first.toUpperCase();
+    }
+
+    /**
+     * Should a bare single syllable be swapped here?
+     *
+     * A Vietnamese syllable on its own is rarely a word in the sense a reader
+     * would recognise - it is usually one piece of a compound. `Tổng Bí thư` is
+     * the reported case: `thư` alone means "letter", and highlighting it inside
+     * the title for "General Secretary" is noise. Two signals say "this syllable
+     * belongs to something bigger":
+     *
+     *   - a PRECEDING word capitalised mid-sentence. Vietnamese capitalises
+     *     mid-sentence only for names and titles, and a compound title puts its
+     *     head first, so the capital on `Bí` is the writer telling us `thư` is
+     *     not standing alone. Only the preceding side counts: a FOLLOWING capital
+     *     is usually just the next proper noun (`thăm Australia`, `tại Hà Nội`)
+     *     and says nothing about the syllable before it.
+     *   - a neighbour on either side that forms a known compound with it, per the
+     *     bigram set `buildVocabMap` derives from the datasets.
+     *
+     * Anything else - a plain lowercase syllable in ordinary prose - still matches.
+     */
+    function bareSyllableIsSafe(tokens, startIndex, size, key, compounds) {
+        const prevIndex = previousWordIndex(tokens, startIndex);
+        const nextIndex = nextWordIndex(tokens, startIndex + size - 1);
+        const prev = prevIndex === -1 ? '' : tokens[prevIndex];
+        const next = nextIndex === -1 ? '' : tokens[nextIndex];
+
+        // Sentence-initial capitals say nothing - every sentence has one.
+        if (prev && startsCapitalized(prev) && !isSentenceStart(tokens, prevIndex)) return false;
+
+        if (compounds && compounds.size) {
+            if (prev && compounds.has(normalizeKey(prev) + ' ' + key)) return false;
+            if (next && compounds.has(key + ' ' + normalizeKey(next))) return false;
+        }
+        return true;
+    }
+
+    /** Index of the nearest word token before `index`, or -1. Stops at sentence
+     *  punctuation, which is a boundary rather than a neighbour. */
+    function previousWordIndex(tokens, index) {
+        for (let i = index - 1; i >= 0; i--) {
+            const token = tokens[i];
+            if (isWordToken(token)) return i;
+            if (token && !/^\s*$/.test(token)) return -1;
+        }
+        return -1;
+    }
+
+    /** Index of the nearest word token after `index`, or -1. */
+    function nextWordIndex(tokens, index) {
+        for (let i = index + 1; i < tokens.length; i++) {
+            const token = tokens[i];
+            if (isWordToken(token)) return i;
+            if (token && !/^\s*$/.test(token)) return -1;
+        }
+        return -1;
+    }
+
+    /** True when the word token at `index` opens a sentence: nothing but
+     *  whitespace before it, or sentence-ending punctuation. */
+    function isSentenceStart(tokens, index) {
+        for (let i = index - 1; i >= 0; i--) {
+            const token = tokens[i];
+            if (!token || /^\s*$/.test(token)) continue;
+            return /[.!?:;"'“”‘’()\[\]…]/.test(token);
+        }
+        return true;
+    }
+
+    /**
      * Try to match a vocabulary phrase starting at `tokens[startIndex]`.
-     * Greedy longest-first over window sizes [3,2,1].
+     * Greedy longest-first, up to MAX_PHRASE_WORDS words.
+     *
+     * `size` in the result is a TOKEN count, so callers can advance by it.
      *
      * @returns {{size:number, matchedText:string, key:string, items:VocabularyEntry[]}|null}
      */
@@ -475,23 +619,22 @@
         opts = opts || {};
         const allowSingleWord = opts.allowSingleWord !== false; // default: allow
         const minSingleWordLen = opts.minSingleWordLen || 2;
+        const guardBareSyllables = opts.guardBareSyllables === true;
 
         if (!isWordToken(tokens[startIndex])) return null;
 
-        for (const size of [3, 2, 1]) {
-            if (startIndex + size > tokens.length) continue;
-
-            // The last token of a multi-token window must itself be a word token,
-            // otherwise `.trim()` would drop a trailing separator and corrupt the match.
-            if (size > 1 && !isWordToken(tokens[startIndex + size - 1])) continue;
-
+        for (const size of phraseWindowSizes(tokens, startIndex)) {
             const slice = tokens.slice(startIndex, startIndex + size);
             const matchedText = slice.join('');
             const key = normalizeKey(matchedText);
             if (!vocabMap.has(key)) continue;
 
             const isSingleWord = !key.includes(' ');
-            if (isSingleWord && (!allowSingleWord || key.length < minSingleWordLen)) continue;
+            if (isSingleWord) {
+                if (!allowSingleWord || key.length < minSingleWordLen) continue;
+                if (guardBareSyllables &&
+                    !bareSyllableIsSafe(tokens, startIndex, size, key, vocabMap.compoundBigrams)) continue;
+            }
 
             return { size, matchedText, key, items: vocabMap.get(key) };
         }
@@ -806,6 +949,7 @@
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
         // matching
         buildVocabMap, findMatch,
+        MAX_PHRASE_WORDS, SEED_COMPOUND_BIGRAMS, phraseWindowSizes, bareSyllableIsSafe,
         // intensity gate
         hashToInt, gateByFrequency,
         // csv
