@@ -82,7 +82,21 @@ let spanPost = new WeakMap();
 // A word may come back once this many other swaps have gone by, which on a
 // feed is far enough apart to read as variety rather than repetition.
 const WORD_COOLDOWN_SWAPS = 12;
+// How often one word may appear while reading ONE article, no matter how that
+// article's markup resolves into containers. The per-post set below is the
+// right rule when a post is really a post, but it is only as good as the
+// container heuristic, and readers reported the same word coming back down a
+// single news article. This is the backstop: it holds even on markup that
+// fools `postContainerFor` completely.
+//
+// It applies to articles ONLY. On a feed this exact rule is what used to make
+// the page run dry - the common words went into the first few posts and
+// everything below was left bare - which is why a feed is governed by the
+// cool-down above instead. `feedContainers` is how the two are told apart.
+const MAX_USES_PER_ARTICLE = 1;
 let takenInPost = new WeakMap();   // container -> Set of words used in it
+let feedContainers = new WeakSet();// containers resolved as one item of a feed
+let pageWordUses = new Map();      // word -> times it appears on this page
 let wordLastUsedAt = new Map();    // word -> the swap number it last appeared at
 let swapCount = 0;
 
@@ -93,12 +107,22 @@ function postTakenSet(container) {
     return set;
 }
 
-/** True when a word is free to use here: unused in this post, and not one of
- *  the last few shown anywhere on the page. */
+function bumpPageUses(key, delta) {
+    if (!key) return;
+    const next = (pageWordUses.get(key) || 0) + delta;
+    if (next > 0) pageWordUses.set(key, next);
+    else pageWordUses.delete(key);
+}
+
+/** True when a word is free to use here: within its page allowance, unused in
+ *  this post, and not one of the last few shown anywhere on the page. */
 function wordAvailable(container, wl, ml) {
     const used = takenInPost.get(container);
     if (used && (used.has(wl) || used.has(ml))) return false;
+    const oncePerArticle = !feedContainers.has(container);
     for (const key of [wl, ml]) {
+        if (!key) continue;
+        if (oncePerArticle && (pageWordUses.get(key) || 0) >= MAX_USES_PER_ARTICLE) return false;
         const at = wordLastUsedAt.get(key);
         if (at !== undefined && swapCount - at < WORD_COOLDOWN_SWAPS) return false;
     }
@@ -108,7 +132,9 @@ function wordAvailable(container, wl, ml) {
 function claimWord(container, wl, ml) {
     const used = postTakenSet(container);
     used.add(wl);
-    used.add(ml);
+    if (ml) used.add(ml);
+    bumpPageUses(wl, 1);
+    if (ml && ml !== wl) bumpPageUses(ml, 1);
     swapCount++;
     wordLastUsedAt.set(wl, swapCount);
     if (ml && ml !== wl) wordLastUsedAt.set(ml, swapCount);
@@ -118,8 +144,13 @@ function claimWord(container, wl, ml) {
 function releaseWord(container, wl, ml) {
     const used = container && takenInPost.get(container);
     if (used) { used.delete(wl); used.delete(ml); }
-    wordLastUsedAt.delete(wl);
-    if (ml) wordLastUsedAt.delete(ml);
+    bumpPageUses(wl, -1);
+    if (ml && ml !== wl) bumpPageUses(ml, -1);
+    // The word is off the page, so its page allowance comes back - but its
+    // cooldown does not. Deleting the timestamp outright let a word crowded out
+    // of one post reappear in the very next one, which reads as the repetition
+    // the cooldown exists to prevent; leaving it where it was lets the word
+    // return once the usual distance has gone by.
 }
 
 const FORBIDDEN_TAGS = new Set([
@@ -152,9 +183,11 @@ function init() {
     spanPost = new WeakMap();
     containerCache = new WeakMap();
     takenInPost = new WeakMap();
+    feedContainers = new WeakSet();
+    pageWordUses = new Map();
     wordLastUsedAt = new Map();
     swapCount = 0;
-    aiCheckedPairs = new Set();
+    aiCheckedPairs = new Map();
     aiRequestsSent = 0;
     aiQueue = [];
     aiQueued = new Set();
@@ -314,11 +347,33 @@ const FEED_ITEM_MAX_HOPS = 10;   // never walk the whole tree looking for one
 const LEAF_BLOCKS = new Set(['P', 'LI', 'BLOCKQUOTE', 'FIGCAPTION',
     'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH']);
 
+// Elements that only mark up a run of text inside a block. Counting these as
+// "child blocks" is what used to shatter an article into fake feed items: many
+// Vietnamese news CMSs wrap each paragraph in a <div> holding a <b> and an <a>,
+// which cleared "two child elements, twelve words, three similar siblings" and
+// so every paragraph became its own post - with its own word allowance and its
+// own duplicate check. That is how one article ended up highlighting the same
+// word again and again.
+const INLINE_TAGS = new Set([
+    'A', 'B', 'I', 'EM', 'STRONG', 'SPAN', 'SMALL', 'S', 'U', 'SUB', 'SUP',
+    'MARK', 'CODE', 'ABBR', 'BR', 'IMG', 'WBR', 'TIME', 'LABEL', 'CITE', 'Q',
+    'FONT', 'BDI', 'BDO', 'DFN', 'INS', 'DEL', 'RUBY', 'PICTURE', 'SOURCE'
+]);
+
+/** How many of `el`'s children are blocks rather than inline runs of text. */
+function blockChildCount(el) {
+    let n = 0;
+    for (const child of el.children) if (!INLINE_TAGS.has(child.tagName)) n++;
+    return n;
+}
+
 /** Could this element be one item of a feed, judged on its own shape? */
 function looksLikeFeedItem(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
     if (LEAF_BLOCKS.has(el.tagName)) return false;
-    if (el.childElementCount < 2) return false;
+    // A real post is BUILT of blocks - a header, a body, a footer. A paragraph
+    // wrapper is built of inline runs, so it does not qualify.
+    if (blockChildCount(el) < 2) return false;
     return C.countWords(el.textContent || '') >= FEED_ITEM_MIN_WORDS;
 }
 
@@ -346,8 +401,13 @@ function postContainerFor(el) {
     if (!el) return document.body;
     const cached = containerCache.get(el);
     if (cached && cached.isConnected) return cached;
-    const found = el.closest(FEED_ITEM_SELECTOR) ||
-        structuralFeedItem(el) ||
+    // Remembered so `wordAvailable` can tell a feed post from an article: the
+    // once-per-article rule is right for a piece you read top to bottom and
+    // wrong for a feed, where repetition across posts is how a scroll session
+    // is supposed to look.
+    const feedItem = el.closest(FEED_ITEM_SELECTOR) || structuralFeedItem(el);
+    if (feedItem) feedContainers.add(feedItem);
+    const found = feedItem ||
         el.closest(ARTICLE_BODY_SELECTOR) ||
         document.body;
     containerCache.set(el, found);
@@ -416,7 +476,15 @@ function processTextNode(node, vocabMap) {
         // paragraphs.
         const allowedSoFar = C.spreadAllowance(cap, stats.seen, stats.words);
         const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < allowedSoFar
-            ? C.findMatch(tokens, i, vocabMap, { allowSingleWord: true, minSingleWordLen: 2 })
+            ? C.findMatch(tokens, i, vocabMap, {
+                allowSingleWord: true,
+                minSingleWordLen: 2,
+                // A lone Vietnamese syllable is usually a piece of a compound, not
+                // a word: "Tổng Bí thư" is a title, and swapping the "thư" out of
+                // it is noise. Longer phrases win first; a bare syllable only
+                // survives when nothing around it says it belongs to something.
+                guardBareSyllables: true
+            })
             : null;
 
         if (!match) { out.push(makeTextNode(tokens[i])); continue; }
@@ -461,7 +529,13 @@ function processTextNode(node, vocabMap) {
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
         span.dataset.level = item.dataset || '';
-        applyDisplayMode(span);
+        // Nothing swapped means the text on the page is still the writer's own -
+        // there is no context question to ask about it, and no verdict will ever
+        // come. Saying so up front is what lets prunePost cut the post back to
+        // the cap, since it holds until every candidate has been judged. Without
+        // it a word whose Vietnamese and English happen to be the same string
+        // pins its post above the cap for the whole visit.
+        if (!applyDisplayMode(span)) span.dataset.aiChecked = '1';
 
         // Claim the word before anything else can.
         claimWord(container, wl, ml);
@@ -708,7 +782,16 @@ const AI_LOOKAHEAD_PX = 1200;
 // Keyed by "word|sentence", NOT by word: the whole point of the context check
 // is that a word can be right in one sentence and wrong in another, so a
 // verdict earned in one place must never be reused - or applied - elsewhere.
-let aiCheckedPairs = new Set();
+//
+// The verdict itself is kept, not just the fact that the question was asked.
+// A feed asks the same question twice all the time - "X là chủ đề chính" under
+// post after post is one sentence as far as this cache is concerned - and the
+// second span used to be dropped from the batch with no verdict at all. That
+// left it flagged unchecked forever, and since prunePost waits for every
+// candidate to have a verdict before cutting a post back, the post kept its
+// over-provisioned surplus for good: more words on screen than the reader ever
+// asked for.
+let aiCheckedPairs = new Map();   // key -> { bad: boolean, better: string }
 let aiRequestsSent = 0;
 let aiQuietTimer = null;
 let aiDeadlineTimer = null;
@@ -765,7 +848,16 @@ function startSpanObserver() {
     // it is actually readable rather than changing under the reader's eyes.
     spanObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            if (!entry.isIntersecting) return;
+            // A word can also be born already behind the reader: reverting one
+            // word re-exposes its Vietnamese, the scan picks a new word out of
+            // it, and if that post has been scrolled past there is no crossing
+            // left to wait for. Such a span would never be queued, never get a
+            // verdict, and pin its post above the cap for the rest of the visit
+            // - prunePost holds until every candidate has been judged. The
+            // observer hands us the geometry for free, so no layout is forced.
+            const above = !entry.isIntersecting && entry.rootBounds &&
+                entry.boundingClientRect.bottom <= entry.rootBounds.top;
+            if (!entry.isIntersecting && !above) return;
             spanObserver.unobserve(entry.target);
             queueSpanForAiCheck(entry.target);
         });
@@ -780,6 +872,40 @@ function sentenceAround(span) {
     if (idx === -1) return text.slice(0, AI_SNIPPET_RADIUS * 2);
     const start = Math.max(0, idx - AI_SNIPPET_RADIUS);
     return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
+}
+
+/**
+ * Act on one verdict, for every span that asked the same question.
+ *
+ * Shared by the response handler and the cache hit above, so a span served from
+ * the cache is treated exactly like one that came back from a request: marked
+ * checked, and reverted or upgraded the same way.
+ *
+ * @param {Element[]} spans
+ * @param {{bad:boolean, better:string}} verdict
+ * @param {Set<Element>} touchedPosts collects the posts now ready to prune
+ * @returns {'ok'|'upgraded'|'reverted'}
+ */
+function applyVerdict(spans, verdict, touchedPosts) {
+    const live = spans.filter(sp => sp.isConnected);
+    if (!live.length) return 'ok';
+    const word = live[0].dataset.word || '';
+    live.forEach(sp => {
+        sp.dataset.aiChecked = '1';
+        const post = spanPost.get(sp);
+        if (post) touchedPosts.add(post);
+    });
+    // The verdict is also a free training label for the local ranker.
+    queueProfileEvent(word, verdict.bad ? 'aiBad' : 'aiOk');
+    if (!verdict.bad) return 'ok';
+
+    // Prefer upgrading to the word the AI suggested over dropping the slot
+    // entirely - but only when that word is a real entry in the loaded dataset,
+    // so the tooltip still has something to show.
+    const entry = findVocabEntry(verdict.better, spanPost.get(live[0]));
+    if (entry) { scheduleUpgrade(live, entry); return 'upgraded'; }
+    revertSpans(live);
+    return 'reverted';
 }
 
 /**
@@ -799,13 +925,17 @@ function flushAiQueue() {
     // separate item, judged and reverted independently.
     const groups = new Map();
     const deferred = [];
+    const settled = new Set();   // posts served from the cache, ready to prune
     for (const sp of aiQueue) {
         if (!sp.isConnected || !sp.classList.contains('vocab-replaced')) continue;
         const word = (sp.dataset.word || '').toLowerCase();
         if (!word) continue;
         const sentence = sentenceAround(sp);
         const key = word + '|' + sentence;
-        if (aiCheckedPairs.has(key)) continue;
+        // Asked before: this span gets the answer we already have rather than
+        // being left without one.
+        const known = aiCheckedPairs.get(key);
+        if (known) { applyVerdict([sp], known, settled); continue; }
         const g = groups.get(key);
         if (g) { g.spans.push(sp); continue; }
         // Past the batch size, keep the span queued for the next request
@@ -815,6 +945,7 @@ function flushAiQueue() {
     }
     aiQueue = deferred;
     aiQueued = new Set(deferred);
+    settled.forEach(post => prunePost(post, false));
     if (!groups.size) { Status.set('idle'); return; }
 
     const batch = Array.from(groups.values());
@@ -856,24 +987,11 @@ function flushAiQueue() {
         // be cut back to the cap.
         const touchedPosts = new Set();
         batch.forEach((g, i) => {
-            aiCheckedPairs.add(g.key);
-            const word = g.spans[0].dataset.word || '';
-            const bad = res.verdicts[i] === 0;
-            g.spans.forEach(sp => {
-                sp.dataset.aiChecked = '1';
-                const post = spanPost.get(sp);
-                if (post) touchedPosts.add(post);
-            });
-            // The verdict is also a free training label for the local ranker.
-            queueProfileEvent(word, bad ? 'aiBad' : 'aiOk');
-            if (!bad) return;
-
-            // Prefer upgrading to the word the AI suggested over dropping the
-            // slot entirely - but only when that word is a real entry in the
-            // loaded dataset, so the tooltip still has something to show.
-            const entry = findVocabEntry((res.betters || [])[i], spanPost.get(g.spans[0]));
-            if (entry) { scheduleUpgrade(g.spans, entry); upgraded++; }
-            else { revertSpans(g.spans); reverted++; }
+            const verdict = { bad: res.verdicts[i] === 0, better: (res.betters || [])[i] || '' };
+            aiCheckedPairs.set(g.key, verdict);
+            const outcome = applyVerdict(g.spans, verdict, touchedPosts);
+            if (outcome === 'upgraded') upgraded++;
+            else if (outcome === 'reverted') reverted++;
         });
 
         // Now that these posts have their verdicts, apply the reader's cap to
@@ -903,9 +1021,16 @@ function stopAiChecking() {
     knownPosts.forEach(post => prunePost(post, true));
 }
 
-/** True while a context check could still arrive to prune the spare words. */
+/** True while a context check could still arrive to prune the spare words.
+ *
+ *  "Highlight" mode leaves every word in Vietnamese, so there is never anything
+ *  for the check to judge and no verdict can ever prune the surplus. Scanning
+ *  over-provisioned in that mode anyway, and the spares then stayed on the page
+ *  for the whole visit - which is why a highlight-mode article came out marked
+ *  up far more heavily than the reader's intensity setting allows. */
 function contextCheckPossible() {
-    return !aiDisabled && settings.aiCheckEnabled !== false;
+    return !aiDisabled && settings.aiCheckEnabled !== false &&
+        settings.replacementMode !== 'highlight';
 }
 
 // -------------------------------------------------------------
@@ -1046,8 +1171,12 @@ function applyUpgrade(span, entry) {
     const container = spanPost.get(span);
     const previous = (span.dataset.aiFrom || '').toLowerCase();
     if (container) {
-        if (previous && previous !== wl) releaseWord(container, previous, previous);
-        claimWord(container, wl, (span.dataset.original || '').toLowerCase());
+        if (previous && previous !== wl) releaseWord(container, previous, '');
+        // Only the English headword changes here - the Vietnamese the span
+        // stands on is the same text it always was, and its claim was made when
+        // the span was created. Re-claiming it would count one appearance twice
+        // against the page allowance and lock the surface form out for good.
+        claimWord(container, wl, '');
     }
     if (!shownThisPage.has(wl)) {
         shownThisPage.add(wl);

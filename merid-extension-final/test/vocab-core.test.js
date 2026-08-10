@@ -100,6 +100,125 @@ test('findMatch returns null when the start token is not a word', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Phrases longer than two syllables
+//
+// The matcher used to walk fixed token windows [3,2,1], and since `tokenize`
+// emits whitespace as its own token that is two words at most - so every
+// Vietnamese key of three syllables or more in the shipped datasets was
+// unreachable, and the scanner fell through to the bare syllable instead.
+// ---------------------------------------------------------------------------
+const PHRASE_VOCAB = [
+    { word: 'letter', vietnamese: 'thư' },
+    { word: 'secretary', vietnamese: 'thư ký' },
+    { word: 'infrastructure', vietnamese: 'cơ sở hạ tầng' },              // 4 syllables
+    { word: 'upgrade', vietnamese: 'nâng cấp quan hệ' },                  // 3 syllables
+    { word: 'relation', vietnamese: 'quan hệ' },                          // prefix collision
+    { word: 'comprehensive', vietnamese: 'toàn diện' },
+    { word: 'premises', vietnamese: 'sở' }                                // a syllable of "cơ sở hạ tầng"
+];
+
+test('findMatch reaches three- and four-syllable Vietnamese phrases', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+
+    const four = C.tokenize('Đầu tư cơ sở hạ tầng là ưu tiên.');
+    const m4 = C.findMatch(four, four.indexOf('cơ'), map, {});
+    assert.strictEqual(m4.key, 'cơ sở hạ tầng');
+    assert.strictEqual(m4.matchedText, 'cơ sở hạ tầng');
+
+    const three = C.tokenize('Hai nước nâng cấp quan hệ trong năm nay.');
+    const m3 = C.findMatch(three, three.indexOf('nâng'), map, {});
+    assert.strictEqual(m3.key, 'nâng cấp quan hệ');
+});
+
+test('findMatch prefers the longest phrase over a shorter key inside it', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    const toks = C.tokenize('Hai nước nâng cấp quan hệ.');
+    // "quan hệ" is a key in its own right, but the longer phrase starts earlier
+    // and must win from its own start index.
+    const m = C.findMatch(toks, toks.indexOf('nâng'), map, {});
+    assert.strictEqual(m.key, 'nâng cấp quan hệ');
+    // …and the caller advancing past it lands after "hệ".
+    assert.strictEqual(toks.slice(toks.indexOf('nâng'), toks.indexOf('nâng') + m.size).join(''),
+        'nâng cấp quan hệ');
+});
+
+test('a phrase never spans punctuation', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    // Without the punctuation guard "quan hệ" would be assembled across the comma.
+    const toks = C.tokenize('Về quan, hệ hai nước.');
+    const m = C.findMatch(toks, toks.indexOf('quan'), map, {});
+    assert.strictEqual(m, null);
+
+    const ok = C.tokenize('Về quan hệ hai nước.');
+    assert.strictEqual(C.findMatch(ok, ok.indexOf('quan'), map, {}).key, 'quan hệ');
+});
+
+test('phraseWindowSizes is longest-first and stops at punctuation', () => {
+    const toks = C.tokenize('một hai ba, bốn');
+    assert.deepStrictEqual(C.phraseWindowSizes(toks, 0), [5, 3, 1]); // "một hai ba"
+});
+
+// ---------------------------------------------------------------------------
+// Bare-syllable guard
+// ---------------------------------------------------------------------------
+test('a bare syllable under a capitalised title is skipped', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    const toks = C.tokenize('Đây là lần đầu tiên Tổng Bí thư, Chủ tịch nước Tô Lâm tới Australia.');
+    const idx = toks.indexOf('thư');
+    // The reported bug: "thư" of "Tổng Bí thư" was being swapped for "letter".
+    assert.ok(C.findMatch(toks, idx, map, {}), 'unguarded, it still matches');
+    assert.strictEqual(C.findMatch(toks, idx, map, { guardBareSyllables: true }), null);
+});
+
+test('the guard does not fire on a plain lowercase syllable', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    const toks = C.tokenize('Tôi gửi một thư cho bạn.');
+    const m = C.findMatch(toks, toks.indexOf('thư'), map, { guardBareSyllables: true });
+    assert.strictEqual(m.key, 'thư');
+});
+
+test('the guard ignores a sentence-opening capital', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    // "Anh" opens the sentence, so its capital is grammar, not a name.
+    const toks = C.tokenize('Anh thư của tôi.');
+    const m = C.findMatch(toks, toks.indexOf('thư'), map, { guardBareSyllables: true });
+    assert.strictEqual(m.key, 'thư');
+});
+
+test('the guard skips a syllable that forms a known compound with its neighbour', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    // "cơ sở" is not a key of its own, but it is a compound the map learned from
+    // "cơ sở hạ tầng" - so the bare "sở" in it must not be swapped for "premises".
+    assert.ok(map.compoundBigrams.has('cơ sở'));
+    assert.ok(!map.has('cơ sở'));
+    const toks = C.tokenize('xây một cơ sở mới');
+    assert.strictEqual(C.findMatch(toks, toks.indexOf('sở'), map, { guardBareSyllables: true }), null);
+    // Standing alone it is still a word.
+    const alone = C.tokenize('đến sở làm');
+    assert.strictEqual(C.findMatch(alone, alone.indexOf('sở'), map, { guardBareSyllables: true }).key, 'sở');
+});
+
+test('a longer phrase still wins over the guard', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, 'vieEng');
+    // "thư ký" is a key, so the phrase matches and the guard never applies -
+    // the guard only decides what to do when nothing longer fits.
+    const toks = C.tokenize('làm thư ký cho công ty');
+    const m = C.findMatch(toks, toks.indexOf('thư'), map, { guardBareSyllables: true });
+    assert.strictEqual(m.key, 'thư ký');
+});
+
+test('buildVocabMap learns compound bigrams from multi-syllable Vietnamese keys only', () => {
+    const map = C.buildVocabMap(PHRASE_VOCAB, ['vieEng', 'engEng']);
+    assert.ok(map.compoundBigrams.has('cơ sở'));
+    assert.ok(map.compoundBigrams.has('hạ tầng'));
+    assert.ok(map.compoundBigrams.has('toàn diện'));
+    // Seeded titles the datasets do not carry.
+    assert.ok(map.compoundBigrams.has('bí thư'));
+    // English synonyms are not Vietnamese compounds.
+    assert.ok(!map.compoundBigrams.has('carry out'));
+});
+
+// ---------------------------------------------------------------------------
 // Deterministic intensity gate
 // ---------------------------------------------------------------------------
 test('gateByFrequency is deterministic and honors bounds', () => {
