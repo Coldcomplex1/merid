@@ -178,6 +178,18 @@ body {
 
 .notice-warn { color: var(--accent); }
 
+/* Built-in site lists: long, read-only, and folded away until asked for. */
+.site-details { margin-top: 10px; }
+.site-details > summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--accent);
+    padding: 4px 0;
+}
+.site-details > summary:hover { text-decoration: underline; }
+.site-cat { margin-top: 12px; margin-bottom: 2px; }
+.site-cat-hosts { word-break: break-word; line-height: 1.6; }
+
 .custom-list { list-style: none; margin-top: 6px; }
 .custom-row-item {
     display: flex;

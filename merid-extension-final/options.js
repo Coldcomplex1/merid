@@ -83,6 +83,159 @@ function refreshDatasetInfo() {
 }
 
 // =============================================================
+// Sites. Three lists, in descending order of the reader's control:
+//   disabledSites  - sites they turned off (add/remove here or from the popup)
+//   allowedSites   - default-off sites they turned back on (popup only; this
+//                    page can put them back)
+//   built-in       - read-only, rendered straight from VMCore
+// Both editable lists live in storage.sync; open tabs re-scan on their own via
+// the storage.onChanged listener in content.js.
+// =============================================================
+const sites = {
+    pausedList: document.getElementById('pausedList'),
+    pausedEmpty: document.getElementById('pausedEmpty'),
+    pauseInput: document.getElementById('pauseInput'),
+    pauseAddBtn: document.getElementById('pauseAddBtn'),
+    pauseError: document.getElementById('pauseError'),
+    allowedList: document.getElementById('allowedList'),
+    allowedNone: document.getElementById('allowedNone'),
+    defaultOffCatalog: document.getElementById('defaultOffCatalog'),
+    blockedCatalog: document.getElementById('blockedCatalog')
+};
+
+/**
+ * What the reader may type into "turn Merid off on another site". A full URL
+ * is accepted and reduced to its hostname, since pasting one is the obvious
+ * thing to do. Returns '' when there is nothing usable.
+ */
+function parseSiteInput(raw) {
+    let s = String(raw || '').trim();
+    if (!s) return '';
+    if (s.indexOf('://') !== -1) {
+        try { s = new URL(s).hostname; } catch (e) { return ''; }
+    }
+    s = s.split('/')[0].split('?')[0].split('#')[0].split('@').pop();
+    s = C.canonicalHost(s).replace(/\.$/, '');
+    // A bare word is a typo, not a site; anything with a space or a scheme
+    // separator left in it never matches a hostname.
+    if (!/^[a-z0-9.-]+$/.test(s) || s.indexOf('.') === -1) return '';
+    return s;
+}
+
+function siteRowEl(host, actionLabel, onAction) {
+    const li = document.createElement('li');
+    li.className = 'custom-row-item';
+
+    const info = document.createElement('div');
+    info.className = 'custom-info';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'custom-name';
+    nameEl.textContent = host;
+    nameEl.title = host;
+    info.append(nameEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    const btn = miniBtn(actionLabel);
+    btn.addEventListener('click', onAction);
+    actions.append(btn);
+
+    li.append(info, actions);
+    return li;
+}
+
+/** Read-only rendering of a built-in list, grouped by category. */
+function renderCatalog(box, byCategory) {
+    if (!box) return;
+    box.textContent = '';
+    for (const key of Object.keys(byCategory)) {
+        const head = document.createElement('p');
+        head.className = 'subhead site-cat';
+        head.textContent = C.SITE_CATEGORY_LABELS[key] || key;
+        const body = document.createElement('p');
+        body.className = 'hint site-cat-hosts';
+        body.textContent = byCategory[key].join(', ');
+        box.append(head, body);
+    }
+}
+
+function renderSiteLists(disabledSites, allowedSites) {
+    sites.pausedList.textContent = '';
+    sites.pausedEmpty.hidden = disabledSites.length > 0;
+    for (const host of disabledSites) {
+        sites.pausedList.appendChild(siteRowEl(host, 'Turn back on', () => {
+            writeSiteLists(C.removeSiteFromList(disabledSites, host), allowedSites);
+        }));
+    }
+
+    sites.allowedList.textContent = '';
+    sites.allowedNone.hidden = allowedSites.length > 0;
+    for (const host of allowedSites) {
+        sites.allowedList.appendChild(siteRowEl(host, 'Turn back off', () => {
+            writeSiteLists(disabledSites, C.removeSiteFromList(allowedSites, host));
+        }));
+    }
+}
+
+function writeSiteLists(disabledSites, allowedSites) {
+    chrome.storage.sync.set({ disabledSites, allowedSites }, () => {
+        flashSaved();
+        renderSiteLists(disabledSites, allowedSites);
+    });
+}
+
+function refreshSiteUI() {
+    chrome.storage.sync.get(['disabledSites', 'allowedSites'], (s) => {
+        renderSiteLists(
+            Array.isArray(s.disabledSites) ? s.disabledSites : [],
+            Array.isArray(s.allowedSites) ? s.allowedSites : []);
+    });
+}
+
+function wireSites() {
+    if (!sites.pausedList) return;
+    renderCatalog(sites.defaultOffCatalog, C.DEFAULT_OFF_BY_CATEGORY);
+    renderCatalog(sites.blockedCatalog, C.BLOCKED_BY_CATEGORY);
+    refreshSiteUI();
+
+    const showError = (msg) => {
+        sites.pauseError.hidden = !msg;
+        sites.pauseError.textContent = msg || '';
+        sites.pauseError.classList.toggle('auth-error', !!msg);
+    };
+
+    sites.pauseInput.addEventListener('input', () => {
+        sites.pauseAddBtn.disabled = !parseSiteInput(sites.pauseInput.value);
+        showError('');
+    });
+
+    sites.pauseAddBtn.addEventListener('click', () => {
+        const host = parseSiteInput(sites.pauseInput.value);
+        if (!host) return showError('That does not look like a site name.');
+        if (C.isHostBlocked(host)) {
+            return showError(`Merid is already always off on ${host}.`);
+        }
+        chrome.storage.sync.get(['disabledSites', 'allowedSites'], (s) => {
+            const disabled = Array.isArray(s.disabledSites) ? s.disabledSites : [];
+            const allowed = Array.isArray(s.allowedSites) ? s.allowedSites : [];
+            if (disabled.length >= C.MAX_SITE_LIST) {
+                return showError(`You can turn Merid off on up to ${C.MAX_SITE_LIST} sites.`);
+            }
+            sites.pauseInput.value = '';
+            sites.pauseAddBtn.disabled = true;
+            showError('');
+            // Turning a site off also clears any allow entry for it, so the two
+            // lists never disagree about the same host.
+            writeSiteLists(C.addSiteToList(disabled, host), C.removeSiteFromList(allowed, host));
+        });
+    });
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'sync' && (changes.disabledSites || changes.allowedSites)) refreshSiteUI();
+    });
+}
+
+// =============================================================
 // My datasets (user-uploaded CSVs). All storage writes happen in the
 // background service worker via messages; this page only previews files with
 // the shared validator and renders state. Every user-derived string is
@@ -915,7 +1068,7 @@ function wireAiDiagnose() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    load(); wire(); wireAccount(); wireCustom();
+    load(); wire(); wireAccount(); wireCustom(); wireSites();
     renderProfilePanel(); wireProfilePanel();
     renderAiQuota(); wireAiDiagnose();
     chrome.storage.onChanged.addListener((changes, area) => {
