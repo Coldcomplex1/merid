@@ -7,7 +7,7 @@ import PracticeArticle from '../components/demo/PracticeArticle'
 import DemoGuideCursor, { type GuideCursorHandle } from '../components/demo/DemoGuideCursor'
 import { PANEL_DATASETS, type PanelDataset, type PanelMode } from '../components/demo/DemoExtensionPanel'
 import type { VocabEntry } from '../data/vocab'
-import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { useLang, usePageMeta } from '../i18n/LanguageContext'
 
 const INTENSITY_LABELS = ['Casual', 'Focused', 'Locked-in']
 const MODES: { value: PanelMode; label: string }[] = [
@@ -175,7 +175,7 @@ function ProgressChart() {
  */
 export default function Tutorial() {
   const { t } = useLang()
-  usePageTitle(t.meta.tutorialTitle)
+  usePageMeta(t.meta.tutorialTitle, t.meta.tutorialDescription)
   const steps = t.tutorial.steps
   const s = t.tutorial.scrolly
 

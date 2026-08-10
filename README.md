@@ -107,6 +107,14 @@ api/
   `ScrollManager` scrolls to hash targets (e.g. `/#demo`) across page navigations. `vercel.json`
   routes `/blog/*`, `/sitemap.xml` and `/llms.txt` to `api/blog-render.js`, and rewrites
   everything else to `index.html` so deep links work in production.
+- **Indexing.** Because every path falls back to one `index.html`, each public page would
+  otherwise serve the homepage's canonical and claim to be a duplicate of it.
+  `scripts/prerender-seo.mjs` runs after the build and writes one copy of the shell per route
+  (`dist/tutorial.html`, …) with its own canonical and `og:url`; `cleanUrls` in `vercel.json`
+  serves those at the clean path. `usePageMeta` (`src/i18n/LanguageContext.tsx`) keeps the head
+  correct across client-side navigation and the language toggle. Adding a public page means
+  adding it to `MARKETING_PATHS` in `api/_lib/blog-config.js`, which feeds both the prerender
+  step and the sitemap. `test/seo.test.mjs` covers all of it.
 - **Live demo** (`LiveDemo.tsx`): the Vietnamese page is data-driven. Each vocab entry is
   tagged with datasets and a frequency tier, so switching the dataset (SAT/C1/C2/All) or moving
   the intensity slider visibly changes which words are replaced. Hovering/clicking a highlighted

@@ -117,7 +117,7 @@ export default function Navbar() {
                     through to the catch-all and render the homepage. Lives in
                     the menu rather than the inline row because that row is
                     measured to fit exactly six Vietnamese labels at 1152px. */}
-                <a href={lang === 'vi' ? '/blog' : '/en/blog'} className={menuItem}>
+                <a href={lang === 'vi' ? '/blog' : '/blog/en'} className={menuItem}>
                   Blog
                 </a>
                 <Link to="/my-deck" className={menuItem}>

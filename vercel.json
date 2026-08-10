@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "redirects": [
     { "source": "/en/blog", "destination": "/blog/en", "permanent": true },
     { "source": "/en/blog/:slug", "destination": "/blog/en/:slug", "permanent": true }

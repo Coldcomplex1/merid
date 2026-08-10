@@ -19,6 +19,15 @@ export interface Strings {
     welcomeTitle: string
     goodbyeTitle: string
     privacyPolicyTitle: string
+    /* Search-result snippets, one per indexable page. Separate from the pages'
+       own `sub` headings: those introduce a page you are already on, these have
+       to make sense on their own in a list of results. index.html ships `description`
+       for the first paint; usePageMeta swaps in the rest on navigation. */
+    description: string
+    tutorialDescription: string
+    createDatasetDescription: string
+    apiKeyGuideDescription: string
+    privacyPolicyDescription: string
   }
   theme: { toDark: string; toLight: string; label: string }
   banner: { text: string; action: string }
@@ -359,6 +368,16 @@ const vi: Strings = {
     welcomeTitle: 'Merid đã sẵn sàng: bắt đầu trong 2 phút',
     goodbyeTitle: 'Tạm biệt - góp ý giúp Merid tốt hơn',
     privacyPolicyTitle: 'Chính sách bảo mật - Merid',
+    description:
+      'Đã có trên Chrome Web Store. Merid là extension giúp bạn học SAT, B2, C1, C2 vocab tự nhiên bằng cách thay vài từ tiếng Việt bằng tiếng Anh khi bạn lướt web.',
+    tutorialDescription:
+      'Hướng dẫn dùng Merid trong năm phút: cài extension, chọn bộ từ, chỉnh mức độ thay từ và lưu từ mới. Mọi mockup trong bài đều bấm thử được.',
+    createDatasetDescription:
+      'Tự tạo bộ từ vựng tiếng Anh theo trình độ CEFR và chủ đề bạn thích: sao chép câu lệnh, dán vào ChatGPT, Claude hay Gemini, rồi tải file CSV lên Merid.',
+    apiKeyGuideDescription:
+      'Cách lấy API key Gemini miễn phí từ Google AI Studio và dán vào Merid để bật AI Context Check, tính năng tự đổi lại những từ không hợp với câu.',
+    privacyPolicyDescription:
+      'Merid thay từ ngay trên máy bạn và không gửi nội dung trang web lên máy chủ. Trang này nói rõ dữ liệu nào được lưu, lưu ở đâu và bạn kiểm soát thế nào.',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -1026,6 +1045,16 @@ const en: Strings = {
     welcomeTitle: 'Merid is ready: start in 2 minutes',
     goodbyeTitle: 'Goodbye - help make Merid better',
     privacyPolicyTitle: 'Privacy Policy - Merid',
+    description:
+      'Merid is a free Chrome extension that swaps a few Vietnamese words for SAT, B2, C1 and C2 English vocabulary while you browse, so everyday reading becomes practice.',
+    tutorialDescription:
+      'Five minutes from install to your first mastered words: pin the extension, pick a dataset, tune how much it replaces, and save words. Every mockup is interactive.',
+    createDatasetDescription:
+      'Build your own English vocabulary dataset by CEFR level and topic: copy the generated prompt, paste it into ChatGPT, Claude or Gemini, then upload the CSV to Merid.',
+    apiKeyGuideDescription:
+      'How to create a free Gemini API key in Google AI Studio and paste it into Merid to turn on AI Context Check, which reverts replaced words that do not fit the sentence.',
+    privacyPolicyDescription:
+      'Merid replaces words on your own device and never sends webpage content to a server. This page sets out exactly what is stored, where it lives, and what you control.',
   },
   theme: {
     toDark: 'Switch to dark mode',

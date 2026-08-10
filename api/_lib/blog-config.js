@@ -17,6 +17,24 @@ export const FIREBASE_PROJECT_ID = 'merid-49dd5'
 /** URL path segments. 'vie' rather than 'vi' because that is the chosen URL shape. */
 export const LANGS = ['vie', 'en']
 
+/** The hand-written pages outside the blog that are worth indexing.
+ *
+ *  Read by the sitemap (api/blog-render.js) and by scripts/prerender-seo.mjs,
+ *  which gives each of them a canonical of its own. Adding a public page means
+ *  adding it here; forgetting is what left these four claiming to be duplicates
+ *  of the homepage.
+ *
+ *  /welcome and /goodbye are deliberately absent: the extension opens them on
+ *  install and uninstall, so they need a correct canonical but do not belong in
+ *  a sitemap. Routes behind auth are absent too, and public/robots.txt
+ *  disallows them. */
+export const MARKETING_PATHS = [
+  '/tutorial',
+  '/create-dataset',
+  '/api-key-guide',
+  '/privacy-policy',
+]
+
 export const DEFAULT_AUTHOR = 'Van Quyet Doan'
 
 /** Fallback social card, used when a post declares no cover image. */

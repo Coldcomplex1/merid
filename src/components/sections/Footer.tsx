@@ -37,7 +37,7 @@ export default function Footer() {
               client router knows nothing about, so a <Link> would match the
               catch-all route and render the homepage instead. */}
           <a
-            href={lang === 'vi' ? '/blog' : '/en/blog'}
+            href={lang === 'vi' ? '/blog' : '/blog/en'}
             className="transition-colors hover:text-accent"
           >
             Blog

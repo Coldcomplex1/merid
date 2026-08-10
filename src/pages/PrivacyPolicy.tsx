@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import Reveal from '../components/ui/Reveal'
 import { CHROME_STORE_URL } from '../config'
 import { trackInstallClick } from '../lib/analytics'
-import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { useLang, usePageMeta } from '../i18n/LanguageContext'
 import type { Lang } from '../i18n/translations'
 
 /*
@@ -607,7 +607,7 @@ const POLICIES: Record<Lang, Policy> = { vi: POLICY_VI, en: POLICY_EN }
 
 export default function PrivacyPolicy() {
   const { t, lang } = useLang()
-  usePageTitle(t.meta.privacyPolicyTitle)
+  usePageMeta(t.meta.privacyPolicyTitle, t.meta.privacyPolicyDescription)
   const policy = POLICIES[lang]
 
   return (

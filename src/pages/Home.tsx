@@ -6,11 +6,11 @@ import HowItWorks from '../components/sections/HowItWorks'
 import Benefits from '../components/sections/Benefits'
 import Faq from '../components/sections/Faq'
 import FinalCta from '../components/sections/FinalCta'
-import { useLang, usePageTitle } from '../i18n/LanguageContext'
+import { useLang, usePageMeta } from '../i18n/LanguageContext'
 
 export default function Home() {
   const { t } = useLang()
-  usePageTitle(t.meta.title)
+  usePageMeta(t.meta.title, t.meta.description)
 
   return (
     <>
