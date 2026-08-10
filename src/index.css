@@ -908,9 +908,11 @@ body {
   }
 
   /* English word inserted into the page, using the extension's exact
-     .vocab-master-highlight look (content.css), gold underline + faint wash */
+     .vocab-master-highlight look (content.css), gold underline + faint wash.
+     Weight is inherited, like the extension's: the underline is the signal, so
+     the word reads as part of its sentence rather than heavier than it. */
   .hl-en {
-    font-weight: 600;
+    font-weight: inherit;
     color: inherit;
     padding: 0 1px;
     border-bottom: 2px solid #f4be37;
