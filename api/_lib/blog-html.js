@@ -37,8 +37,12 @@ const THEME_BG = { light: '#faf8f2', dark: '#0e1628' }
 const STYLESHEET = '/blog.css'
 
 /** Copied from index.html so blog pages pick up the saved theme before paint.
- *  Keep in sync with index.html and src/theme/ThemeContext.tsx. */
-const THEME_BOOTSTRAP = `(function(){try{var saved=localStorage.getItem('merid-theme');var theme=saved==='light'||saved==='dark'?saved:window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var root=document.documentElement;root.setAttribute('data-theme',theme);root.style.colorScheme=theme;root.style.backgroundColor=theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}';var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}');}catch(e){}})();`
+ *  Keep in sync with index.html and src/theme/ThemeContext.tsx - including
+ *  the forced-dark probe, which is explained in full in both of those. A
+ *  browser repainting every page dark (Cốc Cốc's "Duyệt web chế độ tối") gives
+ *  itself away through the system colour `Canvas`, and counts as asking for
+ *  the dark theme, which such a browser then leaves alone. */
+const THEME_BOOTSTRAP = `(function(){function forcedDark(){try{var probe=document.createElement('div');probe.style.cssText='color-scheme:light;background-color:Canvas;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px';document.documentElement.appendChild(probe);var rgb=getComputedStyle(probe).backgroundColor.match(/[\\d.]+/g);probe.remove();return !!rgb&&(0.299*rgb[0]+0.587*rgb[1]+0.114*rgb[2])/255<0.5}catch(e){return false}}try{var saved=localStorage.getItem('merid-theme');var wantsDark=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)||forcedDark();var theme=saved==='light'||saved==='dark'?saved:wantsDark?'dark':'light';var root=document.documentElement;root.setAttribute('data-theme',theme);root.style.colorScheme=theme;root.style.backgroundColor=theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}';var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'${THEME_BG.dark}':'${THEME_BG.light}');}catch(e){}})();`
 
 /** Mirrors the language choice into the SPA's storage key, so following a link
  *  back into the app does not snap the reader to the other language. */
