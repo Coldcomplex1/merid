@@ -44,7 +44,11 @@ export default function VocabPopupCard({
   const [localKnown, setLocalKnown] = useState(false)
   const isSaved = saved ?? localSaved
 
-  const exampleParts = entry.example.split(new RegExp(`(${escapeRegExp(entry.word)})`, 'i'))
+  // Matches the extension's rule in content.js: the headword plus whatever
+  // inflection the sentence used, never starting inside a longer word.
+  const headword = new RegExp(`(?<![A-Za-z])(${escapeRegExp(entry.word)}[A-Za-z]*)`, 'i')
+  const isHeadword = new RegExp(`^${escapeRegExp(entry.word)}[A-Za-z]*$`, 'i')
+  const exampleParts = entry.example.split(headword)
   // The extension shrinks long headwords so they stay on one line.
   const titleSize = Math.max(18, 28 - Math.max(0, entry.word.length - 9) * 1.2)
   const synonyms = entry.synonyms.slice(0, 3)
@@ -126,9 +130,9 @@ export default function VocabPopupCard({
         )}
 
         {!compact && (
-          <p className="mt-3 text-[13px] leading-[1.4] font-bold text-[#1c2c47]">
+          <p className="mt-3 text-[13px] leading-[1.4] font-medium text-[#1c2c47]">
             {exampleParts.map((part, i) =>
-              part.toLowerCase() === entry.word.toLowerCase() ? (
+              isHeadword.test(part) ? (
                 <strong
                   key={i}
                   className="font-extrabold text-[#19355d] underline decoration-[1.5px] underline-offset-2"
@@ -147,7 +151,7 @@ export default function VocabPopupCard({
             <span className="w-[84px] shrink-0 text-[9px] font-extrabold tracking-[0.09em] text-[#6c7c9c] uppercase">
               Vietnamese
             </span>
-            <span className="min-w-0 flex-1 text-[12.5px] font-bold text-[#19355d]">
+            <span className="min-w-0 flex-1 text-[12.5px] font-medium text-[#19355d]">
               {entry.viMeaning}
             </span>
           </div>
@@ -155,7 +159,7 @@ export default function VocabPopupCard({
             <span className="w-[84px] shrink-0 text-[9px] font-extrabold tracking-[0.09em] text-[#6c7c9c] uppercase">
               Replaced
             </span>
-            <span className="min-w-0 flex-1 text-[12.5px] font-bold text-[#19355d]">
+            <span className="min-w-0 flex-1 text-[12.5px] font-medium text-[#19355d]">
               {entry.vi}
             </span>
           </div>
