@@ -1,0 +1,146 @@
+TITLE: 5 tools Vietnamese speakers can use to learn English
+SLUG: tools-for-vietnamese-learners-of-english
+LANG: en
+EXCERPT: Use five tools, one per skill. Merid for vocabulary while you read Vietnamese pages, ELSA Speak for pronunciation, Anki for remembering what you meet, Language Reactor for listening, and Cambridge Dictionary with YouGlish for checking a word properly. They do different jobs, so they stack instead of competing for the same half hour.
+SEO TITLE: 5 tools Vietnamese speakers can use to learn English
+SEO DESCRIPTION: One tool per skill, picked by the person who built one of them, with what each does badly said out loud so you can tell which is worth your time.
+TAGS: learn english, vietnamese learners, english tools, vocabulary
+TRANSLATION KEY: tools-for-vietnamese-learners
+COVER IMAGE: /blog/screenshots/landing-hero.png
+COVER ALT: The Merid landing page with an English word shown in place of a Vietnamese one
+FAQ:
+Q: Do I need all five?
+A: No. Four of them are free to start, so installing everything costs nothing but attention, and attention is the thing you are short of. Pick the skill that is holding you back and take the one tool for it.
+Q: You built Merid, so how much should I trust this list?
+A: Trust the parts you can check. Every other tool here links to its own site, and I have said what each does better than mine. Merid is first because it is the cheapest to keep doing, not because it is the strongest tool on the page.
+Q: Is any of this enough on its own?
+A: No. None of these teaches you to hold a conversation. They make the input side cheaper, which is the part most people quit over, but at some point you have to speak to a person.
+ARTICLE:
+## Which tools should a Vietnamese speaker actually use to learn English?
+
+Use five, one per skill. Merid for vocabulary while you read, ELSA Speak for
+pronunciation, Anki for remembering what you meet, Language Reactor for
+listening, and Cambridge Dictionary with YouGlish for checking a word properly.
+They do different jobs, so they stack rather than compete.
+
+I should say the awkward thing first. I built Merid. So read the order below as
+the sequence I would install them in, not as a claim that a reading tool beats a
+speaking tool. Those two are not even measured on the same scale.
+
+The list is short on purpose. I have downloaded and quit more vocabulary apps
+than I can name, always for the same reason: each one asked for a separate block
+of time that my day did not have. So the question I used to pick these was not
+"which is most powerful", it was "which one survives a bad week".
+
+| Tool | The one job it does | Cost |
+|---|---|---|
+| Merid | Vocabulary, while you read Vietnamese pages | Free |
+| ELSA Speak | Pronunciation, with feedback on your own voice | Free tier, paid subscription |
+| Anki | Keeping what you already met | Free except on iPhone |
+| Language Reactor | Listening, with dual subtitles | Free tier, paid upgrade |
+| Cambridge + YouGlish | Checking a single word properly | Free |
+
+## Why is a tool I built myself sitting at number one?
+
+Because it is the only one here that asks for no extra time. Merid is a free
+Chrome extension for Vietnamese speakers learning English. While you read
+ordinary Vietnamese pages, VnExpress, Tuổi Trẻ, Vietnamese Wikipedia, Facebook,
+it swaps a small number of Vietnamese words for their English equivalents. The
+reading you already do becomes the practice.
+
+That is the whole design. Nothing to open, no streak to protect, no session to
+schedule. You keep reading the news at breakfast and a few words are in English
+now.
+
+Some specifics, so this is checkable rather than a pitch. Word replacement runs
+locally on your own machine, so the pages you read are not sent anywhere. There
+is an optional AI context check that verifies a substituted word genuinely fits
+its sentence, because a dictionary-correct word in the wrong context teaches you
+the wrong thing. It ships three word lists: SAT (988 words), C1 (1,379) and C2
+(977). Words you save go to a deck you can review later.
+
+![A Merid deck with twenty five saved words, fifteen still being learned and ten marked as known](/blog/screenshots/my-deck.png)
+
+Now the part that matters more. **Merid teaches reading vocabulary and nothing
+else.** It will not improve your pronunciation, it will not help you hear fast
+speech, it will not teach grammar, and it will not make you able to hold a
+conversation. Every other tool on this list beats it at the thing that tool
+does. That is exactly why the list has five entries and not one.
+
+## How do I stop forgetting a word a week after I meet it?
+
+Anki. It is a flashcard program built on spaced repetition, which means it shows
+you a card just before you were about to forget it and stretches the gap each
+time you get it right. Meeting a word once teaches you almost nothing. Meeting
+it on the right days is what makes it stick.
+
+Anki is free on Windows, macOS, Linux and Android, and free to sync through
+AnkiWeb. On iPhone the official app is a one-off purchase, and Anki's own FAQ
+explains that the iOS sales are what funds development of everything else.
+Check the current price on [apps.ankiweb.net](https://apps.ankiweb.net/) rather
+than trusting a number in a blog post.
+TODO_STAT: confirm the current AnkiMobile iOS price before publishing, or cut the sentence.
+
+Honest warning, because this is where people bounce off it. Anki looks like
+software from fifteen years ago and the settings are genuinely intimidating.
+Ignore all of them. Make cards, press the buttons it gives you, change nothing
+for the first month.
+
+## What actually fixes Vietnamese-accented English?
+
+ELSA Speak, because it listens to you rather than to a recording. You speak into
+it and it scores your pronunciation and tells you which sounds were wrong, down
+to the syllable. Reading about the difference between two English sounds does not
+transfer. Being told you just got one wrong, twenty times, does.
+
+ELSA was founded in 2015 by Vu Van, who grew up in Hanoi, and the app is built
+around exactly the problem of a non-native speaker who is fluent on paper and
+hard to follow out loud. There is a free tier and a paid subscription. Prices
+and plans are on [elsaspeak.com](https://elsaspeak.com/).
+TODO_STAT: current ELSA subscription price, sources disagreed. Quote it from elsaspeak.com or drop the figure.
+
+What it does not do is teach you words. It sharpens the ones you have.
+
+## How do I train listening without quitting in a week?
+
+Language Reactor, on things you were going to watch anyway. It is a browser
+extension that puts two sets of subtitles on Netflix and YouTube at once, so you
+get the English line and a translation together, and you can click any word to
+see what it means without pausing to open a dictionary.
+
+The reason this works is the same reason Merid works. It attaches learning to an
+activity you already do rather than asking for a new one. The free version covers
+dual subtitles on both sites; the more advanced features are paid. Their own site
+is [languagereactor.com](https://www.languagereactor.com/).
+
+Set the second subtitle to Vietnamese at first, then drop it when you notice you
+have stopped reading it.
+
+## Where should I check what a word really means?
+
+Cambridge Dictionary for the meaning, YouGlish for the sound.
+[Cambridge](https://dictionary.cambridge.org/) gives you a definition written in
+simple English, example sentences, and audio in both British and American
+accents. It is free and it does not require an account.
+
+[YouGlish](https://youglish.com/) is the one people do not know about, and it is
+the better half of this pair. You type a word and it finds real YouTube videos of
+people saying it, starting playback at the exact sentence. So instead of one
+studio recording of a word, you hear fifteen ordinary speakers using it at normal
+speed with normal accents.
+
+Use it whenever a word feels slippery. Hearing it five times in five real
+sentences settles it faster than reading the phonetic spelling ever will.
+
+## Which one should I start with this week?
+
+One. Not five.
+
+If you read Vietnamese news or Facebook daily, install Merid and change nothing
+else about your week. If people ask you to repeat yourself when you speak
+English, start with ELSA instead. If your problem is that you learn words and
+lose them, your problem is Anki-shaped and no amount of new input will fix it.
+
+Add the second tool only after the first has survived a week where you were busy
+and tired. That week is the real test, and it is the one every study app I ever
+deleted failed.

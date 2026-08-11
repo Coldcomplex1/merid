@@ -1,0 +1,154 @@
+TITLE: 5 công cụ học tiếng Anh cho người Việt
+SLUG: cong-cu-hoc-tieng-anh-cho-nguoi-viet
+LANG: vie
+EXCERPT: Mỗi kỹ năng một công cụ. Merid để học từ vựng ngay lúc đọc web tiếng Việt, ELSA Speak để sửa phát âm, Anki để không quên từ đã học, Language Reactor để luyện nghe, và Cambridge với YouGlish để tra một từ cho tới nơi. Năm cái làm năm việc khác nhau nên dùng chung được.
+SEO TITLE: 5 công cụ học tiếng Anh cho người Việt
+SEO DESCRIPTION: Mỗi kỹ năng một công cụ, kèm điểm yếu của từng cái nói thẳng ra, để bạn biết cái nào đáng cài trước và cái nào chưa cần tới.
+TAGS: học tiếng anh, công cụ học tiếng anh, từ vựng, người việt học tiếng anh
+TRANSLATION KEY: tools-for-vietnamese-learners
+COVER IMAGE: /blog/screenshots/landing-hero.png
+COVER ALT: Trang chủ Merid với một từ tiếng Việt đã được thay bằng từ tiếng Anh
+FAQ:
+Q: Có cần cài đủ cả năm không?
+A: Không. Bốn trong năm cái dùng thử miễn phí được nên cài hết cũng không mất tiền, nhưng nó mất sự tập trung của bạn, mà cái đó mới là thứ bạn đang thiếu. Chọn đúng kỹ năng đang kẹt rồi lấy một công cụ cho nó thôi.
+Q: Merid là của bạn làm ra, vậy bài này có khách quan không?
+A: Bạn cứ kiểm tra phần kiểm tra được. Bốn công cụ còn lại mình đều để link trang chủ của họ, và cái nào hơn Merid ở chỗ nào mình đều nói ra. Merid đứng đầu vì nó rẻ công nhất để duy trì, chứ không phải vì nó mạnh nhất.
+Q: Học bằng mấy cái này là đủ giỏi tiếng Anh chưa?
+A: Chưa. Không cái nào dạy bạn nói chuyện với người thật. Chúng làm cho phần tiếp nhận đầu vào đỡ tốn công, mà đó là chỗ đa số bỏ cuộc, nhưng tới lúc nào đó vẫn phải mở miệng nói với người.
+ARTICLE:
+## Người Việt học tiếng Anh nên dùng công cụ nào?
+
+Mỗi kỹ năng một công cụ. Merid cho từ vựng lúc đọc web tiếng Việt, ELSA Speak cho
+phát âm, Anki để không quên từ đã gặp, Language Reactor cho luyện nghe, và
+Cambridge với YouGlish để tra một từ cho tới nơi. Năm cái làm năm việc khác nhau
+nên chúng bổ sung cho nhau chứ không giẫm chân nhau.
+
+Nói luôn cái khó nói trước. Merid là do mình làm ra. Nên bạn đọc thứ tự bên dưới
+theo nghĩa là thứ tự mình sẽ cài, chứ không phải theo nghĩa một công cụ đọc thì
+hơn một công cụ nói. Hai thứ đó còn không đo chung một thước.
+
+Danh sách này ngắn là có lý do. Trước đây mình tải về rồi xoá đi không biết bao
+nhiêu app từ vựng, lần nào cũng vì một chuyện, là cái nào cũng đòi một khoảng
+thời gian riêng mà ngày của mình không có. Nên câu hỏi mình dùng để chọn ra năm
+cái này không phải là cái nào mạnh nhất, mà là cái nào sống sót qua một tuần bận.
+
+| Công cụ | Việc duy nhất nó làm | Chi phí |
+|---|---|---|
+| Merid | Từ vựng, ngay trong lúc đọc web tiếng Việt | Miễn phí |
+| ELSA Speak | Phát âm, chấm điểm trên giọng của chính bạn | Có bản miễn phí, có gói trả phí |
+| Anki | Giữ lại những từ đã gặp | Miễn phí trừ trên iPhone |
+| Language Reactor | Nghe, với phụ đề hai thứ tiếng | Có bản miễn phí, có bản nâng cấp |
+| Cambridge và YouGlish | Tra một từ cho đúng | Miễn phí |
+
+## Vì sao mình để Merid đầu tiên dù chính mình làm ra nó?
+
+Vì nó là cái duy nhất trong danh sách không đòi thêm thời gian của bạn. Merid là
+extension Chrome miễn phí dành cho người Việt học tiếng Anh. Trong lúc bạn đọc
+mấy trang tiếng Việt bình thường như VnExpress, Tuổi Trẻ, Wikipedia tiếng Việt
+hay Facebook, nó thay một số ít từ tiếng Việt bằng từ tiếng Anh tương đương. Cái
+việc đọc mà bạn vẫn làm mỗi ngày tự nó thành buổi học.
+
+Ví dụ bạn đang lướt một bài báo và gặp câu nói về vẻ đẹp của một nơi nào đó, chỗ
+đó hiện lên chữ ==pulchritude==. Bạn không phải dừng lại, không phải mở app, cũng
+không có streak nào để mà giữ. Đọc tin buổi sáng như mọi hôm, chỉ là trong đó có
+vài từ giờ là tiếng Anh.
+
+Vài chi tiết cụ thể để bạn kiểm chứng chứ không phải nghe mình quảng cáo. Phần
+thay từ chạy ngay trên máy của bạn, nên nội dung trang bạn đọc không bị gửi đi
+đâu hết. Có thêm phần kiểm tra ngữ cảnh bằng AI, bật tắt tuỳ bạn, để xác nhận từ
+được thay có thật sự hợp với câu đó không, tại vì một từ đúng nghĩa trong từ điển
+mà sai ngữ cảnh thì dạy bạn sai. Merid đi kèm ba bộ từ là SAT với 988 từ, C1 với
+1.379 từ và C2 với 977 từ. Từ nào bạn lưu lại thì vào bộ thẻ riêng để ôn sau.
+
+![Bộ thẻ của mình với 25 từ đã lưu, 15 từ đang học và 10 từ đã đánh dấu là biết rồi](/blog/screenshots/my-deck.png)
+
+Giờ tới phần quan trọng hơn. **Merid chỉ dạy từ vựng để đọc, hết.** Nó không giúp
+bạn phát âm chuẩn hơn, không giúp bạn nghe kịp người ta nói nhanh, không dạy ngữ
+pháp, và chắc chắn không làm bạn nói chuyện được bằng tiếng Anh. Bốn công cụ còn
+lại trong bài, cái nào cũng hơn nó ở đúng việc của cái đó. Đó chính là lý do
+danh sách này có năm cái chứ không phải một.
+
+## Học từ xong một tuần là quên, phải làm sao?
+
+Dùng Anki. Đây là phần mềm thẻ ghi nhớ chạy theo kiểu lặp lại ngắt quãng, nghĩa
+là nó đưa thẻ ra đúng lúc bạn sắp quên, rồi mỗi lần bạn nhớ đúng thì nó giãn
+khoảng cách ra xa hơn. Gặp một từ đúng một lần thì gần như không đọng lại gì. Gặp
+lại nó vào đúng những ngày cần gặp mới là thứ làm nó dính.
+
+Đây là chỗ mà mình nghĩ nhiều người Việt học tiếng Anh đang hổng nặng nhất. Ai
+cũng lo tìm thêm nguồn từ mới, ít ai lo giữ chỗ từ đã học. Học thêm 50 từ mỗi
+tuần rồi rơi mất 40 từ thì càng học càng thấy mình dở, mà thật ra chỉ là thiếu
+một cơ chế ôn.
+
+Anki miễn phí trên Windows, macOS, Linux và Android, đồng bộ qua AnkiWeb cũng
+miễn phí. Riêng trên iPhone thì app chính chủ là bản trả tiền một lần, và trong
+phần hỏi đáp của họ có nói rõ tiền bán bản iOS là thứ nuôi toàn bộ phần còn lại.
+Giá bao nhiêu bạn xem thẳng ở [apps.ankiweb.net](https://apps.ankiweb.net/) cho
+chắc, đừng tin con số trong một bài blog.
+TODO_STAT: kiểm tra giá AnkiMobile trên iOS trước khi đăng, hoặc bỏ câu này.
+
+Nói trước cái dở của nó luôn. Giao diện Anki nhìn cũ kỹ và phần cài đặt thì rối
+thật sự. Bạn cứ kệ hết. Tạo thẻ, bấm đúng mấy nút nó đưa ra, và đừng đụng vào cài
+đặt nào trong tháng đầu.
+
+## Phát âm sai kiểu người Việt thì sửa bằng gì?
+
+ELSA Speak, vì nó nghe bạn nói chứ không phải cho bạn nghe băng. Bạn nói vào máy,
+nó chấm điểm phát âm rồi chỉ ra bạn sai ở âm nào, chi tiết tới từng âm tiết. Đọc
+lý thuyết về sự khác nhau giữa hai âm tiếng Anh thì không vào được. Bị chỉ ra là
+vừa nói sai, hai chục lần liên tiếp, thì mới vào.
+
+Riêng chỗ này có một điểm hợp với người Việt. ELSA ra đời năm 2015, người sáng
+lập lớn lên ở Hà Nội, và app được xây quanh đúng cái cảnh một người không phải
+dân bản xứ, viết thì ổn mà nói ra thì người ta nghe không kịp.
+TODO_STAT: tên đầy đủ tiếng Việt của người sáng lập ELSA, lấy từ trang about của họ rồi thêm vào câu trên.
+Có bản miễn phí và có gói trả phí. Giá và các gói bạn xem ở
+[elsaspeak.com](https://elsaspeak.com/).
+TODO_STAT: giá gói ELSA hiện tại, các nguồn nói không khớp nhau. Lấy số từ elsaspeak.com hoặc bỏ con số đi.
+
+Cái nó không làm là dạy bạn từ mới. Nó mài sắc mấy từ bạn đã có sẵn.
+
+## Nghe tiếng Anh mãi không vào thì làm thế nào?
+
+Dùng Language Reactor, và luyện trên đúng thứ bạn định xem. Nó là extension trình
+duyệt cho phép bật hai lớp phụ đề cùng lúc trên Netflix và YouTube, nên bạn thấy
+câu tiếng Anh và bản dịch nằm cạnh nhau, bấm vào từ nào là ra nghĩa từ đó mà
+không phải dừng phim để mở từ điển.
+
+Lý do nó chạy được cũng chính là lý do Merid chạy được. Nó gắn việc học vào một
+việc bạn vốn đã làm, thay vì bắt bạn thêm một việc mới vào ngày. Bản miễn phí đủ
+để bật phụ đề đôi trên cả hai nền tảng, mấy tính năng sâu hơn thì tính tiền.
+Trang chủ của họ là [languagereactor.com](https://www.languagereactor.com/).
+
+Mẹo nhỏ. Lúc đầu để phụ đề thứ hai là tiếng Việt, tới khi nào bạn nhận ra mình
+không còn liếc xuống đọc nó nữa thì tắt đi.
+
+## Tra một từ ở đâu cho đúng và nghe được người ta nói?
+
+Cambridge để lấy nghĩa, YouGlish để nghe âm.
+[Cambridge](https://dictionary.cambridge.org/) cho bạn định nghĩa viết bằng tiếng
+Anh dễ, có câu ví dụ, và có audio cả giọng Anh lẫn giọng Mỹ. Miễn phí và không
+cần tạo tài khoản.
+
+[YouGlish](https://youglish.com/) là cái ít người biết, mà theo mình nó mới là
+phần hay hơn trong cặp này. Bạn gõ một từ, nó tìm ra video YouTube thật có người
+đang nói từ đó rồi tua thẳng tới đúng câu. Vậy là thay vì nghe một bản thu trong
+phòng thu, bạn nghe mười mấy người bình thường dùng từ đó ở tốc độ bình thường
+với đủ kiểu giọng.
+
+Từ nào bạn thấy trơn trượt, nghe không chắc, thì đem qua đó. Nghe nó năm lần
+trong năm câu thật sẽ chắc hơn nhiều so với ngồi nhìn phiên âm.
+
+## Tuần này nên bắt đầu từ cái nào?
+
+Một cái. Đừng năm cái.
+
+Nếu ngày nào bạn cũng đọc báo tiếng Việt hoặc lướt Facebook thì cài Merid và giữ
+nguyên mọi thứ khác trong tuần của bạn. Nếu bạn nói tiếng Anh mà người ta hay bảo
+nhắc lại thì bắt đầu bằng ELSA. Còn nếu vấn đề của bạn là học từ xong rồi rơi mất
+thì vấn đề đó có hình dạng của Anki, và có nạp thêm bao nhiêu từ mới cũng không
+chữa được.
+
+Chỉ thêm công cụ thứ hai sau khi cái thứ nhất đã sống sót qua một tuần bạn vừa
+bận vừa mệt. Tuần đó mới là bài kiểm tra thật, và đó cũng là tuần mà mọi app học
+hành mình từng xoá đi đều rớt.
