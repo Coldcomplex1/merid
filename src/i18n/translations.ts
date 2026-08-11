@@ -46,6 +46,7 @@ export interface Strings {
     confirmRemove: string
     markKnown: string
     markSaved: string
+    play: (word: string) => string
     savedLabel: string
     knownLabel: string
     wordCount: (n: number) => string
@@ -414,6 +415,7 @@ const vi: Strings = {
     confirmRemove: 'Xoá từ này khỏi deck?',
     markKnown: 'Đã thuộc',
     markSaved: 'Học lại',
+    play: (word: string) => `Nghe phát âm của “${word}”`,
     savedLabel: 'Đang học',
     knownLabel: 'Đã thuộc',
     wordCount: (n: number) => `${n} từ`,
@@ -1098,6 +1100,7 @@ const en: Strings = {
     confirmRemove: 'Remove this word from your deck?',
     markKnown: 'I know this',
     markSaved: 'Study again',
+    play: (word: string) => `Play pronunciation for “${word}”`,
     savedLabel: 'Learning',
     knownLabel: 'Known',
     wordCount: (n: number) => `${n} ${n === 1 ? 'word' : 'words'}`,

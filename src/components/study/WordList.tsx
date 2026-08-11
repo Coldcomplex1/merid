@@ -1,5 +1,7 @@
 import { useLang } from '../../i18n/LanguageContext'
 import type { DeckWord, WordStatus } from '../../deck/DeckSource'
+import { speak } from '../../lib/speech'
+import SpeakerIcon from '../ui/SpeakerIcon'
 // Owned by PuzzleMode, where it is derived from the number of options a
 // question offers - not restated here, so the two cannot disagree.
 import { MIN_PUZZLE_WORDS } from './PuzzleMode'
@@ -99,9 +101,21 @@ export default function WordList({
                   />
                 )}
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                    <span lang="en" className="text-lg font-bold text-heading">
-                      {w.word}
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    {/* Word and speaker share a nested row so the button never
+                        wraps away from the word it pronounces. */}
+                    <span className="flex items-center gap-2">
+                      <span lang="en" className="text-lg font-bold text-heading">
+                        {w.word}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => speak(w.word)}
+                        aria-label={t.deck.play(w.word)}
+                        className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line-strong text-muted transition-all hover:border-accent hover:text-accent active:scale-95"
+                      >
+                        <SpeakerIcon size={14} />
+                      </button>
                     </span>
                     {w.pos && <span className="text-xs text-muted italic">{w.pos}</span>}
                     <span

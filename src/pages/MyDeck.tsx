@@ -83,6 +83,16 @@ export default function MyDeck() {
   const learning = useMemo(() => (words ?? []).filter((w) => w.status === 'saved'), [words])
   const known = useMemo(() => (words ?? []).filter((w) => w.status === 'known'), [words])
 
+  // What you are still learning comes first; a word you have marked "I know
+  // this" sinks to the bottom instead of sitting in the middle of the list you
+  // are working through. Sort is stable, so inside each group the newest-saved
+  // order the backend already returns is preserved. Only the Words tab reads
+  // this - the study modes filter by status, where order is irrelevant.
+  const orderedWords = useMemo(() => {
+    const rank = (w: DeckWord) => (w.status === 'known' ? 1 : 0)
+    return [...(words ?? [])].sort((a, b) => rank(a) - rank(b))
+  }, [words])
+
   const toggleSelect = (word: string) =>
     setSelected((cur) => {
       const next = new Set(cur)
@@ -205,7 +215,7 @@ export default function MyDeck() {
             <div className="mt-6">
               {tab === 'words' ? (
                 <WordList
-                  words={words}
+                  words={orderedWords}
                   onRemove={handleRemove}
                   onSetStatus={handleSetStatus}
                   selecting={selecting}
