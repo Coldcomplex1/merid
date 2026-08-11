@@ -1415,8 +1415,17 @@ function showTooltip(target, item) {
 
     const synonyms = (item.synonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
     const antonyms = (item.antonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
+    // Highlight the headword, and only the headword. The trailing [A-Za-z]* takes
+    // in whatever inflection the sentence used - "abolish" in "should be abolished"
+    // is bolded whole rather than cut after the stem - while the lookbehind stops a
+    // match from starting inside a longer word. No closing \b: 29 headwords end in
+    // something other than a letter ("e.g.", "largess/largesse"), and \b after a
+    // full stop needs a word character next, which would lose the match entirely.
+    // Both sides are HTML-escaped before matching, which keeps a match off entities.
     const example = item.example
-        ? esc(item.example).replace(new RegExp('(' + C.escapeRegExp(esc(item.word)) + ')', 'gi'), '<strong>$1</strong>')
+        ? esc(item.example).replace(
+            new RegExp('(?<![A-Za-z])(' + C.escapeRegExp(esc(item.word)) + '[A-Za-z]*)', 'gi'),
+            '<strong>$1</strong>')
         : esc(t('tooltipNoExample', 'No example available.'));
     const titleFontSize = Math.max(18, 28 - Math.max(0, (item.word || '').length - 9) * 1.2);
 
