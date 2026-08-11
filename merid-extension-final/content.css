@@ -25,6 +25,21 @@
     --vm-ink: #1c2c47;
     --vm-muted: #6c7c9c;
     --vm-line: rgba(25, 53, 93, 0.16);
+    /* Surfaces and outlines that used to be hardcoded. They are tokens now so
+       the dark block at the bottom of this file can flip them in one place. */
+    --vm-outline: var(--vm-navy);
+    --vm-audio-bg: var(--vm-navy);
+    --vm-audio-bg-hover: #0f2442;
+    --vm-audio-fg: #ffffff;
+    --vm-close-bg: #fffef9;
+    --vm-close-bg-hover: #ffffff;
+    --vm-close-fg: #8a97ac;
+    --vm-close-line: rgba(25, 53, 93, 0.18);
+    --vm-chip-neutral: #e9eef8;
+    --vm-on-gold: var(--vm-navy);
+    --vm-trans-bg: #ece4d3;
+    --vm-hover: rgba(25, 53, 93, 0.05);
+    --vm-aifix-bg: rgba(25, 53, 93, 0.06);
     position: absolute;
     z-index: 999999;
     /* 296px is the card's natural 312px at the 0.95 zoom applied to .vm-card
@@ -48,7 +63,7 @@
     zoom: 0.95;
     position: relative;
     background: var(--vm-cream);
-    border: 2px solid var(--vm-navy);
+    border: 2px solid var(--vm-outline);
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 3px 10px rgba(15, 31, 61, 0.08);
@@ -68,10 +83,10 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border: 1px solid rgba(25, 53, 93, 0.18);
+    border: 1px solid var(--vm-close-line);
     border-radius: 50%;
-    background: #fffef9;
-    color: #8a97ac;
+    background: var(--vm-close-bg);
+    color: var(--vm-close-fg);
     font-size: 15px;
     line-height: 1;
     cursor: pointer;
@@ -79,7 +94,7 @@
 }
 
 .vm-close:hover {
-    background: #ffffff;
+    background: var(--vm-close-bg-hover);
     color: var(--vm-navy);
 }
 
@@ -121,8 +136,8 @@
     height: 22px;
     border: none;
     border-radius: 50%;
-    background: var(--vm-navy);
-    color: #ffffff;
+    background: var(--vm-audio-bg);
+    color: var(--vm-audio-fg);
     cursor: pointer;
     padding: 0;
     transition: transform 0.18s ease, background-color 0.18s ease;
@@ -130,7 +145,7 @@
 
 .vm-audio:hover {
     transform: translateY(-1px) scale(1.04);
-    background: #0f2442;
+    background: var(--vm-audio-bg-hover);
 }
 
 .vm-phon {
@@ -154,7 +169,7 @@
     gap: 5px;
     margin-top: 11px;
     padding: 5px;
-    border: 2px solid var(--vm-navy);
+    border: 2px solid var(--vm-outline);
     border-radius: 11px;
 }
 
@@ -162,7 +177,7 @@
     flex: 1 1 auto;
     min-width: 0;
     padding: 7px 6px;
-    border: 1.5px solid var(--vm-navy);
+    border: 1.5px solid var(--vm-outline);
     border-radius: 7px;
     font-weight: 800;
     font-size: 11px;
@@ -176,11 +191,11 @@
 
 .vm-yellow {
     background: var(--vm-gold);
-    color: var(--vm-navy);
+    color: var(--vm-on-gold);
 }
 
 .vm-dark {
-    background: #e9eef8;
+    background: var(--vm-chip-neutral);
     color: var(--vm-navy);
 }
 
@@ -204,7 +219,7 @@
 /* Translation box: warm beige, fixed-width uppercase labels so values align. */
 .vm-trans {
     margin-top: 12px;
-    background: #ece4d3;
+    background: var(--vm-trans-bg);
     border-radius: 12px;
     padding: 10px 13px;
     display: flex;
@@ -272,7 +287,7 @@
 }
 
 .vm-know:hover {
-    background: rgba(25, 53, 93, 0.05);
+    background: var(--vm-hover);
 }
 
 /* Thumbs up / down. Sits beside the two primary actions but does not take an
@@ -301,7 +316,7 @@
 .vm-actions .vm-rate button:hover:not(:disabled) {
     filter: none;
     opacity: 1;
-    background: rgba(25, 53, 93, 0.05);
+    background: var(--vm-hover);
 }
 
 /* After rating, the pair locks and only the chosen thumb keeps its colour. */
@@ -347,7 +362,7 @@
 .vm-aifix {
     margin-top: 10px;
     padding: 8px 11px;
-    background: rgba(25, 53, 93, 0.06);
+    background: var(--vm-aifix-bg);
     border-left: 2px solid var(--vm-gold-deep);
     border-radius: 0 8px 8px 0;
     font-size: 11.5px;
@@ -358,4 +373,56 @@
 
 .vm-aifix s {
     opacity: 0.55;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Dark surroundings.
+
+   Set by content.js when the page it landed on is dark - either because the
+   browser is forcing dark on every page (Cốc Cốc's "Duyệt web chế độ tối",
+   Chrome's Auto Dark Theme) or because the page itself declares a dark
+   colour scheme.
+
+   A forced-dark browser cannot be opted out of: `color-scheme` (light,
+   `only light`, in CSS or in a meta tag) and `forced-color-adjust: none` are
+   all ignored, and the cream card is repainted into a muddy inversion of
+   itself - 99% of its pixels. What such a browser does leave untouched is a
+   surface that is already dark, along with light text and mid-bright fills
+   on top of it. So the card stops fighting the browser and wears its own
+   dark palette, which arrives intact.
+
+   Only the tokens change; every rule above is shared, so the light card and
+   the dark one cannot drift apart. Outlines stay mid-navy rather than cream
+   because a *light* border is one of the few things forced dark still dims.
+   ───────────────────────────────────────────────────────────────────────── */
+.vocab-master-tooltip[data-vm-scheme="dark"] {
+    --vm-navy: #fdf9ef;
+    --vm-gold: #f5c542;
+    --vm-gold-deep: #ffd76a;
+    --vm-cream: #121c33;
+    --vm-ink: #c8d4ea;
+    --vm-muted: #93a5c9;
+    --vm-line: rgba(253, 249, 239, 0.18);
+    --vm-outline: #2a3a63;
+    /* Gold rather than the cream --vm-navy: a small cream disc would be dimmed,
+       gold at this size is not. */
+    --vm-audio-bg: var(--vm-gold);
+    --vm-audio-bg-hover: #ffd76a;
+    --vm-audio-fg: #16213c;
+    --vm-close-bg: #1e2b4d;
+    --vm-close-bg-hover: #2a3a63;
+    --vm-close-fg: #b9c5de;
+    --vm-close-line: rgba(253, 249, 239, 0.2);
+    --vm-chip-neutral: #1e2b4d;
+    /* Gold stays gold, so what sits on it stays navy. */
+    --vm-on-gold: #19355d;
+    --vm-trans-bg: #1e2b4d;
+    --vm-hover: rgba(253, 249, 239, 0.08);
+    --vm-aifix-bg: rgba(253, 249, 239, 0.07);
+}
+
+/* The card's own shadow is tuned for a light page; on a dark one it is just a
+   dark smudge on dark, so it becomes a faint lift instead. */
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-card {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }

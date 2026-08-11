@@ -8,8 +8,42 @@ const STORAGE_KEY = 'merid-theme'
  *  inline no-FOUC script in index.html. Used for <meta name="theme-color">. */
 const CANVAS = { light: '#faf8f2', dark: '#0e1628' } as const
 
+/**
+ * Is the browser repainting every page dark - Cốc Cốc's "Duyệt web chế độ tối",
+ * Chrome's Auto Dark Theme? No page can opt out of that (`color-scheme: only
+ * light` and `forced-color-adjust: none` are both ignored), and it turns the
+ * light theme into a muddy inversion of itself. The dark theme, being dark
+ * already, is left alone - so a forcing browser counts here as one more way of
+ * asking for dark, ranked with the OS preference rather than above a choice the
+ * reader made themselves.
+ *
+ * `prefers-color-scheme` stays light through all of this, and the page's own
+ * colours still report what they declared: forced dark repaints at paint time
+ * instead of rewriting values. The system colour `Canvas` is what gives it
+ * away, resolving to whatever the browser treats as the default page
+ * background. The probe pins itself to `color-scheme: light` so it answers
+ * about the browser, not about a page that merely declares dark.
+ *
+ * Mirrored by the inline bootstrap in index.html and in api/_lib/blog-html.js.
+ */
+function forcedDark(): boolean {
+  try {
+    const probe = document.createElement('div')
+    probe.style.cssText =
+      'color-scheme:light;background-color:Canvas;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px'
+    document.documentElement.appendChild(probe)
+    const rgb = getComputedStyle(probe).backgroundColor.match(/[\d.]+/g)
+    probe.remove()
+    if (!rgb || rgb.length < 3) return false
+    return (0.299 * +rgb[0] + 0.587 * +rgb[1] + 0.114 * +rgb[2]) / 255 < 0.5
+  } catch {
+    return false
+  }
+}
+
 function prefersDark(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches || forcedDark()
 }
 
 /** The manually saved preference, or null when the user follows the OS. */
@@ -66,7 +100,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = () => {
-      if (storedPreference() === null) setThemeState(mql.matches ? 'dark' : 'light')
+      if (storedPreference() === null) setThemeState(resolveTheme())
     }
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)

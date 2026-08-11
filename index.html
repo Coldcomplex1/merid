@@ -11,15 +11,41 @@
     -->
     <meta name="theme-color" content="#faf8f2" />
     <script>
+      /**
+       * Is the browser repainting every page dark - Cốc Cốc's "Duyệt web chế độ
+       * tối", Chrome's Auto Dark Theme? No page can opt out of that (both
+       * `color-scheme: only light` and `forced-color-adjust: none` are ignored),
+       * and it turns our light theme into a muddy inversion of itself. Our own
+       * dark theme, being dark already, is left alone - so a forcing browser is
+       * treated here as one more way of asking for dark.
+       *
+       * It cannot be read off `prefers-color-scheme`, which stays light, nor off
+       * the page's own colours, which are repainted at paint time rather than
+       * rewritten. The system colour `Canvas` does report it: it resolves to
+       * whatever the browser treats as the default page background. The probe
+       * pins itself to `color-scheme: light` so it answers about the browser and
+       * not about a page that merely declares dark.
+       */
       (function () {
+        function forcedDark() {
+          try {
+            var probe = document.createElement('div');
+            probe.style.cssText =
+              'color-scheme:light;background-color:Canvas;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px';
+            document.documentElement.appendChild(probe);
+            var rgb = getComputedStyle(probe).backgroundColor.match(/[\d.]+/g);
+            probe.remove();
+            return !!rgb && (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255 < 0.5;
+          } catch (e) {
+            return false;
+          }
+        }
         try {
           var saved = localStorage.getItem('merid-theme');
-          var theme =
-            saved === 'light' || saved === 'dark'
-              ? saved
-              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light';
+          var wantsDark =
+            (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+            forcedDark();
+          var theme = saved === 'light' || saved === 'dark' ? saved : wantsDark ? 'dark' : 'light';
           var root = document.documentElement;
           root.setAttribute('data-theme', theme);
           root.style.colorScheme = theme;
