@@ -110,6 +110,10 @@
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
         datasetKey: 'sat',
+        // Which palette the learning card wears: 'light' | 'dark'. The reader's
+        // call, from the popup header - not something Merid infers from the page
+        // it landed on. Light is the card as it was designed, so it is default.
+        cardTheme: 'light',
         disabledSites: [],           // canonical hostnames the user paused Merid on
         allowedSites: [],            // default-off hostnames the user turned back on
         // AI context check. ON by default now that it needs no setup from the
@@ -421,15 +425,18 @@
     }
 
     // ---------------------------------------------------------------------
-    // Intensity: three named levels, nothing in between.
+    // Intensity: a 0..100 number the reader sets, three levels it resolves to.
     //
-    // The slider used to be a continuous 0..100 "frequency" that fed a hash
-    // gate, which made the in-between values unpredictable - the same page
-    // could show wildly different words for 48 vs 52. Readers only ever meant
-    // one of three things, so that is all we offer now. `frequency` stays in
-    // storage as the wire format (older installs have a number there, and the
-    // profile module still speaks it) but it only ever holds one of the three
-    // anchors below.
+    // `frequency` is the stored value and the popup slider moves freely across
+    // its whole range, so it holds any number, not just the three anchors
+    // below. Everything downstream still asks for a level: normalizeIntensity()
+    // and levelOf() do that conversion, and POST_WORD_CAPS is the actual
+    // policy. So 51 and 64 buy the same thing - which is why the popup names
+    // the level it lands on while the reader drags, rather than letting the
+    // track imply a precision the policy does not have.
+    //
+    // The anchors are what the options page's three buttons write, and what
+    // the popup shows as the middle of each level's range.
     // ---------------------------------------------------------------------
     const INTENSITY_LEVELS = ['casual', 'focused', 'locked'];
     const INTENSITY_TO_FREQUENCY = {

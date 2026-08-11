@@ -376,20 +376,21 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Dark surroundings.
+   The dark card.
 
-   Set by content.js when the page it landed on is dark - either because the
-   browser is forcing dark on every page (Cốc Cốc's "Duyệt web chế độ tối",
-   Chrome's Auto Dark Theme) or because the page itself declares a dark
-   colour scheme.
+   The reader's choice, from the button in the popup header - Merid does not
+   infer it from the page it landed on. Light is the default and stays the
+   card as designed.
 
-   A forced-dark browser cannot be opted out of: `color-scheme` (light,
-   `only light`, in CSS or in a meta tag) and `forced-color-adjust: none` are
-   all ignored, and the cream card is repainted into a muddy inversion of
-   itself - 99% of its pixels. What such a browser does leave untouched is a
+   The palette earns its keep on two kinds of page. Dark ones, where a cream
+   card is a lamp in the face. And any page at all in a browser forcing dark
+   on the whole web (Cốc Cốc's "Duyệt web chế độ tối", Chrome's Auto Dark
+   Theme), which cannot be opted out of - `color-scheme` (light, `only
+   light`, in CSS or a meta tag) and `forced-color-adjust: none` are all
+   ignored, and the cream card comes back as a muddy inversion of itself,
+   97% of its pixels repainted. What such a browser leaves untouched is a
    surface that is already dark, along with light text and mid-bright fills
-   on top of it. So the card stops fighting the browser and wears its own
-   dark palette, which arrives intact.
+   on top of it, so this card arrives intact where the cream one cannot.
 
    Only the tokens change; every rule above is shared, so the light card and
    the dark one cannot drift apart. Outlines stay mid-navy rather than cream

@@ -1278,57 +1278,10 @@ function revertWord(word) {
 // Learning card (hover tooltip)
 // -------------------------------------------------------------
 
-/** Perceived brightness (0-1) of a computed colour, or null when it is
- *  see-through or in a notation we should not guess at. */
-function colorLuminance(value) {
-    const text = String(value || '');
-    if (!/^rgba?\(/.test(text)) return null;
-    const parts = text.match(/[\d.]+/g);
-    if (!parts || parts.length < 3) return null;
-    // Anything you can mostly see through tells us nothing about what is behind it.
-    if (parts.length > 3 && parseFloat(parts[3]) < 0.5) return null;
-    return (0.299 * +parts[0] + 0.587 * +parts[1] + 0.114 * +parts[2]) / 255;
-}
-
-/**
- * Is the card about to land on a dark background?
- *
- * Two different ways that happens. The page may simply be dark, which its own
- * background colour reports honestly. Or the browser may be forcing dark on
- * every page it loads - Cốc Cốc's "Duyệt web chế độ tối", Chrome's Auto Dark
- * Theme - which is invisible to the page: forced dark repaints colours at the
- * moment of painting, it does not rewrite the values the page declared, so a
- * white page still reports white while the reader sees near-black.
- *
- * The system colour `Canvas` is the way through. It resolves to whatever the
- * browser currently treats as the default page background, so a forcing
- * browser answers with its own near-black. The probe pins itself to
- * `color-scheme: light` so that it reports on the browser rather than on a
- * page that merely declares a dark scheme - that case is caught below, where
- * the answer is the same but the reasoning is not.
- */
-function pageIsDark() {
-    try {
-        const probe = document.createElement('div');
-        probe.style.cssText =
-            'color-scheme:light;background-color:Canvas;position:fixed;top:-9999px;' +
-            'left:-9999px;width:1px;height:1px;pointer-events:none';
-        document.documentElement.appendChild(probe);
-        const forced = colorLuminance(getComputedStyle(probe).backgroundColor);
-        probe.remove();
-        if (forced !== null && forced < 0.5) return true;
-
-        // Not forced, so the page's own paint is the truth. <body> first: the
-        // common case is a white <html> under a themed <body>.
-        for (const el of [document.body, document.documentElement]) {
-            if (!el) continue;
-            const lum = colorLuminance(getComputedStyle(el).backgroundColor);
-            if (lum !== null) return lum < 0.5;
-        }
-    } catch (e) {
-        /* no probe, no opinion - the light card is the safe default */
-    }
-    return false;
+/** The palette the reader picked in the popup. Anything but 'dark' is the
+ *  card as it was designed, which is also what a fresh install gets. */
+function cardScheme() {
+    return settings.cardTheme === 'dark' ? 'dark' : 'light';
 }
 
 function createTooltip() {
@@ -1449,9 +1402,7 @@ function showTooltip(target, item) {
     tooltipElement.dataset.currentExample = item.example || '';
     tooltipElement.dataset.currentType = item.type || '';
     tooltipElement.dataset.currentLevel = item.dataset || '';
-    // Re-read on every open: the reader can flip the browser's dark mode, or the
-    // page its own theme, between two words in the same paragraph.
-    tooltipElement.dataset.vmScheme = pageIsDark() ? 'dark' : 'light';
+    tooltipElement.dataset.vmScheme = cardScheme();
 
     // Opening the card is the cheapest genuine interest signal there is, so it
     // is recorded once per headword per page - mouseover re-fires whenever the
@@ -1542,6 +1493,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
     if (area !== 'sync') return;
     for (const key in changes) settings[key] = changes[key].newValue;
+
+    // The card's palette is the one setting that changes nothing about which
+    // words are on the page. Every other change below starts by reverting and
+    // re-scanning, and re-scanning re-picks words - so flipping the card from
+    // light to dark would quietly rewrite the paragraph the reader is in.
+    if (Object.keys(changes).every(k => k === 'cardTheme')) {
+        if (tooltipElement) tooltipElement.dataset.vmScheme = cardScheme();
+        return;
+    }
 
     revertPage();
 

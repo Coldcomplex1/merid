@@ -1,17 +1,16 @@
-// The learning card on dark pages.
+// The learning card's palette, which is the reader's choice and nothing else.
 //
-// Two ways a page ends up dark under the reader's eyes. It may be dark itself,
-// or the browser may be forcing dark on everything it loads - Cốc Cốc's "Duyệt
-// web chế độ tối", Chrome's Auto Dark Theme. The second one is the interesting
-// case: it cannot be opted out of (`color-scheme: only light` and
-// `forced-color-adjust: none` are both ignored by Chromium), it is invisible to
-// getComputedStyle, and left alone it repaints ~97% of the cream card into a
-// muddy inversion of itself. content.js detects it through the system colour
-// `Canvas` and the card wears its own dark palette instead, which a forcing
-// browser leaves standing.
+// `cardTheme` in chrome.storage.sync picks it, the popup header button writes
+// it, and light is what a fresh install gets. The card deliberately does NOT
+// follow the page: not a dark page, and not a browser forcing dark on the
+// whole web (Cốc Cốc's "Duyệt web chế độ tối", Chrome's Auto Dark Theme). The
+// dark palette is what such a browser leaves standing - a cream card there
+// comes back inverted - but reaching for it is the reader's call, so these
+// checks pin the light default in exactly the places it would be tempting to
+// override.
 //
-// Forced dark is turned on here the way DevTools does it, over CDP, because it
-// is a browser-level mode with no page-level switch to flip.
+// Forced dark is turned on the way DevTools does it, over CDP: it is a
+// browser-level mode with no page-level switch to flip.
 import { chromium } from 'playwright';
 import http from 'node:http';
 import path from 'node:path';
@@ -60,11 +59,24 @@ await sw.evaluate(async () => {
         datasetKey: 'c1', frequency: 100, replacementMode: 'replace',
         extensionEnabled: true, aiCheckEnabled: false
     });
+    // Left unset on purpose: a fresh install has no cardTheme, and the first
+    // checks below are about what that install gets.
+    await chrome.storage.sync.remove('cardTheme');
     await chrome.storage.local.remove(['vm_profile', 'knownWords', 'savedWords']);
     await self.loadVocabulary('c1');
 });
 
-/** Open the card on the first swapped word and report what it is wearing. */
+const setTheme = (v) => sw.evaluate((theme) => chrome.storage.sync.set({ cardTheme: theme }), v);
+
+/** What the card is wearing, read off the declared colours - which is what the
+ *  palette controls. What a forcing browser paints on top is its own business. */
+const readCard = (p) => p.$eval('.vocab-master-tooltip', el => ({
+    scheme: el.dataset.vmScheme,
+    surface: getComputedStyle(el.querySelector('.vm-card')).backgroundColor,
+    title: getComputedStyle(el.querySelector('.vm-title')).color
+}));
+
+/** Open a page, wait for a swap, hover it, and hand back the live page. */
 async function openCard(url, forcedDark) {
     const p = await ctx.newPage();
     if (forcedDark) {
@@ -75,13 +87,12 @@ async function openCard(url, forcedDark) {
     await p.waitForSelector('.vocab-master-highlight', { timeout: 10000 });
     await p.hover('.vocab-master-highlight');
     await p.waitForSelector('.vocab-master-tooltip .vm-card', { state: 'visible', timeout: 5000 });
-    const seen = await p.$eval('.vocab-master-tooltip', el => ({
-        scheme: el.dataset.vmScheme,
-        // The declared colours, which is what the palette swap changes. What
-        // the browser then paints on top is its business, not the page's.
-        surface: getComputedStyle(el.querySelector('.vm-card')).backgroundColor,
-        title: getComputedStyle(el.querySelector('.vm-title')).color
-    }));
+    return p;
+}
+
+async function cardOn(url, forcedDark) {
+    const p = await openCard(url, forcedDark);
+    const seen = await readCard(p);
     await p.close();
     return seen;
 }
@@ -92,23 +103,41 @@ const lum = (c) => {
     return (0.299 * n[0] + 0.587 * n[1] + 0.114 * n[2]) / 255;
 };
 
-const plain = await openCard(base + '/', false);
-check(plain.scheme === 'light', 'an ordinary light page still gets the cream card', plain.surface);
-check(lum(plain.surface) > 0.9, 'the card surface is the cream it always was', plain.surface);
-check(lum(plain.title) < 0.3, 'and the title on it is navy', plain.title);
+const fresh = await cardOn(base + '/', false);
+check(fresh.scheme === 'light', 'a fresh install gets the light card', fresh.surface);
+check(lum(fresh.surface) > 0.9, 'the card surface is the cream it always was', fresh.surface);
+check(lum(fresh.title) < 0.3, 'and the title on it is navy', fresh.title);
 
-const forced = await openCard(base + '/', true);
-check(forced.scheme === 'dark', 'a browser forcing dark flips the card to its dark palette', forced.surface);
-check(lum(forced.surface) < 0.3, 'the card surface is dark, so forced dark leaves it alone', forced.surface);
-check(lum(forced.title) > 0.8, 'and the title on it is cream', forced.title);
+const onDarkPage = await cardOn(base + '/dark', false);
+check(onDarkPage.scheme === 'light', 'a dark page does not change it - the reader has not asked for dark');
 
-const darkPage = await openCard(base + '/dark', false);
-check(darkPage.scheme === 'dark', 'a page that is simply dark gets the dark card too', darkPage.surface);
+const underForcedDark = await cardOn(base + '/', true);
+check(underForcedDark.scheme === 'light', 'nor does a browser forcing dark on every page');
 
-// The detector must not report dark for a light page just because it ran once
-// on a dark one: it is re-read on every open, off the page in front of it.
-const backToLight = await openCard(base + '/', false);
-check(backToLight.scheme === 'light', 'the scheme is re-read per card, not cached from the last page');
+await setTheme('dark');
+const chosenDark = await cardOn(base + '/', false);
+check(chosenDark.scheme === 'dark', 'choosing dark gives the dark card', chosenDark.surface);
+check(lum(chosenDark.surface) < 0.3, 'its surface is dark, so forced dark would leave it alone', chosenDark.surface);
+check(lum(chosenDark.title) > 0.8, 'and the title on it is cream', chosenDark.title);
+
+const stillDark = await cardOn(base + '/', true);
+check(stillDark.scheme === 'dark', 'and it stays that way whatever the page or the browser is doing');
+
+await setTheme('light');
+const backToLight = await cardOn(base + '/', false);
+check(backToLight.scheme === 'light', 'switching back to light takes effect too');
+
+// Changing the palette must not re-scan: every other sync change reverts the
+// page and picks words afresh, which would rewrite the paragraph being read.
+const live = await openCard(base + '/', false);
+const before = await live.$$eval('.vocab-master-highlight', els => els.map(e => e.textContent));
+await setTheme('dark');
+await live.waitForTimeout(600);
+const after = await live.$$eval('.vocab-master-highlight', els => els.map(e => e.textContent));
+check(JSON.stringify(before) === JSON.stringify(after),
+    'flipping the palette leaves the swapped words alone', `${before.length} spans`);
+check((await readCard(live)).scheme === 'dark', 'while the open card follows the new palette at once');
+await live.close();
 
 console.log('\n=== PASS ===');
 ok.forEach(l => console.log('  +', l));
