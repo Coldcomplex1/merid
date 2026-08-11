@@ -23,6 +23,12 @@
   "popupMainSettings": {
     "message": "Cài đặt chính"
   },
+  "popupCardThemeLight": {
+    "message": "Thẻ học từ: nền sáng. Bấm để chuyển sang nền tối."
+  },
+  "popupCardThemeDark": {
+    "message": "Thẻ học từ: nền tối. Bấm để chuyển sang nền sáng."
+  },
   "popupIntensityLabel": {
     "message": "Mật độ thay từ"
   },

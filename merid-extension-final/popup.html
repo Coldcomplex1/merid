@@ -12,6 +12,20 @@
     <div class="container">
         <header>
             <div class="logo"><img src="logo-mark.png" width="34" height="34" alt="">Merid</div>
+            <!-- Which palette the learning card wears on the page. Label and
+                 title are set per state by popup.js (renderCardTheme). -->
+            <button class="card-theme-btn" id="card-theme-btn" type="button" aria-pressed="false">
+                <svg class="icon-sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+                    <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2" />
+                        <path d="M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" />
+                    </g>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                    <path d="M20.3 14.3A8.4 8.4 0 019.7 3.7a8.4 8.4 0 1010.6 10.6z" fill="currentColor" />
+                </svg>
+            </button>
         </header>
 
         <!-- Account: sign-in happens on merid.site (Google or email) and the
@@ -46,16 +60,12 @@
             <div class="setting-item">
                 <label data-i18n="popupIntensityLabel">Highlight intensity</label>
                 <div class="slider-container">
-                    <!-- Three stops, nothing in between: the values between the
-                         named levels never meant anything to a reader, and they
-                         made the same page translate differently at 48 vs 52. -->
-                    <input type="range" min="0" max="2" step="1" value="1" class="slider" id="frequency-slider"
-                        list="intensity-stops" aria-describedby="intensity-hint">
-                    <datalist id="intensity-stops">
-                        <option value="0"></option>
-                        <option value="1"></option>
-                        <option value="2"></option>
-                    </datalist>
+                    <!-- Free to drag anywhere on 0..100. The three named levels
+                         below are what the value resolves to (VMCore
+                         normalizeIntensity), and the label under the track says
+                         which one you have landed on as you drag. -->
+                    <input type="range" min="0" max="100" step="1" value="50" class="slider" id="frequency-slider"
+                        aria-describedby="intensity-hint">
                     <div class="slider-labels">
                         <span data-i18n="popupIntensityCasual">Casual</span>
                         <span class="active" data-i18n="popupIntensityFocused">Focused</span>

@@ -23,6 +23,12 @@
   "popupMainSettings": {
     "message": "Main settings"
   },
+  "popupCardThemeLight": {
+    "message": "Learning card: light. Click for dark."
+  },
+  "popupCardThemeDark": {
+    "message": "Learning card: dark. Click for light."
+  },
   "popupIntensityLabel": {
     "message": "Highlight intensity"
   },

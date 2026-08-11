@@ -39,29 +39,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const extensionToggle = document.getElementById('extension-toggle');
     const datasetBtns = document.querySelectorAll('.dataset-btn');
     const modeSeg = document.getElementById('mode-seg');
+    const cardThemeBtn = document.getElementById('card-theme-btn');
 
     // ---- Load settings ----
     chrome.storage.sync.get(
-        ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey'],
+        ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],
         (raw) => {
             const s = C.withDefaults(raw);
-            frequencySlider.value = String(intensityIndex(s.frequency));
+            frequencySlider.value = String(sliderValue(s.frequency));
             setModeCard('vieEng', !!s.vieEngMode);
             setModeCard('engEng', !!s.engEngMode);
             setSegActive(modeSeg, s.replacementMode);
             document.querySelector(`.dataset-btn[data-key="${s.datasetKey}"]`)?.classList.add('active');
             updateExtensionToggleButton(s.extensionEnabled !== false);
-            updateSliderLabels(intensityIndex(s.frequency), s.frequency);
+            updateSliderLabels(s.frequency);
+            renderCardTheme(s.cardTheme);
         }
     );
 
     // ---- Wire settings ----
-    // The slider is a 0/1/2 index over the three levels; storage still holds
-    // the 0..100 frequency those levels map to, so nothing downstream changes.
+    // The slider hands storage the 0..100 frequency it is showing, unrounded:
+    // the levels are what the number resolves to downstream, not a grid the
+    // thumb has to sit on, so it stays where the reader let go of it.
     frequencySlider.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.value, 10) || 0;
-        updateSliderLabels(idx);
-        chrome.storage.sync.set({ frequency: C.intensityToFrequency(C.INTENSITY_LEVELS[idx]) });
+        const freq = Number(e.target.value);
+        updateSliderLabels(freq);
+        chrome.storage.sync.set({ frequency: freq });
+    });
+
+    cardThemeBtn.addEventListener('click', () => {
+        const next = cardThemeBtn.getAttribute('aria-pressed') === 'true' ? 'light' : 'dark';
+        renderCardTheme(next);
+        chrome.storage.sync.set({ cardTheme: next });
     });
 
     modeSeg.addEventListener('click', (e) => {
@@ -341,33 +350,49 @@ document.addEventListener('DOMContentLoaded', () => {
         seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.val === val));
     }
 
-    /** Slider position (0/1/2) for a stored 0..100 frequency. */
-    function intensityIndex(frequency) {
-        const i = C.INTENSITY_LEVELS.indexOf(C.normalizeIntensity(frequency));
-        return i < 0 ? 1 : i;
+    /** Thumb position for a stored frequency, guarding the 0..100 track against
+     *  a setting written by something else (or by an older version). */
+    function sliderValue(frequency) {
+        const f = Number(frequency);
+        if (!isFinite(f)) return 50;
+        return Math.max(0, Math.min(100, f));
     }
 
     /**
-     * @param {number} index      slider position 0/1/2
-     * @param {number} [stored]   the stored frequency, when reading it back.
-     *   Only 0 is interesting: older builds let the slider go to zero, meaning
-     *   "replace nothing", and the three-stop slider has no position for that.
-     *   It parks at Casual, so without this the popup would claim it is
-     *   replacing a word per post while the page stays untouched. Moving the
-     *   slider writes a real level and clears the state.
+     * Say what the number under the thumb buys.
+     *
+     * Zero is its own answer: it means "replace nothing", which the far left of
+     * the track can now reach again, and which postWordCap honours. Everything
+     * above it resolves to one of the three levels, and naming that level as
+     * the reader drags is what keeps a free-moving slider honest about a policy
+     * that still moves in three steps.
+     *
+     * @param {number} frequency 0..100
      */
-    function updateSliderLabels(index, stored) {
-        const labels = document.querySelectorAll('.slider-labels span');
-        labels.forEach((span, i) => span.classList.toggle('active', i === index));
+    function updateSliderLabels(frequency) {
+        const off = Number(frequency) === 0;
+        const level = C.normalizeIntensity(frequency);
+        // At zero no level is lit: Merid is replacing nothing, and leaving
+        // "Casual" highlighted would name a level it is not doing.
+        const index = off ? -1 : C.INTENSITY_LEVELS.indexOf(level);
+        document.querySelectorAll('.slider-labels span')
+            .forEach((span, i) => span.classList.toggle('active', i === index));
         const hint = document.getElementById('intensity-hint');
         if (!hint) return;
-        if (Number(stored) === 0) {
-            hint.textContent = t('popupIntensityOff',
-                'Currently replacing nothing. Move the slider to switch it back on.');
-            return;
-        }
-        const level = C.INTENSITY_LEVELS[index] || 'focused';
-        hint.textContent = t('popupIntensityHint_' + level, INTENSITY_HINTS[level]);
+        hint.textContent = off
+            ? t('popupIntensityOff', 'Currently replacing nothing. Move the slider to switch it back on.')
+            : t('popupIntensityHint_' + level, INTENSITY_HINTS[level]);
+    }
+
+    /** Paint the card-theme button for a palette, without writing it. */
+    function renderCardTheme(theme) {
+        const dark = theme === 'dark';
+        cardThemeBtn.setAttribute('aria-pressed', String(dark));
+        const label = dark
+            ? t('popupCardThemeDark', 'Learning card: dark. Click for light.')
+            : t('popupCardThemeLight', 'Learning card: light. Click for dark.');
+        cardThemeBtn.setAttribute('aria-label', label);
+        cardThemeBtn.title = label;
     }
 
     // Today's AI allowance, if and only if it has run out.

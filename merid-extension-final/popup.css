@@ -57,7 +57,8 @@ body {
 
 header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
     gap: 15px;
     margin-bottom: 25px;
 }
@@ -81,6 +82,46 @@ header {
 
 .logo span {
     color: var(--accent-yellow);
+}
+
+/* Light/dark for the learning card. Quiet by default - it sets the colour of
+   something that is not on screen while you are looking at the popup - and
+   gold once the card is on its dark palette, matching every other "this is
+   on" state here. Exactly one of the two icons is shown at a time. */
+.card-theme-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid #23365e;
+    border-radius: 50%;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.card-theme-btn:hover {
+    color: var(--accent-yellow);
+    border-color: var(--accent-yellow);
+}
+
+.card-theme-btn[aria-pressed="true"] {
+    color: var(--accent-yellow);
+    border-color: var(--accent-yellow);
+    background: rgba(244, 190, 55, 0.12);
+}
+
+.card-theme-btn .icon-moon,
+.card-theme-btn[aria-pressed="true"] .icon-sun {
+    display: none;
+}
+
+.card-theme-btn[aria-pressed="true"] .icon-moon {
+    display: block;
 }
 
 /* Segmented control */
@@ -333,18 +374,14 @@ header {
     padding: 0 5px;
 }
 
+/* A plain track: the slider moves freely, so it must not draw stops that
+   promise otherwise. */
 .slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
     height: 4px;
-    /* Three visible stops so the track itself says the slider snaps. */
-    background:
-        radial-gradient(circle 3px at 2px 50%, var(--accent-yellow) 99%, transparent 100%),
-        radial-gradient(circle 3px at 50% 50%, var(--accent-yellow) 99%, transparent 100%),
-        radial-gradient(circle 3px at calc(100% - 2px) 50%, var(--accent-yellow) 99%, transparent 100%),
-        #1d2d50;
-    background-repeat: no-repeat;
+    background: #1d2d50;
     outline: none;
     border-radius: 2px;
 }

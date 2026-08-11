@@ -950,7 +950,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 // a reader who switched the check off still got the spares and
                 // nothing ever came back to remove them.
                 ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled',
-                    'datasetKey', 'disabledSites', 'allowedSites', 'aiCheckEnabled'],
+                    'datasetKey', 'disabledSites', 'allowedSites', 'aiCheckEnabled', 'cardTheme'],
                 settings => sendResponse(C.withDefaults(settings)));
             return true;
         }
