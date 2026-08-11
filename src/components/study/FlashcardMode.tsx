@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useLang } from '../../i18n/LanguageContext'
 import type { DeckWord } from '../../deck/DeckSource'
+import { speak } from '../../lib/speech'
+import SpeakerIcon from '../ui/SpeakerIcon'
 
 /** Classic flip card: front = the word, back = meaning + example.
  *
@@ -42,7 +44,19 @@ export default function FlashcardMode({ words }: { words: DeckWord[] }) {
         />
       </div>
 
-      <div className="[perspective:1200px]">
+      <div className="relative [perspective:1200px]">
+        {/* A sibling of the flip button, not a child: the card front lives
+            inside a <button>, and a nested button is invalid markup - it would
+            also flip the card on every play. Anchored to the wrapper so it
+            holds still while the card turns. */}
+        <button
+          type="button"
+          onClick={() => speak(card.word)}
+          aria-label={t.deck.play(card.word)}
+          className="absolute top-4 right-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line-strong bg-surface text-muted transition-all hover:border-accent hover:text-accent active:scale-95"
+        >
+          <SpeakerIcon size={16} />
+        </button>
         <button
           type="button"
           onClick={() => setFlipped((f) => !f)}

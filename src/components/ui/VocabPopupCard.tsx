@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { VocabEntry } from '../../data/vocab'
+import { speak } from '../../lib/speech'
+import SpeakerIcon from './SpeakerIcon'
 
 interface VocabPopupCardProps {
   entry: VocabEntry
@@ -27,33 +29,6 @@ const NAVY = '#19355d'
 const CARD_ZOOM = 0.95
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-// Same glyph the extension injects for its pronunciation button.
-function SpeakerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M4 9.5v5h3.2L12 18V6L7.2 9.5H4z" />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        d="M15.2 9.4a3.6 3.6 0 0 1 0 5.2"
-      />
-    </svg>
-  )
-}
-
-function speak(word: string) {
-  try {
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(word)
-    u.lang = 'en-US'
-    window.speechSynthesis.speak(u)
-  } catch {
-    /* speech not available */
-  }
-}
 
 /** The floating learning card, replicated 1:1 from the extension's tooltip. */
 export default function VocabPopupCard({
