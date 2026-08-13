@@ -35,25 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
     applyI18n();
 
     const frequencySlider = document.getElementById('frequency-slider');
-    const modeCards = document.getElementById('mode-cards');
     const extensionToggle = document.getElementById('extension-toggle');
     const datasetBtns = document.querySelectorAll('.dataset-btn');
     const modeSeg = document.getElementById('mode-seg');
     const cardThemeBtn = document.getElementById('card-theme-btn');
 
-    // Scan directions this build offers. The markup ships the withdrawn one
-    // hidden, so this only has to put it back when the flag says so.
-    modeCards.querySelectorAll('.mode-card[data-mode="engEng"]')
-        .forEach(card => { card.hidden = !C.ENG_ENG_AVAILABLE; });
-
     // ---- Load settings ----
     chrome.storage.sync.get(
-        ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],
+        ['frequency', 'replacementMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],
         (raw) => {
             const s = C.withDefaults(raw);
             frequencySlider.value = String(sliderValue(s.frequency));
-            setModeCard('vieEng', !!s.vieEngMode);
-            setModeCard('engEng', !!s.engEngMode);
             setSegActive(modeSeg, s.replacementMode);
             document.querySelector(`.dataset-btn[data-key="${s.datasetKey}"]`)?.classList.add('active');
             updateExtensionToggleButton(s.extensionEnabled !== false);
@@ -168,17 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.create({ url: window.VMFirebaseConfig.webCreateDatasetUrl });
     });
 
-    // Scan-direction cards toggle independently - both can be on at once.
-    // Only the card that was clicked is written: the popup no longer offers
-    // every direction, and writing the ones it does not show would switch off
-    // a direction the reader turned on from the Settings page.
-    modeCards.addEventListener('click', (e) => {
-        const card = e.target.closest('.mode-card'); if (!card) return;
-        const next = !card.classList.contains('active');
-        setModeCard(card.dataset.mode, next);
-        chrome.storage.sync.set({ [card.dataset.mode + 'Mode']: next });
-    });
-
     extensionToggle.addEventListener('click', () => {
         chrome.storage.sync.get('extensionEnabled', (result) => {
             const newState = result.extensionEnabled === false; // toggle
@@ -203,19 +184,22 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { /* no URL access or non-web page */ }
         if (!tab || !host) return;
         pageActions.hidden = false;
-        siteToggle.title = host;
 
+        // Every state of this button says what it does to THIS site, and its
+        // tooltip says what that means - the label alone has room for the verb
+        // and the site, not for why you would want it.
+        //
         // Merid never runs on its own site or on private ones - email, chats,
         // banking, sign-in, exams - and that is not the user's to change.
         // Offering a toggle that does nothing is worse than no toggle.
         if (C.isHostBlocked(host)) {
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
-            siteToggle.textContent = t('popupSiteAlwaysOff', 'Always off here');
+            siteToggle.textContent = t('popupSiteAlwaysOff', 'Never scans this site');
             siteToggle.title = C.blockedCategory(host) === 'own'
                 ? t('popupSiteAlwaysOffHint', 'Merid never changes words on its own site.')
                 : t('popupSiteAlwaysOffPrivate',
-                    'Merid never runs on private pages: email, chats, banking, sign-in, health and official services.');
+                    'Merid never runs on private pages: email, chats, banking, sign-in, health and official services. This one cannot be turned on.');
         } else {
             let disabledSites = [];
             let allowedSites = [];
@@ -226,14 +210,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const state = C.siteToggleState(host, disabledSites, allowedSites);
                 const off = state !== 'on';
                 if (state === 'default-off') {
-                    siteToggle.textContent = t('popupSiteTurnOn', 'Turn on for this site');
+                    siteToggle.textContent = t('popupSiteTurnOn', 'Start scanning this site');
                     siteToggle.title = t('popupSiteDefaultOffHint',
-                        'Merid starts off here - dictionaries, editors and tests read better unchanged.');
+                        `Merid starts off on ${host} - dictionaries, editors and tests read better unchanged. Click to let it replace words here anyway.`,
+                        [host]);
+                } else if (off) {
+                    siteToggle.textContent = t('popupSiteOn', 'Resume scanning this site');
+                    siteToggle.title = t('popupSiteOnHint',
+                        `Merid is paused on ${host}. Click to let it replace words here again.`, [host]);
                 } else {
-                    siteToggle.textContent = off
-                        ? t('popupSiteOn', 'Turn back on for this site')
-                        : t('popupSiteOff', 'Turn off on this site');
-                    siteToggle.title = host;
+                    siteToggle.textContent = t('popupSiteOff', 'Stop scanning this site');
+                    siteToggle.title = t('popupSiteOffHint',
+                        `Merid replaces words on ${host}. Click to leave this site alone - every other site keeps working.`,
+                        [host]);
                 }
                 siteToggle.classList.toggle('off', off);
                 siteToggle.classList.toggle('muted', state === 'default-off');
@@ -345,13 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('options-btn').addEventListener('click', openOptions);
 
     // ---- helpers ----
-    function setModeCard(mode, on) {
-        const card = modeCards.querySelector(`.mode-card[data-mode="${mode}"]`);
-        if (!card) return;
-        card.classList.toggle('active', !!on);
-        card.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
     function setSegActive(seg, val) {
         seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.val === val));
     }

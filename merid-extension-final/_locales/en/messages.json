@@ -65,15 +65,6 @@
   "popupModeBeside": {
     "message": "Beside"
   },
-  "popupLanguagesLabel": {
-    "message": "Languages to scan"
-  },
-  "popupVieEngSub": {
-    "message": "Replace Vietnamese words"
-  },
-  "popupEngEngSub": {
-    "message": "Swap for harder synonyms"
-  },
   "popupExtensionOn": {
     "message": "Extension is ON"
   },
@@ -81,25 +72,49 @@
     "message": "Extension is OFF"
   },
   "popupSiteOff": {
-    "message": "Turn off on this site"
+    "message": "Stop scanning this site"
+  },
+  "popupSiteOffHint": {
+    "message": "Merid replaces words on $HOST$. Click to leave this site alone - every other site keeps working.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupSiteOn": {
-    "message": "Turn back on for this site"
+    "message": "Resume scanning this site"
+  },
+  "popupSiteOnHint": {
+    "message": "Merid is paused on $HOST$. Click to let it replace words here again.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupSiteAlwaysOff": {
-    "message": "Always off here"
+    "message": "Never scans this site"
   },
   "popupSiteAlwaysOffHint": {
     "message": "Merid never changes words on its own site."
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid never runs on private pages: email, chats, banking, sign-in, health and official services."
+    "message": "Merid never runs on private pages: email, chats, banking, sign-in, health and official services. This one cannot be turned on."
   },
   "popupSiteTurnOn": {
-    "message": "Turn on for this site"
+    "message": "Start scanning this site"
   },
   "popupSiteDefaultOffHint": {
-    "message": "Merid starts off here — dictionaries, editors and tests read better unchanged."
+    "message": "Merid starts off on $HOST$ - dictionaries, editors and tests read better unchanged. Click to let it replace words here anyway.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupViewDeck": {
     "message": "View my deck ↗"

@@ -88,7 +88,7 @@ FEATURES
 • Two scan directions: Vietnamese → English and English → English (enable both to scan at once).
 • Hover learning card: definition, pronunciation (browser text-to-speech), synonyms/antonyms, example.
 • "Save to Deck" to keep words for review; "I know this" to stop replacing words you already know.
-• Instant on/off - globally, or per site ("Turn off on this site").
+• Instant on/off - globally, or per site ("Stop scanning this site").
 
 OPTIONAL (OFF by default - never required)
 • Deck sync: sign in (on merid.site or in Settings) to back up your saved words to your own account and study them at merid.site/my-deck.
@@ -118,7 +118,7 @@ Merid replaces selected Vietnamese (or English) words on web pages with English 
 | Permission | Justification to paste |
 |---|---|
 | `storage` | Saves the user's settings (dataset, display mode, intensity, scan direction, on/off, per-site pause list) and their word deck (saved/known words) on the device. If the user signs in to the optional deck sync, the session token is also kept in extension storage. |
-| `activeTab` | Powers the popup's current-tab actions: "Turn off on this site" (reads the active tab's hostname to add/remove it from the user's pause list) and reloading that tab after the user changes the replacement intensity, so the new setting starts from a clean page. Used only when the user opens the popup, only for the active tab. |
+| `activeTab` | Powers the popup's current-tab actions: "Stop scanning this site" (reads the active tab's hostname to add/remove it from the user's pause list) and reloading that tab after the user changes the replacement intensity, so the new setting starts from a clean page. Used only when the user opens the popup, only for the active tab. |
 | Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. Page content leaves the browser only if the user enables the optional AI context check, which sends short sentence snippets around replaced words to Google Gemini using the user's own API key. |
 
 There are **no** host permissions requested in `host_permissions`, no optional
@@ -172,7 +172,7 @@ Exactly two OPTIONAL, off-by-default features use the network, both user-initiat
 1) Deck sync - if the user signs in (email link/password in the options page, or on merid.site), their saved-word deck is backed up to their own Firebase account (identitytoolkit/securetoken/firestore.googleapis.com). Signing out stops it.
 2) AI context check - if the user pastes their OWN Google Gemini API key in the options page and turns the feature on, short sentence snippets around replaced words are sent to generativelanguage.googleapis.com to verify the replacement fits the context. No key ships with the extension.
 
-These four Google endpoints are the only hosts in the extension CSP. There is no Merid backend, no analytics, and no remote code. The content script runs on all sites because the product's single purpose is passive vocabulary replacement wherever the user browses; "Turn off on this site" in the popup lets users exclude any site.
+These four Google endpoints are the only hosts in the extension CSP. There is no Merid backend, no analytics, and no remote code. The content script runs on all sites because the product's single purpose is passive vocabulary replacement wherever the user browses; "Stop scanning this site" in the popup lets users exclude any site.
 
 To test the core flow: load the extension, open the popup (choose e.g. the SAT dataset, mode "Replace"), then visit a Vietnamese news site such as vnexpress.net or tuoitre.vn. Highlighted English words appear in articles; hover one for the learning card.
 ```
