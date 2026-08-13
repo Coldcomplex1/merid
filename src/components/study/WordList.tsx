@@ -38,7 +38,11 @@ export default function WordList({
   const { t } = useLang()
 
   if (!words.length) {
-    return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.empty}</p>
+    return (
+      <p className="rounded-xl border border-line bg-surface p-6 text-muted">
+        {t.deck.empty(MIN_PUZZLE_WORDS)}
+      </p>
+    )
   }
 
   // Only words still being learned can go into a puzzle - a word marked known
