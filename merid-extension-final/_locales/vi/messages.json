@@ -75,7 +75,7 @@
     "message": "Ngừng quét trang này"
   },
   "popupSiteOffHint": {
-    "message": "Merid đang thay từ trên $HOST$. Bấm để bỏ qua trang này — các trang khác vẫn chạy bình thường.",
+    "message": "Ngừng thay từ trên $HOST$. Các trang khác vẫn chạy bình thường.",
     "placeholders": {
       "HOST": {
         "content": "$1",
@@ -87,7 +87,7 @@
     "message": "Quét lại trang này"
   },
   "popupSiteOnHint": {
-    "message": "Merid đang tạm dừng trên $HOST$. Bấm để cho phép thay từ ở đây trở lại.",
+    "message": "Merid đang tắt trên $HOST$. Bấm để bật lại.",
     "placeholders": {
       "HOST": {
         "content": "$1",
@@ -99,16 +99,16 @@
     "message": "Không bao giờ quét trang này"
   },
   "popupSiteAlwaysOffHint": {
-    "message": "Merid không bao giờ đổi từ trên chính trang của mình."
+    "message": "Merid không chạy trên trang của chính nó."
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid không bao giờ chạy trên trang riêng tư: email, tin nhắn, ngân hàng, đăng nhập, sức khỏe và dịch vụ công. Trang này không thể bật lên."
+    "message": "Merid không chạy trên trang riêng tư như email, ngân hàng hay đăng nhập. Không bật được ở đây."
   },
   "popupSiteTurnOn": {
     "message": "Bắt đầu quét trang này"
   },
   "popupSiteDefaultOffHint": {
-    "message": "Merid mặc định tắt trên $HOST$ — từ điển, trình soạn thảo và bài kiểm tra nên giữ nguyên. Bấm nếu bạn vẫn muốn thay từ ở đây.",
+    "message": "Merid tắt sẵn trên $HOST$. Bấm nếu bạn vẫn muốn bật.",
     "placeholders": {
       "HOST": {
         "content": "$1",

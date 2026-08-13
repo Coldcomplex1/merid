@@ -188,21 +188,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tab || !host) return;
         pageActions.hidden = false;
 
-        // Every state of this button says what it does to THIS site, and its
-        // tooltip says what that means - the label alone has room for the verb
-        // and the site, not for why you would want it.
+        // The label says what the button does to THIS site; the tooltip names
+        // the site and answers the question the label leaves open, in one short
+        // sentence each. A tooltip nobody finishes reading explains nothing.
         //
-        // Merid never runs on its own site or on private ones - email, chats,
-        // banking, sign-in, exams - and that is not the user's to change.
+        // Merid never runs on its own site or on private ones (email, chats,
+        // banking, sign-in, exams) and that is not the user's to change.
         // Offering a toggle that does nothing is worse than no toggle.
         if (C.isHostBlocked(host)) {
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
             siteToggle.textContent = t('popupSiteAlwaysOff', 'Never scans this site');
             siteToggle.title = C.blockedCategory(host) === 'own'
-                ? t('popupSiteAlwaysOffHint', 'Merid never changes words on its own site.')
+                ? t('popupSiteAlwaysOffHint', 'Merid never runs on its own site.')
                 : t('popupSiteAlwaysOffPrivate',
-                    'Merid never runs on private pages: email, chats, banking, sign-in, health and official services. This one cannot be turned on.');
+                    'Merid never runs on private pages like email, banking and sign-in. It cannot be turned on here.');
         } else {
             let disabledSites = [];
             let allowedSites = [];
@@ -215,17 +215,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state === 'default-off') {
                     siteToggle.textContent = t('popupSiteTurnOn', 'Start scanning this site');
                     siteToggle.title = t('popupSiteDefaultOffHint',
-                        `Merid starts off on ${host} - dictionaries, editors and tests read better unchanged. Click to let it replace words here anyway.`,
-                        [host]);
+                        `Merid starts off on ${host}. Click if you want it on here.`, [host]);
                 } else if (off) {
                     siteToggle.textContent = t('popupSiteOn', 'Resume scanning this site');
                     siteToggle.title = t('popupSiteOnHint',
-                        `Merid is paused on ${host}. Click to let it replace words here again.`, [host]);
+                        `Merid is off on ${host}. Click to turn it back on.`, [host]);
                 } else {
                     siteToggle.textContent = t('popupSiteOff', 'Stop scanning this site');
                     siteToggle.title = t('popupSiteOffHint',
-                        `Merid replaces words on ${host}. Click to leave this site alone - every other site keeps working.`,
-                        [host]);
+                        `Stops replacing words on ${host}. Other sites keep working.`, [host]);
                 }
                 siteToggle.classList.toggle('off', off);
                 siteToggle.classList.toggle('muted', state === 'default-off');
