@@ -97,7 +97,7 @@ OPTIONAL (OFF by default - never required)
 PRIVACY
 • Scanning and replacement happen in your browser; Merid runs no servers of its own.
 • With no sign-in and no API key, the extension sends nothing anywhere.
-• Page content only ever goes to Google Gemini when YOU enable the AI context check (and only short sentence snippets around replaced words).
+• Page content only ever goes to Google Gemini when YOU enable the AI context check (and only short sentence snippets around the candidate words).
 • Full policy: see the Privacy policy link on this listing.
 
 Turn it on, pick a dataset, then open any Vietnamese site (e.g. vnexpress.net, tuoitre.vn) and start learning.
@@ -108,7 +108,7 @@ Turn it on, pick a dataset, then open any Vietnamese site (e.g. vnexpress.net, t
 ## 4. Single purpose (required field)
 
 ```
-Merid replaces selected Vietnamese (or English) words on web pages with English vocabulary from the user's chosen dataset, so users learn English vocabulary while browsing. Matching and replacement run locally in the browser. Two optional, user-enabled features serve the same purpose: backing up the user's saved-word deck to their own account, and verifying replaced words with Google Gemini using the user's own API key.
+Merid replaces selected Vietnamese (or English) words on web pages with English vocabulary from the user's chosen dataset, so users learn English vocabulary while browsing. Matching and replacement run locally in the browser. Two optional, user-enabled features serve the same purpose: backing up the user's saved-word deck to their own account, and verifying candidate words with Google Gemini using the user's own API key.
 ```
 
 ---
@@ -119,7 +119,7 @@ Merid replaces selected Vietnamese (or English) words on web pages with English 
 |---|---|
 | `storage` | Saves the user's settings (dataset, display mode, intensity, scan direction, on/off, per-site pause list) and their word deck (saved/known words) on the device. If the user signs in to the optional deck sync, the session token is also kept in extension storage. |
 | `activeTab` | Powers the popup's current-tab actions: "Stop scanning this site" (reads the active tab's hostname to add/remove it from the user's pause list) and reloading that tab after the user changes the replacement intensity, so the new setting starts from a clean page. Used only when the user opens the popup, only for the active tab. |
-| Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. Page content leaves the browser only if the user enables the optional AI context check, which sends short sentence snippets around replaced words to Google Gemini using the user's own API key. |
+| Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. Page content leaves the browser only if the user enables the optional AI context check, which sends short sentence snippets around the candidate words to Google Gemini using the user's own API key. |
 
 There are **no** host permissions requested in `host_permissions`, no optional
 permissions, and no remote code (all scripts are bundled; MV3 CSP `script-src 'self'`).
@@ -145,7 +145,7 @@ Answer the dashboard's data-use questions as follows (accurate for v1.6.2):
     user's private Firestore document so the feature follows them across
     devices).
   - **Website content.** Only when the user enables the AI context check: short
-    text snippets (the sentence around each replaced word) are sent to Google's
+    text snippets (the sentence around each candidate word) are sent to Google's
     Gemini API with the user's own key to verify the replacement fits. Snippets
     are not stored by the extension.
   - **User activity / browsing history / location / financial or health info:**
@@ -170,7 +170,7 @@ Merid's matching and replacement are fully local: page text is compared against 
 
 Exactly two OPTIONAL, off-by-default features use the network, both user-initiated:
 1) Deck sync - if the user signs in (email link/password in the options page, or on merid.site), their saved-word deck is backed up to their own Firebase account (identitytoolkit/securetoken/firestore.googleapis.com). Signing out stops it.
-2) AI context check - if the user pastes their OWN Google Gemini API key in the options page and turns the feature on, short sentence snippets around replaced words are sent to generativelanguage.googleapis.com to verify the replacement fits the context. No key ships with the extension.
+2) AI context check - if the user pastes their OWN Google Gemini API key in the options page and turns the feature on, short sentence snippets around the candidate words are sent to generativelanguage.googleapis.com to verify each one fits the context. No key ships with the extension.
 
 These four Google endpoints are the only hosts in the extension CSP. There is no Merid backend, no analytics, and no remote code. The content script runs on all sites because the product's single purpose is passive vocabulary replacement wherever the user browses; "Stop scanning this site" in the popup lets users exclude any site.
 
