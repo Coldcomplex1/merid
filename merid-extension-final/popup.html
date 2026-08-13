@@ -60,11 +60,13 @@
             <div class="setting-item">
                 <label data-i18n="popupIntensityLabel">Highlight intensity</label>
                 <div class="slider-container">
-                    <!-- Free to drag anywhere on 0..100. The three named levels
-                         below are what the value resolves to (VMCore
-                         normalizeIntensity), and the label under the track says
-                         which one you have landed on as you drag. -->
-                    <input type="range" min="0" max="100" step="1" value="50" class="slider" id="frequency-slider"
+                    <!-- Three stops, one per level: 0 = casual, 1 = focused,
+                         2 = locked-in. The stored setting is still a 0..100
+                         frequency (VMCore.intensityToFrequency) - the slider
+                         just stops promising a precision that never existed,
+                         since everything downstream rounds to these three
+                         levels anyway. Labels line up with the stops. -->
+                    <input type="range" min="0" max="2" step="1" value="1" class="slider" id="frequency-slider"
                         aria-describedby="intensity-hint">
                     <div class="slider-labels">
                         <span data-i18n="popupIntensityCasual">Casual</span>

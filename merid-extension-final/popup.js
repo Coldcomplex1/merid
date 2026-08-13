@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // the levels are what the number resolves to downstream, not a grid the
     // thumb has to sit on, so it stays where the reader let go of it.
     frequencySlider.addEventListener('input', (e) => {
-        const freq = Number(e.target.value);
+        const freq = C.intensityToFrequency(levelAt(e.target.value));
         updateSliderLabels(freq);
         chrome.storage.sync.set({ frequency: freq });
     });
@@ -356,22 +356,28 @@ document.addEventListener('DOMContentLoaded', () => {
         seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.val === val));
     }
 
-    /** Thumb position for a stored frequency, guarding the 0..100 track against
-     *  a setting written by something else (or by an older version). */
+    /** The level a stop belongs to, guarding against a value from anywhere else. */
+    function levelAt(stop) {
+        return C.INTENSITY_LEVELS[Number(stop)] || 'focused';
+    }
+
+    /** Which stop a stored frequency sits on. Anything in between - a setting
+     *  written by an older version, or by hand - snaps to the level it already
+     *  resolves to everywhere else. */
     function sliderValue(frequency) {
-        const f = Number(frequency);
-        if (!isFinite(f)) return 50;
-        return Math.max(0, Math.min(100, f));
+        const index = C.INTENSITY_LEVELS.indexOf(C.normalizeIntensity(frequency));
+        return index < 0 ? 1 : index;
     }
 
     /**
-     * Say what the number under the thumb buys.
+     * Say what the stop under the thumb buys.
      *
-     * Zero is its own answer: it means "replace nothing", which the far left of
-     * the track can now reach again, and which postWordCap honours. Everything
-     * above it resolves to one of the three levels, and naming that level as
-     * the reader drags is what keeps a free-moving slider honest about a policy
-     * that still moves in three steps.
+     * Zero is its own answer: it means "replace nothing". The slider cannot
+     * reach it - there are three stops and none of them is off - but installs
+     * from before the three-level change have it stored, and postWordCap still
+     * honours it, so it has to be describable. It reads as the far-left stop
+     * with no level lit until the reader moves the thumb, which is the first
+     * moment a real level is chosen.
      *
      * @param {number} frequency 0..100
      */
@@ -381,8 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // At zero no level is lit: Merid is replacing nothing, and leaving
         // "Casual" highlighted would name a level it is not doing.
         const index = off ? -1 : C.INTENSITY_LEVELS.indexOf(level);
-        document.querySelectorAll('.slider-labels span')
-            .forEach((span, i) => span.classList.toggle('active', i === index));
+        const labels = document.querySelectorAll('.slider-labels span');
+        labels.forEach((span, i) => span.classList.toggle('active', i === index));
+        // The thumb reports a stop number; a screen reader needs the name.
+        frequencySlider.setAttribute('aria-valuetext',
+            (labels[index < 0 ? 0 : index] || {}).textContent || level);
         const hint = document.getElementById('intensity-hint');
         if (!hint) return;
         hint.textContent = off
