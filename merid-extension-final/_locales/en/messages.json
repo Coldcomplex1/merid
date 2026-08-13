@@ -134,9 +134,6 @@
       }
     }
   },
-  "popupNotSignedIn": {
-    "message": "⚠ Not signed in - saved words stay on this device only."
-  },
   "popupYourAccount": {
     "message": "your account"
   },
