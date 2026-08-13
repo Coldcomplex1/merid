@@ -41,7 +41,8 @@ export interface Strings {
     emptyTitle: string
     tabs: { words: string; puzzle: string; flashcards: string }
     loading: string
-    empty: string
+    /** Shown wherever there is nothing to study; `min` is MIN_PUZZLE_WORDS. */
+    empty: (min: number) => string
     remove: string
     confirmRemove: string
     markKnown: string
@@ -407,10 +408,10 @@ const vi: Strings = {
     greeting: 'Chào mừng bạn trở lại!',
     greetingSub: 'Ôn lại những từ bạn đã lưu trong lúc lướt web nhé.',
     statTotal: 'Tổng số từ',
-    emptyTitle: 'Deck của bạn còn trống',
+    emptyTitle: 'Tủ từ vựng của bạn còn trống',
     tabs: { words: 'Từ vựng', puzzle: 'Puzzle', flashcards: 'Flashcard' },
     loading: 'Đang tải deck…',
-    empty: 'Chưa có từ nào. Cài extension Merid và lưu từ trong lúc đọc web nhé.',
+    empty: (min: number) => `Hãy lưu ít nhất ${min} từ vựng để dùng được đầy đủ các tính năng.`,
     remove: 'Xoá',
     confirmRemove: 'Xoá từ này khỏi deck?',
     markKnown: 'Đã thuộc',
@@ -1092,10 +1093,10 @@ const en: Strings = {
     greeting: 'Welcome back!',
     greetingSub: 'Review the words you saved while browsing.',
     statTotal: 'Total words',
-    emptyTitle: 'Your deck is empty',
+    emptyTitle: 'Your vocabulary vault is empty',
     tabs: { words: 'Words', puzzle: 'Puzzle', flashcards: 'Flashcards' },
     loading: 'Loading your deck…',
-    empty: 'No words yet. Install the Merid extension and save words while you browse.',
+    empty: (min: number) => `Save at least ${min} words to unlock every feature.`,
     remove: 'Remove',
     confirmRemove: 'Remove this word from your deck?',
     markKnown: 'I know this',

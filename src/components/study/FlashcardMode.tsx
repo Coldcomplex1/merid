@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLang } from '../../i18n/LanguageContext'
 import type { DeckWord } from '../../deck/DeckSource'
+import { MIN_PUZZLE_WORDS } from './PuzzleMode'
 import { speak } from '../../lib/speech'
 import SpeakerIcon from '../ui/SpeakerIcon'
 
@@ -21,7 +22,11 @@ export default function FlashcardMode({ words }: { words: DeckWord[] }) {
   const [flipped, setFlipped] = useState(false)
 
   if (!words.length) {
-    return <p className="rounded-xl border border-line bg-surface p-6 text-muted">{t.deck.empty}</p>
+    return (
+      <p className="rounded-xl border border-line bg-surface p-6 text-muted">
+        {t.deck.empty(MIN_PUZZLE_WORDS)}
+      </p>
+    )
   }
 
   const safeIndex = Math.min(index, words.length - 1) // deck may shrink under us
