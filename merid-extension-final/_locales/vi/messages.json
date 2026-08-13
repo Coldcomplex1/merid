@@ -536,7 +536,7 @@
     "message": "Khi bật <strong>AI kiểm tra ngữ cảnh</strong>, một đoạn ngắn của câu quanh mỗi từ đã thay sẽ được gửi tới Google Gemini - mặc định qua <code>merid.site/api/check</code>, nơi gọi Gemini bằng key của Merid và chỉ giữ một bộ đếm theo ngày để áp giới hạn. <strong>Không có địa chỉ trang, tiêu đề hay lịch sử duyệt web nào được gửi đi.</strong> Tắt phần kiểm tra ở trên thì không có gì được gửi cả. Nếu bạn lưu API key của riêng mình, yêu cầu đi thẳng từ trình duyệt này tới Google và không bao giờ đi qua máy chủ của Merid."
   },
   "optPrivacy4": {
-    "message": "Để đếm giới hạn mỗi ngày mà không bắt bạn tạo tài khoản, Merid tạo một <strong>tài khoản Firebase ẩn danh</strong> cho thiết bị này ở lần dùng đầu tiên. Nó không chứa thông tin cá nhân nào. Đăng nhập sẽ thay thế nó và nâng giới hạn lên."
+    "message": "AI context check không cần tài khoản. Để ai cũng dùng được, Merid tạo một <strong>tài khoản Firebase ẩn danh</strong> cho thiết bị này ở lần dùng đầu tiên — đó là thứ dùng để đếm giới hạn mỗi ngày khi có giới hạn. Tài khoản này không chứa thông tin cá nhân nào. Đăng nhập sẽ thay nó bằng tài khoản của bạn."
   },
   "optPrivacy5": {
     "message": "Nếu bạn đăng nhập để dùng <strong>đồng bộ bộ thẻ</strong> (không bắt buộc), địa chỉ email và bộ thẻ của bạn (từ đã lưu + từ đã biết) được lưu trong tài khoản Merid của chính bạn (Google Firebase) để bạn học trên merid.site. Đăng xuất sẽ dừng mọi việc đồng bộ."
@@ -958,6 +958,9 @@
         "example": "50"
       }
     }
+  },
+  "optQuotaUnlimited": {
+    "message": "Hiện không giới hạn mỗi ngày."
   },
   "optQuotaSignInMore": {
     "message": "Đăng nhập để nâng giới hạn."

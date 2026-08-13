@@ -1157,6 +1157,14 @@ function renderAiQuota() {
         }
         const q = r.vm_ai_quota;
         if (!q || typeof q.limit !== 'number') { el.hidden = true; return; }
+        // Counted but not enforced. Nothing is being withheld, so there is no
+        // allowance to report and nothing signing in would buy - saying either
+        // would be asking for an account to fix a problem nobody has.
+        if (q.unlimited) {
+            el.hidden = false;
+            el.textContent = t('optQuotaUnlimited', 'No daily limit at the moment.');
+            return;
+        }
         const left = Math.max(0, q.limit - (q.used || 0));
         el.hidden = false;
         el.textContent = q.exhausted

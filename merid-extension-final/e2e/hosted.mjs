@@ -225,6 +225,23 @@ await popup.waitForTimeout(500);
 check(await popup.$eval('#quota-hint', el => el.hidden), 'with budget left the popup stays silent');
 await popup.close();
 
+// Signing in is not a way to get the check - the check runs for everyone. While
+// the endpoint counts without capping, Settings must not offer an account as
+// the fix for a limit nobody is hitting.
+await sw.evaluate(() => chrome.storage.local.set({
+    vm_ai_quota: { used: 137, limit: 20, anonymous: true, exhausted: false, unlimited: true, at: Date.now() }
+}));
+const optsPage = await ctx.newPage();
+await optsPage.goto(`chrome-extension://${extId}/options.html`, { waitUntil: 'load' });
+await optsPage.waitForTimeout(800);
+const quotaLine = await optsPage.$eval('#aiQuota', el => ({ hidden: el.hidden, text: el.textContent }));
+check(!quotaLine.hidden && /no daily limit/i.test(quotaLine.text),
+    'Settings reports the unmetered endpoint as having no limit', JSON.stringify(quotaLine));
+check(!/sign in/i.test(quotaLine.text),
+    'and never asks a signed-out reader to make an account for it', JSON.stringify(quotaLine));
+await optsPage.close();
+await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_quota']));
+
 // =====================================================================
 // 4. A personal key still wins, and never touches the proxy
 // =====================================================================
