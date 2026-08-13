@@ -541,6 +541,70 @@ test('merid.site is blocked without the user having to pause it', () => {
     assert.strictEqual(C.isHostBlocked('vnexpress.net'), false);
 });
 
+// A DM thread on Facebook is served from the same host as the feed, so the
+// host lists cannot tell them apart and the path has to.
+test('direct messages are blocked by path, on sites that stay scannable', () => {
+    const blocked = [
+        'https://www.facebook.com/messages/t/1234',
+        'https://facebook.com/messages',
+        'https://facebook.com/messages/',            // trailing slash, same page
+        'https://m.facebook.com/messages/read/?fbid=1',
+        'https://facebook.com/e2ee/t/999',           // encrypted thread
+        'https://facebook.com/marketplace/inbox',
+        'https://www.instagram.com/direct/inbox/',
+        'https://x.com/messages/123',
+        'https://twitter.com/messages',
+        'https://www.linkedin.com/messaging/thread/2',
+        'https://www.tiktok.com/messages?lang=vi',
+        'https://www.reddit.com/chat/room/9'
+    ];
+    for (const url of blocked) assert.strictEqual(C.isUrlBlocked(url), true, url);
+
+    // The site itself keeps working - that is the whole reason for this list.
+    const allowed = [
+        'https://facebook.com/',
+        'https://www.facebook.com/groups/hoctienganh',
+        'https://facebook.com/messagesomething',     // boundary, not a prefix
+        'https://instagram.com/nasa',
+        'https://x.com/elonmusk',
+        'https://www.linkedin.com/feed/',
+        'https://www.reddit.com/r/vietnam',
+        'https://vnexpress.net/messages',            // path rule is per host
+        'https://facebook.com.evil.test/messages'    // lookalike host
+    ];
+    for (const url of allowed) assert.strictEqual(C.isUrlBlocked(url), false, url);
+
+    for (const url of ['chrome://extensions/', 'about:blank', 'not a url', '', null, undefined]) {
+        assert.strictEqual(C.isUrlBlocked(url), false, String(url));
+    }
+    for (const host of Object.keys(C.BLOCKED_PATHS)) {
+        assert.strictEqual(C.isHostBlocked(host), false,
+            `${host} must stay scannable - only its message paths are blocked`);
+    }
+});
+
+test('dedicated chat hosts are blocked outright', () => {
+    for (const host of ['messenger.com', 'm.me', 'chat.reddit.com', 'chat.zalo.me',
+        'web.whatsapp.com', 'web.telegram.org', 'voice.google.com', 'messages.android.com']) {
+        assert.strictEqual(C.isHostBlocked(host), true, host);
+    }
+    // ...without taking the site those chats hang off with them.
+    assert.strictEqual(C.isHostBlocked('reddit.com'), false);
+    assert.strictEqual(C.isHostBlocked('google.com'), false);
+});
+
+test('chat surfaces are named per host, and only where a path cannot reach', () => {
+    assert.ok(C.chatSurfaceSelector('x.com').includes('DMDrawer'));
+    assert.ok(C.chatSurfaceSelector('www.twitter.com').includes('DMDrawer'));
+    assert.ok(C.chatSurfaceSelector('linkedin.com').includes('msg-overlay'));
+    // Facebook and Instagram popups are role="dialog", which content.js already
+    // refuses everywhere - a second rule here would only be a second thing to
+    // keep true.
+    assert.strictEqual(C.chatSurfaceSelector('facebook.com'), '');
+    assert.strictEqual(C.chatSurfaceSelector('vnexpress.net'), '');
+    assert.strictEqual(C.chatSurfaceSelector(''), '');
+});
+
 test('withDefaults supplies an empty disabledSites list', () => {
     assert.deepStrictEqual(C.withDefaults({}).disabledSites, []);
     assert.deepStrictEqual(C.withDefaults({ disabledSites: ['a.com'] }).disabledSites, ['a.com']);

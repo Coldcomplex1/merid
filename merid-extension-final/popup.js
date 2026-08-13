@@ -195,7 +195,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Merid never runs on its own site or on private ones (email, chats,
         // banking, sign-in, exams) and that is not the user's to change.
         // Offering a toggle that does nothing is worse than no toggle.
-        if (C.isHostBlocked(host)) {
+        if (C.isUrlBlocked(tab.url)) {
+            // The site is fine and stays fine - this page is not. Said as its
+            // own state, because "never scans this site" would be wrong about
+            // Facebook, and the reader is one click from the feed where Merid
+            // is working normally.
+            siteToggle.disabled = true;
+            siteToggle.classList.add('off');
+            siteToggle.textContent = t('popupPageAlwaysOff', 'Never scans messages');
+            siteToggle.title = t('popupPageAlwaysOffHint',
+                `Merid leaves message pages alone. The rest of ${host} works as usual.`, [host]);
+        } else if (C.isHostBlocked(host)) {
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
             siteToggle.textContent = t('popupSiteAlwaysOff', 'Never scans this site');

@@ -170,6 +170,11 @@ const SKIP_ANCESTOR_SELECTOR =
     '[contenteditable=""], [contenteditable="true"], [aria-hidden="true"], ' +
     '.vocab-master-highlight, .vocab-master-pending, .vocab-master-tooltip';
 
+// The above plus, on the handful of sites that float a chat window over a page
+// Merid is welcome on, whatever labels that window (VMCore.CHAT_SURFACE_
+// SELECTORS). Resolved once per scan because it depends on the host.
+let skipAncestorSelector = SKIP_ANCESTOR_SELECTOR;
+
 // The page's furniture: everything wrapped around what the reader came to read.
 // Readers reported Merid replacing words in vnexpress.net's "Xem nhiều" rail and
 // in the "Chọn VnExpress làm nguồn ưu tiên trên Google Search" prompt - text
@@ -262,6 +267,12 @@ function init() {
     startSpanObserver();
     Status.set('idle');
 
+    // Chat that floats over this host's pages, if it has any.
+    const chatSurfaces = C.chatSurfaceSelector(location.hostname);
+    skipAncestorSelector = chatSurfaces
+        ? SKIP_ANCESTOR_SELECTOR + ', ' + chatSurfaces
+        : SKIP_ANCESTOR_SELECTOR;
+
     // Drop upgrades parked for a page state that no longer exists.
     pendingUpgrades = [];
     if (upgradeScrollBound) {
@@ -300,6 +311,14 @@ function startScan() {
 
             if (settings.extensionEnabled === false) {
                 log('[VM] Extension disabled - not processing.');
+                return;
+            }
+
+            // A private page on a site Merid is otherwise welcome on - a DM
+            // thread on Facebook, Instagram, X. Checked before anything is
+            // read, and not something a setting can switch back on.
+            if (C.isUrlBlocked(location.href)) {
+                log('[VM] Private page - not processing.');
                 return;
             }
 
@@ -350,7 +369,7 @@ function shouldProcessNode(node) {
     if (!node.nodeValue || !node.nodeValue.trim()) return false;
     if (FORBIDDEN_TAGS.has(parent.tagName.toLowerCase())) return false;
     if (parent.isContentEditable) return false;
-    if (parent.closest(SKIP_ANCESTOR_SELECTOR)) return false;
+    if (parent.closest(skipAncestorSelector)) return false;
 
     // Outside the main content. Also the gate for everything the
     // MutationObserver hands over, which is why the scan root is enforced here
@@ -1022,6 +1041,12 @@ function observeChanges(vocabMap) {
                 debounceTimer = null;
                 const roots = queuedRoots;
                 queuedRoots = [];
+                // Where did this batch come from? A single-page app cannot open
+                // its inbox without touching the DOM, so this is the one place
+                // guaranteed to run on the way into a conversation - and it
+                // runs before a single node of it is looked at.
+                checkUrlChange();
+                if (!currentObserver) return;   // walked into a private page
                 // A page that never found its main content, or one an SPA has
                 // navigated, gets another look before this batch is judged.
                 maybeRefreshScanRoots();
@@ -2092,7 +2117,59 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // -------------------------------------------------------------
+// Private pages inside a site Merid runs on
+//
+// Facebook's inbox is one click from the feed and never reloads the page: the
+// URL changes under a scan that has already decided this site is fine. The
+// check at scan time is therefore only half the job - the other half is
+// noticing the moment the reader walks into a conversation, and walking back
+// out of the page.
+//
+// Detection does NOT patch history.pushState. A content script runs in an
+// isolated world, so the patch would only ever see its own calls, never the
+// site's. What it can do is watch: the Navigation API where Chrome has it,
+// popstate and hashchange for the rest, and one string comparison on every
+// batch the MutationObserver was going to hand over anyway - a single-page app
+// cannot change route without touching the DOM.
+// -------------------------------------------------------------
+let lastUrl = location.href;
+
+/** Give the page back, and stop reading it. Not `stopAiChecking`, which shows
+ *  what it was holding - here the whole point is that nothing is shown. */
+function stopOnPrivatePage() {
+    if (currentObserver) { currentObserver.disconnect(); currentObserver = null; }
+    if (spanObserver) { spanObserver.disconnect(); spanObserver = null; }
+    aiQueue = [];
+    aiQueued = new Set();
+    clearAiTimers();
+    Status.set('off');
+    revertPage();
+    log('[VM] Walked into a private page - stopped.');
+}
+
+/** Called whenever the URL may have changed. Cheap enough to call often. */
+function checkUrlChange() {
+    if (location.href === lastUrl) return;
+    const wasBlocked = C.isUrlBlocked(lastUrl);
+    const nowBlocked = C.isUrlBlocked(location.href);
+    lastUrl = location.href;
+    if (nowBlocked === wasBlocked) return;
+    if (nowBlocked) stopOnPrivatePage();
+    else init();   // back out on a normal page: scan it like any other
+}
+
+function watchUrlChanges() {
+    if (window.navigation && typeof window.navigation.addEventListener === 'function') {
+        // Fires before the URL is committed, so read it on the next tick.
+        window.navigation.addEventListener('navigate', () => setTimeout(checkUrlChange, 0));
+    }
+    window.addEventListener('popstate', checkUrlChange);
+    window.addEventListener('hashchange', checkUrlChange);
+}
+
+// -------------------------------------------------------------
 // Boot
 // -------------------------------------------------------------
+watchUrlChanges();
 init();
 createTooltip();

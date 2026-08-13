@@ -22,6 +22,7 @@ node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-
 node e2e/dark-mode.mjs        # the card's palette on dark pages and under forced dark
 node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level advice
 node e2e/hosted.mjs           # Merid-hosted AI: identity, quota, personal-key priority
+node e2e/private-pages.mjs    # DMs on Facebook/Instagram: blocked by path, feed still scanned
 ```
 
 Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.
