@@ -1,13 +1,15 @@
-// The learning card's palette, which is the reader's choice and nothing else.
+// The learning card's palette: the reader's choice, everywhere the choice is
+// real.
 //
 // `cardTheme` in chrome.storage.sync picks it, the popup header button writes
-// it, and light is what a fresh install gets. The card deliberately does NOT
-// follow the page: not a dark page, and not a browser forcing dark on the
-// whole web (Cốc Cốc's "Duyệt web chế độ tối", Chrome's Auto Dark Theme). The
-// dark palette is what such a browser leaves standing - a cream card there
-// comes back inverted - but reaching for it is the reader's call, so these
-// checks pin the light default in exactly the places it would be tempting to
-// override.
+// it, and light is what a fresh install gets. A dark page does not change it -
+// that is the site's design, not a verdict on the card.
+//
+// The one exception is a browser forcing dark on the whole web (Cốc Cốc's
+// "Duyệt web chế độ tối", Chrome's Auto Dark Theme). It repaints the cream card
+// into a muddy inversion of itself and no CSS opts out, so "light" there is not
+// a light card, it is a broken one; the dark palette is the only one that
+// arrives intact. These checks pin the light default everywhere else.
 //
 // Forced dark is turned on the way DevTools does it, over CDP: it is a
 // browser-level mode with no page-level switch to flip.
@@ -70,11 +72,17 @@ const setTheme = (v) => sw.evaluate((theme) => chrome.storage.sync.set({ cardThe
 
 /** What the card is wearing, read off the declared colours - which is what the
  *  palette controls. What a forcing browser paints on top is its own business. */
-const readCard = (p) => p.$eval('.vocab-master-tooltip', el => ({
-    scheme: el.dataset.vmScheme,
-    surface: getComputedStyle(el.querySelector('.vm-card')).backgroundColor,
-    title: getComputedStyle(el.querySelector('.vm-title')).color
-}));
+const readCard = (p) => p.$eval('.vocab-master-tooltip', el => {
+    const chip = el.querySelector('.vm-chip.vm-yellow');
+    return {
+        scheme: el.dataset.vmScheme,
+        forced: el.dataset.vmForced || '',
+        surface: getComputedStyle(el.querySelector('.vm-card')).backgroundColor,
+        title: getComputedStyle(el.querySelector('.vm-title')).color,
+        chipBg: chip && getComputedStyle(chip).backgroundColor,
+        chipFg: chip && getComputedStyle(chip).color
+    };
+});
 
 /** Open a page, wait for a swap, hover it, and hand back the live page. */
 async function openCard(url, forcedDark) {
@@ -110,15 +118,29 @@ check(lum(fresh.title) < 0.3, 'and the title on it is navy', fresh.title);
 
 const onDarkPage = await cardOn(base + '/dark', false);
 check(onDarkPage.scheme === 'light', 'a dark page does not change it - the reader has not asked for dark');
+check(lum(onDarkPage.surface) > 0.9, 'the cream card is intact there, because the page never repaints it',
+    onDarkPage.surface);
 
+// The exception: no light card is available here, so the choice is void.
 const underForcedDark = await cardOn(base + '/', true);
-check(underForcedDark.scheme === 'light', 'nor does a browser forcing dark on every page');
+check(underForcedDark.scheme === 'dark',
+    'a browser forcing dark gets the palette that survives it', underForcedDark.surface);
+check(lum(underForcedDark.surface) < 0.3, 'declared dark, so the browser leaves it alone',
+    underForcedDark.surface);
+// The one part of the dark card such a browser still repaints: dark text on a
+// gold chip. Turned the other way up, it has nothing it wants to change.
+check(lum(underForcedDark.chipBg) < 0.3 && lum(underForcedDark.chipFg) > 0.6,
+    'and the gold chips turn light-on-dark, which it will not repaint',
+    `${underForcedDark.chipBg} / ${underForcedDark.chipFg}`);
 
 await setTheme('dark');
 const chosenDark = await cardOn(base + '/', false);
 check(chosenDark.scheme === 'dark', 'choosing dark gives the dark card', chosenDark.surface);
 check(lum(chosenDark.surface) < 0.3, 'its surface is dark, so forced dark would leave it alone', chosenDark.surface);
 check(lum(chosenDark.title) > 0.8, 'and the title on it is cream', chosenDark.title);
+check(!chosenDark.forced && lum(chosenDark.chipBg) > 0.6 && lum(chosenDark.chipFg) < 0.3,
+    'with no browser repainting, the chips stay navy on gold as designed',
+    `${chosenDark.chipBg} / ${chosenDark.chipFg}`);
 
 const stillDark = await cardOn(base + '/', true);
 check(stillDark.scheme === 'dark', 'and it stays that way whatever the page or the browser is doing');
@@ -126,6 +148,10 @@ check(stillDark.scheme === 'dark', 'and it stays that way whatever the page or t
 await setTheme('light');
 const backToLight = await cardOn(base + '/', false);
 check(backToLight.scheme === 'light', 'switching back to light takes effect too');
+
+const lightUnderForced = await cardOn(base + '/', true);
+check(lightUnderForced.scheme === 'dark',
+    'and even chosen light yields to a browser that would wreck it', lightUnderForced.surface);
 
 // Changing the palette must not re-scan: every other sync change reverts the
 // page and picks words afresh, which would rewrite the paragraph being read.
