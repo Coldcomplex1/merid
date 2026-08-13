@@ -12,69 +12,85 @@
     <main class="wrap">
         <header class="head">
             <h1><img src="logo-mark.png" width="42" height="42" alt="">Merid</h1>
-            <p class="tagline">Passive English vocabulary learning while you browse Vietnamese websites. Works out of the box with no account - sign-in and AI checks are optional extras.</p>
+            <p class="tagline" data-i18n="optTagline">Passive English vocabulary learning while you browse Vietnamese websites. Works out of the box with no account - sign-in and AI checks are optional extras.</p>
         </header>
+
+        <!-- LANGUAGE (of this page and the toolbar popup) -->
+        <section class="card">
+            <h2 data-i18n="optLanguageTitle">Language</h2>
+            <div class="field">
+                <div class="seg" id="langSeg">
+                    <button data-val="auto" type="button" data-i18n="optLangAuto">Auto</button>
+                    <button data-val="en" type="button">English</button>
+                    <button data-val="vi" type="button">Tiếng Việt</button>
+                </div>
+                <p class="hint" data-i18n="optLanguageHint">Auto follows the language you chose on merid.site, and
+                    your browser's language until you have been there. This page and the
+                    toolbar popup follow it. The learning card you see on a page stays in
+                    English - that is the language you are here to read.</p>
+            </div>
+        </section>
 
         <!-- REPLACEMENT -->
         <section class="card">
-            <h2>Replacement</h2>
+            <h2 data-i18n="optReplacementTitle">Replacement</h2>
 
             <div class="field">
-                <label>How words appear</label>
+                <label data-i18n="optModeLabel">How words appear</label>
                 <div class="seg" id="modeSeg">
-                    <button data-val="replace" type="button">Replace directly</button>
-                    <button data-val="highlight" type="button">Highlight only</button>
-                    <button data-val="beside" type="button">Show beside</button>
+                    <button data-val="replace" type="button" data-i18n="optModeReplace">Replace directly</button>
+                    <button data-val="highlight" type="button" data-i18n="optModeHighlight">Highlight only</button>
+                    <button data-val="beside" type="button" data-i18n="optModeBeside">Show beside</button>
                 </div>
-                <p class="hint">Replace = swap the word. Highlight = keep the original, show meaning on hover. Beside = <em>từ (word)</em>.</p>
+                <p class="hint" data-i18n-html="optModeHint">Replace = swap the word. Highlight = keep the original, show meaning on hover. Beside = <em>từ (word)</em>.</p>
             </div>
 
             <div class="field">
-                <label>Intensity</label>
+                <label data-i18n="optIntensityLabel">Intensity</label>
                 <!-- Same three levels as the popup slider, same names. -->
                 <div class="seg" id="intensitySeg">
-                    <button data-val="casual" type="button">Casual</button>
-                    <button data-val="focused" type="button">Focused</button>
-                    <button data-val="locked" type="button">Locked-in</button>
+                    <button data-val="casual" type="button" data-i18n="popupIntensityCasual">Casual</button>
+                    <button data-val="focused" type="button" data-i18n="popupIntensityFocused">Focused</button>
+                    <button data-val="locked" type="button" data-i18n="popupIntensityLocked">Locked-in</button>
                 </div>
             </div>
 
             <div class="field">
-                <label>Languages to scan</label>
+                <label data-i18n="optDirectionLabel">Languages to scan</label>
                 <div class="mode-cards" id="directionCards">
                     <button class="mode-card" data-mode="vieEng" type="button" aria-pressed="false">
-                        <span class="mode-card-title">Vietnamese → English</span>
-                        <span class="mode-card-sub">Replace Vietnamese words with the English equivalent</span>
+                        <span class="mode-card-title" data-i18n="optDirVieEngTitle">Vietnamese → English</span>
+                        <span class="mode-card-sub" data-i18n="optDirVieEngSub">Replace Vietnamese words with the English equivalent</span>
                     </button>
                     <!-- Withdrawn for now, here and in the popup. Ships hidden
                          so it never flashes up before options.js runs;
                          VMCore.ENG_ENG_AVAILABLE is the switch that brings it
                          back, and the scan reads the same flag. -->
                     <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false" hidden>
-                        <span class="mode-card-title">English → English</span>
-                        <span class="mode-card-sub">Swap easy English words for harder synonyms</span>
+                        <span class="mode-card-title" data-i18n="optDirEngEngTitle">English → English</span>
+                        <span class="mode-card-sub" data-i18n="optDirEngEngSub">Swap easy English words for harder synonyms</span>
                     </button>
                 </div>
-                <p class="hint" id="directionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
+                <p class="hint" id="directionHint" data-i18n="optDirectionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
             </div>
         </section>
 
         <!-- DATASET -->
         <section class="card">
-            <h2>Vocabulary dataset</h2>
+            <h2 data-i18n="popupDatasetTitle">Vocabulary dataset</h2>
             <p class="hint notice-warn" id="customNotice" role="status" hidden></p>
             <div class="seg" id="datasetSeg">
-                <button data-val="sat" type="button">SAT</button>
                 <button data-val="c1" type="button">C1</button>
                 <button data-val="c2" type="button">C2</button>
+                <button data-val="sat" type="button">SAT</button>
                 <button data-val="all" type="button">All</button>
             </div>
             <p class="hint" id="datasetInfo">Loaded: …</p>
 
             <!-- MY DATASETS (user-uploaded CSVs - stored only on this device) -->
             <div class="subsection">
-                <h3 class="subhead">My datasets</h3>
-                <p class="hint" id="customEmpty" hidden>
+                <h3 class="subhead" data-i18n="optMyDatasetsTitle">My datasets</h3>
+                <p class="hint" id="customEmpty" data-i18n-html="optCustomEmpty" hidden>
                     No custom datasets yet.
                     <a class="ext-link create-dataset-url" href="https://merid.site/create-dataset" target="_blank" rel="noopener">Generate one with AI on merid.site</a>,
                     then upload the CSV file below.
@@ -82,17 +98,17 @@
                 <ul class="custom-list" id="customList"></ul>
 
                 <div class="field">
-                    <label for="uploadFile">Upload a CSV file</label>
+                    <label for="uploadFile" data-i18n="optUploadFileLabel">Upload a CSV file</label>
                     <input type="file" id="uploadFile" accept=".csv,text/csv">
-                    <p class="hint">Needs a header row with at least <code>word</code> and <code>vietnamese</code> columns.
+                    <p class="hint" data-i18n-html="optUploadHint">Needs a header row with at least <code>word</code> and <code>vietnamese</code> columns.
                         <a class="ext-link create-dataset-url" href="https://merid.site/create-dataset" target="_blank" rel="noopener">How to create a dataset ↗</a></p>
                 </div>
                 <div class="field">
-                    <label for="uploadName">Dataset name</label>
-                    <input type="text" id="uploadName" maxlength="40" placeholder="e.g. Finance C1" autocomplete="off">
+                    <label for="uploadName" data-i18n="optDatasetNameLabel">Dataset name</label>
+                    <input type="text" id="uploadName" maxlength="40" placeholder="e.g. Finance C1" data-i18n-placeholder="optDatasetNamePlaceholder" autocomplete="off">
                 </div>
                 <div class="auth-actions">
-                    <button class="btn" id="uploadBtn" type="button" disabled>Save dataset</button>
+                    <button class="btn" id="uploadBtn" type="button" data-i18n="optSaveDataset" disabled>Save dataset</button>
                 </div>
                 <div class="import-report" id="importReport" role="status" aria-live="polite" hidden></div>
                 <input type="file" id="replaceFile" accept=".csv,text/csv" hidden aria-hidden="true" tabindex="-1">
@@ -101,47 +117,47 @@
 
         <!-- SITES (where Merid runs) -->
         <section class="card">
-            <h2>Sites</h2>
-            <p class="hint">Merid runs everywhere except the sites below. You can also
+            <h2 data-i18n="optSitesTitle">Sites</h2>
+            <p class="hint" data-i18n="optSitesHint">Merid runs everywhere except the sites below. You can also
                 turn it off on the page you are reading from the toolbar popup.</p>
 
             <div class="subsection">
-                <h3 class="subhead">Sites you turned off</h3>
-                <p class="hint" id="pausedEmpty" hidden>None yet.</p>
+                <h3 class="subhead" data-i18n="optSitesOffTitle">Sites you turned off</h3>
+                <p class="hint" id="pausedEmpty" data-i18n="optNoneYet" hidden>None yet.</p>
                 <ul class="custom-list" id="pausedList"></ul>
                 <div class="field">
-                    <label for="pauseInput">Turn Merid off on another site</label>
+                    <label for="pauseInput" data-i18n="optPauseInputLabel">Turn Merid off on another site</label>
                     <input type="text" id="pauseInput" maxlength="120" placeholder="example.com" autocomplete="off" spellcheck="false">
                     <p class="hint" id="pauseError" role="status" hidden></p>
                 </div>
                 <div class="auth-actions">
-                    <button class="btn" id="pauseAddBtn" type="button" disabled>Add site</button>
+                    <button class="btn" id="pauseAddBtn" type="button" data-i18n="optAddSite" disabled>Add site</button>
                 </div>
             </div>
 
             <div class="subsection">
-                <h3 class="subhead">Off by default</h3>
-                <p class="hint">Dictionaries, translators, editors and coursework read
+                <h3 class="subhead" data-i18n="optDefaultOffTitle">Off by default</h3>
+                <p class="hint" data-i18n="optDefaultOffHint">Dictionaries, translators, editors and coursework read
                     better unchanged, so Merid starts off on them. Turn any of them back
                     on from the popup while you are on the site.</p>
-                <p class="hint" id="allowedNone" hidden>You have not turned any of these back on.</p>
+                <p class="hint" id="allowedNone" data-i18n="optAllowedNone" hidden>You have not turned any of these back on.</p>
                 <ul class="custom-list" id="allowedList"></ul>
                 <details class="site-details">
-                    <summary>See the full list</summary>
+                    <summary data-i18n="optSeeFullList">See the full list</summary>
                     <div id="defaultOffCatalog"></div>
                 </details>
             </div>
 
             <div class="subsection">
-                <h3 class="subhead">Always off</h3>
-                <p class="hint">Merid never changes words on private pages, and never
+                <h3 class="subhead" data-i18n="optAlwaysOffTitle">Always off</h3>
+                <p class="hint" data-i18n="optAlwaysOffHint">Merid never changes words on private pages, and never
                     sends anything from them for the AI context check. This part is not
                     a setting.</p>
                 <details class="site-details">
-                    <summary>See the full list</summary>
+                    <summary data-i18n="optSeeFullList">See the full list</summary>
                     <div id="blockedCatalog"></div>
                 </details>
-                <p class="hint">Matching is by site name, so a service that shares a
+                <p class="hint" data-i18n="optMatchingHint">Matching is by site name, so a service that shares a
                     site with something else — Facebook, Instagram and X put messages on
                     the same address as the feed — is not on this list. Neither is
                     anything self-hosted, like a work webmail on a company address. Turn
@@ -151,10 +167,10 @@
 
         <!-- ACCOUNT & SYNC -->
         <section class="card" id="accountCard" hidden>
-            <h2>Account &amp; sync</h2>
+            <h2 data-i18n="optAccountTitle">Account &amp; sync</h2>
 
             <div id="signedOutView">
-                <p class="hint">Sign in to back up your deck and study it on <strong>merid.site/my-deck</strong>. Optional - everything keeps working locally without an account.</p>
+                <p class="hint" data-i18n-html="optAccountHint">Sign in to back up your deck and study it on <strong>merid.site/my-deck</strong>. Optional - everything keeps working locally without an account.</p>
 
                 <!-- One-click Google sign-in (account picker). Hidden unless
                      googleClientId is configured in lib/firebase-config.js
@@ -167,69 +183,69 @@
                             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                         </svg>
-                        Sign in with Google
+                        <span data-i18n="optGoogleSignIn">Sign in with Google</span>
                     </button>
                 </div>
-                <p class="hint auth-divider" id="authDivider" hidden>or use your email</p>
+                <p class="hint auth-divider" id="authDivider" data-i18n="optAuthDivider" hidden>or use your email</p>
 
                 <div class="field">
-                    <label for="authEmail">Email</label>
+                    <label for="authEmail" data-i18n="optEmailLabel">Email</label>
                     <input type="text" id="authEmail" autocomplete="email" placeholder="you@example.com">
                 </div>
 
                 <!-- Passwordless (Firebase Auth email link) - no password to remember. -->
                 <div class="auth-actions">
-                    <button class="btn" id="sendLinkBtn" type="button">Email me a sign-in link</button>
+                    <button class="btn" id="sendLinkBtn" type="button" data-i18n="optSendLink">Email me a sign-in link</button>
                 </div>
                 <div id="linkWait" hidden>
-                    <p class="hint">Link sent ✓ Open the email from Merid, copy the sign-in link address (right-click the button → Copy link), and paste it here to finish:</p>
+                    <p class="hint" data-i18n="optLinkWaitHint">Link sent ✓ Open the email from Merid, copy the sign-in link address (right-click the button → Copy link), and paste it here to finish:</p>
                     <div class="field">
-                        <label for="linkInput">Paste the sign-in link</label>
+                        <label for="linkInput" data-i18n="optLinkInputLabel">Paste the sign-in link</label>
                         <input type="text" id="linkInput" autocomplete="off" placeholder="https://…oobCode=…">
                     </div>
                     <div class="auth-actions">
-                        <button class="btn" id="linkSignInBtn" type="button">Complete sign-in</button>
+                        <button class="btn" id="linkSignInBtn" type="button" data-i18n="optCompleteSignIn">Complete sign-in</button>
                     </div>
                 </div>
 
-                <p class="hint">Or sign in with your password:</p>
+                <p class="hint" data-i18n="optOrPassword">Or sign in with your password:</p>
                 <div class="field">
-                    <label for="authPassword">Password (min 8 characters)</label>
+                    <label for="authPassword" data-i18n="optPasswordLabel">Password (min 8 characters)</label>
                     <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
                 </div>
                 <p class="hint auth-error" id="authError" hidden></p>
                 <div class="auth-actions">
-                    <button class="btn ghost" id="signInBtn" type="button">Sign in</button>
-                    <button class="btn ghost" id="signUpBtn" type="button">Create account</button>
+                    <button class="btn ghost" id="signInBtn" type="button" data-i18n="optSignIn">Sign in</button>
+                    <button class="btn ghost" id="signUpBtn" type="button" data-i18n="optCreateAccount">Create account</button>
                 </div>
             </div>
 
             <div id="signedInView" hidden>
-                <p class="hint">Signed in as <strong id="authWho"></strong></p>
+                <p class="hint"><span data-i18n="optSignedInAs">Signed in as</span> <strong id="authWho"></strong></p>
                 <p class="hint" id="syncState"></p>
                 <div class="auth-actions">
-                    <button class="btn ghost" id="signOutBtn" type="button">Sign out</button>
+                    <button class="btn ghost" id="signOutBtn" type="button" data-i18n="optSignOut">Sign out</button>
                 </div>
             </div>
         </section>
 
         <!-- AI CONTEXT CHECK -->
         <section class="card">
-            <h2>AI context check</h2>
-            <p class="hint">After Merid replaces a word, Google Gemini checks that it really fits the sentence it
+            <h2 data-i18n="optAiTitle">AI context check</h2>
+            <p class="hint" data-i18n-html="optAiHint">After Merid replaces a word, Google Gemini checks that it really fits the sentence it
                 landed in. Words that do not fit are <strong>swapped for a better one, or changed back</strong> on
                 their own. Included - <strong>no API key needed</strong>. There is a daily limit per person so the
                 service stays available to everyone; signing in raises it.</p>
 
             <div class="field">
-                <label>Enable AI context check</label>
+                <label data-i18n="optAiEnableLabel">Enable AI context check</label>
                 <div class="seg" id="aiSeg">
-                    <button data-val="on" type="button">On</button>
-                    <button data-val="off" type="button">Off</button>
+                    <button data-val="on" type="button" data-i18n="optOn">On</button>
+                    <button data-val="off" type="button" data-i18n="optOff">Off</button>
                 </div>
                 <p class="hint" id="aiQuota" hidden></p>
                 <div class="auth-actions">
-                    <button class="btn ghost" id="aiDiagnoseBtn" type="button">Test the AI check</button>
+                    <button class="btn ghost" id="aiDiagnoseBtn" type="button" data-i18n="optAiTest">Test the AI check</button>
                 </div>
                 <p class="hint" id="aiDiagnosis" role="status" hidden></p>
             </div>
@@ -242,18 +258,18 @@
                  cap from us. Remove the `hidden` below to offer it again (for
                  heavy users, or if the hosted service is ever retired). -->
             <div id="aiOwnKeyBlock" hidden>
-                <p class="hint">Prefer your own key? Paste a free key from <strong>aistudio.google.com</strong> and
+                <p class="hint" data-i18n-html="optAiOwnKeyHint">Prefer your own key? Paste a free key from <strong>aistudio.google.com</strong> and
                     Merid will use it instead - requests go straight from this browser to Google, with no daily limit
                     from us. <a class="ext-link api-key-guide-url" href="https://merid.site/api-key-guide" target="_blank" rel="noopener">Step-by-step guide ↗</a></p>
 
                 <div class="field">
-                    <label for="aiKey">Gemini API key</label>
+                    <label for="aiKey" data-i18n="optAiKeyLabel">Gemini API key</label>
                     <input type="password" id="aiKey" autocomplete="off" placeholder="AIza…">
                 </div>
 
                 <div class="auth-actions">
-                    <button class="btn" id="aiSaveBtn" type="button">Save key</button>
-                    <button class="btn ghost" id="aiTestBtn" type="button">Test key</button>
+                    <button class="btn" id="aiSaveBtn" type="button" data-i18n="optAiSaveKey">Save key</button>
+                    <button class="btn ghost" id="aiTestBtn" type="button" data-i18n="optAiTestKey">Test key</button>
                 </div>
             </div>
             <p class="hint" id="aiStatus" hidden></p>
@@ -261,12 +277,12 @@
 
         <!-- WHAT MERID HAS LEARNED -->
         <section class="card" id="profileCard">
-            <h2>What Merid has learned about you</h2>
-            <p class="hint">Merid watches which words you save, rate and skip, and quietly shows more of what
+            <h2 data-i18n="optProfileTitle">What Merid has learned about you</h2>
+            <p class="hint" data-i18n="optProfileHint">Merid watches which words you save, rate and skip, and quietly shows more of what
                 suits you and less of what does not. It all stays on this device (and in your own account if
                 you sign in). Nothing here is sent to Merid.</p>
 
-            <p class="hint" id="profileEmpty">Nothing yet. Hover a highlighted word and use 👍 / 👎, "Save to Deck"
+            <p class="hint" id="profileEmpty" data-i18n="optProfileEmpty">Nothing yet. Hover a highlighted word and use 👍 / 👎, "Save to Deck"
                 or "I know this" a few times, and this fills in.</p>
 
             <div id="profileBody" hidden>
@@ -277,15 +293,15 @@
 
                 <div class="learn-rows">
                     <div class="learn-row">
-                        <span class="learn-label">Level that suits you</span>
+                        <span class="learn-label" data-i18n="optProfileLevelLabel">Level that suits you</span>
                         <span class="learn-value" id="profileLevel">-</span>
                     </div>
                     <div class="learn-row">
-                        <span class="learn-label">What you read</span>
+                        <span class="learn-label" data-i18n="optProfileTopicsLabel">What you read</span>
                         <span class="learn-value" id="profileTopics">-</span>
                     </div>
                     <div class="learn-row">
-                        <span class="learn-label">Words tracked</span>
+                        <span class="learn-label" data-i18n="optProfileWordsLabel">Words tracked</span>
                         <span class="learn-value" id="profileWords">-</span>
                     </div>
                 </div>
@@ -296,43 +312,44 @@
                 <button class="level-tip" id="levelTip" type="button" hidden></button>
 
                 <div class="subsection">
-                    <label class="learn-label">Showing you more of</label>
+                    <label class="learn-label" data-i18n="optProfileMore">Showing you more of</label>
                     <div class="learn-chips" id="profileLiked"></div>
                 </div>
                 <div class="subsection">
-                    <label class="learn-label">Showing you less of</label>
+                    <label class="learn-label" data-i18n="optProfileLess">Showing you less of</label>
                     <div class="learn-chips" id="profileDisliked"></div>
                 </div>
             </div>
 
-            <button class="btn danger" id="profileReset" type="button">Forget what Merid learned</button>
+            <button class="btn danger" id="profileReset" type="button" data-i18n="optProfileForget">Forget what Merid learned</button>
             <p class="hint" id="profileStatus" hidden></p>
         </section>
 
         <!-- DATA & PRIVACY -->
         <section class="card">
-            <h2>Data &amp; privacy</h2>
+            <h2 data-i18n="optPrivacyTitle">Data &amp; privacy</h2>
             <ul class="privacy">
-                <li>Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
-                <li>By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below.</li>
-                <li>With the <strong>AI context check</strong> on, short pieces of the sentence around each replaced word are sent to Google Gemini - by default through <code>merid.site/api/check</code>, which calls Gemini with Merid's keys and keeps only a per-day counter so the daily limit can be enforced. <strong>No page addresses, titles or browsing history are sent.</strong> Turn the check off above and nothing is sent at all. If you save your own API key, requests go straight from this browser to Google instead and never reach a Merid server.</li>
-                <li>To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit.</li>
-                <li>If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
-                <li>Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
-                <li>Merid <strong>never runs at all</strong> on private pages - email, messaging, banking, sign-in, health and official services - so nothing from them is ever scanned or sent, whatever the AI check is set to. See <strong>Sites</strong> above for the full list.</li>
-                <li>Your settings (selected dataset, display mode, intensity, on/off, the sites you turned off and the default-off sites you turned back on) are stored on your device via <code>chrome.storage</code>.</li>
-                <li>Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
-                <li>Turn the extension off any time from the popup - globally, or just for one site.</li>
+                <li data-i18n-html="optPrivacy1">Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches.</li>
+                <li data-i18n-html="optPrivacy2">By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below.</li>
+                <li data-i18n-html="optPrivacy3">With the <strong>AI context check</strong> on, short pieces of the sentence around each replaced word are sent to Google Gemini - by default through <code>merid.site/api/check</code>, which calls Gemini with Merid's keys and keeps only a per-day counter so the daily limit can be enforced. <strong>No page addresses, titles or browsing history are sent.</strong> Turn the check off above and nothing is sent at all. If you save your own API key, requests go straight from this browser to Google instead and never reach a Merid server.</li>
+                <li data-i18n-html="optPrivacy4">To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit.</li>
+                <li data-i18n-html="optPrivacy5">If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing.</li>
+                <li data-i18n-html="optPrivacy6">Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
+                <li data-i18n-html="optPrivacy7">Merid <strong>never runs at all</strong> on private pages - email, messaging, banking, sign-in, health and official services - so nothing from them is ever scanned or sent, whatever the AI check is set to. See <strong>Sites</strong> above for the full list.</li>
+                <li data-i18n-html="optPrivacy8">Your settings (selected dataset, display mode, intensity, on/off, the sites you turned off and the default-off sites you turned back on) are stored on your device via <code>chrome.storage</code>.</li>
+                <li data-i18n-html="optPrivacy9">Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
+                <li data-i18n-html="optPrivacy10">Turn the extension off any time from the popup - globally, or just for one site.</li>
             </ul>
-            <button class="btn danger" id="clearAll" type="button">Delete all stored data</button>
+            <button class="btn danger" id="clearAll" type="button" data-i18n="optDeleteAll">Delete all stored data</button>
         </section>
 
         <footer class="foot">
-            <span id="savedTag" class="saved-tag">Settings save automatically</span>
+            <span id="savedTag" class="saved-tag" data-i18n="optSavedAuto">Settings save automatically</span>
         </footer>
     </main>
 
     <script src="lib/vocab-core.js"></script>
+    <script src="lib/i18n.js"></script>
     <script src="lib/profile.js"></script>
     <script src="lib/firebase-config.js"></script>
     <script src="options.js"></script>

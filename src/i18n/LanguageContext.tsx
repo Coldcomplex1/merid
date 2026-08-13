@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { STRINGS, type Lang, type Strings } from './translations'
+import { announceLangToExtension } from '../lib/extensionBridge'
 
 const STORAGE_KEY = 'merid-lang'
 
@@ -23,6 +24,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, lang)
     document.documentElement.lang = lang
+    // The installed extension's panel follows this choice too - its own
+    // language setting can override it, but this is where it starts.
+    announceLangToExtension(lang)
   }, [lang])
 
   return (

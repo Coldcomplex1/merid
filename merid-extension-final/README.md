@@ -23,12 +23,17 @@ Two **optional, off-by-default** features use the network once the user opts in:
 
 - Vietnamese → English scanning. (English → English is built and works, but is
   withdrawn from the UI for now - `VMCore.ENG_ENG_AVAILABLE` is the switch.)
-- Bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
+- Bundled datasets (**CEFR C1** - the default - **CEFR C2**, **SAT**, or **All**).
 - **Custom datasets:** upload your own vocabulary CSV in Settings ("My datasets"),
   then select it from the popup or Settings. A guided builder at
   [merid.site/create-dataset](https://merid.site/create-dataset) helps you generate
   a compatible CSV with an AI of your choice. Custom datasets are stored **only on
   your device**.
+- **Main content only.** On a page that has an article, Merid scans the article
+  (and its headline) and nothing else: no "most read" rail, no ads or promo
+  prompts, no header/footer/comments, and no teasers for other stories sitting
+  inside the piece. Pages with no article to find - every feed - are scanned
+  whole, exactly as before.
 - **Three display modes:** Replace directly · Highlight only (hover for meaning) · Show beside (`từ (word)`).
 - **Adjustable intensity** so you control how aggressive replacement is.
 - Learning card on hover: definition, pronunciation (browser TTS), phonetics,
@@ -54,7 +59,13 @@ Two **optional, off-by-default** features use the network once the user opts in:
   Neither is anything self-hosted, like a work webmail on a company domain.
   Turn those off yourself.
 - Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
-- **Localized UI:** English + Vietnamese (`_locales/`), following the browser language.
+- **Localized UI:** English + Vietnamese (`_locales/`) for the popup **and** the
+  Settings page. The language follows, in order: your choice in Settings →
+  **Language**, the VI/EN toggle on merid.site (relayed by `content-bridge.js`),
+  then the browser's language. `chrome.i18n` cannot be overridden at runtime, so
+  the panel loads `_locales/` itself through `lib/i18n.js`.
+  **The hover learning card stays English always** - it is the language you are
+  there to read, not interface around it.
 - First-run onboarding tour (merid.site/welcome) and an uninstall exit survey.
 
 ---
@@ -73,13 +84,14 @@ Chrome Extension
 | File | Role |
 |---|---|
 | `manifest.json` | MV3 manifest - minimal permissions (`storage`, `activeTab`), options page, CSP |
-| `_locales/en`, `_locales/vi` | UI strings (manifest + popup + learning card) |
+| `_locales/en`, `_locales/vi` | UI strings (manifest + popup + Settings; the card is English-only) |
+| `lib/i18n.js` | Runtime UI-language catalog for popup/Settings (overrides the browser locale) |
 | `lib/vocab-core.js` | Shared pure functions (works in the content script **and** in Node tests) |
 | `lib/custom-datasets.js` | `chrome.storage.local` persistence for user-uploaded datasets (background only) |
 | `lib/firebase-config.js` | Firebase project identifiers + merid.site URLs (not secrets) |
 | `lib/firebase-rest.js`, `lib/sync.js` | Optional deck sync over Firebase REST (no SDK, no remote code) |
 | `content.js` | DOM scanning, deferred reveal, tooltip, live re-processing, revert |
-| `content-bridge.js` | merid.site single sign-on relay (session carries into the extension) |
+| `content-bridge.js` | merid.site relay: single sign-on + the site's VI/EN language choice |
 | `background.js` | Datasets, settings, optional sync + AI-check requests |
 | `popup.html/js/css` | Toolbar popup |
 | `options.html/js/css` | Settings page |
@@ -103,7 +115,7 @@ pick a dataset and browse.
 
 ## Using it
 
-- **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All / your own), set
+- **Popup** (toolbar icon): pick a dataset (C1 / C2 / SAT / All / your own), set
   the intensity (the page reloads so the new setting starts from a clean scan),
   choose a display mode, turn the extension on/off, or stop it scanning the
   current site. Scan direction is not here - English→English is withdrawn for
@@ -197,7 +209,7 @@ prompt that produces a compatible file.
   (popup "My datasets" dropdown or the Use button in Settings). "All" covers only
   the bundled datasets and never mixes in custom entries. If the selected custom
   dataset is missing (e.g. deleted, or the setting synced to another device),
-  Merid falls back to SAT and shows a notice.
+  Merid falls back to the default dataset (C1) and shows a notice.
 
 ---
 
@@ -251,8 +263,10 @@ the learning card open - regenerate it with `node scripts/gen-real-screenshot.js
 4. Confirm word replacement, the on/off toggle, the dataset selector and the
    per-site pause all work, and that words appear only once the context check
    has cleared them.
-5. Confirm the UI shows Vietnamese when Chrome's language is Vietnamese
-   (`chrome://settings/languages`) and English otherwise.
+5. Confirm the popup and Settings show Vietnamese when Chrome's language is
+   Vietnamese (`chrome://settings/languages`), when merid.site's toggle is set
+   to VI, or when Settings → **Language** says Tiếng Việt - and that the hover
+   learning card stays English in all three.
 6. Confirm **no API key ships** in the built files (the build fails if a
    key-shaped secret is found; the Firebase project identifiers in
    `lib/firebase-config.js` are public identifiers, not secrets).

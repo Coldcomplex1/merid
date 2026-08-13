@@ -14,6 +14,8 @@ node e2e/interaction.mjs      # replacement, feedback signals, tooltip
 node e2e/scroll-feed.mjs      # endless feed: deep posts checked, caps, 20s ceiling
 node e2e/spread.mjs           # words land through a whole article, and in every feed post
 node e2e/article-repeat.mjs   # a news article: no repeated word, no bare syllable of a title
+node e2e/main-content.mjs     # a news page: the article is scanned, the rail and promos are not
+node e2e/ui-language.mjs      # panel language: site choice, Settings override, English card
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
 node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you

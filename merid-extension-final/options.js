@@ -3,14 +3,25 @@
 // check uses the user's own Gemini API key, stored in chrome.storage.local
 // only (never synced).
 const C = window.VMCore;
+const I18n = window.VMI18n;
 
-const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey'];
+// UI strings in the language the READER chose, not the one Chrome is in - see
+// lib/i18n.js. Every call carries the English written in options.html as its
+// fallback, so a missing message can never blank a control.
+function t(key, fallback, subs) {
+    return I18n.t(key, fallback, subs);
+}
+
+const applyI18n = () => I18n.applyI18n();
+
+const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey', 'uiLang'];
 
 const els = {
     modeSeg: document.getElementById('modeSeg'),
     intensitySeg: document.getElementById('intensitySeg'),
     directionCards: document.getElementById('directionCards'),
     directionHint: document.getElementById('directionHint'),
+    langSeg: document.getElementById('langSeg'),
     datasetSeg: document.getElementById('datasetSeg'),
     datasetInfo: document.getElementById('datasetInfo'),
     aiSeg: document.getElementById('aiSeg'),
@@ -23,11 +34,11 @@ const els = {
 };
 
 function flashSaved() {
-    els.savedTag.textContent = 'Saved ✓';
+    els.savedTag.textContent = t('optSaved', 'Saved ✓');
     els.savedTag.classList.add('flash');
     clearTimeout(flashSaved._t);
     flashSaved._t = setTimeout(() => {
-        els.savedTag.textContent = 'Settings save automatically';
+        els.savedTag.textContent = t('optSavedAuto', 'Settings save automatically');
         els.savedTag.classList.remove('flash');
     }, 1200);
 }
@@ -76,6 +87,43 @@ function load() {
     });
 }
 
+// =============================================================
+// Language of this page and the toolbar popup.
+//
+// 'auto' is the honest default: the reader already said VI or EN on
+// merid.site, and Merid should not make them say it twice. Choosing English or
+// Tiếng Việt here overrides that for good - including over the browser's own
+// language, which is the only thing chrome.i18n would ever have listened to.
+// =============================================================
+function wireLanguage() {
+    if (!els.langSeg) return;
+    chrome.storage.sync.get(['uiLang'], raw => {
+        setActive(els.langSeg, C.withDefaults(raw).uiLang);
+    });
+    els.langSeg.addEventListener('click', (e) => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        setActive(els.langSeg, btn.dataset.val);
+        // The storage listener repaints the page (this tab included), so the
+        // reader sees the new language on the click that chose it.
+        saveSync({ uiLang: btn.dataset.val });
+    });
+}
+
+/** Repaint every string on the page in the language storage now holds. */
+async function applyLanguage() {
+    await I18n.refresh();
+    // applyI18n rewrote the markup of the two hint paragraphs that carry
+    // outbound links, so their configured URLs go back on.
+    applyLinkUrls();
+    // Labels drawn by script rather than by markup.
+    refreshDatasetInfo();
+    refreshSiteUI();
+    renderProfilePanel();
+    renderAiQuota();
+    els.savedTag.textContent = t('optSavedAuto', 'Settings save automatically');
+    document.title = t('optPageTitle', 'Merid - Settings');
+}
+
 function showAiStatus(msg, isError) {
     els.aiStatus.textContent = msg;
     els.aiStatus.hidden = !msg;
@@ -86,7 +134,8 @@ function refreshDatasetInfo() {
     chrome.runtime.sendMessage({ action: 'getStatus' }, res => {
         if (chrome.runtime.lastError || !res) { els.datasetInfo.textContent = ''; return; }
         const label = res.datasetLabel || (C.DATASET_REGISTRY[res.datasetKey] || {}).label || res.datasetKey;
-        els.datasetInfo.textContent = `Loaded: ${res.vocabCount} words (${label}).`;
+        els.datasetInfo.textContent = t('optDatasetLoaded',
+            `Loaded: ${res.vocabCount} words (${label}).`, [String(res.vocabCount), label]);
     });
 }
 
@@ -171,7 +220,7 @@ function renderSiteLists(disabledSites, allowedSites) {
     sites.pausedList.textContent = '';
     sites.pausedEmpty.hidden = disabledSites.length > 0;
     for (const host of disabledSites) {
-        sites.pausedList.appendChild(siteRowEl(host, 'Turn back on', () => {
+        sites.pausedList.appendChild(siteRowEl(host, t('optSiteTurnBackOn', 'Turn back on'), () => {
             writeSiteLists(C.removeSiteFromList(disabledSites, host), allowedSites);
         }));
     }
@@ -179,7 +228,7 @@ function renderSiteLists(disabledSites, allowedSites) {
     sites.allowedList.textContent = '';
     sites.allowedNone.hidden = allowedSites.length > 0;
     for (const host of allowedSites) {
-        sites.allowedList.appendChild(siteRowEl(host, 'Turn back off', () => {
+        sites.allowedList.appendChild(siteRowEl(host, t('optSiteTurnBackOff', 'Turn back off'), () => {
             writeSiteLists(disabledSites, C.removeSiteFromList(allowedSites, host));
         }));
     }
@@ -219,15 +268,16 @@ function wireSites() {
 
     sites.pauseAddBtn.addEventListener('click', () => {
         const host = parseSiteInput(sites.pauseInput.value);
-        if (!host) return showError('That does not look like a site name.');
+        if (!host) return showError(t('optSiteBadName', 'That does not look like a site name.'));
         if (C.isHostBlocked(host)) {
-            return showError(`Merid is already always off on ${host}.`);
+            return showError(t('optSiteAlreadyOff', `Merid is already always off on ${host}.`, [host]));
         }
         chrome.storage.sync.get(['disabledSites', 'allowedSites'], (s) => {
             const disabled = Array.isArray(s.disabledSites) ? s.disabledSites : [];
             const allowed = Array.isArray(s.allowedSites) ? s.allowedSites : [];
             if (disabled.length >= C.MAX_SITE_LIST) {
-                return showError(`You can turn Merid off on up to ${C.MAX_SITE_LIST} sites.`);
+                return showError(t('optSiteLimit',
+                    `You can turn Merid off on up to ${C.MAX_SITE_LIST} sites.`, [String(C.MAX_SITE_LIST)]));
             }
             sites.pauseInput.value = '';
             sites.pauseAddBtn.disabled = true;
@@ -278,10 +328,26 @@ const FILE_ERRORS = {
     UNKNOWN: 'Something went wrong. Reload Merid at chrome://extensions and try again.'
 };
 
+/**
+ * One import error, in the reader's language. FILE_ERRORS holds the English.
+ *
+ * The three limit numbers go to every message as $1/$2/$3; each one uses the
+ * placeholder it needs, so the limits live in CUSTOM_LIMITS and nowhere else.
+ */
+function fileError(code) {
+    const known = Object.prototype.hasOwnProperty.call(FILE_ERRORS, code) ? code : 'UNKNOWN';
+    return t('optFileErr_' + known, FILE_ERRORS[known], [
+        String(Math.round(C.CUSTOM_LIMITS.MAX_FILE_CHARS / (1024 * 1024))),
+        String(C.CUSTOM_LIMITS.MAX_ROWS),
+        String(C.CUSTOM_LIMITS.MAX_DATASETS)
+    ]);
+}
+
 function describeFailure(report) {
-    if (!report) return FILE_ERRORS.UNKNOWN;
-    let msg = FILE_ERRORS[report.errorCode] || FILE_ERRORS.UNKNOWN;
-    if (report.errorCode === 'MISSING_COLUMNS') msg += (report.missingColumns || []).join(', ') + '.';
+    if (!report) return fileError('UNKNOWN');
+    const code = report.errorCode;
+    let msg = fileError(code);
+    if (code === 'MISSING_COLUMNS') msg += (report.missingColumns || []).join(', ') + '.';
     return msg;
 }
 
@@ -306,12 +372,20 @@ function renderReport(report, mode) {
     head.className = 'report-head';
     if (report.ok) {
         const s = report.stats;
-        const bits = [`${s.valid} word${s.valid === 1 ? '' : 's'}`];
-        if (s.invalid) bits.push(`${s.invalid} row${s.invalid === 1 ? '' : 's'} skipped`);
-        if (s.duplicates) bits.push(`${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} removed (first row kept)`);
+        const bits = [t('optReportWords', `${s.valid} word${s.valid === 1 ? '' : 's'}`, [String(s.valid)])];
+        if (s.invalid) {
+            bits.push(t('optReportSkipped',
+                `${s.invalid} row${s.invalid === 1 ? '' : 's'} skipped`, [String(s.invalid)]));
+        }
+        if (s.duplicates) {
+            bits.push(t('optReportDuplicates',
+                `${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} removed (first row kept)`,
+                [String(s.duplicates)]));
+        }
+        const summary = bits.join(' · ');
         head.textContent = mode === 'preview'
-            ? `File looks good ✓ ${bits.join(' · ')}. Press "Save dataset" to import.`
-            : `Saved ✓ ${bits.join(' · ')}.`;
+            ? t('optReportPreview', `File looks good ✓ ${summary}. Press "Save dataset" to import.`, [summary])
+            : t('optReportSaved', `Saved ✓ ${summary}.`, [summary]);
     } else {
         head.textContent = '✗ ' + describeFailure(report);
     }
@@ -330,13 +404,15 @@ function renderReport(report, mode) {
         list.className = 'report-rows';
         for (const e of errs) {
             const li = document.createElement('li');
-            li.textContent = `Row ${e.row}: ${e.message}` + (e.sample ? ` - ${e.sample}` : '');
+            li.textContent = t('optReportRow', `Row ${e.row}:`, [String(e.row)]) +
+                ` ${e.message}` + (e.sample ? ` - ${e.sample}` : '');
             list.appendChild(li);
         }
         const hidden = (report.stats ? report.stats.invalid : 0) - errs.length;
         if (hidden > 0) {
             const li = document.createElement('li');
-            li.textContent = `…and ${hidden} more skipped row${hidden === 1 ? '' : 's'}.`;
+            li.textContent = t('optReportMoreRows',
+                `…and ${hidden} more skipped row${hidden === 1 ? '' : 's'}.`, [String(hidden)]);
             list.appendChild(li);
         }
         box.appendChild(list);
@@ -348,7 +424,8 @@ function renderReport(report, mode) {
         p.className = 'report-warn';
         const shown = dups.slice(0, 8).map(d => d.word).join(', ');
         const extra = (report.stats ? report.stats.duplicates : dups.length) - Math.min(dups.length, 8);
-        p.textContent = `Duplicates skipped: ${shown}${extra > 0 ? ` (+${extra} more)` : ''}.`;
+        const more = extra > 0 ? t('optReportDupMore', ` (+${extra} more)`, [String(extra)]) : '';
+        p.textContent = t('optReportDupList', `Duplicates skipped: ${shown}${more}.`, [shown + more]);
         box.appendChild(p);
     }
 }
@@ -398,7 +475,9 @@ function customRowEl(d, activeKey) {
     nameEl.title = d.name;
     const metaEl = document.createElement('span');
     metaEl.className = 'custom-meta';
-    metaEl.textContent = `${d.count} ${d.count === 1 ? 'word' : 'words'} · updated ${fmtDate(d.updatedAt)}`;
+    metaEl.textContent = t('optDatasetMeta',
+        `${d.count} ${d.count === 1 ? 'word' : 'words'} · updated ${fmtDate(d.updatedAt)}`,
+        [String(d.count), fmtDate(d.updatedAt)]);
     info.append(nameEl, metaEl);
 
     const actions = document.createElement('div');
@@ -408,9 +487,9 @@ function customRowEl(d, activeKey) {
     if (isActive) {
         useBtn = document.createElement('span');
         useBtn.className = 'badge-active';
-        useBtn.textContent = 'Active';
+        useBtn.textContent = t('optDatasetActive', 'Active');
     } else {
-        useBtn = miniBtn('Use');
+        useBtn = miniBtn(t('optDatasetUse', 'Use'));
         useBtn.addEventListener('click', () => {
             chrome.runtime.sendMessage({ action: 'setDataset', datasetKey: C.customKeyFor(d.id) }, () => {
                 void chrome.runtime.lastError;
@@ -421,14 +500,14 @@ function customRowEl(d, activeKey) {
         });
     }
 
-    const renameBtn = miniBtn('Rename');
+    const renameBtn = miniBtn(t('optDatasetRename', 'Rename'));
     renameBtn.addEventListener('click', () => startRename(li, d));
-    const replaceBtn = miniBtn('Replace');
+    const replaceBtn = miniBtn(t('optDatasetReplace', 'Replace'));
     replaceBtn.addEventListener('click', () => {
         replaceTargetId = d.id;
         custom.replaceFile.click();
     });
-    const deleteBtn = miniBtn('Delete', 'danger');
+    const deleteBtn = miniBtn(t('optDatasetDelete', 'Delete'), 'danger');
     deleteBtn.addEventListener('click', () => startDelete(li, d, isActive));
 
     actions.append(useBtn, renameBtn, replaceBtn, deleteBtn);
@@ -445,9 +524,9 @@ function startRename(li, d) {
     input.maxLength = C.CUSTOM_LIMITS.MAX_NAME_LEN;
     input.value = d.name;
     input.className = 'rename-input';
-    input.setAttribute('aria-label', 'New dataset name');
-    const save = miniBtn('Save');
-    const cancel = miniBtn('Cancel');
+    input.setAttribute('aria-label', t('optDatasetNewName', 'New dataset name'));
+    const save = miniBtn(t('optSave', 'Save'));
+    const cancel = miniBtn(t('optCancel', 'Cancel'));
     save.addEventListener('click', () => {
         const name = input.value.trim();
         if (!name) { input.focus(); return; }
@@ -476,12 +555,16 @@ function startDelete(li, d, isActive) {
     strip.setAttribute('aria-live', 'assertive');
     const msg = document.createElement('p');
     msg.className = 'confirm-msg';
-    msg.textContent = `Delete "${d.name}"? This cannot be undone.`
-        + (isActive ? ' This is your active dataset - Merid will switch back to SAT.' : '');
+    const fallbackLabel = C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].label;
+    msg.textContent = t('optDatasetDeleteConfirm',
+        `Delete "${d.name}"? This cannot be undone.`, [d.name])
+        + (isActive ? ' ' + t('optDatasetDeleteActive',
+            `This is your active dataset - Merid will switch back to ${fallbackLabel}.`,
+            [fallbackLabel]) : '');
     const btns = document.createElement('div');
     btns.className = 'row-actions';
-    const del = miniBtn('Delete', 'danger');
-    const cancel = miniBtn('Cancel');
+    const del = miniBtn(t('optDatasetDelete', 'Delete'), 'danger');
+    const cancel = miniBtn(t('optCancel', 'Cancel'));
     del.addEventListener('click', () => {
         chrome.runtime.sendMessage({ action: 'deleteCustomDataset', id: d.id }, () => {
             void chrome.runtime.lastError;
@@ -502,29 +585,36 @@ function startDelete(li, d, isActive) {
 function readCsvFile(file, onText) {
     if (!file) return;
     if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
-        showReportMessage('✗ Please choose a .csv file (a plain-text CSV, not Excel .xlsx).', true);
+        showReportMessage('✗ ' + t('optCsvWrongType',
+            'Please choose a .csv file (a plain-text CSV, not Excel .xlsx).'), true);
         return;
     }
     if (file.size > C.CUSTOM_LIMITS.MAX_FILE_CHARS * 4) {
-        showReportMessage('✗ ' + FILE_ERRORS.TOO_LARGE, true);
+        showReportMessage('✗ ' + fileError('TOO_LARGE'), true);
         return;
     }
     const reader = new FileReader();
     reader.onload = () => onText(String(reader.result || ''));
-    reader.onerror = () => showReportMessage('✗ Could not read the file.', true);
+    reader.onerror = () => showReportMessage('✗ ' + t('optCsvUnreadable', 'Could not read the file.'), true);
     reader.readAsText(file, 'utf-8');
 }
 
-function wireCustom() {
-    // Point every outbound link at its configured merid.site URL (A10). Each
-    // destination has its own hook class - a link must not borrow another's,
-    // or its href gets rewritten to the wrong page.
+// Point every outbound link at its configured merid.site URL (A10). Each
+// destination has its own hook class - a link must not borrow another's, or its
+// href gets rewritten to the wrong page. Called again after a language change:
+// those links live inside translated paragraphs, so applyI18n replaces the
+// anchor along with the sentence around it.
+function applyLinkUrls() {
     document.querySelectorAll('a.create-dataset-url').forEach(a => {
         a.href = window.VMFirebaseConfig.webCreateDatasetUrl;
     });
     document.querySelectorAll('a.api-key-guide-url').forEach(a => {
         a.href = window.VMFirebaseConfig.webApiKeyGuideUrl;
     });
+}
+
+function wireCustom() {
+    applyLinkUrls();
 
     // Upload flow: validate locally for an instant preview; the background
     // re-runs the same validator on save and stores the result.
@@ -597,7 +687,9 @@ function wireCustom() {
     // custom dataset went missing.
     chrome.storage.local.get(['vm_dataset_notice'], l => {
         if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
-            custom.notice.textContent = 'Your custom dataset could not be found on this device, so Merid switched back to SAT.';
+            const label = C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].label;
+            custom.notice.textContent = t('popupCustomMissing',
+                `Your custom dataset could not be found, so Merid switched back to ${label}.`, [label]);
             custom.notice.hidden = false;
             chrome.storage.local.remove('vm_dataset_notice');
         }
@@ -649,7 +741,8 @@ function wire() {
         setActive(els.aiSeg, btn.dataset.val);
         saveSync({ aiCheckEnabled: btn.dataset.val === 'on' });
         if (btn.dataset.val === 'on' && !els.aiKey.value.trim()) {
-            showAiStatus('Enabled - now paste your Gemini API key below and press "Save key".', false);
+            showAiStatus(t('optAiEnabledNoKey',
+                'Enabled - now paste your Gemini API key below and press "Save key".'), false);
         } else {
             showAiStatus('', false);
         }
@@ -663,45 +756,56 @@ function wire() {
         chrome.runtime.sendMessage({ type: 'MERID_AI_SAVE_KEY', key }, res => {
             els.aiSaveBtn.disabled = false;
             if (chrome.runtime.lastError || !res || !res.ok) {
-                showAiStatus('Could not save the key. Reload Merid at chrome://extensions and try again.', true);
+                showAiStatus(t('optAiKeySaveFailed',
+                    'Could not save the key. Reload Merid at chrome://extensions and try again.'), true);
                 return;
             }
             flashSaved();
             const cloud = res.cloud || {};
             if (!key) {
-                showAiStatus('Key removed' + (cloud.ok ? ' (here and from your account).' : '.'), false);
+                showAiStatus(cloud.ok
+                    ? t('optAiKeyRemovedCloud', 'Key removed (here and from your account).')
+                    : t('optAiKeyRemoved', 'Key removed.'), false);
             } else if (cloud.ok) {
-                showAiStatus('Key saved on this device and backed up to your account.', false);
+                showAiStatus(t('optAiKeySavedCloud',
+                    'Key saved on this device and backed up to your account.'), false);
             } else if (cloud.code === 'SIGNED_OUT') {
-                showAiStatus('Key saved on this device. Sign in above to keep it with your account across devices.', false);
+                showAiStatus(t('optAiKeySavedSignedOut',
+                    'Key saved on this device. Sign in above to keep it with your account across devices.'), false);
             } else {
-                showAiStatus('Key saved on this device. Account backup will retry after your next sign-in.', false);
+                showAiStatus(t('optAiKeySavedRetry',
+                    'Key saved on this device. Account backup will retry after your next sign-in.'), false);
             }
         });
     });
 
     els.aiTestBtn.addEventListener('click', () => {
         const key = els.aiKey.value.trim();
-        if (!key) { showAiStatus('Paste an API key first.', true); return; }
+        if (!key) { showAiStatus(t('optAiPasteKeyFirst', 'Paste an API key first.'), true); return; }
         els.aiTestBtn.disabled = true;
-        showAiStatus('Testing key…', false);
+        showAiStatus(t('optAiTestingKey', 'Testing key…'), false);
         chrome.runtime.sendMessage({ type: 'MERID_AI_TEST_KEY', key }, res => {
             els.aiTestBtn.disabled = false;
             if (chrome.runtime.lastError || !res) {
-                showAiStatus('Could not reach the extension background. Reload Merid at chrome://extensions and try again.', true);
+                showAiStatus(t('optNoBackground',
+                    'Could not reach the extension background. Reload Merid at chrome://extensions and try again.'), true);
                 return;
             }
-            if (res.ok) { showAiStatus('Key works ✓' + (res.model ? ` (model: ${res.model})` : ''), false); return; }
+            if (res.ok) { showAiStatus(t('optAiKeyWorks', 'Key works ✓') + (res.model ? ` (model: ${res.model})` : ''), false); return; }
 
             const detail = res.detail ? ` Google says: “${res.detail}”` : '';
             if (res.status === 400 || res.status === 401 || res.status === 403) {
-                showAiStatus('Key was rejected by Google. Use an API key from aistudio.google.com (with no API restrictions).' + detail, true);
+                showAiStatus(t('optAiKeyRejected',
+                    'Key was rejected by Google. Use an API key from aistudio.google.com (with no API restrictions).') + detail, true);
             } else if (res.status === 404) {
-                showAiStatus('The Gemini model is not available for this key/project.' + detail, true);
+                showAiStatus(t('optAiNoModel',
+                    'The Gemini model is not available for this key/project.') + detail, true);
             } else if (res.status === 429) {
-                showAiStatus('Key works but hit the free-tier rate limit. Wait a minute and try again.' + detail, false);
+                showAiStatus(t('optAiRateLimited',
+                    'Key works but hit the free-tier rate limit. Wait a minute and try again.') + detail, false);
             } else if (res.status === 500 || res.status === 503) {
-                showAiStatus('Google’s Gemini server is overloaded right now. Wait a moment and try again.' + detail, true);
+                showAiStatus(t('optAiOverloaded',
+                    'Google’s Gemini server is overloaded right now. Wait a moment and try again.') + detail, true);
             } else if (res.status) {
                 showAiStatus(`Google returned HTTP ${res.status}.` + detail, true);
             } else {
@@ -711,7 +815,8 @@ function wire() {
     });
 
     els.clearAll.addEventListener('click', () => {
-        if (!confirm('Delete ALL stored data (settings + your deck)? This cannot be undone.')) return;
+        if (!confirm(t('optDeleteAllConfirm',
+            'Delete ALL stored data (settings + your deck)? This cannot be undone.'))) return;
         chrome.storage.local.clear(() => chrome.storage.sync.clear(() => location.reload()));
     });
 }
@@ -766,16 +871,24 @@ const AUTH_ERRORS = {
 };
 
 function showAuthError(code) {
-    account.error.textContent = code ? (AUTH_ERRORS[code] || 'Something went wrong. Please try again.') : '';
+    let msg = '';
+    if (code) {
+        msg = Object.prototype.hasOwnProperty.call(AUTH_ERRORS, code)
+            ? t('optAuthErr_' + code, AUTH_ERRORS[code])
+            : t('optAuthErrUnknown', 'Something went wrong. Please try again.');
+    }
+    account.error.textContent = msg;
     account.error.hidden = !code;
 }
 
 function renderSyncState(status) {
     const map = {
-        'syncing': 'Syncing your deck…',
-        'rate-limited': 'Daily sync limit reached - remaining words sync tomorrow.',
-        'error': 'Sync paused (connection issue). It retries automatically.',
-        'idle': status.lastSyncAt ? 'Deck is backed up.' : 'Ready to sync.'
+        'syncing': t('optSyncSyncing', 'Syncing your deck…'),
+        'rate-limited': t('optSyncRateLimited', 'Daily sync limit reached - remaining words sync tomorrow.'),
+        'error': t('optSyncError', 'Sync paused (connection issue). It retries automatically.'),
+        'idle': status.lastSyncAt
+            ? t('optSyncBackedUp', 'Deck is backed up.')
+            : t('optSyncReady', 'Ready to sync.')
     };
     account.syncState.textContent = map[status.state] || '';
 }
@@ -803,10 +916,10 @@ function sendSignInLink() {
     if (!EMAIL_RE.test(email)) { showAuthError('INVALID_EMAIL'); return; }
     showAuthError(null);
     account.sendLinkBtn.disabled = true;
-    account.sendLinkBtn.textContent = 'Sending…';
+    account.sendLinkBtn.textContent = t('optSending', 'Sending…');
     chrome.runtime.sendMessage({ type: 'MERID_SYNC_SEND_LINK', email }, (res) => {
         account.sendLinkBtn.disabled = false;
-        account.sendLinkBtn.textContent = 'Email me a sign-in link';
+        account.sendLinkBtn.textContent = t('optSendLink', 'Email me a sign-in link');
         if (chrome.runtime.lastError || !res) { showAuthError('NETWORK'); return; }
         if (!res.ok) { showAuthError(res.code); return; }
         account.linkWait.hidden = false;
@@ -930,15 +1043,19 @@ function renderProfilePanel() {
         const pct = Math.round(Prof.confidence(p) * 100);
         document.getElementById('profileBar').style.width = pct + '%';
         document.getElementById('profileConfidence').textContent =
-            `${p.events} feedback signal${p.events === 1 ? '' : 's'} so far - personalization is ${pct}% dialled in.` +
-            (pct < 100 ? ' Below 100% Merid stays close to its default behaviour on purpose.' : '');
+            t('optProfileConfidence',
+                `${p.events} feedback signal${p.events === 1 ? '' : 's'} so far - personalization is ${pct}% dialled in.`,
+                [String(p.events), String(pct)]) +
+            (pct < 100 ? ' ' + t('optProfileConfidenceLow',
+                'Below 100% Merid stays close to its default behaviour on purpose.') : '');
 
         // Rank the CEFR buckets the same way the ranker does.
         const levels = Object.keys(p.levels)
             .map(k => ({ k, rate: Prof.bucketRate(p.levels[k]), n: p.levels[k].up + p.levels[k].down }))
             .filter(x => x.n >= 2)
             .sort((a, b) => b.rate - a.rate);
-        document.getElementById('profileLevel').textContent = levels.length ? levels[0].k : 'still working it out';
+        const unknown = t('optProfileUnknown', 'still working it out');
+        document.getElementById('profileLevel').textContent = levels.length ? levels[0].k : unknown;
 
         const topics = Object.keys(p.topics)
             .map(k => ({ k, n: p.topics[k].up + p.topics[k].down }))
@@ -946,7 +1063,7 @@ function renderProfilePanel() {
             .sort((a, b) => b.n - a.n)
             .slice(0, 3)
             .map(x => x.k);
-        document.getElementById('profileTopics').textContent = topics.length ? topics.join(', ') : 'still working it out';
+        document.getElementById('profileTopics').textContent = topics.length ? topics.join(', ') : unknown;
         document.getElementById('profileWords').textContent = String(words.length);
 
         renderLevelTip(p);
@@ -982,11 +1099,13 @@ function renderLevelTip(profile) {
     chrome.storage.sync.get(['datasetKey'], (s) => {
         // "All" and custom datasets have no place on the CEFR ladder, so
         // suggestLevel returns null for them and nothing is offered.
-        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || 'sat'));
+        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || C.DEFAULT_DATASET_KEY));
         if (!tip) { btn.hidden = true; return; }
         btn.textContent = tip.direction === 'up'
-            ? `You already know a lot of ${tip.from} words - try ${tip.to} →`
-            : `${tip.from} looks like a stretch right now - try ${tip.to} →`;
+            ? t('popupLevelUp', `You already know a lot of ${tip.from} words - try ${tip.to} →`,
+                [tip.from, tip.to])
+            : t('popupLevelDown', `${tip.from} looks like a stretch right now - try ${tip.to} →`,
+                [tip.from, tip.to]);
         btn.hidden = false;
         btn.onclick = () => {
             const target = tip.to.toLowerCase();
@@ -1006,11 +1125,13 @@ function wireProfilePanel() {
     if (!btn) return;
     const status = document.getElementById('profileStatus');
     btn.addEventListener('click', () => {
-        if (!confirm('Forget everything Merid learned about your preferences? Your deck and settings are not affected.')) return;
+        if (!confirm(t('optProfileForgetConfirm',
+            'Forget everything Merid learned about your preferences? Your deck and settings are not affected.'))) return;
         chrome.runtime.sendMessage({ type: 'MERID_PROFILE_RESET' }, () => {
             void chrome.runtime.lastError;
             status.hidden = false;
-            status.textContent = 'Cleared. Merid starts learning again from your next page.';
+            status.textContent = t('optProfileCleared',
+                'Cleared. Merid starts learning again from your next page.');
             renderProfilePanel();
         });
     });
@@ -1031,7 +1152,7 @@ function renderAiQuota() {
     chrome.storage.local.get(['vm_ai_quota', 'geminiApiKey'], (r) => {
         if (r.geminiApiKey) {
             el.hidden = false;
-            el.textContent = 'Using your own API key - no daily limit from Merid.';
+            el.textContent = t('optQuotaOwnKey', 'Using your own API key - no daily limit from Merid.');
             return;
         }
         const q = r.vm_ai_quota;
@@ -1039,10 +1160,12 @@ function renderAiQuota() {
         const left = Math.max(0, q.limit - (q.used || 0));
         el.hidden = false;
         el.textContent = q.exhausted
-            ? `Daily limit reached (${q.limit}). It resets at midnight UTC.` +
-              (q.anonymous ? ' Signing in raises it.' : '')
-            : `${left} of ${q.limit} AI checks left today.` +
-              (q.anonymous ? ' Sign in to raise the limit.' : '');
+            ? t('optQuotaOut', `Daily limit reached (${q.limit}). It resets at midnight UTC.`,
+                [String(q.limit)]) +
+              (q.anonymous ? ' ' + t('optQuotaSignInRaises', 'Signing in raises it.') : '')
+            : t('optQuotaLeft', `${left} of ${q.limit} AI checks left today.`,
+                [String(left), String(q.limit)]) +
+              (q.anonymous ? ' ' + t('optQuotaSignInMore', 'Sign in to raise the limit.') : '');
     });
 }
 
@@ -1059,12 +1182,13 @@ function wireAiDiagnose() {
         btn.disabled = true;
         out.hidden = false;
         out.classList.remove('auth-error');
-        out.textContent = 'Testing…';
+        out.textContent = t('optTesting', 'Testing…');
         chrome.runtime.sendMessage({ type: 'MERID_AI_DIAGNOSE' }, (res) => {
             btn.disabled = false;
             if (chrome.runtime.lastError || !res) {
                 out.classList.add('auth-error');
-                out.textContent = 'Could not reach the extension background. Reload Merid at chrome://extensions and try again.';
+                out.textContent = t('optNoBackground',
+                    'Could not reach the extension background. Reload Merid at chrome://extensions and try again.');
                 return;
             }
             out.classList.toggle('auth-error', !res.ok);
@@ -1075,12 +1199,20 @@ function wireAiDiagnose() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    load(); wire(); wireAccount(); wireCustom(); wireSites();
+document.addEventListener('DOMContentLoaded', async () => {
+    // The catalog first: everything below writes labels, and wireCustom() puts
+    // the configured merid.site URLs back on links whose markup applyI18n may
+    // have just rewritten.
+    await I18n.init();
+    applyI18n();
+
+    load(); wire(); wireLanguage(); wireAccount(); wireCustom(); wireSites();
     renderProfilePanel(); wireProfilePanel();
     renderAiQuota(); wireAiDiagnose();
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && (changes.vm_ai_quota || changes.geminiApiKey)) renderAiQuota();
+        // A language picked here, or on merid.site in another tab.
+        if (area === 'sync' && (changes.uiLang || changes.siteLang)) applyLanguage();
     });
 });
 

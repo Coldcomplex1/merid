@@ -279,7 +279,7 @@ test('withDefaults fills missing keys without mutating input', () => {
     assert.strictEqual(s.frequency, 20);
     assert.strictEqual(s.replacementMode, 'highlight');
     assert.strictEqual(s.extensionEnabled, true);
-    assert.strictEqual(s.datasetKey, 'sat');
+    assert.strictEqual(s.datasetKey, C.DEFAULT_DATASET_KEY);
     assert.deepStrictEqual(input, { frequency: 20 }); // unchanged
 });
 
@@ -489,11 +489,22 @@ test('countWords counts words, not punctuation or emoji', () => {
     assert.strictEqual(C.countWords('top 10 films of 2024'), 5);
 });
 
-test('dataset registry resolves files and tags, falling back to sat', () => {
+test('dataset registry resolves files and tags, falling back to the default', () => {
     assert.deepStrictEqual(C.getDatasetFiles('c2'), ['dataset-C2.csv']);
     assert.strictEqual(C.getDatasetFiles('all').length, 3);
-    assert.deepStrictEqual(C.getDatasetFiles('nonsense'), ['dataset-SAT.csv']);
+    assert.deepStrictEqual(C.getDatasetFiles('nonsense'),
+        C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].files);
     assert.strictEqual(C.datasetTagFor('c1'), 'C1');
+    // The default has to name a real bundled dataset, never a custom key.
+    assert.ok(C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY]);
+    assert.strictEqual(C.isCustomKey(C.DEFAULT_DATASET_KEY), false);
+});
+
+test('"All" keeps SAT first so shared headwords resolve the same as before', () => {
+    // Duplicate headwords keep the FIRST row, so this order is behaviour, not
+    // presentation - it must not follow the registry's display order.
+    assert.deepStrictEqual(C.getDatasetFiles('all'),
+        ['dataset-SAT.csv', 'dataset-C1.csv', 'dataset-C2.csv']);
 });
 
 test('canonicalHost lowercases and strips www', () => {

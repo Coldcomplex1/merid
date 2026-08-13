@@ -141,7 +141,13 @@
     "message": "tài khoản của bạn"
   },
   "popupCustomMissing": {
-    "message": "Không tìm thấy bộ từ tùy chỉnh của bạn, Merid đã chuyển về SAT."
+    "message": "Không tìm thấy bộ từ tùy chỉnh của bạn, Merid đã chuyển về $DATASET$.",
+    "placeholders": {
+      "DATASET": {
+        "content": "$1",
+        "example": "C1"
+      }
+    }
   },
   "aiModalTitle": {
     "message": "Tận dụng tối đa Merid ✨"
@@ -252,15 +258,702 @@
     "message": "Vẫn đang học xem gì hợp với bạn."
   },
   "popupLevelUp": {
-    "message": "Bạn đã biết khá nhiều từ %from%. Thử %to% →"
+    "message": "Bạn đã biết khá nhiều từ $FROM$. Thử $TO$ →",
+    "placeholders": {
+      "FROM": {
+        "content": "$1",
+        "example": "SAT"
+      },
+      "TO": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
   },
   "popupLevelDown": {
-    "message": "%from% đang hơi quá sức. Thử %to% →"
+    "message": "$FROM$ đang hơi quá sức. Thử $TO$ →",
+    "placeholders": {
+      "FROM": {
+        "content": "$1",
+        "example": "SAT"
+      },
+      "TO": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
   },
   "popupQuotaOut": {
     "message": "Đã dùng hết lượt AI hôm nay. Reset lúc 0h UTC."
   },
   "popupQuotaAnon": {
     "message": "Đã dùng hết lượt AI hôm nay. Đăng nhập để có thêm."
+  },
+  "optPageTitle": {
+    "message": "Merid - Cài đặt"
+  },
+  "optLanguageTitle": {
+    "message": "Ngôn ngữ"
+  },
+  "optLangAuto": {
+    "message": "Tự động"
+  },
+  "optLanguageHint": {
+    "message": "Tự động sẽ theo ngôn ngữ bạn đã chọn trên merid.site, và theo ngôn ngữ trình duyệt khi bạn chưa vào đó. Trang này và bảng điều khiển trên thanh công cụ sẽ đi theo lựa chọn đó. Thẻ học từ hiện trên trang web luôn giữ tiếng Anh - đó là thứ tiếng bạn đang học."
+  },
+  "optTagline": {
+    "message": "Học từ vựng tiếng Anh một cách thụ động khi bạn đọc web tiếng Việt. Dùng được ngay, không cần tài khoản - đăng nhập và AI kiểm tra ngữ cảnh chỉ là tùy chọn thêm."
+  },
+  "optReplacementTitle": {
+    "message": "Thay từ"
+  },
+  "optModeLabel": {
+    "message": "Cách hiển thị từ"
+  },
+  "optModeReplace": {
+    "message": "Thay thẳng"
+  },
+  "optModeHighlight": {
+    "message": "Chỉ tô sáng"
+  },
+  "optModeBeside": {
+    "message": "Hiện bên cạnh"
+  },
+  "optModeHint": {
+    "message": "Thay thẳng = đổi hẳn từ. Tô sáng = giữ nguyên từ gốc, di chuột để xem nghĩa. Bên cạnh = <em>từ (word)</em>."
+  },
+  "optIntensityLabel": {
+    "message": "Mật độ"
+  },
+  "optDirectionLabel": {
+    "message": "Ngôn ngữ cần quét"
+  },
+  "optDirVieEngTitle": {
+    "message": "Tiếng Việt → Tiếng Anh"
+  },
+  "optDirVieEngSub": {
+    "message": "Thay từ tiếng Việt bằng từ tiếng Anh tương đương"
+  },
+  "optDirEngEngTitle": {
+    "message": "Tiếng Anh → Tiếng Anh"
+  },
+  "optDirEngEngSub": {
+    "message": "Đổi từ tiếng Anh dễ sang từ đồng nghĩa khó hơn"
+  },
+  "optDirectionHint": {
+    "message": "Bật cả hai để quét tiếng Việt và tiếng Anh cùng lúc."
+  },
+  "optMyDatasetsTitle": {
+    "message": "Bộ từ của tôi"
+  },
+  "optCustomEmpty": {
+    "message": "Chưa có bộ từ tùy chỉnh nào.\n                    <a class=\"ext-link create-dataset-url\" href=\"https://merid.site/create-dataset\" target=\"_blank\" rel=\"noopener\">Tạo một bộ bằng AI trên merid.site</a>,\n                    rồi tải file CSV lên bên dưới."
+  },
+  "optUploadFileLabel": {
+    "message": "Tải lên file CSV"
+  },
+  "optUploadHint": {
+    "message": "Cần một dòng tiêu đề có ít nhất hai cột <code>word</code> và <code>vietnamese</code>.\n                        <a class=\"ext-link create-dataset-url\" href=\"https://merid.site/create-dataset\" target=\"_blank\" rel=\"noopener\">Cách tạo một bộ từ ↗</a>"
+  },
+  "optDatasetNameLabel": {
+    "message": "Tên bộ từ"
+  },
+  "optDatasetNamePlaceholder": {
+    "message": "ví dụ: Tài chính C1"
+  },
+  "optSaveDataset": {
+    "message": "Lưu bộ từ"
+  },
+  "optSitesTitle": {
+    "message": "Trang web"
+  },
+  "optSitesHint": {
+    "message": "Merid chạy ở mọi nơi trừ những trang dưới đây. Bạn cũng có thể tắt nó cho trang đang đọc ngay từ bảng điều khiển trên thanh công cụ."
+  },
+  "optSitesOffTitle": {
+    "message": "Trang bạn đã tắt"
+  },
+  "optNoneYet": {
+    "message": "Chưa có trang nào."
+  },
+  "optPauseInputLabel": {
+    "message": "Tắt Merid trên một trang khác"
+  },
+  "optAddSite": {
+    "message": "Thêm trang"
+  },
+  "optDefaultOffTitle": {
+    "message": "Mặc định tắt"
+  },
+  "optDefaultOffHint": {
+    "message": "Từ điển, công cụ dịch, trình soạn thảo và bài học sẽ dễ đọc hơn khi giữ nguyên, nên Merid mặc định tắt ở đó. Bạn có thể bật lại từng trang từ bảng điều khiển khi đang ở trang đó."
+  },
+  "optAllowedNone": {
+    "message": "Bạn chưa bật lại trang nào trong số này."
+  },
+  "optSeeFullList": {
+    "message": "Xem danh sách đầy đủ"
+  },
+  "optAlwaysOffTitle": {
+    "message": "Luôn tắt"
+  },
+  "optAlwaysOffHint": {
+    "message": "Merid không bao giờ đổi từ trên các trang riêng tư, và không bao giờ gửi bất cứ thứ gì từ đó cho AI kiểm tra ngữ cảnh. Phần này không phải là một tùy chọn."
+  },
+  "optMatchingHint": {
+    "message": "Merid nhận diện theo tên miền, nên một dịch vụ dùng chung tên miền với thứ khác — Facebook, Instagram và X đặt tin nhắn cùng địa chỉ với bảng tin — không nằm trong danh sách này. Những thứ tự dựng cũng vậy, ví dụ webmail công ty. Bạn hãy tự tắt chúng ở phần trên."
+  },
+  "optAccountTitle": {
+    "message": "Tài khoản &amp; đồng bộ"
+  },
+  "optAccountHint": {
+    "message": "Đăng nhập để sao lưu bộ thẻ và học trên <strong>merid.site/my-deck</strong>. Không bắt buộc - mọi thứ vẫn chạy trên máy bạn khi không có tài khoản."
+  },
+  "optGoogleSignIn": {
+    "message": "Đăng nhập bằng Google"
+  },
+  "optAuthDivider": {
+    "message": "hoặc dùng email của bạn"
+  },
+  "optEmailLabel": {
+    "message": "Email"
+  },
+  "optSendLink": {
+    "message": "Gửi cho tôi liên kết đăng nhập"
+  },
+  "optLinkWaitHint": {
+    "message": "Đã gửi liên kết ✓ Mở email từ Merid, sao chép địa chỉ liên kết đăng nhập (bấm chuột phải vào nút → Sao chép liên kết) rồi dán vào đây để hoàn tất:"
+  },
+  "optLinkInputLabel": {
+    "message": "Dán liên kết đăng nhập"
+  },
+  "optCompleteSignIn": {
+    "message": "Hoàn tất đăng nhập"
+  },
+  "optOrPassword": {
+    "message": "Hoặc đăng nhập bằng mật khẩu:"
+  },
+  "optPasswordLabel": {
+    "message": "Mật khẩu (tối thiểu 8 ký tự)"
+  },
+  "optSignIn": {
+    "message": "Đăng nhập"
+  },
+  "optCreateAccount": {
+    "message": "Tạo tài khoản"
+  },
+  "optSignedInAs": {
+    "message": "Đang đăng nhập bằng"
+  },
+  "optSignOut": {
+    "message": "Đăng xuất"
+  },
+  "optAiTitle": {
+    "message": "AI kiểm tra ngữ cảnh"
+  },
+  "optAiHint": {
+    "message": "Sau khi Merid thay một từ, Google Gemini sẽ kiểm tra xem từ đó có thực sự hợp với câu hay không. Từ không hợp sẽ <strong>được đổi sang từ khác, hoặc trả lại như cũ</strong>, tự động. Đã bao gồm sẵn - <strong>không cần API key</strong>. Có giới hạn theo ngày cho mỗi người để dịch vụ luôn sẵn cho tất cả mọi người; đăng nhập sẽ được nhiều lượt hơn."
+  },
+  "optAiEnableLabel": {
+    "message": "Bật AI kiểm tra ngữ cảnh"
+  },
+  "optOn": {
+    "message": "Bật"
+  },
+  "optOff": {
+    "message": "Tắt"
+  },
+  "optAiTest": {
+    "message": "Kiểm tra thử AI"
+  },
+  "optAiOwnKeyHint": {
+    "message": "Muốn dùng key của riêng bạn? Dán một key miễn phí từ <strong>aistudio.google.com</strong> và\n                    Merid sẽ dùng nó thay thế - yêu cầu đi thẳng từ trình duyệt này tới Google, không có giới hạn\n                    ngày nào từ chúng tôi. <a class=\"ext-link api-key-guide-url\" href=\"https://merid.site/api-key-guide\" target=\"_blank\" rel=\"noopener\">Hướng dẫn từng bước ↗</a>"
+  },
+  "optAiKeyLabel": {
+    "message": "Gemini API key"
+  },
+  "optAiSaveKey": {
+    "message": "Lưu key"
+  },
+  "optAiTestKey": {
+    "message": "Kiểm tra key"
+  },
+  "optProfileTitle": {
+    "message": "Những gì Merid học được về bạn"
+  },
+  "optProfileHint": {
+    "message": "Merid quan sát những từ bạn lưu, đánh giá và bỏ qua, rồi lặng lẽ hiện nhiều hơn những gì hợp với bạn và ít đi những gì không hợp. Tất cả nằm trên máy này (và trong tài khoản của chính bạn nếu bạn đăng nhập). Không có gì ở đây được gửi cho Merid."
+  },
+  "optProfileEmpty": {
+    "message": "Chưa có gì. Hãy di chuột vào một từ được tô sáng và dùng 👍 / 👎, \"Lưu vào bộ thẻ\" hoặc \"Tôi biết từ này\" vài lần, rồi phần này sẽ dần đầy lên."
+  },
+  "optProfileLevelLabel": {
+    "message": "Trình độ hợp với bạn"
+  },
+  "optProfileTopicsLabel": {
+    "message": "Bạn hay đọc gì"
+  },
+  "optProfileWordsLabel": {
+    "message": "Số từ đang theo dõi"
+  },
+  "optProfileMore": {
+    "message": "Sẽ hiện nhiều hơn"
+  },
+  "optProfileLess": {
+    "message": "Sẽ hiện ít hơn"
+  },
+  "optProfileForget": {
+    "message": "Xóa những gì Merid đã học"
+  },
+  "optPrivacyTitle": {
+    "message": "Dữ liệu &amp; quyền riêng tư"
+  },
+  "optDeleteAll": {
+    "message": "Xóa toàn bộ dữ liệu đã lưu"
+  },
+  "optSavedAuto": {
+    "message": "Cài đặt được lưu tự động"
+  },
+  "optSaved": {
+    "message": "Đã lưu ✓"
+  },
+  "optPrivacy1": {
+    "message": "Văn bản trên trang được quét <strong>ngay trên máy bạn</strong> để tìm từ vựng trùng khớp."
+  },
+  "optPrivacy2": {
+    "message": "Mặc định tiện ích <strong>không gửi bất kỳ yêu cầu mạng nào</strong> - nội dung trang nằm nguyên trong trình duyệt của bạn và không API AI nào được dùng cho tới khi bạn tự bật ở dưới."
+  },
+  "optPrivacy3": {
+    "message": "Khi bật <strong>AI kiểm tra ngữ cảnh</strong>, một đoạn ngắn của câu quanh mỗi từ đã thay sẽ được gửi tới Google Gemini - mặc định qua <code>merid.site/api/check</code>, nơi gọi Gemini bằng key của Merid và chỉ giữ một bộ đếm theo ngày để áp giới hạn. <strong>Không có địa chỉ trang, tiêu đề hay lịch sử duyệt web nào được gửi đi.</strong> Tắt phần kiểm tra ở trên thì không có gì được gửi cả. Nếu bạn lưu API key của riêng mình, yêu cầu đi thẳng từ trình duyệt này tới Google và không bao giờ đi qua máy chủ của Merid."
+  },
+  "optPrivacy4": {
+    "message": "Để đếm giới hạn mỗi ngày mà không bắt bạn tạo tài khoản, Merid tạo một <strong>tài khoản Firebase ẩn danh</strong> cho thiết bị này ở lần dùng đầu tiên. Nó không chứa thông tin cá nhân nào. Đăng nhập sẽ thay thế nó và nâng giới hạn lên."
+  },
+  "optPrivacy5": {
+    "message": "Nếu bạn đăng nhập để dùng <strong>đồng bộ bộ thẻ</strong> (không bắt buộc), địa chỉ email và bộ thẻ của bạn (từ đã lưu + từ đã biết) được lưu trong tài khoản Merid của chính bạn (Google Firebase) để bạn học trên merid.site. Đăng xuất sẽ dừng mọi việc đồng bộ."
+  },
+  "optPrivacy6": {
+    "message": "Merid giữ một <strong>hồ sơ cá nhân hóa</strong> trên máy này: số lần mỗi từ được hiện, được mở, được đánh giá, được lưu hay bị bỏ qua, kèm trình độ của từ và một chủ đề chung suy ra từ địa chỉ trang. Nó <strong>không chứa văn bản trang, không tiêu đề, không URL đầy đủ và không lịch sử duyệt web</strong>. Nếu bạn đăng nhập, hồ sơ được sao lưu vào tài khoản của chính bạn để tùy chỉnh đi theo bạn. Bạn có thể đọc lại - và xóa riêng nó - ở mục <strong>Những gì Merid học được về bạn</strong> phía trên."
+  },
+  "optPrivacy7": {
+    "message": "Merid <strong>không chạy chút nào</strong> trên các trang riêng tư - email, tin nhắn, ngân hàng, đăng nhập, sức khỏe và dịch vụ công - nên không có gì từ đó bị quét hay bị gửi đi, dù phần kiểm tra AI đang bật hay tắt. Xem mục <strong>Trang web</strong> phía trên để biết danh sách đầy đủ."
+  },
+  "optPrivacy8": {
+    "message": "Cài đặt của bạn (bộ từ đang chọn, kiểu hiển thị, mật độ, bật/tắt, những trang bạn đã tắt và những trang mặc định tắt mà bạn đã bật lại) được lưu trên máy bạn qua <code>chrome.storage</code>."
+  },
+  "optPrivacy9": {
+    "message": "Bộ từ tùy chỉnh bạn tải lên được kiểm tra và lưu <strong>chỉ trên máy này</strong> - chúng không bao giờ được tải lên Merid, Firebase hay bất kỳ dịch vụ AI nào, và không nằm trong phần đồng bộ bộ thẻ."
+  },
+  "optPrivacy10": {
+    "message": "Bạn có thể tắt tiện ích bất cứ lúc nào từ bảng điều khiển - tắt toàn bộ, hoặc chỉ tắt cho một trang."
+  },
+  "optDatasetLoaded": {
+    "message": "Đã tải: $COUNT$ từ ($LABEL$).",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "1380"
+      },
+      "LABEL": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
+  },
+  "optSiteTurnBackOn": {
+    "message": "Bật lại"
+  },
+  "optSiteTurnBackOff": {
+    "message": "Tắt lại"
+  },
+  "optSiteBadName": {
+    "message": "Đó không giống một tên trang web."
+  },
+  "optSiteAlreadyOff": {
+    "message": "Merid vốn đã luôn tắt trên $HOST$.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
+  },
+  "optSiteLimit": {
+    "message": "Bạn có thể tắt Merid trên tối đa $MAX$ trang.",
+    "placeholders": {
+      "MAX": {
+        "content": "$1",
+        "example": "100"
+      }
+    }
+  },
+  "optFileErr_EMPTY_FILE": {
+    "message": "File rỗng."
+  },
+  "optFileErr_TOO_LARGE": {
+    "message": "File quá lớn (giới hạn $MB$ MB).",
+    "placeholders": {
+      "MB": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "optFileErr_MALFORMED_CSV": {
+    "message": "File không phải CSV hợp lệ."
+  },
+  "optFileErr_MISSING_HEADER": {
+    "message": "Dòng đầu tiên phải là dòng tiêu đề (ví dụ: word,type,…,vietnamese,…)."
+  },
+  "optFileErr_MISSING_COLUMNS": {
+    "message": "Dòng tiêu đề thiếu cột bắt buộc: "
+  },
+  "optFileErr_TOO_MANY_ROWS": {
+    "message": "Quá nhiều dòng (giới hạn $ROWS$). Hãy tách file thành các bộ từ nhỏ hơn.",
+    "placeholders": {
+      "ROWS": {
+        "content": "$2",
+        "example": "5000"
+      }
+    }
+  },
+  "optFileErr_NO_VALID_ROWS": {
+    "message": "Không có dòng nào dùng được - mỗi dòng cần một từ tiếng Anh và một nghĩa tiếng Việt."
+  },
+  "optFileErr_LIMIT_DATASETS": {
+    "message": "Bạn đã có $MAX$ bộ từ. Hãy xóa bớt một bộ trước khi thêm bộ mới.",
+    "placeholders": {
+      "MAX": {
+        "content": "$3",
+        "example": "10"
+      }
+    }
+  },
+  "optFileErr_STORAGE_FULL": {
+    "message": "Bộ nhớ của tiện ích đã đầy. Hãy xóa một bộ từ hoặc tải lên file nhỏ hơn."
+  },
+  "optFileErr_BAD_NAME": {
+    "message": "Hãy đặt tên cho bộ từ."
+  },
+  "optFileErr_NOT_FOUND": {
+    "message": "Bộ từ đó không còn tồn tại."
+  },
+  "optFileErr_UNKNOWN": {
+    "message": "Đã có lỗi xảy ra. Hãy tải lại Merid ở chrome://extensions rồi thử lại."
+  },
+  "optCsvWrongType": {
+    "message": "Hãy chọn một file .csv (CSV dạng văn bản thuần, không phải Excel .xlsx)."
+  },
+  "optCsvUnreadable": {
+    "message": "Không đọc được file."
+  },
+  "optReportWords": {
+    "message": "$COUNT$ từ",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "250"
+      }
+    }
+  },
+  "optReportSkipped": {
+    "message": "bỏ qua $COUNT$ dòng",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "optReportDuplicates": {
+    "message": "đã bỏ $COUNT$ dòng trùng (giữ lại dòng đầu tiên)",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "optReportPreview": {
+    "message": "File hợp lệ ✓ $SUMMARY$. Bấm \"Lưu bộ từ\" để nhập vào.",
+    "placeholders": {
+      "SUMMARY": {
+        "content": "$1",
+        "example": "250 từ"
+      }
+    }
+  },
+  "optReportSaved": {
+    "message": "Đã lưu ✓ $SUMMARY$.",
+    "placeholders": {
+      "SUMMARY": {
+        "content": "$1",
+        "example": "250 từ"
+      }
+    }
+  },
+  "optReportRow": {
+    "message": "Dòng $ROW$:",
+    "placeholders": {
+      "ROW": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "optReportMoreRows": {
+    "message": "…và $COUNT$ dòng bị bỏ qua nữa.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "optReportDupMore": {
+    "message": " (+$COUNT$ từ nữa)",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
+  },
+  "optReportDupList": {
+    "message": "Các từ trùng đã bỏ qua: $LIST$.",
+    "placeholders": {
+      "LIST": {
+        "content": "$1",
+        "example": "abate, candid"
+      }
+    }
+  },
+  "optDatasetMeta": {
+    "message": "$COUNT$ từ · cập nhật $DATE$",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "250"
+      },
+      "DATE": {
+        "content": "$2",
+        "example": "12/8/2026"
+      }
+    }
+  },
+  "optDatasetActive": {
+    "message": "Đang dùng"
+  },
+  "optDatasetUse": {
+    "message": "Dùng"
+  },
+  "optDatasetRename": {
+    "message": "Đổi tên"
+  },
+  "optDatasetReplace": {
+    "message": "Thay file"
+  },
+  "optDatasetDelete": {
+    "message": "Xóa"
+  },
+  "optDatasetNewName": {
+    "message": "Tên mới cho bộ từ"
+  },
+  "optSave": {
+    "message": "Lưu"
+  },
+  "optCancel": {
+    "message": "Hủy"
+  },
+  "optDatasetDeleteConfirm": {
+    "message": "Xóa \"$NAME$\"? Không thể hoàn tác.",
+    "placeholders": {
+      "NAME": {
+        "content": "$1",
+        "example": "Tài chính C1"
+      }
+    }
+  },
+  "optDatasetDeleteActive": {
+    "message": "Đây là bộ từ đang dùng - Merid sẽ chuyển về $DATASET$.",
+    "placeholders": {
+      "DATASET": {
+        "content": "$1",
+        "example": "C1"
+      }
+    }
+  },
+  "optAiEnabledNoKey": {
+    "message": "Đã bật - giờ hãy dán Gemini API key của bạn ở dưới rồi bấm \"Lưu key\"."
+  },
+  "optAiKeySaveFailed": {
+    "message": "Không lưu được key. Hãy tải lại Merid ở chrome://extensions rồi thử lại."
+  },
+  "optAiKeyRemoved": {
+    "message": "Đã xóa key."
+  },
+  "optAiKeyRemovedCloud": {
+    "message": "Đã xóa key (cả ở đây lẫn trong tài khoản của bạn)."
+  },
+  "optAiKeySavedCloud": {
+    "message": "Đã lưu key trên máy này và sao lưu vào tài khoản của bạn."
+  },
+  "optAiKeySavedSignedOut": {
+    "message": "Đã lưu key trên máy này. Đăng nhập ở trên để key theo tài khoản của bạn sang máy khác."
+  },
+  "optAiKeySavedRetry": {
+    "message": "Đã lưu key trên máy này. Việc sao lưu vào tài khoản sẽ thử lại sau lần đăng nhập tới."
+  },
+  "optAiPasteKeyFirst": {
+    "message": "Hãy dán API key trước đã."
+  },
+  "optAiTestingKey": {
+    "message": "Đang kiểm tra key…"
+  },
+  "optAiKeyWorks": {
+    "message": "Key hoạt động ✓"
+  },
+  "optAiKeyRejected": {
+    "message": "Google từ chối key này. Hãy dùng API key lấy từ aistudio.google.com (không đặt giới hạn API)."
+  },
+  "optAiNoModel": {
+    "message": "Mô hình Gemini không khả dụng với key/dự án này."
+  },
+  "optAiRateLimited": {
+    "message": "Key hoạt động nhưng đã chạm giới hạn của gói miễn phí. Hãy đợi một phút rồi thử lại."
+  },
+  "optAiOverloaded": {
+    "message": "Máy chủ Gemini của Google đang quá tải. Hãy đợi một lát rồi thử lại."
+  },
+  "optNoBackground": {
+    "message": "Không kết nối được tới nền của tiện ích. Hãy tải lại Merid ở chrome://extensions rồi thử lại."
+  },
+  "optTesting": {
+    "message": "Đang kiểm tra…"
+  },
+  "optAuthErr_EMAIL_EXISTS": {
+    "message": "Đã có tài khoản dùng email này. Hãy thử đăng nhập."
+  },
+  "optAuthErr_INVALID_LOGIN_CREDENTIALS": {
+    "message": "Email hoặc mật khẩu không đúng."
+  },
+  "optAuthErr_INVALID_PASSWORD": {
+    "message": "Email hoặc mật khẩu không đúng."
+  },
+  "optAuthErr_EMAIL_NOT_FOUND": {
+    "message": "Email hoặc mật khẩu không đúng."
+  },
+  "optAuthErr_INVALID_EMAIL": {
+    "message": "Hãy nhập một địa chỉ email hợp lệ."
+  },
+  "optAuthErr_WEAK_PASSWORD": {
+    "message": "Mật khẩu phải có ít nhất 8 ký tự."
+  },
+  "optAuthErr_TOO_MANY_ATTEMPTS_TRY_LATER": {
+    "message": "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau."
+  },
+  "optAuthErr_NETWORK": {
+    "message": "Không có kết nối. Hãy kiểm tra mạng rồi thử lại."
+  },
+  "optAuthErr_GOOGLE_NOT_CONFIGURED": {
+    "message": "Bản dựng này chưa cấu hình đăng nhập Google: hãy thêm OAuth Web client ID vào googleClientId trong lib/firebase-config.js (xem docs/FIREBASE_SETUP.md)."
+  },
+  "optAuthErr_GOOGLE_CANCELLED": {
+    "message": "Đã hủy đăng nhập bằng Google."
+  },
+  "optAuthErr_GOOGLE_BAD_RESPONSE": {
+    "message": "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
+  },
+  "optAuthErr_OPERATION_NOT_ALLOWED": {
+    "message": "Dự án Firebase này chưa bật đăng nhập bằng liên kết email (console → Authentication → Sign-in method → Email link)."
+  },
+  "optAuthErr_INVALID_OOB_CODE": {
+    "message": "Liên kết đó không hợp lệ hoặc đã dùng rồi. Hãy gửi cho mình một liên kết mới."
+  },
+  "optAuthErr_EXPIRED_OOB_CODE": {
+    "message": "Liên kết đó đã hết hạn. Hãy gửi cho mình một liên kết mới."
+  },
+  "optAuthErr_BAD_LINK": {
+    "message": "Cái đó không giống liên kết đăng nhập. Hãy dán toàn bộ liên kết từ email (trong đó có \"oobCode=\")."
+  },
+  "optAuthErrUnknown": {
+    "message": "Đã có lỗi xảy ra. Vui lòng thử lại."
+  },
+  "optSyncSyncing": {
+    "message": "Đang đồng bộ bộ thẻ của bạn…"
+  },
+  "optSyncRateLimited": {
+    "message": "Đã chạm giới hạn đồng bộ trong ngày - những từ còn lại sẽ đồng bộ vào ngày mai."
+  },
+  "optSyncError": {
+    "message": "Đồng bộ đang tạm dừng (lỗi kết nối). Nó sẽ tự thử lại."
+  },
+  "optSyncBackedUp": {
+    "message": "Bộ thẻ đã được sao lưu."
+  },
+  "optSyncReady": {
+    "message": "Sẵn sàng đồng bộ."
+  },
+  "optSending": {
+    "message": "Đang gửi…"
+  },
+  "optProfileConfidence": {
+    "message": "Đã có $EVENTS$ tín hiệu phản hồi - cá nhân hóa đạt $PCT$%.",
+    "placeholders": {
+      "EVENTS": {
+        "content": "$1",
+        "example": "20"
+      },
+      "PCT": {
+        "content": "$2",
+        "example": "80"
+      }
+    }
+  },
+  "optProfileConfidenceLow": {
+    "message": "Dưới 100%, Merid cố ý bám sát cách hoạt động mặc định."
+  },
+  "optProfileUnknown": {
+    "message": "vẫn đang tìm hiểu"
+  },
+  "optProfileForgetConfirm": {
+    "message": "Xóa mọi thứ Merid đã học về sở thích của bạn? Bộ thẻ và cài đặt của bạn không bị ảnh hưởng."
+  },
+  "optProfileCleared": {
+    "message": "Đã xóa. Merid sẽ học lại từ trang tiếp theo bạn đọc."
+  },
+  "optQuotaOwnKey": {
+    "message": "Đang dùng API key của riêng bạn - Merid không đặt giới hạn ngày."
+  },
+  "optQuotaOut": {
+    "message": "Đã hết lượt trong ngày ($LIMIT$). Sẽ reset lúc 0h UTC.",
+    "placeholders": {
+      "LIMIT": {
+        "content": "$1",
+        "example": "50"
+      }
+    }
+  },
+  "optQuotaSignInRaises": {
+    "message": "Đăng nhập sẽ được nhiều lượt hơn."
+  },
+  "optQuotaLeft": {
+    "message": "Còn $LEFT$ trên $LIMIT$ lượt AI kiểm tra hôm nay.",
+    "placeholders": {
+      "LEFT": {
+        "content": "$1",
+        "example": "12"
+      },
+      "LIMIT": {
+        "content": "$2",
+        "example": "50"
+      }
+    }
+  },
+  "optQuotaSignInMore": {
+    "message": "Đăng nhập để nâng giới hạn."
+  },
+  "optDeleteAllConfirm": {
+    "message": "Xóa TOÀN BỘ dữ liệu đã lưu (cài đặt + bộ thẻ của bạn)? Không thể hoàn tác."
   }
 }

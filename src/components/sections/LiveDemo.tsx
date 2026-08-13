@@ -30,8 +30,8 @@ const TABS: { id: TabId; title: string; url: string }[] = [
 
 export default function LiveDemo() {
   const { t } = useLang()
-  // Defaults mirror a fresh install: SAT · Focused · Highlight · VIE → ENG.
-  const [dataset, setDataset] = useState<PanelDataset>('SAT')
+  // Defaults mirror a fresh install: C1 · Focused · Highlight · VIE → ENG.
+  const [dataset, setDataset] = useState<PanelDataset>('C1')
   const [intensity, setIntensity] = useState(2)
   const [mode, setMode] = useState<PanelMode>('highlight')
   const [vieEng, setVieEng] = useState(true)

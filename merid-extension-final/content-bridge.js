@@ -1,9 +1,12 @@
 // =============================================================
 // Merid - session bridge, runs ONLY on merid.site (see manifest).
 //
-// Purpose: sign in once. When the user logs in on merid.site, the web app
-// posts its Firebase session to this bridge, which relays it to the service
-// worker so the extension starts syncing without a second login.
+// Purpose: sign in once, and read one language. When the user logs in on
+// merid.site, the web app posts its Firebase session to this bridge, which
+// relays it to the service worker so the extension starts syncing without a
+// second login. The site's VI/EN toggle comes across the same way, so the
+// extension's panel opens in the language the reader picked on the site
+// instead of whatever language Chrome happens to be in.
 //
 // Scope & privacy: this is the extension's only automatic content script and
 // it is limited to our own site. It reads NO page content - it only listens
@@ -33,6 +36,10 @@
             }, () => { void chrome.runtime.lastError; });
         } else if (d.type === 'MERID_WEB_SIGNOUT') {
             chrome.runtime.sendMessage({ type: 'MERID_WEB_SIGNOUT' }, () => { void chrome.runtime.lastError; });
+        } else if (d.type === 'MERID_WEB_LANG' && (d.lang === 'vi' || d.lang === 'en')) {
+            // The site's language toggle. Nothing but the two-letter code
+            // crosses, and only the panel's own wording follows it.
+            chrome.runtime.sendMessage({ type: 'MERID_WEB_LANG', lang: d.lang }, () => { void chrome.runtime.lastError; });
         }
     });
 
