@@ -96,12 +96,12 @@
         </section>
 
         <footer>
-            <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
+            <button class="btn-toggle active" id="extension-toggle" data-i18n="popupExtensionOn">Extension is ON</button>
             <!-- Action on the current tab (needs an http/https page; hidden
                  elsewhere). Runs on the activeTab grant from opening the popup
                  - no broad tab access. -->
             <div class="page-actions" id="page-actions" hidden>
-                <button class="page-btn" id="site-toggle" type="button">Turn off on this site</button>
+                <button class="page-btn" id="site-toggle" type="button" data-i18n="popupSiteOff">Stop scanning this site</button>
             </div>
             <button class="btn-view-deck" id="view-deck-btn" type="button" data-i18n="popupViewDeck">View my deck ↗</button>
             <p class="sync-hint" id="sync-hint" hidden></p>
