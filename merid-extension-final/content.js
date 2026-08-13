@@ -273,7 +273,10 @@ function startScan() {
                 return;
             }
 
-            const modes = [settings.vieEngMode && 'vieEng', settings.engEngMode && 'engEng'].filter(Boolean);
+            // Only the directions this build offers: a stored engEngMode from
+            // before that card was withdrawn must not keep scanning English
+            // with no switch left anywhere to turn it off.
+            const modes = C.activeModes(settings);
             if (modes.length === 0) {
                 log('[VM] No scan direction enabled - nothing to do.');
                 return;

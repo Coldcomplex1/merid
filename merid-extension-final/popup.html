@@ -92,13 +92,10 @@
                         <span class="mode-card-title">VIE → ENG</span>
                         <span class="mode-card-sub" data-i18n="popupVieEngSub">Replace Vietnamese words</span>
                     </button>
-                    <!-- ENG → ENG is not offered here for now. The direction
-                         itself still works end to end (VMCore.buildVocabMap,
-                         the Settings page card, the engEngMode setting) - this
-                         is only the popup's entry point, hidden until the
-                         direction is ready to be put in front of everyone.
-                         Un-hide this button to bring it back; nothing else
-                         needs changing. -->
+                    <!-- Withdrawn for now, here and on the Settings page. Ships
+                         hidden so it never flashes up before popup.js runs;
+                         VMCore.ENG_ENG_AVAILABLE is the switch that brings it
+                         back, and the scan reads the same flag. -->
                     <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false" hidden>
                         <span class="mode-card-title">ENG → ENG</span>
                         <span class="mode-card-sub" data-i18n="popupEngEngSub">Swap for harder synonyms</span>

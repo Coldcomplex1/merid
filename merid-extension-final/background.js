@@ -755,10 +755,12 @@ async function aiDiagnose() {
     if (res.ok) {
         const q = await AiProxy.getQuota();
         const left = q && typeof q.limit === 'number' ? Math.max(0, q.limit - (q.used || 0)) : null;
+        const allowance = (q && q.unlimited)
+            ? ' No daily limit at the moment.'
+            : (left === null ? '' : ` ${left} of ${q.limit} checks left today.`);
         return {
             ok: true, stage: 'hosted',
-            message: `Working (model: ${res.model || 'unknown'}).` +
-                (left === null ? '' : ` ${left} of ${q.limit} checks left today.`)
+            message: `Working (model: ${res.model || 'unknown'}).` + allowance
         };
     }
 

@@ -59,6 +59,21 @@ A page costs at most 3 requests, and repeat sentences are answered from a
 more in practice. If that turns out to be tight, raise
 `MERID_LIMIT_SIGNED_IN`; if the key pool starts running dry, lower it.
 
+### The caps are currently counted, not enforced
+
+While the user base is small, `api/check.js` ships **unmetered**: every reader
+gets the check on every page, the per-user counter keeps running underneath,
+and the limits above only describe what *would* apply. Nothing is being
+withheld, so the extension says "No daily limit at the moment" rather than
+"N of 50 left".
+
+Turn metering back on by setting **`MERID_AI_METERED=1`** in the deployment -
+it takes effect on the next request, no code change and no redeploy of the
+extension. Do that as soon as the numbers justify it: unmetered, a single
+abusive client can drain the whole key pool in an afternoon, and the counter
+in Upstash (`merid:q:<uid>:<YYYY-MM-DD>`) is what tells you when that day has
+come.
+
 ---
 
 ## 2. Create the quota store
@@ -113,16 +128,19 @@ value, tick **Production** (and **Preview** if you test there), **Save**.
 | `UPSTASH_REDIS_REST_URL` | The `https://….upstash.io` URL |
 | `UPSTASH_REDIS_REST_TOKEN` | The Upstash REST token |
 | `FIREBASE_PROJECT_ID` | `merid-49dd5` |
-| `MERID_LIMIT_SIGNED_IN` | *(optional)* `50` |
-| `MERID_LIMIT_ANONYMOUS` | *(optional)* `20` |
+| `MERID_LIMIT_SIGNED_IN` | *(optional)* `50` - only applies while metered |
+| `MERID_LIMIT_ANONYMOUS` | *(optional)* `20` - only applies while metered |
+| `MERID_AI_METERED` | *(optional)* `1` to enforce the two limits above; unset = unmetered |
 
 Two things that silently break this:
 
 - **Do not wrap values in quotes.** Vercel stores the value literally, so
   `"key1,key2"` makes the quotes part of the key and every call 403s.
 - **Use the Upstash token that can write.** Upstash offers a read-only token
-  as well; the counter uses `INCR`, so a read-only token fails every request
-  and - because the quota fails closed - the AI check stays off for everyone.
+  as well; the counter uses `INCR`, so a read-only token fails every write.
+  Unmetered that costs you the usage record only; the moment you set
+  `MERID_AI_METERED=1` the quota fails closed and the AI check stays off for
+  everyone.
 
 ### 4c. Redeploy
 
@@ -141,8 +159,8 @@ curl -i -X POST https://merid.site/api/check \
 Expect **`401 {"ok":false,"code":"unauthorized"}`** - no token was sent. That
 already proves the function exists, is reachable, and is not open to the
 public. A **404** means step 4a is not done. A **500
-`server-misconfigured`** means `FIREBASE_PROJECT_ID` or the Upstash pair is
-missing.
+`server-misconfigured`** means `FIREBASE_PROJECT_ID` is missing (or, while
+`MERID_AI_METERED=1`, the Upstash pair).
 
 **2. Does Upstash accept the token?** (run this yourself - it needs the token)
 ```bash

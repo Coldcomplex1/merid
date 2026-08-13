@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeSeg = document.getElementById('mode-seg');
     const cardThemeBtn = document.getElementById('card-theme-btn');
 
+    // Scan directions this build offers. The markup ships the withdrawn one
+    // hidden, so this only has to put it back when the flag says so.
+    modeCards.querySelectorAll('.mode-card[data-mode="engEng"]')
+        .forEach(card => { card.hidden = !C.ENG_ENG_AVAILABLE; });
+
     // ---- Load settings ----
     chrome.storage.sync.get(
         ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],

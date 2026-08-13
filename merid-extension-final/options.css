@@ -136,6 +136,8 @@ body {
     font-family: var(--font);
 }
 .mode-card:hover { border-color: var(--accent); }
+/* `display: flex` above beats the browser's own rule for [hidden]. */
+.mode-card[hidden] { display: none; }
 .mode-card-title { font-size: 13px; font-weight: 700; color: var(--text); font-family: var(--font-display); }
 .mode-card-sub { font-size: 11px; line-height: 1.3; color: var(--muted); }
 .mode-card::after {

@@ -46,12 +46,16 @@
                         <span class="mode-card-title">Vietnamese → English</span>
                         <span class="mode-card-sub">Replace Vietnamese words with the English equivalent</span>
                     </button>
-                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false">
+                    <!-- Withdrawn for now, here and in the popup. Ships hidden
+                         so it never flashes up before options.js runs;
+                         VMCore.ENG_ENG_AVAILABLE is the switch that brings it
+                         back, and the scan reads the same flag. -->
+                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false" hidden>
                         <span class="mode-card-title">English → English</span>
                         <span class="mode-card-sub">Swap easy English words for harder synonyms</span>
                     </button>
                 </div>
-                <p class="hint">Turn on both to scan Vietnamese and English at the same time.</p>
+                <p class="hint" id="directionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
             </div>
         </section>
 

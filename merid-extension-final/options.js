@@ -10,6 +10,7 @@ const els = {
     modeSeg: document.getElementById('modeSeg'),
     intensitySeg: document.getElementById('intensitySeg'),
     directionCards: document.getElementById('directionCards'),
+    directionHint: document.getElementById('directionHint'),
     datasetSeg: document.getElementById('datasetSeg'),
     datasetInfo: document.getElementById('datasetInfo'),
     aiSeg: document.getElementById('aiSeg'),
@@ -50,6 +51,13 @@ function cardOn(mode) {
 
 // ---- Load ----
 function load() {
+    // Scan directions this build offers. The markup ships the withdrawn one
+    // hidden, so this only has to put it (and the line about running both at
+    // once, which is only true when there are two) back when the flag says so.
+    els.directionCards.querySelectorAll('.mode-card[data-mode="engEng"]')
+        .forEach(card => { card.hidden = !C.ENG_ENG_AVAILABLE; });
+    els.directionHint.hidden = !C.ENG_ENG_AVAILABLE;
+
     chrome.storage.sync.get(SYNC_KEYS, sync => {
         const s = C.withDefaults(sync);
         setActive(els.modeSeg, s.replacementMode);
