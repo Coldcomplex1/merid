@@ -159,13 +159,14 @@ r = await sw.evaluate(async () => {
 check(r.verdicts[0] === 0 && r.verdicts[1] === 1,
     'an unanswered item defaults to keep', JSON.stringify(r.verdicts));
 
-// --- 6. A bad verdict puts the page back the way it was ---
+// --- 6. A bad verdict means the word is never shown at all ---
 //
 // Sections 1-5 above already prove the per-sentence contract at the API level:
 // the same word in two different sentences is two questions, cached and judged
 // separately. It can no longer be shown twice on one page - a headword gets a
 // single appearance per visit - so what is left to check here is the DOM half:
-// a rejected word goes back to Vietnamese and leaves no trace.
+// the page is held in Vietnamese until the verdict arrives, and a rejected word
+// leaves no trace because it never got onto the page in the first place.
 await sw.evaluate(async () => {
     await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile']);
     self.__rejectWords = ['abolish']; // reject it only where the AI is asked
@@ -175,23 +176,28 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 await page.goto(url, { waitUntil: 'load' });
-await page.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(() => { });
+await page.waitForSelector('.vocab-master-pending', { timeout: 15000 }).catch(() => { });
 
-const before = await page.$$eval('.vocab-master-highlight',
-    els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(before === 1, 'the headword is swapped exactly once', `${before}`);
+// Picked once, and held: until the verdict is in, the candidate is a wrapper
+// around the writer's own words with nothing of Merid's on display.
+const before = await page.$$eval('.vocab-master-pending',
+    els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish')
+        .map(e => e.textContent));
+check(before.length === 1, 'the headword is picked exactly once', `${before.length}`);
+check(/^bãi bỏ$/i.test(before[0] || ''), 'and nothing is shown for it before the check answers',
+    JSON.stringify(before));
 
 // Wait out the queue's quiet timer plus the round trip.
 await page.waitForTimeout(4000);
-const after = await page.$$eval('.vocab-master-highlight',
+const after = await page.$$eval('.vocab-master-highlight, .vocab-master-pending',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(after === 0, 'the rejected occurrence reverted', `${after} left`);
+check(after === 0, 'the rejected occurrence never reached the page', `${after} left`);
 
-// The revert must restore the original text, not leave a gap or an English word.
+// The drop must leave the original text, not a gap or an English word.
 const text = await page.$eval('body', b => b.innerText.replace(/\s+/g, ' '));
 const restored = (text.match(/[Bb]ãi bỏ/g) || []).length;
 check(restored === 2, 'both paragraphs read as Vietnamese again', `${restored} occurrences`);
-check(!/abolish/i.test(text), 'no English left behind after the revert');
+check(!/abolish/i.test(text), 'no English left behind by the dropped word');
 
 // The word was asked about exactly once - one appearance, one question.
 const sent = await sw.evaluate(() => {

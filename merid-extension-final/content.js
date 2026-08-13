@@ -37,6 +37,11 @@ let vocabulary = [];
 let tooltipElement = null;
 let currentObserver = null;
 let replacedCount = 0;
+// Every candidate the scan has wrapped this page visit, shown or not. The
+// page-level runaway guard counts these rather than the words actually on
+// display: a candidate waiting for its verdict costs the same DOM work as one
+// already swapped in, so it has to count against the same ceiling.
+let candidateCount = 0;
 
 // User's local lists (lowercased headwords / saved-word keys).
 let knownSet = new Set();
@@ -56,17 +61,17 @@ const MUTATION_DEBOUNCE_MS = 300;
 let processedNodes = new WeakSet();
 
 // Per-"post" (feed item or article body) scan stats:
-// { words, seen, used, candidates: [span] }. The scan replaces up to
+// { words, seen, used, candidates: [span] }. The scan picks up to
 // VMCore.postCandidateCap words - the real cap plus a couple of spares - and
-// prunePost() cuts back to VMCore.postWordCap once the context check has said
-// which of them actually fit. `seen` tracks how far into the post the scan has
+// revealPost() shows VMCore.postWordCap of them once the context check has
+// said which actually fit. `seen` tracks how far into the post the scan has
 // walked, so VMCore.spreadAllowance can release the budget gradually instead
 // of letting the opening paragraphs spend all of it. Reset on every init().
 let postWordCounts = new WeakMap();
-// Every post we have touched, so a global prune (AI switched off, allowance
-// spent) can reach all of them. Cleared on every init().
+// Every post we have touched, so a page-wide decision (AI switched off,
+// allowance spent) can reach all of them. Cleared on every init().
 let knownPosts = new Set();
-// Which post a span belongs to, for pruning after its verdict arrives.
+// Which post a span belongs to, for the cap that governs its reveal.
 let spanPost = new WeakMap();
 
 // Repetition control.
@@ -161,7 +166,27 @@ const FORBIDDEN_TAGS = new Set([
 const SKIP_ANCESTOR_SELECTOR =
     'nav, [role="button"], [role="menu"], [role="menubar"], [role="tab"], ' +
     '[contenteditable=""], [contenteditable="true"], [aria-hidden="true"], ' +
-    '.vocab-master-highlight, .vocab-master-tooltip';
+    '.vocab-master-highlight, .vocab-master-pending, .vocab-master-tooltip';
+
+// A candidate that has been picked but is NOT on the page yet: the wrapper is
+// in the DOM holding the writer's own words, unstyled and inert, while the
+// context check decides. Deliberately NOT .vocab-master-highlight - that class
+// is what everything else (styling, the learning card, revert, the caps)
+// treats as "a word Merid put in front of the reader", and until the verdict
+// lands this is not one. See "Deferred reveal" below.
+const PENDING_CLASS = 'vocab-master-pending';
+// Both states of a candidate, for the places that must reach either.
+const CANDIDATE_SELECTOR = '.vocab-master-highlight, .' + PENDING_CLASS;
+
+function isPending(span) {
+    return !!span && span.classList.contains(PENDING_CLASS);
+}
+
+/** A candidate still on the page, shown or waiting. */
+function isLiveCandidate(span) {
+    return !!span && span.isConnected &&
+        (span.classList.contains('vocab-master-highlight') || isPending(span));
+}
 
 // White speaker glyph for the pronunciation button (kept crisp at small sizes).
 const SPEAKER_SVG =
@@ -181,6 +206,8 @@ function init() {
     postWordCounts = new WeakMap();
     knownPosts = new Set();
     spanPost = new WeakMap();
+    spanDepth = new WeakMap();
+    candidateCount = 0;
     containerCache = new WeakMap();
     takenInPost = new WeakMap();
     feedContainers = new WeakSet();
@@ -455,7 +482,7 @@ function statsFor(container) {
 function processTextNode(node, vocabMap) {
     const original = node.textContent;
     if (!original || !original.trim() || vocabMap.size === 0) { processedNodes.add(node); return; }
-    if (replacedCount >= MAX_REPLACEMENTS_PER_PAGE) { processedNodes.add(node); return; }
+    if (candidateCount >= MAX_REPLACEMENTS_PER_PAGE) { processedNodes.add(node); return; }
 
     const tokens = C.tokenize(original);
     const container = postContainerFor(node.parentElement);
@@ -477,7 +504,7 @@ function processTextNode(node, vocabMap) {
         // the words land down the whole piece instead of all in the opening
         // paragraphs.
         const allowedSoFar = C.spreadAllowance(cap, stats.seen, stats.words);
-        const match = replacedCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < allowedSoFar
+        const match = candidateCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < allowedSoFar
             ? C.findMatch(tokens, i, vocabMap, {
                 allowSingleWord: true,
                 minSingleWordLen: 2,
@@ -531,32 +558,32 @@ function processTextNode(node, vocabMap) {
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
         span.dataset.level = item.dataset || '';
-        // Nothing swapped means the text on the page is still the writer's own -
-        // there is no context question to ask about it, and no verdict will ever
-        // come. Saying so up front is what lets prunePost cut the post back to
-        // the cap, since it holds until every candidate has been judged. Without
-        // it a word whose Vietnamese and English happen to be the same string
-        // pins its post above the cap for the whole visit.
-        if (!applyDisplayMode(span)) span.dataset.aiChecked = '1';
+        // Hold the swap back until the check has cleared this word (see
+        // "Deferred reveal"). Two candidates skip the wait, because for them no
+        // verdict is ever coming: one whose display mode changes nothing (the
+        // text on the page stays the writer's own, so there is no context
+        // question to ask), and every candidate on a page where the check
+        // cannot run at all.
+        if (contextCheckPossible() && displayTextFor(span) !== matchedText) {
+            holdSpan(span);
+        } else {
+            applyDisplayMode(span);
+            span.dataset.aiChecked = '1';
+            noteShown(span);
+        }
 
         // Claim the word before anything else can.
         claimWord(container, wl, ml);
 
-        if (!shownThisPage.has(wl)) {
-            shownThisPage.add(wl);
-            // Due-ness is read against the scan's profile snapshot, before the
-            // "shown" event below moves the word's clock forward. The marker is
-            // what tells the reader why a word they saved has come back.
-            if (P && profile && P.isDueForReview(profile, wl, scanStartedAt)) {
-                span.dataset.review = '1';
-                span.classList.add('vocab-review');
-            }
-            queueProfileEvent(replaceWith, 'shown', item.dataset);
-        }
-
+        candidateCount++;
         stats.used++;
         stats.candidates.push(span);
         spanPost.set(span, container);
+        // How deep into the post this candidate sits, in the same units the
+        // scan spends its allowance in. Revealing reads it back, so a word far
+        // down a long article cannot spend the whole post's allowance the
+        // moment its verdict happens to land first.
+        spanDepth.set(span, stats.seen);
 
         // The AI context check starts when the reader actually reaches this
         // word, not when the scan finds it.
@@ -575,26 +602,32 @@ function processTextNode(node, vocabMap) {
     }
 }
 
-// Turn a span into its final displayed state per the current replacement mode.
-function applyDisplayMode(span) {
+/**
+ * The text a candidate shows once it is on the page, per the current
+ * replacement mode. Pure - it reads the span's dataset and writes nothing - so
+ * it can be asked before the swap is made as well as after, which is what lets
+ * a word be judged in the sentence it is *going* to produce.
+ */
+function displayTextFor(span) {
     const matchedText = span.dataset.original || '';
     const replaceWith = span.dataset.replacement || matchedText;
     const isSameWord = matchedText.toLowerCase().trim() === replaceWith.toLowerCase().trim();
     const mode = settings.replacementMode || 'replace';
+    if (isSameWord || mode === 'highlight') return matchedText; // highlighted + tooltip, same words
+    if (mode === 'beside') return `${matchedText} (${replaceWith})`; // từ (word)
+    return replaceWith;                                          // 'replace'
+}
 
+// Turn a span into its final displayed state per the current replacement mode.
+function applyDisplayMode(span) {
+    const matchedText = span.dataset.original || '';
+    const text = displayTextFor(span);
+
+    span.classList.remove(PENDING_CLASS);
     span.classList.add('vocab-master-highlight', 'vocab-highlight');
+    span.textContent = text;
 
-    let didReplace = false;
-    if (isSameWord || mode === 'highlight') {
-        span.textContent = matchedText;                       // keep original, highlighted + tooltip
-    } else if (mode === 'beside') {
-        span.textContent = `${matchedText} (${replaceWith})`; // từ (word)
-        didReplace = true;
-    } else {
-        span.textContent = replaceWith;                       // 'replace'
-        didReplace = true;
-    }
-
+    const didReplace = text !== matchedText;
     if (didReplace && !span.classList.contains('vocab-replaced')) {
         span.classList.add('vocab-replaced');
         replacedCount++;
@@ -609,6 +642,79 @@ function makeTextNode(text) {
 }
 
 // -------------------------------------------------------------
+// Deferred reveal
+//
+// A word is put in front of the reader only once the context check has cleared
+// it. Until then its wrapper sits in the page holding the writer's own text,
+// unstyled and without a learning card - the page reads exactly as it would
+// with Merid switched off.
+//
+// The check used to run the other way round: swap first, then take the word
+// back if the verdict went against it. Every rejected word was a visible edit
+// to a line the reader may already have been reading, and a post that
+// over-provisioned candidates got a second round of edits when the cap pruned
+// the survivors. Waiting costs a second at the top of a page; it buys text
+// that changes once, from Vietnamese to the word that earned its place, and
+// never again.
+//
+// Nothing here is allowed to strand a word: every path that ends without a
+// verdict - the feature switched off, the daily allowance spent, a failed
+// request, the per-page request ceiling - force-reveals what it was holding.
+// -------------------------------------------------------------
+
+// Candidate -> how many words of its post the scan had walked when it was
+// picked. Reveal spends the post's allowance against this, so a long article
+// releases its words down the page instead of all at the top.
+let spanDepth = new WeakMap();
+
+/** Wrap the writer's own text and wait. */
+function holdSpan(span) {
+    span.className = PENDING_CLASS;
+    span.textContent = span.dataset.original || span.textContent;
+}
+
+/** Put a candidate on the page, now that it has earned its place. */
+function revealSpan(span) {
+    if (!span || !span.isConnected) return;
+    applyDisplayMode(span);
+    noteShown(span);
+}
+
+/**
+ * Record that the reader has now actually seen this word.
+ *
+ * Fires on reveal rather than on selection: a candidate that was never shown -
+ * rejected by the check, or crowded out by the cap - must not move the word's
+ * review clock or count as an appearance the ranker learns from.
+ */
+function noteShown(span) {
+    const word = span.dataset.word || '';
+    const wl = word.toLowerCase();
+    if (!wl || shownThisPage.has(wl)) return;
+    shownThisPage.add(wl);
+    // Due-ness is read against the scan's profile snapshot, before the "shown"
+    // event below moves the word's clock forward. The marker is what tells the
+    // reader why a word they saved has come back.
+    if (P && profile && P.isDueForReview(profile, wl, scanStartedAt)) {
+        span.dataset.review = '1';
+        span.classList.add('vocab-review');
+    }
+    queueProfileEvent(word, 'shown', span.dataset.level);
+}
+
+/**
+ * Unwrap a candidate that will never be shown, leaving the text untouched.
+ *
+ * It was never judged wrong, only crowded out, so the word goes back to the
+ * page's pool for a later post - the same deal a word gets when the cap takes
+ * it off the page, minus the visible edit.
+ */
+function dropSpan(span) {
+    if (!span || !span.isConnected) return;
+    applyEdit(span, { entry: null, release: true });
+}
+
+// -------------------------------------------------------------
 // Dynamic content - debounced MutationObserver
 // -------------------------------------------------------------
 function observeChanges(vocabMap) {
@@ -619,7 +725,9 @@ function observeChanges(vocabMap) {
         for (const m of mutations) {
             m.addedNodes.forEach(node => {
                 if (node.nodeType === Node.ELEMENT_NODE &&
-                    (node.classList.contains('vocab-master-highlight') || node.classList.contains('vocab-master-tooltip'))) return;
+                    (node.classList.contains('vocab-master-highlight') ||
+                        node.classList.contains(PENDING_CLASS) ||
+                        node.classList.contains('vocab-master-tooltip'))) return;
                 if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) queuedRoots.push(node);
             });
         }
@@ -754,10 +862,11 @@ document.addEventListener('visibilitychange', () => {
 // toggle + API key, so this is a no-op unless the user set both up).
 //
 // Checking is driven by what the reader is actually looking at. A post enters
-// the viewport, its replaced words join a queue, and the queue is sent as one
-// batched request. Words the AI flags as out-of-context are reverted or
-// upgraded immediately (no gray underline, no user action needed). Failures
-// never break the page.
+// the viewport, its candidates join a queue, and the queue is sent as one
+// batched request. The verdict is what puts a word on the page: cleared words
+// are revealed, flagged ones are swapped for the model's suggestion or quietly
+// dropped, and the reader never sees either decision happen. Failures never
+// break the page - they show the words unchecked rather than withholding them.
 //
 // This used to be three requests per page visit, full stop. On an endless feed
 // that meant the first three screens were checked and everything past them was
@@ -769,10 +878,14 @@ const AI_SNIPPET_RADIUS = 60;       // chars kept around the word - keeps tokens
 const AI_CHECK_MAX_REQUESTS = 40;   // runaway guard per page visit
 const AI_BATCH_MAX_ITEMS = 20;      // most items one request may carry
 const AI_BATCH_READY_ITEMS = 12;    // enough queued to be worth sending now
-const AI_QUIET_MS = 1500;           // no new words for this long -> send
+// No new words for this long -> send. It used to be 1500ms, which cost nothing
+// visible because the words were already on the page and the verdict only
+// pruned them. Now the reader is waiting on this timer to see any word at all,
+// so it buys less batching in exchange for a page that fills in promptly.
+const AI_QUIET_MS = 900;
 // Longest a word may sit unchecked. Someone reading a single post carefully
-// should not be left staring at an unverified word because the queue never
-// filled up, so the queue goes out on this timer no matter how short it is.
+// should not be left waiting on a word because the queue never filled up, so
+// the queue goes out on this timer no matter how short it is.
 const AI_MAX_WAIT_MS = 20000;
 // How far below the fold to start checking. Generous on purpose: a verdict
 // that arrives while the word is still off screen can be applied silently,
@@ -789,10 +902,9 @@ const AI_LOOKAHEAD_PX = 1200;
 // A feed asks the same question twice all the time - "X là chủ đề chính" under
 // post after post is one sentence as far as this cache is concerned - and the
 // second span used to be dropped from the batch with no verdict at all. That
-// left it flagged unchecked forever, and since prunePost waits for every
-// candidate to have a verdict before cutting a post back, the post kept its
-// over-provisioned surplus for good: more words on screen than the reader ever
-// asked for.
+// left it flagged unchecked forever, which now means never shown at all: a
+// post reveals the candidates that have a verdict, and one that can never get
+// one would sit invisible in the page for the whole visit.
 let aiCheckedPairs = new Map();   // key -> { bad: boolean, better: string }
 let aiRequestsSent = 0;
 let aiQuietTimer = null;
@@ -808,8 +920,15 @@ let spanObserver = null;
 /** Queue a word that just came into view. */
 function queueSpanForAiCheck(span) {
     if (aiDisabled || !span || aiQueued.has(span) || !span.dataset.word) return;
+    // Already answered for (or never had a question to ask).
+    if (span.dataset.aiChecked === '1') return;
     aiQueued.add(span);
     aiQueue.push(span);
+    // The badge goes up when a word starts waiting, not when the request goes
+    // out: with the reveal deferred, the wait now begins for the reader too,
+    // and the timers below can hold the queue for a second before anything is
+    // sent. Saying "something is coming" is the whole job of the badge.
+    if (isPending(span)) Status.set('checking');
     scheduleAiFlush();
 }
 
@@ -854,9 +973,8 @@ function startSpanObserver() {
             // word re-exposes its Vietnamese, the scan picks a new word out of
             // it, and if that post has been scrolled past there is no crossing
             // left to wait for. Such a span would never be queued, never get a
-            // verdict, and pin its post above the cap for the rest of the visit
-            // - prunePost holds until every candidate has been judged. The
-            // observer hands us the geometry for free, so no layout is forced.
+            // verdict, and so never be shown at all. The observer hands us the
+            // geometry for free, so no layout is forced.
             const above = !entry.isIntersecting && entry.rootBounds &&
                 entry.boundingClientRect.bottom <= entry.rootBounds.top;
             if (!entry.isIntersecting && !above) return;
@@ -872,8 +990,16 @@ function sentenceAround(span) {
     const needle = span.textContent;
     const idx = text.indexOf(needle);
     if (idx === -1) return text.slice(0, AI_SNIPPET_RADIUS * 2);
+    // A word still waiting for its verdict has not been swapped in yet, so the
+    // block around it still reads in Vietnamese. The question being asked is
+    // whether the English word fits the sentence it is about to make, so put it
+    // in place before clipping: the model is shown the sentence the reader
+    // would get, which is also what a word swapped in up front produces - same
+    // question, same verdict-cache key.
+    const shown = isPending(span) ? displayTextFor(span) : needle;
+    const full = text.slice(0, idx) + shown + text.slice(idx + needle.length);
     const start = Math.max(0, idx - AI_SNIPPET_RADIUS);
-    return text.slice(start, idx + needle.length + AI_SNIPPET_RADIUS).trim();
+    return full.slice(start, idx + shown.length + AI_SNIPPET_RADIUS).trim();
 }
 
 /**
@@ -899,6 +1025,10 @@ function applyVerdict(spans, verdict, touchedPosts) {
     });
     // The verdict is also a free training label for the local ranker.
     queueProfileEvent(word, verdict.bad ? 'aiBad' : 'aiOk');
+    // A cleared word is not shown from here: the post it belongs to decides,
+    // once its verdicts are in, which of them fit under the reader's cap
+    // (revealPost). Doing it per word would let whichever verdict landed first
+    // take the last slot.
     if (!verdict.bad) return 'ok';
 
     // Prefer upgrading to the word the AI suggested over dropping the slot
@@ -906,7 +1036,10 @@ function applyVerdict(spans, verdict, touchedPosts) {
     // so the tooltip still has something to show.
     const entry = findVocabEntry(verdict.better, spanPost.get(live[0]));
     if (entry) { scheduleUpgrade(live, entry); return 'upgraded'; }
-    revertSpans(live);
+    // Never shown, so there is nothing to take back - the wrapper just goes
+    // away and the sentence stands as its writer left it.
+    live.filter(isPending).forEach(dropSpan);
+    revertSpans(live.filter(sp => !isPending(sp)));
     return 'reverted';
 }
 
@@ -920,16 +1053,21 @@ function applyVerdict(spans, verdict, touchedPosts) {
 function flushAiQueue() {
     clearAiTimers();
     if (aiDisabled || aiInFlight) return;
-    if (aiRequestsSent >= AI_CHECK_MAX_REQUESTS) { aiQueue = []; aiQueued = new Set(); return; }
+    // The ceiling is reached: no verdict is coming for what is queued, so show
+    // it rather than leaving the reader with a page that never fills in.
+    if (aiRequestsSent >= AI_CHECK_MAX_REQUESTS) { releaseUnchecked(aiQueue); return; }
 
     // Group by (word, sentence). Identical pairs share one verdict - they are
     // the same question - but the same word in a different sentence is a
     // separate item, judged and reverted independently.
     const groups = new Map();
     const deferred = [];
-    const settled = new Set();   // posts served from the cache, ready to prune
+    const settled = new Set();   // posts served from the cache, ready to reveal
     for (const sp of aiQueue) {
-        if (!sp.isConnected || !sp.classList.contains('vocab-replaced')) continue;
+        // Candidates only, and only ones still without an answer: a word whose
+        // display mode changes nothing was marked checked at scan time and has
+        // no context question to ask.
+        if (!isLiveCandidate(sp) || sp.dataset.aiChecked === '1') continue;
         const word = (sp.dataset.word || '').toLowerCase();
         if (!word) continue;
         const sentence = sentenceAround(sp);
@@ -947,8 +1085,8 @@ function flushAiQueue() {
     }
     aiQueue = deferred;
     aiQueued = new Set(deferred);
-    settled.forEach(post => prunePost(post, false));
-    if (!groups.size) { Status.set('idle'); return; }
+    settled.forEach(post => revealPost(post, false));
+    if (!groups.size) { Status.set(settled.size ? 'done' : 'idle'); return; }
 
     const batch = Array.from(groups.values());
     const items = batch.map(g => ({
@@ -962,14 +1100,16 @@ function flushAiQueue() {
     Status.set('checking');
     log('[VM] AI context check: sending', items.length, 'items (request',
         aiRequestsSent + '/' + AI_CHECK_MAX_REQUESTS + ')');
+    // Words in this request that a failure would otherwise strand unshown.
+    const held = batch.reduce((all, g) => all.concat(g.spans), []);
     chrome.runtime.sendMessage({ type: 'MERID_AI_CHECK', items }, (res) => {
         aiInFlight = false;
         if (chrome.runtime.lastError) {
             console.warn('[VM] AI check failed:', chrome.runtime.lastError.message);
-            Status.set('idle');
+            releaseUnchecked(held);
             return;
         }
-        if (!res) { console.warn('[VM] AI check: no response.'); Status.set('idle'); return; }
+        if (!res) { console.warn('[VM] AI check: no response.'); releaseUnchecked(held); return; }
         if (res.disabled) {
             // Nothing will ever come back; stop queueing and stop watching.
             log('[VM] AI check is off (toggle disabled or no API key).');
@@ -980,7 +1120,7 @@ function flushAiQueue() {
             console.warn('[VM] AI check error:', res.status || res.reason || 'unknown', res.detail || '');
             // A spent daily allowance is not a transient failure either.
             if (res.reason === 'quota') stopAiChecking();
-            else Status.set('idle');
+            else releaseUnchecked(held);
             return;
         }
         let reverted = 0;
@@ -996,9 +1136,9 @@ function flushAiQueue() {
             else if (outcome === 'reverted') reverted++;
         });
 
-        // Now that these posts have their verdicts, apply the reader's cap to
-        // the words that survived.
-        touchedPosts.forEach(post => prunePost(post, false));
+        // Now that these posts have their verdicts, show the words that fit -
+        // as many of them as the reader's cap allows.
+        touchedPosts.forEach(post => revealPost(post, false));
 
         log('[VM] AI context check: verified', batch.length, 'items, reverted', reverted,
             ', upgraded', upgraded,
@@ -1017,34 +1157,65 @@ function stopAiChecking() {
     clearAiTimers();
     if (spanObserver) { spanObserver.disconnect(); spanObserver = null; }
     Status.set('off');
-    // No verdicts are coming, so the spare candidates already on the page will
-    // never be judged. Cut every post back to its cap now rather than leaving
-    // the reader with more words than they asked for.
-    knownPosts.forEach(post => prunePost(post, true));
+    // No verdicts are coming for anything on this page. Everything still
+    // waiting is shown now, up to the reader's cap: unchecked words are what
+    // Merid has always fallen back to when the check cannot run, and a reader
+    // whose allowance ran out mid-article should get the rest of the page the
+    // way they would have got it with the check switched off - not a page that
+    // silently stops working.
+    knownPosts.forEach(post => revealPost(post, true));
 }
 
-/** True while a context check could still arrive to prune the spare words.
+/**
+ * Show words no verdict will ever arrive for.
+ *
+ * The check failing is not the reader's problem: a failed request, or one the
+ * per-page ceiling refused to send, leaves these words exactly as unverified
+ * as they were before the check existed, and that is the state Merid shipped
+ * for a year. The cap still applies - `revealPost` sees them as decided.
+ */
+function releaseUnchecked(spans) {
+    const posts = new Set();
+    const released = new Set(spans || []);
+    released.forEach(sp => {
+        aiQueued.delete(sp);
+        if (!isLiveCandidate(sp)) return;
+        sp.dataset.aiChecked = '1';
+        const post = spanPost.get(sp);
+        if (post) posts.add(post);
+    });
+    aiQueue = aiQueue.filter(sp => !released.has(sp));
+    posts.forEach(post => revealPost(post, false));
+    Status.set(posts.size ? 'done' : 'idle');
+}
+
+/** True while a verdict could still arrive - so a candidate is worth holding
+ *  back, and the scan is worth over-provisioning.
  *
  *  "Highlight" mode leaves every word in Vietnamese, so there is never anything
- *  for the check to judge and no verdict can ever prune the surplus. Scanning
- *  over-provisioned in that mode anyway, and the spares then stayed on the page
- *  for the whole visit - which is why a highlight-mode article came out marked
- *  up far more heavily than the reader's intensity setting allows. */
+ *  for the check to judge and no verdict can ever come. Words there are shown
+ *  as the scan finds them, under the plain cap: holding them for a verdict that
+ *  cannot arrive would leave the page permanently unmarked, and scanning over-
+ *  provisioned would mark it up far more heavily than the reader asked for. */
 function contextCheckPossible() {
     return !aiDisabled && settings.aiCheckEnabled !== false &&
         settings.replacementMode !== 'highlight';
 }
 
 // -------------------------------------------------------------
-// Pruning: the cap, applied after the context check
+// Revealing: the cap, applied as the verdicts come in
 //
-// The scan deliberately replaces more words than the reader's intensity
-// allows, so the check has something to reject. Once the verdicts for a post
-// are in, this cuts the survivors back down to the cap.
+// The scan deliberately picks more words than the reader's intensity allows,
+// so the check has something to reject. This decides which of the cleared ones
+// actually go on the page.
 //
-// Which ones survive is a spread question, not a first-come one: three good
-// words bunched in the opening sentence read worse than three spaced through
-// the piece, so the keepers are chosen by their position down the page.
+// Which ones is a spread question, not a first-come one: three good words
+// bunched in the opening sentence read worse than three spaced through the
+// piece, so the keepers are chosen by their position down the page. A long
+// article is revealed in instalments as the reader scrolls into it - the whole
+// post's verdicts are never all in at once - so the allowance is released by
+// depth, exactly as the scan spends it, and each instalment is spread within
+// itself.
 // -------------------------------------------------------------
 
 /** Vertical position of a span in the document, for spread selection. */
@@ -1057,48 +1228,55 @@ function verticalPosition(span) {
 }
 
 /**
- * Cut one post back to its cap.
+ * Show the candidates in one post that have earned a place, up to its cap.
  *
  * @param {Element} container the post
- * @param {boolean} force     prune even if some candidates are still unchecked
+ * @param {boolean} force     treat still-unchecked candidates as cleared
  *                            (used when no verdict will ever arrive)
  */
-function prunePost(container, force) {
+function revealPost(container, force) {
     // Sites with virtualized feeds recycle posts out of the DOM; stop holding
     // on to those.
     if (!container.isConnected) { knownPosts.delete(container); return; }
     const stats = postWordCounts.get(container);
     if (!stats || !stats.candidates.length) return;
 
-    // Drop candidates that are gone (reverted by the check, unwrapped by "I
+    // Drop candidates that are gone (rejected by the check, unwrapped by "I
     // know this", or removed by the site itself).
-    const live = stats.candidates.filter(sp =>
-        sp.isConnected && sp.classList.contains('vocab-master-highlight'));
+    const live = stats.candidates.filter(isLiveCandidate);
     stats.candidates = live;
     if (!live.length) return;
 
-    // Wait until every candidate has a verdict, so the choice is made among
-    // words that are all known to fit.
-    if (!force && live.some(sp => sp.dataset.aiChecked !== '1')) return;
+    const shown = live.filter(sp => !isPending(sp));
+    const ready = live.filter(sp => isPending(sp) && (force || sp.dataset.aiChecked === '1'));
+    if (!ready.length) return;
 
     const cap = C.postWordCap(settings.frequency, stats.words);
-    if (live.length <= cap) return;
+    // Only the allowance this far into the post has been released. On a feed
+    // post - one screenful - that is the whole cap; on an article it grows as
+    // the reader works down, which is what keeps the opening paragraphs from
+    // spending everything the piece had.
+    const depth = ready.reduce((max, sp) => Math.max(max, spanDepth.get(sp) || 0), 0);
+    const room = C.spreadAllowance(cap, depth, stats.words) - shown.length;
 
-    const ordered = live
-        .map(sp => ({ sp, pos: verticalPosition(sp) }))
-        .sort((a, b) => a.pos - b.pos);
-    const keep = new Set(
-        C.pickSpread(ordered.map(o => o.pos), cap).map(i => ordered[i].sp)
-    );
+    let keep = new Set();
+    if (room > 0) {
+        const ordered = ready
+            .map(sp => ({ sp, pos: verticalPosition(sp) }))
+            .sort((a, b) => a.pos - b.pos);
+        keep = new Set(
+            C.pickSpread(ordered.map(o => o.pos), Math.min(room, ordered.length)).map(i => ordered[i].sp)
+        );
+    }
 
-    // A surplus word was never wrong, just crowded out - let it have its turn
-    // in a later post rather than burning its one appearance here. The claim is
-    // released when the revert actually lands, not now: a revert on a span the
-    // reader is looking at is deferred, and releasing early would let the same
-    // word appear somewhere else while this copy is still on screen.
-    scheduleRevert(ordered.map(o => o.sp).filter(sp => !keep.has(sp)));
+    ready.forEach(sp => {
+        // A crowded-out word was never judged wrong, just surplus to what this
+        // post can hold - hand it back so it can have its turn further down the
+        // page rather than burning its one appearance here unseen.
+        if (keep.has(sp)) revealSpan(sp); else dropSpan(sp);
+    });
 
-    stats.candidates = live.filter(sp => keep.has(sp));
+    stats.candidates = live.filter(sp => isLiveCandidate(sp));
     stats.used = stats.candidates.length;
 }
 
@@ -1107,7 +1285,10 @@ function prunePost(container, force) {
 // -------------------------------------------------------------
 function revertPage() {
     const parents = new Set();
-    document.querySelectorAll('.vocab-master-highlight').forEach(span => {
+    // Candidates still waiting for a verdict go too: they are invisible, but
+    // they are wrappers around the page's own text and a re-scan must see that
+    // text as text again.
+    document.querySelectorAll(CANDIDATE_SELECTOR).forEach(span => {
         const originalText = span.dataset.original || span.textContent;
         if (span.parentNode) parents.add(span.parentNode);
         span.replaceWith(document.createTextNode(originalText));
@@ -1115,6 +1296,7 @@ function revertPage() {
     // Merge adjacent text nodes only where we actually changed things.
     parents.forEach(p => { try { p.normalize(); } catch (e) { /* detached */ } });
     replacedCount = 0;
+    candidateCount = 0;
 }
 
 // -------------------------------------------------------------
@@ -1129,6 +1311,10 @@ function revertPage() {
 // better word for the slot, and a REVERT, where the word was crowded out by
 // the reader's cap and goes back to Vietnamese. Both are cosmetic corrections
 // to text already on the page, so both owe the reader the same courtesy.
+//
+// A candidate still waiting for its verdict owes nobody anything: it shows the
+// page's own text, so editing it changes nothing on screen and there is no
+// reason to wait for it to scroll away. Those are applied on the spot.
 // -------------------------------------------------------------
 let pendingUpgrades = [];
 let upgradeScrollBound = false;
@@ -1164,9 +1350,12 @@ function applyUpgrade(span, entry) {
     span.dataset.word = entry.word;
     span.dataset.replacement = entry.word;
     span.dataset.level = entry.dataset || '';
+    // A word not on the page yet only needs its dataset changed - what gets
+    // rendered is settled later, by the post's reveal, and it is the upgraded
+    // word that lands there. Nothing about the swap is ever visible.
     // applyDisplayMode re-renders from dataset and guards its own
     // replacedCount bookkeeping, so the count stays correct on re-entry.
-    applyDisplayMode(span);
+    if (!isPending(span)) applyDisplayMode(span);
     const wl = (entry.word || '').toLowerCase();
     // The upgraded word now occupies this slot; the word it displaced is gone
     // from the page, so release its claim.
@@ -1180,17 +1369,15 @@ function applyUpgrade(span, entry) {
         // against the page allowance and lock the surface form out for good.
         claimWord(container, wl, '');
     }
-    if (!shownThisPage.has(wl)) {
-        shownThisPage.add(wl);
-        queueProfileEvent(entry.word, 'shown', entry.dataset);
-    }
+    // A pending span counts as shown when it is revealed, not now.
+    if (!isPending(span)) noteShown(span);
 }
 
-/** Queue an edit, applying it straight away if the span is off screen. */
+/** Queue an edit, applying it straight away if it cannot be seen happening. */
 function scheduleEdit(spans, job) {
     (spans || []).forEach(span => {
         if (!span || !span.isConnected) return;
-        if (!isOnScreen(span)) { applyEdit(span, job); return; }
+        if (isPending(span) || !isOnScreen(span)) { applyEdit(span, job); return; }
         pendingUpgrades.push(Object.assign({ span }, job));
     });
     if (pendingUpgrades.length && !upgradeScrollBound) {
@@ -1268,7 +1455,9 @@ function revertSpans(spans) {
 function revertWord(word) {
     const wl = String(word).toLowerCase();
     const matches = [];
-    document.querySelectorAll('.vocab-master-highlight').forEach(span => {
+    // Candidates waiting on a verdict included: a word the reader has just told
+    // us they know must not surface a second later when its verdict lands.
+    document.querySelectorAll(CANDIDATE_SELECTOR).forEach(span => {
         if ((span.dataset.word || '').toLowerCase() === wl) matches.push(span);
     });
     revertSpans(matches);

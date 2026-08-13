@@ -80,9 +80,6 @@
   "popupExtensionOff": {
     "message": "Tiện ích đang TẮT"
   },
-  "popupRevertPage": {
-    "message": "Khôi phục trang này"
-  },
   "popupSiteOff": {
     "message": "Tắt trên trang này"
   },
@@ -106,12 +103,6 @@
   },
   "popupViewDeck": {
     "message": "Xem bộ thẻ của tôi ↗"
-  },
-  "popupAiCheck": {
-    "message": "AI kiểm tra ngữ cảnh"
-  },
-  "popupAiCheckOn": {
-    "message": "AI kiểm tra ngữ cảnh: BẬT"
   },
   "popupSettings": {
     "message": "Cài đặt"

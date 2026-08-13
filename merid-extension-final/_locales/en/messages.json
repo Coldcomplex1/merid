@@ -80,9 +80,6 @@
   "popupExtensionOff": {
     "message": "Extension is OFF"
   },
-  "popupRevertPage": {
-    "message": "Revert this page"
-  },
   "popupSiteOff": {
     "message": "Turn off on this site"
   },
@@ -106,12 +103,6 @@
   },
   "popupViewDeck": {
     "message": "View my deck ↗"
-  },
-  "popupAiCheck": {
-    "message": "AI Context Check"
-  },
-  "popupAiCheckOn": {
-    "message": "AI Context Check: ON"
   },
   "popupSettings": {
     "message": "Settings"

@@ -89,11 +89,10 @@ FEATURES
 • Hover learning card: definition, pronunciation (browser text-to-speech), synonyms/antonyms, example.
 • "Save to Deck" to keep words for review; "I know this" to stop replacing words you already know.
 • Instant on/off - globally, or per site ("Turn off on this site").
-• One-click page revert.
 
 OPTIONAL (OFF by default - never required)
 • Deck sync: sign in (on merid.site or in Settings) to back up your saved words to your own account and study them at merid.site/my-deck.
-• AI context check: uses YOUR OWN free Gemini API key to verify each replaced word fits its sentence; words that don't fit revert automatically. When enabled, only a short snippet of the sentence around each replaced word is sent to Google Gemini.
+• AI context check: uses YOUR OWN free Gemini API key to verify each word fits its sentence BEFORE it appears - a word that does not fit is never shown, so the text you are reading never changes under you. When enabled, only a short snippet of the sentence around each candidate word is sent to Google Gemini.
 
 PRIVACY
 • Scanning and replacement happen in your browser; Merid runs no servers of its own.
@@ -119,7 +118,7 @@ Merid replaces selected Vietnamese (or English) words on web pages with English 
 | Permission | Justification to paste |
 |---|---|
 | `storage` | Saves the user's settings (dataset, display mode, intensity, scan direction, on/off, per-site pause list) and their word deck (saved/known words) on the device. If the user signs in to the optional deck sync, the session token is also kept in extension storage. |
-| `activeTab` | Powers the two current-tab actions in the popup: "Turn off on this site" (reads the active tab's hostname to add/remove it from the user's pause list) and "Revert this page" (messages the page to restore its original text). Used only when the user opens the popup, only for the active tab. |
+| `activeTab` | Powers the popup's current-tab actions: "Turn off on this site" (reads the active tab's hostname to add/remove it from the user's pause list) and reloading that tab after the user changes the replacement intensity, so the new setting starts from a clean page. Used only when the user opens the popup, only for the active tab. |
 | Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. Page content leaves the browser only if the user enables the optional AI context check, which sends short sentence snippets around replaced words to Google Gemini using the user's own API key. |
 
 There are **no** host permissions requested in `host_permissions`, no optional

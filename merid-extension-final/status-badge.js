@@ -1,14 +1,15 @@
 // =============================================================
 // Merid - reading status badge
 //
-// A small mark in the corner that says whether Merid is still deciding about
-// the words on screen. Without it, a word can quietly change a second or two
-// after the reader first sees it, which reads as a glitch; with it, the change
-// is something they were told to expect.
+// A mark in the corner that says Merid is still deciding about the words on
+// this screen. Nothing is swapped into the page until the context check has
+// cleared it, so this is the one thing telling the reader that words are on
+// their way - which is why it is sized to be noticed at a glance rather than
+// hunted for.
 //
-// It is deliberately quiet: hidden whenever there is nothing in flight, gone
-// entirely when the context check is off, and never interactive - it reports,
-// it does not ask for anything.
+// It is still deliberately quiet: hidden whenever there is nothing in flight,
+// gone entirely when the context check is off, and never interactive - it
+// reports, it does not ask for anything.
 //
 // Everything lives in an open shadow root. The badge sits on pages whose CSS
 // we do not control and must not disturb: a shadow root means no page rule can
@@ -35,11 +36,11 @@
             position: fixed;
             right: 20px;
             bottom: 20px;
-            width: 30px;
-            height: 30px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: #16213c;
-            box-shadow: 0 4px 14px rgba(10, 17, 34, 0.45);
+            box-shadow: 0 6px 18px rgba(10, 17, 34, 0.45);
             display: grid;
             place-items: center;
             opacity: 0;
@@ -94,7 +95,7 @@
 
     const MARKUP = `
         <div class="badge" part="badge" role="status" aria-live="polite">
-            <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true" focusable="false">
+            <svg width="44" height="44" viewBox="0 0 30 30" aria-hidden="true" focusable="false">
                 <circle class="track" cx="15" cy="15" r="13" fill="none" stroke-width="2"></circle>
                 <circle class="arc" cx="15" cy="15" r="13" fill="none" stroke-width="2"></circle>
                 <path class="mark" d="M10 19.5v-9h2.1l2.9 4.6 2.9-4.6H20v9h-2v-5.4l-2.4 3.7h-1.2L12 14.1v5.4z"></path>
