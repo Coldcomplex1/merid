@@ -2,6 +2,8 @@
 
 ## 1.6.4 — 2026-08-13
 
+**Privacy fix for direct messages, plus popup and reading-flow polish.**
+
 - Cleaned up the per-site tooltips so the blocked-site messages read in one short breath.
 - Stopped scanning direct messages on sites that also serve feeds, so DMs are no longer touched.
 - Removed the "you're signed out" scolding from the bottom of the popup.
