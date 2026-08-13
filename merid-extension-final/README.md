@@ -29,6 +29,11 @@ Two **optional, off-by-default** features use the network once the user opts in:
   [merid.site/create-dataset](https://merid.site/create-dataset) helps you generate
   a compatible CSV with an AI of your choice. Custom datasets are stored **only on
   your device**.
+- **Main content only.** On a page that has an article, Merid scans the article
+  (and its headline) and nothing else: no "most read" rail, no ads or promo
+  prompts, no header/footer/comments, and no teasers for other stories sitting
+  inside the piece. Pages with no article to find - every feed - are scanned
+  whole, exactly as before.
 - **Three display modes:** Replace directly · Highlight only (hover for meaning) · Show beside (`từ (word)`).
 - **Adjustable intensity** so you control how aggressive replacement is.
 - Learning card on hover: definition, pronunciation (browser TTS), phonetics,

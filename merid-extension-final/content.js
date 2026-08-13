@@ -168,6 +168,36 @@ const SKIP_ANCESTOR_SELECTOR =
     '[contenteditable=""], [contenteditable="true"], [aria-hidden="true"], ' +
     '.vocab-master-highlight, .vocab-master-pending, .vocab-master-tooltip';
 
+// The page's furniture: everything wrapped around what the reader came to read.
+// Readers reported Merid replacing words in vnexpress.net's "Xem nhiều" rail and
+// in the "Chọn VnExpress làm nguồn ưu tiên trên Google Search" prompt - text
+// nobody is reading for its own sake, where a swapped word is pure noise.
+//
+// Class matching is by whole token (`~=`) or by a distinctive stem. A substring
+// match on "ad" would take `header`, `loading`, `breadcrumb` and `read` with it,
+// which is most of a news page.
+//
+// Unlike SKIP_ANCESTOR_SELECTOR this is weighed against the scan root: a match
+// AT or ABOVE the root is ignored, so a site whose article body is
+// `<div class="article-content promo-layout">` cannot disqualify its own prose.
+const SKIP_REGION_SELECTOR =
+    // Landmarks around the content.
+    'header, footer, aside, form, dialog, ' +
+    '[role="banner"], [role="contentinfo"], [role="complementary"], ' +
+    '[role="navigation"], [role="search"], [role="dialog"], [role="tooltip"], ' +
+    '[role="alert"], [role="toolbar"], ' +
+    // Advertising.
+    'ins, .adsbygoogle, [data-ad], [class~="ad"], [class~="ads"], ' +
+    '[class*="advertis" i], [class*="sponsor" i], [aria-label*="advertis" i], ' +
+    // Recirculation, promos and page chrome.
+    '[class*="sidebar" i], [class*="related" i], [class*="recommend" i], ' +
+    '[class*="popular" i], [class*="trending" i], [class*="most-read" i], ' +
+    '[class*="widget" i], [class*="promo" i], [class*="share" i], ' +
+    '[class*="social" i], [class*="comment" i], [class*="breadcrumb" i], ' +
+    '[class*="newsletter" i], [class*="subscribe" i], [class*="cookie" i], ' +
+    '[class*="tooltip" i], [class*="modal" i], [class*="popup" i], ' +
+    '[id*="comment" i], [id*="sidebar" i], [id*="related" i]';
+
 // A candidate that has been picked but is NOT on the page yet: the wrapper is
 // in the DOM holding the writer's own words, unstyled and inert, while the
 // context check decides. Deliberately NOT .vocab-master-highlight - that class
@@ -208,6 +238,12 @@ function init() {
     spanPost = new WeakMap();
     spanDepth = new WeakMap();
     candidateCount = 0;
+    scanRoots = null;
+    scanHeadline = null;
+    scanRootIsBody = true;
+    pageIsFeed = false;
+    scanRootsResolvedAt = 0;
+    recircCache = new WeakMap();
     containerCache = new WeakMap();
     takenInPost = new WeakMap();
     feedContainers = new WeakSet();
@@ -313,6 +349,25 @@ function shouldProcessNode(node) {
     if (FORBIDDEN_TAGS.has(parent.tagName.toLowerCase())) return false;
     if (parent.isContentEditable) return false;
     if (parent.closest(SKIP_ANCESTOR_SELECTOR)) return false;
+
+    // Outside the main content. Also the gate for everything the
+    // MutationObserver hands over, which is why the scan root is enforced here
+    // rather than only where the initial walk starts.
+    const root = rootFor(parent);
+    if (!root) return false;
+
+    // The headline is content wherever the markup put it.
+    if (scanHeadline && (parent === scanHeadline || scanHeadline.contains(parent))) return true;
+
+    // Furniture, but only furniture BELOW the root: a match at or above the
+    // root is the page's own layout, and the root has already been judged.
+    const region = parent.closest(SKIP_REGION_SELECTOR);
+    if (region && region !== root && root.contains(region)) return false;
+
+    // Teasers for other articles, sitting inside this one. Off on feeds, where
+    // a link-headed post is a post, not a recommendation.
+    if (!scanRootIsBody && !pageIsFeed && inRecirculationBlock(parent, root)) return false;
+
     return true;
 }
 
@@ -328,7 +383,9 @@ function collectTextNodes(root) {
 }
 
 function processPage(vocabMap) {
-    const textNodes = collectTextNodes(document.body);
+    resolveScanRoots();
+    const textNodes = [];
+    for (const root of scanRoots) textNodes.push(...collectTextNodes(root));
     let index = 0;
     const chunkSize = 50;
 
@@ -423,6 +480,228 @@ function structuralFeedItem(el) {
         node = parent;
     }
     return null;
+}
+
+// =============================================================
+// Where the reading is: the scan root
+//
+// Merid used to walk the whole of document.body, which is why a news article
+// came back with words replaced in the right-hand rail, the "most read" box and
+// a promo prompt about Google Search. None of that is what the reader opened
+// the page for, and a word met there is a word not met in the article.
+//
+// So the scan is rooted in the main content when the page has one, and stays on
+// document.body when it does not - which is the case for every feed, and for
+// news CMSs that mark nothing up at all (see e2e/article-repeat.mjs). Narrowing
+// is all this does: a page that resolves to the body behaves exactly as before.
+// =============================================================
+const ARTICLE_ROOT_SELECTOR =
+    ARTICLE_BODY_SELECTOR + ', article, [itemprop="articleBody"]';
+
+// A root has to be substantial in its own right AND hold a real share of the
+// page, or a stray <article> teaser in a sidebar could carry the whole scan.
+const MAIN_MIN_WORDS = 60;
+const MAIN_TEXT_SHARE = 0.3;
+// A headline usually sits outside the article body; three words keeps a site's
+// logo or a section label from passing for one.
+const HEADLINE_MIN_WORDS = 3;
+
+// "Is this page a feed?" is a stricter question than "is this element one item
+// of a feed": a feed IS the page, so it takes more peers and most of the text.
+// Only the recirculation rule below hangs on the answer, so a wrong call costs
+// one filter, never the scan.
+const FEED_PAGE_SIBLINGS_MIN = 4;
+const FEED_PAGE_TEXT_SHARE = 0.4;
+const FEED_PROBE_LIMIT = 600;
+// How often a page that has not found its main content may look again.
+const ROOT_REFRESH_MS = 1000;
+
+let scanRoots = null;      // elements the scan may look inside (null = not resolved yet)
+let scanHeadline = null;   // the page's <h1> when it sits outside the root
+let scanRootIsBody = true; // no main content found - every rule below stays off
+let pageIsFeed = false;
+let scanRootsResolvedAt = 0;
+
+/** Words that are the page's own prose, not the text of links through it. */
+function proseWords(el) {
+    if (!el) return 0;
+    let words = C.countWords(el.textContent || '');
+    for (const a of el.querySelectorAll('a[href]')) words -= C.countWords(a.textContent || '');
+    return Math.max(0, words);
+}
+
+/**
+ * A feed, judged at page scale: several peers of feed shape holding most of the
+ * text. Bounded probe - ancestors come before descendants in document order, so
+ * a feed's wrapper turns up early and the limit only cuts off pages that have
+ * no feed to find.
+ */
+function looksLikeFeedPage(bodyWords) {
+    let checked = 0;
+    for (const el of document.body.querySelectorAll('*')) {
+        if (checked++ > FEED_PROBE_LIMIT) break;
+        if (el.children.length < FEED_PAGE_SIBLINGS_MIN) continue;
+        let peers = 0;
+        let words = 0;
+        for (const child of el.children) {
+            if (!looksLikeFeedItem(child)) continue;
+            peers++;
+            words += C.countWords(child.textContent || '');
+        }
+        if (peers >= FEED_PAGE_SIBLINGS_MIN && words >= bodyWords * FEED_PAGE_TEXT_SHARE) return true;
+    }
+    return false;
+}
+
+/**
+ * The container holding what the reader came to read, or document.body.
+ *
+ * The SMALLEST qualifying candidate wins. On a news page the article body and
+ * the wrapper that also holds the rail both match a selector; only the inner one
+ * leaves the rail out.
+ */
+function resolveScanRoots() {
+    scanRootsResolvedAt = Date.now();
+    const bodyWords = proseWords(document.body);
+    pageIsFeed = looksLikeFeedPage(C.countWords(document.body.textContent || ''));
+
+    let best = null;
+    let bestWords = Infinity;
+    if (bodyWords > 0) {
+        for (const el of document.querySelectorAll(ARTICLE_ROOT_SELECTOR)) {
+            const words = proseWords(el);
+            if (words < MAIN_MIN_WORDS || words < bodyWords * MAIN_TEXT_SHARE) continue;
+            if (words < bestWords) { best = el; bestWords = words; }
+        }
+    }
+
+    if (!best) {
+        scanRoots = [document.body];
+        scanHeadline = null;
+        scanRootIsBody = true;
+        return;
+    }
+
+    scanRootIsBody = false;
+    scanRoots = [best];
+    // The headline is the one piece of the article that routinely sits outside
+    // its body. It is exempt from the region rules below - a title inside
+    // <header class="article-header"> is still the title.
+    scanHeadline = null;
+    if (!pageIsFeed) {
+        const h1 = document.querySelector('h1');
+        if (h1 && !best.contains(h1) && C.countWords(h1.textContent || '') >= HEADLINE_MIN_WORDS) {
+            scanHeadline = h1;
+            scanRoots.push(h1);
+        }
+    }
+}
+
+/**
+ * Re-resolve only when the answer can have changed: the page never found a main
+ * content (it may have rendered late) or the root has left the DOM (an SPA
+ * navigated). Never widens a root that is working - a scan that changed its
+ * mind mid-article would spend the article's word budget twice.
+ */
+function maybeRefreshScanRoots() {
+    if (!scanRoots) return;
+    const stale = scanRootIsBody || scanRoots.some(r => !r.isConnected);
+    if (!stale || Date.now() - scanRootsResolvedAt < ROOT_REFRESH_MS) return;
+    resolveScanRoots();
+}
+
+/** The scan root `el` belongs to, or null when it is outside all of them. */
+function rootFor(el) {
+    if (!scanRoots) resolveScanRoots();
+    for (const root of scanRoots) if (root.contains(el)) return root;
+    return null;
+}
+
+// -------------------------------------------------------------
+// Recirculation blocks inside the article
+//
+// A news article carries teasers for other articles inside its own body: a
+// headline link, a thumbnail, a sentence of summary, repeated. They are not the
+// piece being read, so they are skipped like the rail is.
+//
+// What marks one is the STANDALONE LINK - an anchor that is the whole of its
+// block. A headline is always one; a link inside a sentence of prose never is,
+// which is what keeps ordinary article links scannable. One teaser is not
+// enough: it takes a repeated shape, the same signal `structuralFeedItem` uses.
+// -------------------------------------------------------------
+const RECIRC_LINK_MIN_CHARS = 20;   // shorter than this is a tag, a byline, a "more"
+const RECIRC_LINK_SHARE = 0.9;      // of its block's text, for the link to be the block
+const RECIRC_MAX_CHARS = 600;       // a teaser is a headline and a sentence, not a section
+const RECIRC_MIN_PEERS = 2;         // the shape has to repeat
+const RECIRC_MAX_HOPS = 6;
+let recircCache = new WeakMap();
+
+/** The nearest ancestor that is a block, not a run of inline markup. */
+function nearestBlock(el) {
+    let node = el.parentElement;
+    while (node && INLINE_TAGS.has(node.tagName)) node = node.parentElement;
+    return node;
+}
+
+/**
+ * The text a block holds itself, not counting the blocks nested in it.
+ *
+ * A teaser is often `<div><a>headline</a><p>summary</p></div>` with no element
+ * around the headline. Measured against the whole subtree that link looks like
+ * a quarter of the text; measured against the div's own line it is all of it,
+ * which is what it reads as on the page.
+ */
+function inlineText(block) {
+    let out = '';
+    for (const node of block.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) out += node.nodeValue;
+        else if (node.nodeType === Node.ELEMENT_NODE && INLINE_TAGS.has(node.tagName)) out += node.textContent;
+    }
+    return out.trim();
+}
+
+/** An anchor that IS its line - a headline, not a link inside a sentence. */
+function isStandaloneLink(a) {
+    const text = (a.textContent || '').trim();
+    if (text.length < RECIRC_LINK_MIN_CHARS) return false;
+    const block = nearestBlock(a);
+    if (!block) return true;
+    const blockText = inlineText(block);
+    return blockText.length > 0 && text.length / blockText.length >= RECIRC_LINK_SHARE;
+}
+
+/** Could this element be one teaser: small, and headed by a standalone link? */
+function looksLikeTeaser(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    if (LEAF_BLOCKS.has(el.tagName) || INLINE_TAGS.has(el.tagName)) return false;
+    const cached = recircCache.get(el);
+    if (cached !== undefined) return cached;
+    const text = (el.textContent || '').trim();
+    let verdict = false;
+    if (text.length <= RECIRC_MAX_CHARS) {
+        for (const a of el.querySelectorAll('a[href]')) {
+            if (isStandaloneLink(a)) { verdict = true; break; }
+        }
+    }
+    recircCache.set(el, verdict);
+    return verdict;
+}
+
+/** Is `el` inside a repeated teaser block within its scan root? */
+function inRecirculationBlock(el, root) {
+    let node = el;
+    for (let hops = 0; node && node !== root && node.parentElement && hops < RECIRC_MAX_HOPS; hops++) {
+        const parent = node.parentElement;
+        if (looksLikeTeaser(node)) {
+            let peers = 0;
+            for (const sib of parent.children) {
+                if (looksLikeTeaser(sib) && ++peers >= RECIRC_MIN_PEERS) return true;
+            }
+        }
+        if (parent === root) break;
+        node = parent;
+    }
+    return false;
 }
 
 // Resolving a post walks ancestors and reads textContent, so cache it: many
@@ -739,6 +1018,9 @@ function observeChanges(vocabMap) {
                 debounceTimer = null;
                 const roots = queuedRoots;
                 queuedRoots = [];
+                // A page that never found its main content, or one an SPA has
+                // navigated, gets another look before this batch is judged.
+                maybeRefreshScanRoots();
                 const nodes = [];
                 for (const r of roots) {
                     if (!r.isConnected) continue;
