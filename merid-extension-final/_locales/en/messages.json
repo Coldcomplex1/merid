@@ -258,15 +258,702 @@
     "message": "Still learning what suits you."
   },
   "popupLevelUp": {
-    "message": "You already know a lot of %from% words. Try %to% →"
+    "message": "You already know a lot of $FROM$ words - try $TO$ →",
+    "placeholders": {
+      "FROM": {
+        "content": "$1",
+        "example": "SAT"
+      },
+      "TO": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
   },
   "popupLevelDown": {
-    "message": "%from% looks like a stretch right now. Try %to% →"
+    "message": "$FROM$ looks like a stretch right now - try $TO$ →",
+    "placeholders": {
+      "FROM": {
+        "content": "$1",
+        "example": "SAT"
+      },
+      "TO": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
   },
   "popupQuotaOut": {
     "message": "AI checks used up for today. Resets at midnight UTC."
   },
   "popupQuotaAnon": {
     "message": "AI checks used up for today. Sign in for more."
+  },
+  "optPageTitle": {
+    "message": "Merid - Settings"
+  },
+  "optLanguageTitle": {
+    "message": "Language"
+  },
+  "optLangAuto": {
+    "message": "Auto"
+  },
+  "optLanguageHint": {
+    "message": "Auto follows the language you chose on merid.site, and your browser's language until you have been there. This page and the toolbar popup follow it. The learning card you see on a page stays in English - that is the language you are here to read."
+  },
+  "optTagline": {
+    "message": "Passive English vocabulary learning while you browse Vietnamese websites. Works out of the box with no account - sign-in and AI checks are optional extras."
+  },
+  "optReplacementTitle": {
+    "message": "Replacement"
+  },
+  "optModeLabel": {
+    "message": "How words appear"
+  },
+  "optModeReplace": {
+    "message": "Replace directly"
+  },
+  "optModeHighlight": {
+    "message": "Highlight only"
+  },
+  "optModeBeside": {
+    "message": "Show beside"
+  },
+  "optModeHint": {
+    "message": "Replace = swap the word. Highlight = keep the original, show meaning on hover. Beside = <em>từ (word)</em>."
+  },
+  "optIntensityLabel": {
+    "message": "Intensity"
+  },
+  "optDirectionLabel": {
+    "message": "Languages to scan"
+  },
+  "optDirVieEngTitle": {
+    "message": "Vietnamese → English"
+  },
+  "optDirVieEngSub": {
+    "message": "Replace Vietnamese words with the English equivalent"
+  },
+  "optDirEngEngTitle": {
+    "message": "English → English"
+  },
+  "optDirEngEngSub": {
+    "message": "Swap easy English words for harder synonyms"
+  },
+  "optDirectionHint": {
+    "message": "Turn on both to scan Vietnamese and English at the same time."
+  },
+  "optMyDatasetsTitle": {
+    "message": "My datasets"
+  },
+  "optCustomEmpty": {
+    "message": "No custom datasets yet.\n                    <a class=\"ext-link create-dataset-url\" href=\"https://merid.site/create-dataset\" target=\"_blank\" rel=\"noopener\">Generate one with AI on merid.site</a>,\n                    then upload the CSV file below."
+  },
+  "optUploadFileLabel": {
+    "message": "Upload a CSV file"
+  },
+  "optUploadHint": {
+    "message": "Needs a header row with at least <code>word</code> and <code>vietnamese</code> columns.\n                        <a class=\"ext-link create-dataset-url\" href=\"https://merid.site/create-dataset\" target=\"_blank\" rel=\"noopener\">How to create a dataset ↗</a>"
+  },
+  "optDatasetNameLabel": {
+    "message": "Dataset name"
+  },
+  "optDatasetNamePlaceholder": {
+    "message": "e.g. Finance C1"
+  },
+  "optSaveDataset": {
+    "message": "Save dataset"
+  },
+  "optSitesTitle": {
+    "message": "Sites"
+  },
+  "optSitesHint": {
+    "message": "Merid runs everywhere except the sites below. You can also turn it off on the page you are reading from the toolbar popup."
+  },
+  "optSitesOffTitle": {
+    "message": "Sites you turned off"
+  },
+  "optNoneYet": {
+    "message": "None yet."
+  },
+  "optPauseInputLabel": {
+    "message": "Turn Merid off on another site"
+  },
+  "optAddSite": {
+    "message": "Add site"
+  },
+  "optDefaultOffTitle": {
+    "message": "Off by default"
+  },
+  "optDefaultOffHint": {
+    "message": "Dictionaries, translators, editors and coursework read better unchanged, so Merid starts off on them. Turn any of them back on from the popup while you are on the site."
+  },
+  "optAllowedNone": {
+    "message": "You have not turned any of these back on."
+  },
+  "optSeeFullList": {
+    "message": "See the full list"
+  },
+  "optAlwaysOffTitle": {
+    "message": "Always off"
+  },
+  "optAlwaysOffHint": {
+    "message": "Merid never changes words on private pages, and never sends anything from them for the AI context check. This part is not a setting."
+  },
+  "optMatchingHint": {
+    "message": "Matching is by site name, so a service that shares a site with something else — Facebook, Instagram and X put messages on the same address as the feed — is not on this list. Neither is anything self-hosted, like a work webmail on a company address. Turn those off yourself above."
+  },
+  "optAccountTitle": {
+    "message": "Account &amp; sync"
+  },
+  "optAccountHint": {
+    "message": "Sign in to back up your deck and study it on <strong>merid.site/my-deck</strong>. Optional - everything keeps working locally without an account."
+  },
+  "optGoogleSignIn": {
+    "message": "Sign in with Google"
+  },
+  "optAuthDivider": {
+    "message": "or use your email"
+  },
+  "optEmailLabel": {
+    "message": "Email"
+  },
+  "optSendLink": {
+    "message": "Email me a sign-in link"
+  },
+  "optLinkWaitHint": {
+    "message": "Link sent ✓ Open the email from Merid, copy the sign-in link address (right-click the button → Copy link), and paste it here to finish:"
+  },
+  "optLinkInputLabel": {
+    "message": "Paste the sign-in link"
+  },
+  "optCompleteSignIn": {
+    "message": "Complete sign-in"
+  },
+  "optOrPassword": {
+    "message": "Or sign in with your password:"
+  },
+  "optPasswordLabel": {
+    "message": "Password (min 8 characters)"
+  },
+  "optSignIn": {
+    "message": "Sign in"
+  },
+  "optCreateAccount": {
+    "message": "Create account"
+  },
+  "optSignedInAs": {
+    "message": "Signed in as"
+  },
+  "optSignOut": {
+    "message": "Sign out"
+  },
+  "optAiTitle": {
+    "message": "AI context check"
+  },
+  "optAiHint": {
+    "message": "After Merid replaces a word, Google Gemini checks that it really fits the sentence it\n                landed in. Words that do not fit are <strong>swapped for a better one, or changed back</strong> on\n                their own. Included - <strong>no API key needed</strong>. There is a daily limit per person so the\n                service stays available to everyone; signing in raises it."
+  },
+  "optAiEnableLabel": {
+    "message": "Enable AI context check"
+  },
+  "optOn": {
+    "message": "On"
+  },
+  "optOff": {
+    "message": "Off"
+  },
+  "optAiTest": {
+    "message": "Test the AI check"
+  },
+  "optAiOwnKeyHint": {
+    "message": "Prefer your own key? Paste a free key from <strong>aistudio.google.com</strong> and\n                    Merid will use it instead - requests go straight from this browser to Google, with no daily limit\n                    from us. <a class=\"ext-link api-key-guide-url\" href=\"https://merid.site/api-key-guide\" target=\"_blank\" rel=\"noopener\">Step-by-step guide ↗</a>"
+  },
+  "optAiKeyLabel": {
+    "message": "Gemini API key"
+  },
+  "optAiSaveKey": {
+    "message": "Save key"
+  },
+  "optAiTestKey": {
+    "message": "Test key"
+  },
+  "optProfileTitle": {
+    "message": "What Merid has learned about you"
+  },
+  "optProfileHint": {
+    "message": "Merid watches which words you save, rate and skip, and quietly shows more of what\n                suits you and less of what does not. It all stays on this device (and in your own account if\n                you sign in). Nothing here is sent to Merid."
+  },
+  "optProfileEmpty": {
+    "message": "Nothing yet. Hover a highlighted word and use 👍 / 👎, \"Save to Deck\"\n                or \"I know this\" a few times, and this fills in."
+  },
+  "optProfileLevelLabel": {
+    "message": "Level that suits you"
+  },
+  "optProfileTopicsLabel": {
+    "message": "What you read"
+  },
+  "optProfileWordsLabel": {
+    "message": "Words tracked"
+  },
+  "optProfileMore": {
+    "message": "Showing you more of"
+  },
+  "optProfileLess": {
+    "message": "Showing you less of"
+  },
+  "optProfileForget": {
+    "message": "Forget what Merid learned"
+  },
+  "optPrivacyTitle": {
+    "message": "Data &amp; privacy"
+  },
+  "optDeleteAll": {
+    "message": "Delete all stored data"
+  },
+  "optSavedAuto": {
+    "message": "Settings save automatically"
+  },
+  "optSaved": {
+    "message": "Saved ✓"
+  },
+  "optPrivacy1": {
+    "message": "Page text is scanned <strong>locally</strong> in your browser to find vocabulary matches."
+  },
+  "optPrivacy2": {
+    "message": "By default the extension makes <strong>no network requests</strong> - page content stays in your browser and no AI API is used until you opt in below."
+  },
+  "optPrivacy3": {
+    "message": "With the <strong>AI context check</strong> on, short pieces of the sentence around each replaced word are sent to Google Gemini - by default through <code>merid.site/api/check</code>, which calls Gemini with Merid's keys and keeps only a per-day counter so the daily limit can be enforced. <strong>No page addresses, titles or browsing history are sent.</strong> Turn the check off above and nothing is sent at all. If you save your own API key, requests go straight from this browser to Google instead and never reach a Merid server."
+  },
+  "optPrivacy4": {
+    "message": "To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit."
+  },
+  "optPrivacy5": {
+    "message": "If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing."
+  },
+  "optPrivacy6": {
+    "message": "Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above."
+  },
+  "optPrivacy7": {
+    "message": "Merid <strong>never runs at all</strong> on private pages - email, messaging, banking, sign-in, health and official services - so nothing from them is ever scanned or sent, whatever the AI check is set to. See <strong>Sites</strong> above for the full list."
+  },
+  "optPrivacy8": {
+    "message": "Your settings (selected dataset, display mode, intensity, on/off, the sites you turned off and the default-off sites you turned back on) are stored on your device via <code>chrome.storage</code>."
+  },
+  "optPrivacy9": {
+    "message": "Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync."
+  },
+  "optPrivacy10": {
+    "message": "Turn the extension off any time from the popup - globally, or just for one site."
+  },
+  "optDatasetLoaded": {
+    "message": "Loaded: $COUNT$ words ($LABEL$).",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "1380"
+      },
+      "LABEL": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
+  },
+  "optSiteTurnBackOn": {
+    "message": "Turn back on"
+  },
+  "optSiteTurnBackOff": {
+    "message": "Turn back off"
+  },
+  "optSiteBadName": {
+    "message": "That does not look like a site name."
+  },
+  "optSiteAlreadyOff": {
+    "message": "Merid is already always off on $HOST$.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
+  },
+  "optSiteLimit": {
+    "message": "You can turn Merid off on up to $MAX$ sites.",
+    "placeholders": {
+      "MAX": {
+        "content": "$1",
+        "example": "100"
+      }
+    }
+  },
+  "optFileErr_EMPTY_FILE": {
+    "message": "The file is empty."
+  },
+  "optFileErr_TOO_LARGE": {
+    "message": "The file is too large (limit $MB$ MB).",
+    "placeholders": {
+      "MB": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "optFileErr_MALFORMED_CSV": {
+    "message": "The file is not valid CSV."
+  },
+  "optFileErr_MISSING_HEADER": {
+    "message": "The first line must be a header row (e.g. word,type,…,vietnamese,…)."
+  },
+  "optFileErr_MISSING_COLUMNS": {
+    "message": "Required column(s) missing from the header: "
+  },
+  "optFileErr_TOO_MANY_ROWS": {
+    "message": "Too many rows (limit $ROWS$). Split the file into smaller datasets.",
+    "placeholders": {
+      "ROWS": {
+        "content": "$2",
+        "example": "5000"
+      }
+    }
+  },
+  "optFileErr_NO_VALID_ROWS": {
+    "message": "No usable rows - every row needs an English word and a Vietnamese meaning."
+  },
+  "optFileErr_LIMIT_DATASETS": {
+    "message": "You already have $MAX$ datasets. Delete one before adding another.",
+    "placeholders": {
+      "MAX": {
+        "content": "$3",
+        "example": "10"
+      }
+    }
+  },
+  "optFileErr_STORAGE_FULL": {
+    "message": "Extension storage is full. Delete a dataset or upload a smaller file."
+  },
+  "optFileErr_BAD_NAME": {
+    "message": "Please give the dataset a name."
+  },
+  "optFileErr_NOT_FOUND": {
+    "message": "That dataset no longer exists."
+  },
+  "optFileErr_UNKNOWN": {
+    "message": "Something went wrong. Reload Merid at chrome://extensions and try again."
+  },
+  "optCsvWrongType": {
+    "message": "Please choose a .csv file (a plain-text CSV, not Excel .xlsx)."
+  },
+  "optCsvUnreadable": {
+    "message": "Could not read the file."
+  },
+  "optReportWords": {
+    "message": "$COUNT$ words",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "250"
+      }
+    }
+  },
+  "optReportSkipped": {
+    "message": "$COUNT$ rows skipped",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "optReportDuplicates": {
+    "message": "$COUNT$ duplicates removed (first row kept)",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "optReportPreview": {
+    "message": "File looks good ✓ $SUMMARY$. Press \"Save dataset\" to import.",
+    "placeholders": {
+      "SUMMARY": {
+        "content": "$1",
+        "example": "250 từ"
+      }
+    }
+  },
+  "optReportSaved": {
+    "message": "Saved ✓ $SUMMARY$.",
+    "placeholders": {
+      "SUMMARY": {
+        "content": "$1",
+        "example": "250 từ"
+      }
+    }
+  },
+  "optReportRow": {
+    "message": "Row $ROW$:",
+    "placeholders": {
+      "ROW": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "optReportMoreRows": {
+    "message": "…and $COUNT$ more skipped rows.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "optReportDupMore": {
+    "message": " (+$COUNT$ more)",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
+  },
+  "optReportDupList": {
+    "message": "Duplicates skipped: $LIST$.",
+    "placeholders": {
+      "LIST": {
+        "content": "$1",
+        "example": "abate, candid"
+      }
+    }
+  },
+  "optDatasetMeta": {
+    "message": "$COUNT$ words · updated $DATE$",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "250"
+      },
+      "DATE": {
+        "content": "$2",
+        "example": "12/8/2026"
+      }
+    }
+  },
+  "optDatasetActive": {
+    "message": "Active"
+  },
+  "optDatasetUse": {
+    "message": "Use"
+  },
+  "optDatasetRename": {
+    "message": "Rename"
+  },
+  "optDatasetReplace": {
+    "message": "Replace"
+  },
+  "optDatasetDelete": {
+    "message": "Delete"
+  },
+  "optDatasetNewName": {
+    "message": "New dataset name"
+  },
+  "optSave": {
+    "message": "Save"
+  },
+  "optCancel": {
+    "message": "Cancel"
+  },
+  "optDatasetDeleteConfirm": {
+    "message": "Delete \"$NAME$\"? This cannot be undone.",
+    "placeholders": {
+      "NAME": {
+        "content": "$1",
+        "example": "Tài chính C1"
+      }
+    }
+  },
+  "optDatasetDeleteActive": {
+    "message": "This is your active dataset - Merid will switch back to $DATASET$.",
+    "placeholders": {
+      "DATASET": {
+        "content": "$1",
+        "example": "C1"
+      }
+    }
+  },
+  "optAiEnabledNoKey": {
+    "message": "Enabled - now paste your Gemini API key below and press \"Save key\"."
+  },
+  "optAiKeySaveFailed": {
+    "message": "Could not save the key. Reload Merid at chrome://extensions and try again."
+  },
+  "optAiKeyRemoved": {
+    "message": "Key removed."
+  },
+  "optAiKeyRemovedCloud": {
+    "message": "Key removed (here and from your account)."
+  },
+  "optAiKeySavedCloud": {
+    "message": "Key saved on this device and backed up to your account."
+  },
+  "optAiKeySavedSignedOut": {
+    "message": "Key saved on this device. Sign in above to keep it with your account across devices."
+  },
+  "optAiKeySavedRetry": {
+    "message": "Key saved on this device. Account backup will retry after your next sign-in."
+  },
+  "optAiPasteKeyFirst": {
+    "message": "Paste an API key first."
+  },
+  "optAiTestingKey": {
+    "message": "Testing key…"
+  },
+  "optAiKeyWorks": {
+    "message": "Key works ✓"
+  },
+  "optAiKeyRejected": {
+    "message": "Key was rejected by Google. Use an API key from aistudio.google.com (with no API restrictions)."
+  },
+  "optAiNoModel": {
+    "message": "The Gemini model is not available for this key/project."
+  },
+  "optAiRateLimited": {
+    "message": "Key works but hit the free-tier rate limit. Wait a minute and try again."
+  },
+  "optAiOverloaded": {
+    "message": "Google’s Gemini server is overloaded right now. Wait a moment and try again."
+  },
+  "optNoBackground": {
+    "message": "Could not reach the extension background. Reload Merid at chrome://extensions and try again."
+  },
+  "optTesting": {
+    "message": "Testing…"
+  },
+  "optAuthErr_EMAIL_EXISTS": {
+    "message": "An account with this email already exists. Try signing in."
+  },
+  "optAuthErr_INVALID_LOGIN_CREDENTIALS": {
+    "message": "Email or password is incorrect."
+  },
+  "optAuthErr_INVALID_PASSWORD": {
+    "message": "Email or password is incorrect."
+  },
+  "optAuthErr_EMAIL_NOT_FOUND": {
+    "message": "Email or password is incorrect."
+  },
+  "optAuthErr_INVALID_EMAIL": {
+    "message": "Please enter a valid email address."
+  },
+  "optAuthErr_WEAK_PASSWORD": {
+    "message": "Password must be at least 8 characters."
+  },
+  "optAuthErr_TOO_MANY_ATTEMPTS_TRY_LATER": {
+    "message": "Too many attempts. Please try again later."
+  },
+  "optAuthErr_NETWORK": {
+    "message": "No connection. Check your internet and try again."
+  },
+  "optAuthErr_GOOGLE_NOT_CONFIGURED": {
+    "message": "Google sign-in isn't set up for this build yet: add the OAuth Web client ID as googleClientId in lib/firebase-config.js (see docs/FIREBASE_SETUP.md)."
+  },
+  "optAuthErr_GOOGLE_CANCELLED": {
+    "message": "Google sign-in was cancelled."
+  },
+  "optAuthErr_GOOGLE_BAD_RESPONSE": {
+    "message": "Google sign-in failed. Please try again."
+  },
+  "optAuthErr_OPERATION_NOT_ALLOWED": {
+    "message": "Email-link sign-in is not enabled for this Firebase project (console → Authentication → Sign-in method → Email link)."
+  },
+  "optAuthErr_INVALID_OOB_CODE": {
+    "message": "That link is invalid or was already used. Send yourself a new one."
+  },
+  "optAuthErr_EXPIRED_OOB_CODE": {
+    "message": "That link has expired. Send yourself a new one."
+  },
+  "optAuthErr_BAD_LINK": {
+    "message": "That doesn't look like the sign-in link. Paste the full link from the email (it contains \"oobCode=\")."
+  },
+  "optAuthErrUnknown": {
+    "message": "Something went wrong. Please try again."
+  },
+  "optSyncSyncing": {
+    "message": "Syncing your deck…"
+  },
+  "optSyncRateLimited": {
+    "message": "Daily sync limit reached - remaining words sync tomorrow."
+  },
+  "optSyncError": {
+    "message": "Sync paused (connection issue). It retries automatically."
+  },
+  "optSyncBackedUp": {
+    "message": "Deck is backed up."
+  },
+  "optSyncReady": {
+    "message": "Ready to sync."
+  },
+  "optSending": {
+    "message": "Sending…"
+  },
+  "optProfileConfidence": {
+    "message": "$EVENTS$ feedback signals so far - personalization is $PCT$% dialled in.",
+    "placeholders": {
+      "EVENTS": {
+        "content": "$1",
+        "example": "20"
+      },
+      "PCT": {
+        "content": "$2",
+        "example": "80"
+      }
+    }
+  },
+  "optProfileConfidenceLow": {
+    "message": "Below 100% Merid stays close to its default behaviour on purpose."
+  },
+  "optProfileUnknown": {
+    "message": "still working it out"
+  },
+  "optProfileForgetConfirm": {
+    "message": "Forget everything Merid learned about your preferences? Your deck and settings are not affected."
+  },
+  "optProfileCleared": {
+    "message": "Cleared. Merid starts learning again from your next page."
+  },
+  "optQuotaOwnKey": {
+    "message": "Using your own API key - no daily limit from Merid."
+  },
+  "optQuotaOut": {
+    "message": "Daily limit reached ($LIMIT$). It resets at midnight UTC.",
+    "placeholders": {
+      "LIMIT": {
+        "content": "$1",
+        "example": "50"
+      }
+    }
+  },
+  "optQuotaSignInRaises": {
+    "message": "Signing in raises it."
+  },
+  "optQuotaLeft": {
+    "message": "$LEFT$ of $LIMIT$ AI checks left today.",
+    "placeholders": {
+      "LEFT": {
+        "content": "$1",
+        "example": "12"
+      },
+      "LIMIT": {
+        "content": "$2",
+        "example": "50"
+      }
+    }
+  },
+  "optQuotaSignInMore": {
+    "message": "Sign in to raise the limit."
+  },
+  "optDeleteAllConfirm": {
+    "message": "Delete ALL stored data (settings + your deck)? This cannot be undone."
   }
 }

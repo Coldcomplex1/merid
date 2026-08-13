@@ -22,13 +22,15 @@ const Status = window.MeridStatus || { set: function () { } };
 const DEBUG = false;
 const log = DEBUG ? console.log.bind(console) : () => { };
 
-// UI strings via chrome.i18n (_locales/en + _locales/vi), with English
-// fallbacks so a missing message can never blank the tooltip.
+// The learning card is ALWAYS English, whatever language the popup and
+// Settings are in. It is the surface where the reader meets the word they are
+// learning - "Save to Deck" beside an English headword is part of the lesson,
+// not chrome around it - so it does not follow the UI language.
+//
+// The strings still go through this indirection, and the tooltip* keys are
+// still translated in _locales/, so pointing this back at a catalog is a
+// one-line change if that call is ever revisited.
 function t(key, fallback) {
-    try {
-        const msg = chrome.i18n.getMessage(key);
-        if (msg) return msg;
-    } catch (e) { /* i18n unavailable (e.g. harness) */ }
     return fallback;
 }
 

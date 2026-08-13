@@ -146,6 +146,12 @@
         // call, from the popup header - not something Merid infers from the page
         // it landed on. Light is the card as it was designed, so it is default.
         cardTheme: 'light',
+        // Language of the extension's own pages (popup + Settings), NOT of the
+        // learning card, which is always English. 'auto' follows merid.site's
+        // VI/EN toggle, and the browser's language before the reader has been
+        // there. See lib/i18n.js.
+        uiLang: 'auto',              // 'auto' | 'en' | 'vi'
+        siteLang: '',                // last language chosen on merid.site
         disabledSites: [],           // canonical hostnames the user paused Merid on
         allowedSites: [],            // default-off hostnames the user turned back on
         // AI context check. ON by default now that it needs no setup from the

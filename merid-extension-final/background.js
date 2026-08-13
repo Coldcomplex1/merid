@@ -843,6 +843,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 Sync.signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
                 return true;
             }
+            // The site's VI/EN toggle. Remembered, not obeyed on the spot: a
+            // reader who has set a language in Settings keeps it, and this is
+            // only what 'auto' falls back to (see lib/i18n.js).
+            case 'MERID_WEB_LANG': {
+                const lang = request.lang === 'vi' || request.lang === 'en' ? request.lang : '';
+                if (!lang) { sendResponse({ ok: false }); return false; }
+                chrome.storage.sync.set({ siteLang: lang }, () => {
+                    void chrome.runtime.lastError;
+                    sendResponse({ ok: true });
+                });
+                return true;
+            }
             // ---- One-click Google sign-in (options page) ----
             case 'MERID_SYNC_GOOGLE_SIGNIN': {
                 googleSignIn()

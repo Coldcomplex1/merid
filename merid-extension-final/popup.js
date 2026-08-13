@@ -1,38 +1,39 @@
 const C = window.VMCore;
+const I18n = window.VMI18n;
 
-// UI strings via chrome.i18n (_locales/en + _locales/vi). Every call carries
-// an English fallback so a missing message can never blank the UI.
+// UI strings from the language the READER chose - on merid.site or in Settings
+// - rather than the one Chrome is in. lib/i18n.js explains why the panel loads
+// _locales/ itself instead of calling chrome.i18n. Every call still carries an
+// English fallback so a missing message can never blank the UI.
 function t(key, fallback, subs) {
-    try {
-        const msg = chrome.i18n.getMessage(key, subs);
-        if (msg) return msg;
-    } catch (e) { /* i18n unavailable (e.g. test harness) */ }
-    return fallback;
+    return I18n.t(key, fallback, subs);
 }
 
+const applyI18n = () => I18n.applyI18n();
+
 // What each intensity level actually buys, in the reader's terms. These track
-// VMCore.POST_WORD_CAPS - if that table changes, change these too.
+// VMCore.POST_WORD_CAPS - if that table changes, change these too. They are the
+// English fallbacks for popupIntensityHint_*, which is where the wording lives.
 const INTENSITY_HINTS = {
     casual: 'Up to 1 word per post, 2–3 in a long article.',
     focused: 'Up to 2 words per post, 3–4 in a long article.',
     locked: 'Up to 2 words per short post, 3–5 as the article gets longer.'
 };
 
-// Static labels are marked with data-i18n (textContent) or data-i18n-html
-// (innerHTML - trusted extension strings only, never user or page content).
-function applyI18n() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const msg = t(el.dataset.i18n, '');
-        if (msg) el.textContent = msg;
-    });
-    document.querySelectorAll('[data-i18n-html]').forEach(el => {
-        const msg = t(el.dataset.i18nHtml, '');
-        if (msg) el.innerHTML = msg;
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // The catalog has to be in hand before the first label is written; the
+    // markup ships English, so that is what shows for the one frame it takes.
+    await I18n.init();
     applyI18n();
+
+    // A language chosen in Settings (or on merid.site) while the popup happens
+    // to be open. Every label here is drawn from storage anyway, and half of
+    // them from callbacks nested three deep, so the panel starts over rather
+    // than trying to repaint itself piece by piece. Nothing is lost: the popup
+    // holds no state that is not already saved.
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'sync' && (changes.uiLang || changes.siteLang)) location.reload();
+    });
 
     const frequencySlider = document.getElementById('frequency-slider');
     const extensionToggle = document.getElementById('extension-toggle');

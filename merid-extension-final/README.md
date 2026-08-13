@@ -59,7 +59,13 @@ Two **optional, off-by-default** features use the network once the user opts in:
   Neither is anything self-hosted, like a work webmail on a company domain.
   Turn those off yourself.
 - Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
-- **Localized UI:** English + Vietnamese (`_locales/`), following the browser language.
+- **Localized UI:** English + Vietnamese (`_locales/`) for the popup **and** the
+  Settings page. The language follows, in order: your choice in Settings →
+  **Language**, the VI/EN toggle on merid.site (relayed by `content-bridge.js`),
+  then the browser's language. `chrome.i18n` cannot be overridden at runtime, so
+  the panel loads `_locales/` itself through `lib/i18n.js`.
+  **The hover learning card stays English always** - it is the language you are
+  there to read, not interface around it.
 - First-run onboarding tour (merid.site/welcome) and an uninstall exit survey.
 
 ---
@@ -78,13 +84,14 @@ Chrome Extension
 | File | Role |
 |---|---|
 | `manifest.json` | MV3 manifest - minimal permissions (`storage`, `activeTab`), options page, CSP |
-| `_locales/en`, `_locales/vi` | UI strings (manifest + popup + learning card) |
+| `_locales/en`, `_locales/vi` | UI strings (manifest + popup + Settings; the card is English-only) |
+| `lib/i18n.js` | Runtime UI-language catalog for popup/Settings (overrides the browser locale) |
 | `lib/vocab-core.js` | Shared pure functions (works in the content script **and** in Node tests) |
 | `lib/custom-datasets.js` | `chrome.storage.local` persistence for user-uploaded datasets (background only) |
 | `lib/firebase-config.js` | Firebase project identifiers + merid.site URLs (not secrets) |
 | `lib/firebase-rest.js`, `lib/sync.js` | Optional deck sync over Firebase REST (no SDK, no remote code) |
 | `content.js` | DOM scanning, deferred reveal, tooltip, live re-processing, revert |
-| `content-bridge.js` | merid.site single sign-on relay (session carries into the extension) |
+| `content-bridge.js` | merid.site relay: single sign-on + the site's VI/EN language choice |
 | `background.js` | Datasets, settings, optional sync + AI-check requests |
 | `popup.html/js/css` | Toolbar popup |
 | `options.html/js/css` | Settings page |
@@ -256,8 +263,10 @@ the learning card open - regenerate it with `node scripts/gen-real-screenshot.js
 4. Confirm word replacement, the on/off toggle, the dataset selector and the
    per-site pause all work, and that words appear only once the context check
    has cleared them.
-5. Confirm the UI shows Vietnamese when Chrome's language is Vietnamese
-   (`chrome://settings/languages`) and English otherwise.
+5. Confirm the popup and Settings show Vietnamese when Chrome's language is
+   Vietnamese (`chrome://settings/languages`), when merid.site's toggle is set
+   to VI, or when Settings → **Language** says Tiếng Việt - and that the hover
+   learning card stays English in all three.
 6. Confirm **no API key ships** in the built files (the build fails if a
    key-shaped secret is found; the Firebase project identifiers in
    `lib/firebase-config.js` are public identifiers, not secrets).
