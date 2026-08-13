@@ -37,7 +37,7 @@ let vocabulary = [];
 // Vocabulary loading (bundled CSV datasets - local only)
 // =============================================================
 async function loadVocabulary(datasetKey) {
-    const key = datasetKey || 'sat';
+    const key = datasetKey || C.DEFAULT_DATASET_KEY;
 
     // Custom datasets load their pre-validated entries from
     // chrome.storage.local instead of bundled files. A missing dataset
@@ -82,7 +82,7 @@ async function loadVocabulary(datasetKey) {
 function initVocabulary() {
     return new Promise(resolve => {
         chrome.storage.sync.get(['datasetKey'], async result => {
-            const key = result.datasetKey || 'sat';
+            const key = result.datasetKey || C.DEFAULT_DATASET_KEY;
             // Try the persisted cache first for a fast wake.
             chrome.storage.local.get(['vm_vocab_cache'], async cache => {
                 const c = cache.vm_vocab_cache;
@@ -103,9 +103,9 @@ function initVocabulary() {
 // (the sync write makes every open tab revert + re-scan) and leave a one-shot
 // notice that the popup/options page shows once and clears.
 async function fallbackToDefault() {
-    chrome.storage.sync.set({ datasetKey: 'sat' });
+    chrome.storage.sync.set({ datasetKey: C.DEFAULT_DATASET_KEY });
     chrome.storage.local.set({ vm_dataset_notice: { code: 'CUSTOM_MISSING', at: Date.now() } });
-    return loadVocabulary('sat');
+    return loadVocabulary(C.DEFAULT_DATASET_KEY);
 }
 
 // =============================================================
@@ -180,8 +180,8 @@ async function deleteCustomDataset(id) {
     if (wasActive) {
         // Deliberate user action: switch back without the "missing" notice
         // (the options UI already spelled out the consequence in its confirm).
-        chrome.storage.sync.set({ datasetKey: 'sat' });
-        await loadVocabulary('sat');
+        chrome.storage.sync.set({ datasetKey: C.DEFAULT_DATASET_KEY });
+        await loadVocabulary(C.DEFAULT_DATASET_KEY);
     }
     return { ok: true, wasActive };
 }
@@ -928,7 +928,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     switch (request.action) {
         case 'setDataset': {
-            const key = request.datasetKey || 'sat';
+            const key = request.datasetKey || C.DEFAULT_DATASET_KEY;
             chrome.storage.sync.set({ datasetKey: key }, () => {
                 loadVocabulary(key).then(() => sendResponse({ success: true, count: vocabulary.length }));
             });
@@ -960,7 +960,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'getStatus': {
             // Used by the options page to show how many words are loaded.
             chrome.storage.sync.get(['extensionEnabled', 'datasetKey'], async s => {
-                const key = s.datasetKey || 'sat';
+                const key = s.datasetKey || C.DEFAULT_DATASET_KEY;
                 sendResponse({
                     enabled: s.extensionEnabled !== false,
                     datasetKey: key,
@@ -976,7 +976,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             (async () => {
                 const datasets = await Custom.list();
                 const s = await chrome.storage.sync.get(['datasetKey']);
-                sendResponse({ ok: true, datasets, activeKey: s.datasetKey || 'sat' });
+                sendResponse({ ok: true, datasets, activeKey: s.datasetKey || C.DEFAULT_DATASET_KEY });
             })().catch(() => sendResponse({ ok: false }));
             return true;
         }

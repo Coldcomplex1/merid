@@ -23,7 +23,7 @@ Two **optional, off-by-default** features use the network once the user opts in:
 
 - Vietnamese → English scanning. (English → English is built and works, but is
   withdrawn from the UI for now - `VMCore.ENG_ENG_AVAILABLE` is the switch.)
-- Bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
+- Bundled datasets (**CEFR C1** - the default - **CEFR C2**, **SAT**, or **All**).
 - **Custom datasets:** upload your own vocabulary CSV in Settings ("My datasets"),
   then select it from the popup or Settings. A guided builder at
   [merid.site/create-dataset](https://merid.site/create-dataset) helps you generate
@@ -108,7 +108,7 @@ pick a dataset and browse.
 
 ## Using it
 
-- **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All / your own), set
+- **Popup** (toolbar icon): pick a dataset (C1 / C2 / SAT / All / your own), set
   the intensity (the page reloads so the new setting starts from a clean scan),
   choose a display mode, turn the extension on/off, or stop it scanning the
   current site. Scan direction is not here - English→English is withdrawn for
@@ -202,7 +202,7 @@ prompt that produces a compatible file.
   (popup "My datasets" dropdown or the Use button in Settings). "All" covers only
   the bundled datasets and never mixes in custom entries. If the selected custom
   dataset is missing (e.g. deleted, or the setting synced to another device),
-  Merid falls back to SAT and shows a notice.
+  Merid falls back to the default dataset (C1) and shows a notice.
 
 ---
 

@@ -141,7 +141,13 @@
     "message": "your account"
   },
   "popupCustomMissing": {
-    "message": "Your custom dataset could not be found, so Merid switched back to SAT."
+    "message": "Your custom dataset could not be found, so Merid switched back to $DATASET$.",
+    "placeholders": {
+      "DATASET": {
+        "content": "$1",
+        "example": "C1"
+      }
+    }
   },
   "aiModalTitle": {
     "message": "Get the most out of Merid ✨"

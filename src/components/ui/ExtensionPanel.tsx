@@ -10,7 +10,7 @@ import DemoExtensionPanel, {
  * site as a clickable illustration. Defaults mirror a fresh install.
  */
 export default function ExtensionPanel({ className = '' }: { className?: string }) {
-  const [dataset, setDataset] = useState<PanelDataset>('SAT')
+  const [dataset, setDataset] = useState<PanelDataset>('C1')
   const [intensity, setIntensity] = useState(2)
   const [mode, setMode] = useState<PanelMode>('highlight')
   const [vieEng, setVieEng] = useState(true)

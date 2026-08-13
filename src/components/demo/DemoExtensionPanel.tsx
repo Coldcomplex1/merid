@@ -15,7 +15,8 @@ const RING_OFF = '#3a4a6b'
 export type PanelDataset = 'SAT' | 'C1' | 'C2' | 'All'
 export type PanelMode = 'replace' | 'highlight' | 'beside'
 
-export const PANEL_DATASETS: PanelDataset[] = ['SAT', 'C1', 'C2', 'All']
+// Same order the extension's popup and Settings show (VMCore.DATASET_REGISTRY).
+export const PANEL_DATASETS: PanelDataset[] = ['C1', 'C2', 'SAT', 'All']
 const MODES: { value: PanelMode; label: string }[] = [
   { value: 'replace', label: 'Replace' },
   { value: 'highlight', label: 'Highlight' },

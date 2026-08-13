@@ -222,10 +222,11 @@ test('custom key helpers round-trip and never collide with registry keys', () =>
 test('custom keys are not mislabeled by the registry fallbacks', () => {
     assert.strictEqual(C.datasetTagFor('custom:abc'), 'CUSTOM');
     assert.deepStrictEqual(C.getDatasetFiles('custom:abc'), []);
-    // regression: unknown non-custom keys still fall back to SAT
-    assert.strictEqual(C.datasetTagFor('nonsense'), 'SAT');
-    assert.deepStrictEqual(C.getDatasetFiles('nonsense'), ['dataset-SAT.csv']);
-    assert.strictEqual(C.withDefaults({}).datasetKey, 'sat');
+    // regression: unknown non-custom keys still fall back to the default set
+    const fallback = C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY];
+    assert.strictEqual(C.datasetTagFor('nonsense'), fallback.tag);
+    assert.deepStrictEqual(C.getDatasetFiles('nonsense'), fallback.files);
+    assert.strictEqual(C.withDefaults({}).datasetKey, C.DEFAULT_DATASET_KEY);
 });
 
 test('normalizeCustomEntry builds a stable per-dataset id and CUSTOM tag', () => {

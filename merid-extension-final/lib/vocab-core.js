@@ -39,23 +39,33 @@
     // Dataset registry - adding a new dataset (e.g. B2) is a drop-in: place
     // `dataset-B2.csv` in the repo, add a row here, add a button in the UI.
     // ---------------------------------------------------------------------
+    // Listed in the order the two UIs show them, CEFR first: C1 is where most
+    // readers start, so it leads and it is the default.
+    //
+    // `all.files` keeps its own order (SAT, C1, C2) whatever this one is:
+    // duplicate headwords keep the FIRST row, so reordering that array would
+    // quietly change which entry a shared word resolves to.
     const DATASET_REGISTRY = {
-        sat: { label: 'SAT', files: ['dataset-SAT.csv'], tag: 'SAT' },
-        // b2: { label: 'B2', files: ['dataset-B2.csv'], tag: 'B2' }, // TODO: add dataset-B2.csv
         c1: { label: 'C1', files: ['dataset-C1.csv'], tag: 'C1' },
         c2: { label: 'C2', files: ['dataset-C2.csv'], tag: 'C2' },
+        // b2: { label: 'B2', files: ['dataset-B2.csv'], tag: 'B2' }, // TODO: add dataset-B2.csv
+        sat: { label: 'SAT', files: ['dataset-SAT.csv'], tag: 'SAT' },
         all: { label: 'All', files: ['dataset-SAT.csv', 'dataset-C1.csv', 'dataset-C2.csv'], tag: 'ALL' }
     };
 
+    // What a reader gets before they choose anything, and what every fallback
+    // path lands on. One name so the two can never drift apart.
+    const DEFAULT_DATASET_KEY = 'c1';
+
     function getDatasetFiles(key) {
         if (isCustomKey(key)) return []; // custom datasets load from storage, not bundled files
-        const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY.sat;
+        const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY[DEFAULT_DATASET_KEY];
         return entry.files;
     }
 
     function datasetTagFor(key) {
         if (isCustomKey(key)) return 'CUSTOM';
-        const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY.sat;
+        const entry = DATASET_REGISTRY[key] || DATASET_REGISTRY[DEFAULT_DATASET_KEY];
         return entry.tag;
     }
 
@@ -131,7 +141,7 @@
         replacementMode: 'highlight',// 'replace' | 'highlight' | 'beside'
         vieEngMode: true,            // match Vietnamese meanings -> show English
         engEngMode: false,           // match English synonyms -> show headword
-        datasetKey: 'sat',
+        datasetKey: DEFAULT_DATASET_KEY,
         // Which palette the learning card wears: 'light' | 'dark'. The reader's
         // call, from the popup header - not something Merid infers from the page
         // it landed on. Light is the card as it was designed, so it is default.
@@ -1213,7 +1223,7 @@
 
     return {
         // datasets/settings
-        DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
+        DATASET_REGISTRY, DEFAULT_DATASET_KEY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
         ENG_ENG_AVAILABLE, activeModes,
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,

@@ -138,8 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // One-shot fallback notice written by the background when the selected
         // custom dataset went missing.
         if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
+            const fallbackLabel = C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].label;
             datasetNotice.textContent = t('popupCustomMissing',
-                'Your custom dataset could not be found, so Merid switched back to SAT.');
+                `Your custom dataset could not be found, so Merid switched back to ${fallbackLabel}.`,
+                [fallbackLabel]);
             datasetNotice.hidden = false;
             chrome.storage.local.remove('vm_dataset_notice');
         }

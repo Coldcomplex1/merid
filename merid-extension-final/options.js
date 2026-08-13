@@ -477,7 +477,7 @@ function startDelete(li, d, isActive) {
     const msg = document.createElement('p');
     msg.className = 'confirm-msg';
     msg.textContent = `Delete "${d.name}"? This cannot be undone.`
-        + (isActive ? ' This is your active dataset - Merid will switch back to SAT.' : '');
+        + (isActive ? ` This is your active dataset - Merid will switch back to ${C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].label}.` : '');
     const btns = document.createElement('div');
     btns.className = 'row-actions';
     const del = miniBtn('Delete', 'danger');
@@ -597,7 +597,8 @@ function wireCustom() {
     // custom dataset went missing.
     chrome.storage.local.get(['vm_dataset_notice'], l => {
         if (l.vm_dataset_notice && l.vm_dataset_notice.code === 'CUSTOM_MISSING') {
-            custom.notice.textContent = 'Your custom dataset could not be found on this device, so Merid switched back to SAT.';
+            custom.notice.textContent = 'Your custom dataset could not be found on this device, so Merid switched back to '
+                + C.DATASET_REGISTRY[C.DEFAULT_DATASET_KEY].label + '.';
             custom.notice.hidden = false;
             chrome.storage.local.remove('vm_dataset_notice');
         }
@@ -982,7 +983,7 @@ function renderLevelTip(profile) {
     chrome.storage.sync.get(['datasetKey'], (s) => {
         // "All" and custom datasets have no place on the CEFR ladder, so
         // suggestLevel returns null for them and nothing is offered.
-        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || 'sat'));
+        const tip = Prof.suggestLevel(profile, C.datasetTagFor(s.datasetKey || C.DEFAULT_DATASET_KEY));
         if (!tip) { btn.hidden = true; return; }
         btn.textContent = tip.direction === 'up'
             ? `You already know a lot of ${tip.from} words - try ${tip.to} →`

@@ -141,7 +141,13 @@
     "message": "tài khoản của bạn"
   },
   "popupCustomMissing": {
-    "message": "Không tìm thấy bộ từ tùy chỉnh của bạn, Merid đã chuyển về SAT."
+    "message": "Không tìm thấy bộ từ tùy chỉnh của bạn, Merid đã chuyển về $DATASET$.",
+    "placeholders": {
+      "DATASET": {
+        "content": "$1",
+        "example": "C1"
+      }
+    }
   },
   "aiModalTitle": {
     "message": "Tận dụng tối đa Merid ✨"
