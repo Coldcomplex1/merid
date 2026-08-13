@@ -104,6 +104,18 @@
   "popupSiteAlwaysOffPrivate": {
     "message": "Merid không chạy trên trang riêng tư như tin nhắn, email hay ngân hàng. Không bật được ở đây."
   },
+  "popupPageAlwaysOff": {
+    "message": "Không quét tin nhắn"
+  },
+  "popupPageAlwaysOffHint": {
+    "message": "Merid bỏ qua trang tin nhắn. Phần còn lại của $HOST$ vẫn chạy bình thường.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "facebook.com"
+      }
+    }
+  },
   "popupSiteTurnOn": {
     "message": "Bắt đầu quét trang này"
   },

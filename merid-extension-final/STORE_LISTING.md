@@ -89,6 +89,7 @@ FEATURES
 • Hover learning card: definition, pronunciation (browser text-to-speech), synonyms/antonyms, example.
 • "Save to Deck" to keep words for review; "I know this" to stop replacing words you already know.
 • Instant on/off - globally, or per site ("Stop scanning this site").
+• Never touches private pages - messaging, email, banking, sign-in - and never touches direct messages on Facebook, Instagram, X, LinkedIn, TikTok or Reddit, while the feeds on those sites keep working.
 
 OPTIONAL (OFF by default - never required)
 • Deck sync: sign in (on merid.site or in Settings) to back up your saved words to your own account and study them at merid.site/my-deck.

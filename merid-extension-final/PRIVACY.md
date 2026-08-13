@@ -16,6 +16,15 @@ on**, exactly as described below. Merid runs no servers of its own.
   and replacement happens **entirely in your browser**. Page text is never sent
   anywhere by default; the only exception is the optional AI context check
   described below, which you must turn on yourself.
+- **Pages the extension does not read at all.** Messaging, email, banking and
+  payments, sign-in screens and password managers, health, tax/benefits/identity
+  services and proctored exams are excluded outright, and cannot be switched on.
+  Where a site serves private messages from the same address as public content -
+  Facebook, Instagram, X, LinkedIn, TikTok, Reddit - the message pages are
+  excluded on their own, so a direct message is never read even though the feed
+  on that site is. Opening an inbox without a page reload is covered too: the
+  extension stops and restores the page. Nothing from an excluded page is
+  scanned, stored or sent, whatever your other settings say.
 - **Your settings.** Your preferences (selected dataset, display mode, intensity,
   Vietnamese→English / English→English direction, on/off state, and the list of
   sites you paused Merid on) are stored on your device using `chrome.storage`.
@@ -122,7 +131,6 @@ There are two ways this request reaches Google, and you choose which:
 
 - **Turn the extension off** entirely with the popup toggle, or pause it on a
   single website with **Stop scanning this site**.
-- **Revert a page** to its original text from the popup.
 - **Turn off the AI context check** or clear your API key in Settings at any time.
 - **Sign out** in Settings to stop deck sync immediately.
 - **Forget what Merid learned** in Settings clears the personalization profile

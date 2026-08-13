@@ -54,10 +54,16 @@ Two **optional, off-by-default** features use the network once the user opts in:
     language apps, and government sites generally (so `nasa.gov` is yours to
     switch on, while `irs.gov` stays always off).
 
-  Matching is by hostname, which leaves an honest gap: Facebook, Instagram and
-  X serve DMs from the same host as the feed, so their messages are not covered.
-  Neither is anything self-hosted, like a work webmail on a company domain.
-  Turn those off yourself.
+  Matching is mostly by hostname. Where a site serves direct messages from the
+  same host as the feed — Facebook, Instagram, X, LinkedIn, TikTok, Reddit —
+  the message paths are blocked on their own (`VMCore.BLOCKED_PATHS`), so the
+  feed keeps working while `/messages`, `/direct` and the rest are never read.
+  Walking into an inbox without a page load is caught too: the scan stops and
+  the page is handed back.
+
+  The honest gap that remains is anything self-hosted, like a work webmail on a
+  company domain, and any inbox a product adds at a path nobody has told us
+  about yet. Turn those off yourself.
 - Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
 - **Localized UI:** English + Vietnamese (`_locales/`) for the popup **and** the
   Settings page. The language follows, in order: your choice in Settings →
@@ -143,8 +149,11 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
   verify fit. Nothing is proxied through Merid servers - there are none.
 - Merid **never runs on private pages** — email, messaging, banking, sign-in,
   health, tax/benefits/identity services — so nothing from them is scanned or
-  sent, whatever the AI check is set to. The list is in `lib/vocab-core.js`
-  (`BLOCKED_BY_CATEGORY`) and shown in Settings → **Sites**.
+  sent, whatever the AI check is set to. That covers whole sites
+  (`BLOCKED_BY_CATEGORY`, shown in Settings → **Sites**) and, where a site
+  mixes a feed with an inbox, the message pages on their own
+  (`BLOCKED_PATHS`) — a Facebook or Instagram DM is not read even though the
+  feed next door is.
 - You can **pause Merid per site**, **turn it off**, and **Delete all stored
   data** from Settings.
 

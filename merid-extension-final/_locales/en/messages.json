@@ -104,6 +104,18 @@
   "popupSiteAlwaysOffPrivate": {
     "message": "Merid never runs on private pages like chats, email and banking. It cannot be turned on here."
   },
+  "popupPageAlwaysOff": {
+    "message": "Never scans messages"
+  },
+  "popupPageAlwaysOffHint": {
+    "message": "Merid leaves message pages alone. The rest of $HOST$ works as usual.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "facebook.com"
+      }
+    }
+  },
   "popupSiteTurnOn": {
     "message": "Start scanning this site"
   },

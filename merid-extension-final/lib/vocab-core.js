@@ -208,11 +208,13 @@
         own: ['merid.site'],
 
         messaging: [
-            'messenger.com', 'whatsapp.com', 'telegram.org', 't.me', 'zalo.me',
-            'discord.com', 'discordapp.com', 'slack.com', 'teams.microsoft.com',
-            'teams.live.com', 'chat.google.com', 'meet.google.com', 'zoom.us',
-            'messages.google.com', 'signal.org', 'line.me', 'viber.com',
-            'skype.com', 'wechat.com', 'weixin.qq.com', 'kakao.com'
+            'messenger.com', 'm.me', 'whatsapp.com', 'telegram.org', 't.me',
+            'zalo.me', 'discord.com', 'discordapp.com', 'slack.com',
+            'teams.microsoft.com', 'teams.live.com', 'chat.google.com',
+            'meet.google.com', 'zoom.us', 'messages.google.com',
+            'messages.android.com', 'voice.google.com', 'chat.reddit.com',
+            'signal.org', 'line.me', 'viber.com', 'skype.com', 'wechat.com',
+            'weixin.qq.com', 'kakao.com'
         ],
 
         email: [
@@ -273,6 +275,99 @@
 
     const BUILTIN_BLOCKED_HOSTS = Object.freeze(
         Object.values(BLOCKED_BY_CATEGORY).flat());
+
+    /**
+     * Private PAGES on sites that are otherwise Merid's whole point.
+     *
+     * Facebook, Instagram, X and the rest serve direct messages from the same
+     * hostname as the feed. Blocking the host would take the feed with it -
+     * scrolling one is the single most common way anyone uses this extension -
+     * so the host list above cannot express "not the messages". This can.
+     *
+     * The stake is not that a swapped word looks odd in a chat. It is that the
+     * context check sends a 180-character snippet around each candidate off the
+     * device, and it is on by default: a DM is not ours to sample, and the only
+     * safe way to keep it that way is never to read the page at all.
+     *
+     * Prefixes match on segment boundaries, so /messages covers /messages/t/123
+     * and never /messagesomething. Each host's entry covers its subdomains
+     * (m.facebook.com, www) the same way the host lists do.
+     *
+     * This will never be complete - a product can add an inbox at a new path
+     * tomorrow. It is a floor, not a fence, and the reader can still pause any
+     * site outright from the popup.
+     */
+    const BLOCKED_PATHS = {
+        // /messages is the inbox and every thread; /e2ee/t is an encrypted
+        // thread opened from Messenger; Marketplace keeps its chat of its own.
+        'facebook.com': ['/messages', '/e2ee/t', '/marketplace/inbox'],
+        'instagram.com': ['/direct'],
+        'x.com': ['/messages'],
+        'twitter.com': ['/messages'],
+        'linkedin.com': ['/messaging'],
+        'tiktok.com': ['/messages'],
+        'reddit.com': ['/chat']
+    };
+
+    /** True when `path` is `prefix` or lies underneath it. */
+    function pathUnder(path, prefix) {
+        return path === prefix || path.indexOf(prefix + '/') === 0;
+    }
+
+    /**
+     * True when this exact page is one Merid must not read, whatever the site
+     * around it is allowed to do. Takes a full URL - the path is the point.
+     *
+     * Anything that is not an http(s) URL answers false: the caller has no page
+     * to scan there anyway, and guessing about chrome:// or a blob would only
+     * add ways to be wrong.
+     */
+    function isUrlBlocked(url) {
+        let parsed;
+        try {
+            parsed = new URL(String(url || ''));
+        } catch (e) {
+            return false;
+        }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+        const host = canonicalHost(parsed.hostname);
+        // Trailing slash off, so /messages/ is the same page as /messages.
+        const path = parsed.pathname.length > 1 && parsed.pathname.endsWith('/')
+            ? parsed.pathname.slice(0, -1)
+            : parsed.pathname;
+        return Object.keys(BLOCKED_PATHS).some(site =>
+            matchesHostList(host, [site]) &&
+            BLOCKED_PATHS[site].some(prefix => pathUnder(path, prefix)));
+    }
+
+    /**
+     * Chat that floats over a page Merid is otherwise welcome on: the message
+     * popups pinned to the corner of a feed, where the URL never changes and
+     * `isUrlBlocked` has nothing to go on.
+     *
+     * Per host, and deliberately short. These are the attributes each site uses
+     * to label the surface itself, which is the most stable thing about markup
+     * that is otherwise generated. Facebook and Instagram are absent on purpose:
+     * their popups are `role="dialog"`, which content.js already refuses to scan
+     * everywhere (SKIP_REGION_SELECTOR).
+     *
+     * Best effort, and honestly so - a site can rename these tomorrow. The
+     * deterministic protection is the path list above; this is what catches the
+     * cases a path cannot see.
+     */
+    const CHAT_SURFACE_SELECTORS = {
+        'x.com': '[data-testid="DMDrawer"], [data-testid="dmDrawer"]',
+        'twitter.com': '[data-testid="DMDrawer"], [data-testid="dmDrawer"]',
+        'linkedin.com': '[class*="msg-overlay" i]'
+    };
+
+    /** The chat-surface selector for a host, or '' when it has none. */
+    function chatSurfaceSelector(hostname) {
+        const host = canonicalHost(hostname);
+        const site = Object.keys(CHAT_SURFACE_SELECTORS)
+            .find(s => matchesHostList(host, [s]));
+        return site ? CHAT_SURFACE_SELECTORS[site] : '';
+    }
 
     /**
      * Sites Merid stays off on until the reader says otherwise. Nothing here is
@@ -1233,6 +1328,7 @@
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
         ENG_ENG_AVAILABLE, activeModes,
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
+        BLOCKED_PATHS, isUrlBlocked, CHAT_SURFACE_SELECTORS, chatSurfaceSelector,
         isHostDefaultOff, DEFAULT_OFF_HOSTS, BLOCKED_BY_CATEGORY,
         DEFAULT_OFF_BY_CATEGORY, SITE_CATEGORY_LABELS, blockedCategory,
         siteToggleState, addSiteToList, removeSiteFromList, MAX_SITE_LIST,
