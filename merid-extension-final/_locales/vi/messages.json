@@ -134,9 +134,6 @@
       }
     }
   },
-  "popupNotSignedIn": {
-    "message": "⚠ Chưa đăng nhập - từ đã lưu chỉ nằm trên máy này."
-  },
   "popupYourAccount": {
     "message": "tài khoản của bạn"
   },

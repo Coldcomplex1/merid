@@ -528,6 +528,11 @@ footer {
     gap: 8px;
 }
 
+/* display:grid above would defeat the hidden attribute without this - and on a
+   page Merid cannot act on (chrome://, the Web Store, a PDF) hidden is exactly
+   what this row is, button and all: nothing is wired up behind it there. */
+.page-actions[hidden] { display: none; }
+
 .page-btn {
     background: transparent;
     color: var(--text-secondary);
@@ -594,21 +599,6 @@ footer {
     color: var(--text-secondary);
     margin: 0;
 }
-
-.sync-hint.warn {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 9px 12px;
-    border: 1px solid rgba(239, 68, 68, 0.55);
-    border-radius: 6px;
-    background: rgba(239, 68, 68, 0.10);
-    color: #f87171;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.sync-hint.warn:hover { background: rgba(239, 68, 68, 0.18); }
 
 /* AI Context Check onboarding modal - teaches pasting your own Gemini API key.
    Auto-opens at most once per day (never on the first day, never after

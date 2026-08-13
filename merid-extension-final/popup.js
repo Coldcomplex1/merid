@@ -306,8 +306,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // /login page has Google + email); the session carries into the extension
     // through the content-bridge SSO, so the popup only needs to link there.
     // The URL is a fixed constant from lib/firebase-config.js (A10).
-    // While signed in the account section stays hidden - the sync line above
-    // Settings already carries the identity.
+    //
+    // Each state says its piece exactly once. Signed out: the button at the top
+    // of the popup, which is the offer and the way to take it. Signed in: the
+    // line above Settings naming the account, which is the one thing the button
+    // can no longer tell you. A signed-out reader used to get both the button
+    // and a red warning at the bottom - the same news twice, the second time as
+    // a telling-off for a choice they are allowed to make. Merid works fully
+    // without an account; the deck simply stays on this device.
     const openLoginPage = () => chrome.tabs.create({ url: window.VMFirebaseConfig.webLoginUrl });
     const accountSection = document.getElementById('account-section');
     document.getElementById('signin-btn').addEventListener('click', openLoginPage);
@@ -317,10 +323,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (chrome.runtime.lastError || !status || status.state === 'disabled') return;
         if (status.state === 'signed-out') {
             accountSection.hidden = false;
-            syncHint.hidden = false;
-            syncHint.classList.add('warn');
-            syncHint.textContent = t('popupNotSignedIn', '⚠ Not signed in - saved words stay on this device only.');
-            syncHint.addEventListener('click', openLoginPage);
         } else {
             const email = status.email || t('popupYourAccount', 'your account');
             syncHint.hidden = false;
