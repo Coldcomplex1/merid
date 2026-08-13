@@ -46,9 +46,21 @@
         return !!(endpoint() && FB && FB.configured());
     }
 
+    // The anonymous sign-up in flight, if one is. Two tabs opening at once on a
+    // fresh install would otherwise each find no stored account and each create
+    // one, leaving the device with two identities and the second overwriting
+    // the first in storage.
+    let anonSignUp = null;
+
     /**
      * A refresh token for this device: the real account when signed in,
      * otherwise an anonymous one, created on first use and reused after that.
+     *
+     * The anonymous account is how the context check runs for a reader who
+     * never signs in, which is most of them - it is not a lesser path, it is
+     * the default one. That makes creating it worth a second attempt: a blip on
+     * the very first page would otherwise leave that page unchecked for no
+     * better reason than timing.
      */
     async function getIdentity() {
         const r = await storeGet([AUTH_KEY, ANON_KEY]);
@@ -60,7 +72,19 @@
         if (anon && anon.refreshToken) {
             return { uid: anon.uid, refreshToken: anon.refreshToken, anonymous: true };
         }
-        const created = await FB.signUpAnonymous();
+        if (!anonSignUp) {
+            anonSignUp = createAnonymousIdentity().finally(() => { anonSignUp = null; });
+        }
+        return anonSignUp;
+    }
+
+    async function createAnonymousIdentity() {
+        let created;
+        try {
+            created = await FB.signUpAnonymous();
+        } catch (e) {
+            created = await FB.signUpAnonymous();   // one retry, then it is real
+        }
         const record = { uid: created.uid, refreshToken: created.refreshToken };
         await storeSet({ [ANON_KEY]: record });
         // Reuse the token we were just handed instead of spending a refresh.

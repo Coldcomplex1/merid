@@ -536,7 +536,7 @@
     "message": "With the <strong>AI context check</strong> on, short pieces of the sentence around each replaced word are sent to Google Gemini - by default through <code>merid.site/api/check</code>, which calls Gemini with Merid's keys and keeps only a per-day counter so the daily limit can be enforced. <strong>No page addresses, titles or browsing history are sent.</strong> Turn the check off above and nothing is sent at all. If you save your own API key, requests go straight from this browser to Google instead and never reach a Merid server."
   },
   "optPrivacy4": {
-    "message": "To count the daily limit without requiring an account, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use. It holds no personal information. Signing in replaces it and raises the limit."
+    "message": "The AI context check needs no account. So that it can run for everyone, Merid creates an <strong>anonymous Firebase account</strong> for this device on first use, which is what the daily limit is counted against when one applies. It holds no personal information. Signing in replaces it with your own account."
   },
   "optPrivacy5": {
     "message": "If you sign in to the optional <strong>deck sync</strong>, your email address and your deck (saved words + known words) are stored in your own Merid account (Google Firebase) so you can study on merid.site. Signing out stops all syncing."
@@ -958,6 +958,9 @@
         "example": "50"
       }
     }
+  },
+  "optQuotaUnlimited": {
+    "message": "No daily limit at the moment."
   },
   "optQuotaSignInMore": {
     "message": "Sign in to raise the limit."
