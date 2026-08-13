@@ -431,3 +431,18 @@
 .vocab-master-tooltip[data-vm-scheme="dark"] .vm-card {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
+
+/* The one thing a forcing browser still takes from the dark card: the navy on
+   the gold chips, which it repaints near-white and leaves unreadable on gold.
+   Set only where that is actually happening (content.js probes for it), and
+   only for the synonym chips - the antonyms are already light on dark and are
+   left alone by such a browser.
+
+   The chip becomes gold-on-dark rather than dark-on-gold: the same two colours
+   the other way up, which is the arrangement forced dark has no interest in
+   touching. Synonyms still read as the gold pair, antonyms as the plain one. */
+.vocab-master-tooltip[data-vm-scheme="dark"][data-vm-forced] .vm-yellow {
+    background: var(--vm-chip-neutral);
+    border-color: var(--vm-gold);
+    color: var(--vm-gold);
+}

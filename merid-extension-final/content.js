@@ -1472,8 +1472,88 @@ function revertWord(word) {
 
 /** The palette the reader picked in the popup. Anything but 'dark' is the
  *  card as it was designed, which is also what a fresh install gets. */
+/** Perceived brightness of an `rgb()`/`rgba()` string, 0-1, or null if the
+ *  value says nothing (not a colour, or see-through enough not to count). */
+function colorLuminance(value) {
+    const text = String(value || '');
+    if (!/^rgba?\(/.test(text)) return null;
+    const parts = text.match(/[\d.]+/g);
+    if (!parts || parts.length < 3) return null;
+    // Anything you can mostly see through tells us nothing about what is behind it.
+    if (parts.length > 3 && parseFloat(parts[3]) < 0.5) return null;
+    return (0.299 * +parts[0] + 0.587 * +parts[1] + 0.114 * +parts[2]) / 255;
+}
+
+// Asked once per page: the answer is a property of the browser, and the probe
+// touches the DOM.
+let forcedDark = null;
+
+/**
+ * Is the browser repainting every page dark whether the page likes it or not?
+ * (Cốc Cốc's "Duyệt web chế độ tối", Chrome's Auto Dark Theme.)
+ *
+ * It is invisible to `prefers-color-scheme`, which stays light, and to
+ * getComputedStyle: forced dark repaints at the moment of painting rather than
+ * rewriting what the page declared, so a white page still reports white while
+ * the reader sees near-black.
+ *
+ * The system colour `Canvas` is the way through. It resolves to whatever the
+ * browser currently treats as the default page background, so a forcing browser
+ * answers with its own near-black. The probe pins itself to `color-scheme:
+ * light` so it reports on the browser rather than on a page that merely
+ * declares a dark scheme - a dark page is the site's own design and no reason
+ * to change the card.
+ */
+function browserForcesDark() {
+    if (forcedDark !== null) return forcedDark;
+    forcedDark = false;
+    try {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+            'color-scheme:light;background-color:Canvas;position:fixed;top:-9999px;' +
+            'left:-9999px;width:1px;height:1px;pointer-events:none';
+        document.documentElement.appendChild(probe);
+        const lum = colorLuminance(getComputedStyle(probe).backgroundColor);
+        probe.remove();
+        forcedDark = lum !== null && lum < 0.5;
+    } catch (e) {
+        /* no probe, no opinion - the light card is the safe default */
+    }
+    return forcedDark;
+}
+
+/**
+ * Which palette the card wears.
+ *
+ * The reader's setting decides - except where it cannot. A browser forcing dark
+ * on the whole web repaints the cream card into a muddy inversion of itself,
+ * and no CSS opts out of that: `color-scheme`, `only light`, meta tags,
+ * `forced-color-adjust: none` are all ignored. "Light" there does not buy a
+ * light card, it buys a broken one, so the choice is void and the palette that
+ * survives is the only one on offer. Everywhere the choice is real - including
+ * on pages that are merely dark by their own design - it is the reader's.
+ */
 function cardScheme() {
-    return settings.cardTheme === 'dark' ? 'dark' : 'light';
+    if (settings.cardTheme === 'dark') return 'dark';
+    return browserForcesDark() ? 'dark' : 'light';
+}
+
+/**
+ * Dress the card: its palette, and whether it is being painted by a browser
+ * that rewrites colours on the way to the screen.
+ *
+ * The second one is not the same question as the first. Even in the dark
+ * palette, which such a browser mostly leaves standing, one thing still gets
+ * repainted: the navy on the gold chips, which comes back near-white on gold
+ * and cannot be read. The card cannot stop that, so where it is happening the
+ * chips wear the one arrangement forced dark has no interest in - light on
+ * dark - and everywhere else they stay exactly as designed.
+ */
+function applyCardScheme(el) {
+    if (!el) return;
+    el.dataset.vmScheme = cardScheme();
+    if (browserForcesDark()) el.dataset.vmForced = '1';
+    else delete el.dataset.vmForced;
 }
 
 function createTooltip() {
@@ -1594,7 +1674,7 @@ function showTooltip(target, item) {
     tooltipElement.dataset.currentExample = item.example || '';
     tooltipElement.dataset.currentType = item.type || '';
     tooltipElement.dataset.currentLevel = item.dataset || '';
-    tooltipElement.dataset.vmScheme = cardScheme();
+    applyCardScheme(tooltipElement);
 
     // Opening the card is the cheapest genuine interest signal there is, so it
     // is recorded once per headword per page - mouseover re-fires whenever the
@@ -1700,7 +1780,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // re-scanning, and re-scanning re-picks words - so flipping the card from
     // light to dark would quietly rewrite the paragraph the reader is in.
     if (Object.keys(changes).every(k => k === 'cardTheme')) {
-        if (tooltipElement) tooltipElement.dataset.vmScheme = cardScheme();
+        if (tooltipElement) applyCardScheme(tooltipElement);
         return;
     }
 
