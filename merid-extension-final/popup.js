@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             siteToggle.title = C.blockedCategory(host) === 'own'
                 ? t('popupSiteAlwaysOffHint', 'Merid never runs on its own site.')
                 : t('popupSiteAlwaysOffPrivate',
-                    'Merid never runs on private pages like email, banking and sign-in. It cannot be turned on here.');
+                    'Merid never runs on private pages like chats, email and banking. It cannot be turned on here.');
         } else {
             let disabledSites = [];
             let allowedSites = [];
