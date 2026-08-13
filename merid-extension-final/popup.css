@@ -374,22 +374,30 @@ header {
     padding: 0 5px;
 }
 
-/* A plain track: the slider moves freely, so it must not draw stops that
-   promise otherwise. */
+/* Three stops, drawn on the track. The thumb's centre travels from half its
+   own width to the same distance off the right edge, so the outer marks sit at
+   that offset rather than at 0% and 100% - otherwise they miss the thumb by
+   half its width at both ends. */
 .slider {
+    --thumb: 16px;
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 4px;
-    background: #1d2d50;
+    height: 6px;
+    background-color: #1d2d50;
+    background-image:
+        radial-gradient(circle at calc(var(--thumb) / 2) 50%, #33487a 0 2px, transparent 2px),
+        radial-gradient(circle at 50% 50%, #33487a 0 2px, transparent 2px),
+        radial-gradient(circle at calc(100% - var(--thumb) / 2) 50%, #33487a 0 2px, transparent 2px);
     outline: none;
-    border-radius: 2px;
+    border-radius: 3px;
 }
 
 .slider::-moz-range-thumb {
-    width: 12px;
-    height: 12px;
-    border: none;
+    width: var(--thumb);
+    height: var(--thumb);
+    border: 3px solid #112240;
+    box-sizing: border-box;
     background: var(--accent-yellow);
     cursor: pointer;
     border-radius: 50%;
@@ -397,8 +405,8 @@ header {
 
 /* Reads out what the selected level actually does, in words per post. */
 .slider-hint {
-    margin: 6px 0 0;
-    font-size: 9px;
+    margin: 7px 0 0;
+    font-size: 10px;
     line-height: 1.4;
     color: var(--text-secondary);
 }
@@ -406,18 +414,25 @@ header {
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 12px;
-    height: 12px;
+    width: var(--thumb);
+    height: var(--thumb);
+    border: 3px solid #112240;
+    box-sizing: border-box;
     background: var(--accent-yellow);
     cursor: pointer;
     border-radius: 50%;
 }
 
+.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--accent-yellow); }
+.slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--accent-yellow); }
+
+/* One label per stop. The outer two are pulled to the ends of the track, so
+   each sits under the mark it names. */
 .slider-labels {
     display: flex;
     justify-content: space-between;
-    margin-top: 8px;
-    font-size: 8px;
+    margin-top: 9px;
+    font-size: 9.5px;
     color: var(--text-secondary);
 }
 
@@ -426,10 +441,13 @@ header {
     font-weight: 600;
 }
 
-/* Scan-direction cards (independently selectable) */
+/* Scan-direction cards (independently selectable). auto-fit rather than two
+   fixed columns: a hidden card is not a grid item, so while only one direction
+   is offered its card fills the row instead of sitting in a half-width column
+   with a hole beside it. */
 .mode-cards {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
 }
 
@@ -499,11 +517,15 @@ header {
     box-shadow: inset 0 0 0 3px #112240;
 }
 
+/* One column of full-width buttons: the primary toggle, then the two quieter
+   ones at a single shared size. The gap is even throughout - the footer used to
+   carry two more buttons, and the spacing that suited a crowded stack leaves a
+   short one looking like something fell out of it. */
 footer {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 15px;
+    align-items: stretch;
+    gap: 10px;
 }
 
 .mastery-info {
@@ -577,12 +599,13 @@ footer {
 
 .btn-signin:hover { filter: brightness(1.08); }
 
-/* Current-tab actions: "Revert this page" + "Turn off on this site". Two
-   compact buttons on one row, quieter than the main toggle above them. */
+/* Current-tab action: "Turn off on this site". One per row, matching
+   .btn-view-deck below, so the footer reads as one stack of equal buttons
+   under the main toggle rather than a row of odd widths. */
 .page-actions {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
 }
 
@@ -590,10 +613,10 @@ footer {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid #2a3d63;
-    padding: 8px 4px;
+    padding: 9px 8px;
     border-radius: 6px;
     font-weight: 600;
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: 1.25;
     cursor: pointer;
     font-family: var(--font-main);
