@@ -92,7 +92,11 @@
                         <span class="mode-card-title">VIE → ENG</span>
                         <span class="mode-card-sub" data-i18n="popupVieEngSub">Replace Vietnamese words</span>
                     </button>
-                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false">
+                    <!-- Withdrawn for now, here and on the Settings page. Ships
+                         hidden so it never flashes up before popup.js runs;
+                         VMCore.ENG_ENG_AVAILABLE is the switch that brings it
+                         back, and the scan reads the same flag. -->
+                    <button class="mode-card" data-mode="engEng" type="button" aria-pressed="false" hidden>
                         <span class="mode-card-title">ENG → ENG</span>
                         <span class="mode-card-sub" data-i18n="popupEngEngSub">Swap for harder synonyms</span>
                     </button>
@@ -102,15 +106,13 @@
 
         <footer>
             <button class="btn-toggle active" id="extension-toggle">Extension is ON</button>
-            <!-- Actions on the current tab (need an http/https page; hidden
-                 elsewhere). Both run on the activeTab grant from opening the
-                 popup - no broad tab access. -->
+            <!-- Action on the current tab (needs an http/https page; hidden
+                 elsewhere). Runs on the activeTab grant from opening the popup
+                 - no broad tab access. -->
             <div class="page-actions" id="page-actions" hidden>
-                <button class="page-btn" id="revert-btn" type="button" data-i18n="popupRevertPage">Revert this page</button>
                 <button class="page-btn" id="site-toggle" type="button">Turn off on this site</button>
             </div>
             <button class="btn-view-deck" id="view-deck-btn" type="button" data-i18n="popupViewDeck">View my deck ↗</button>
-            <button class="ai-hint" id="ai-hint" type="button" data-i18n="popupAiCheck">AI Context Check</button>
             <p class="sync-hint" id="sync-hint" hidden></p>
             <!-- Shown only when today's AI allowance is spent, so a reader who
                  notices the check went quiet knows why rather than assuming

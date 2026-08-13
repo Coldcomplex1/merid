@@ -114,6 +114,10 @@ const installStub = (proxyReply) => sw.evaluate(async (reply) => {
                 it.word.toLowerCase() === 'abolish' ? 'terminate' : '');
             return new Response(JSON.stringify({
                 ok: true, verdicts, betters, model: 'gemini-3.5-flash-lite',
+                // `unlimited` is what the server sends while it counts without
+                // capping. Omitted unless a case asks for it, so the rest of
+                // this file keeps testing the metered shape.
+                unlimited: !!r.unlimited,
                 used: r.used, limit: r.limit, resetIn: 3600
             }), { status: 200 });
         }
@@ -310,6 +314,20 @@ check(d.ok && d.stage === 'hosted' && /Working/.test(d.message),
     'a healthy setup reports working', JSON.stringify(d));
 check(/left today/.test(d.message), 'it says how much allowance is left', d.message);
 
+// Unmetered: the server still reports a count, but nothing is being withheld,
+// so the diagnostic must not turn those numbers into a remaining allowance.
+await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_cache', 'vm_ai_quota']));
+await installStub({ status: 200, used: 137, limit: 20, unlimited: true });
+d = await diagnose();
+check(d.ok && d.stage === 'hosted' && /no daily limit/i.test(d.message),
+    'an unmetered endpoint is reported as having no limit', d.message);
+check(!/left today/.test(d.message), 'and no allowance arithmetic is shown', d.message);
+const unmetered = await sw.evaluate(async () => (await chrome.storage.local.get('vm_ai_quota')).vm_ai_quota);
+check(unmetered && unmetered.unlimited === true && unmetered.exhausted === false,
+    'usage is still recorded while unmetered', JSON.stringify(unmetered));
+
+await sw.evaluate(() => chrome.storage.local.remove(['vm_ai_cache', 'vm_ai_quota']));
+await installStub({ status: 200, used: 2, limit: 20 });
 await sw.evaluate(() => chrome.storage.sync.set({ aiCheckEnabled: false }));
 d = await diagnose();
 check(!d.ok && d.stage === 'off', 'a switched-off check is named as such', JSON.stringify(d));

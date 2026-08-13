@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeSeg = document.getElementById('mode-seg');
     const cardThemeBtn = document.getElementById('card-theme-btn');
 
+    // Scan directions this build offers. The markup ships the withdrawn one
+    // hidden, so this only has to put it back when the flag says so.
+    modeCards.querySelectorAll('.mode-card[data-mode="engEng"]')
+        .forEach(card => { card.hidden = !C.ENG_ENG_AVAILABLE; });
+
     // ---- Load settings ----
     chrome.storage.sync.get(
         ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],
@@ -65,6 +70,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const freq = Number(e.target.value);
         updateSliderLabels(freq);
         chrome.storage.sync.set({ frequency: freq });
+    });
+
+    // Reload the page the reader is looking at once they let go of the slider.
+    //
+    // A new intensity re-scans the open page in place, and a re-scan has to
+    // work with what the last one left behind: words already swapped in, words
+    // held back waiting on the context check, allowances half spent. The result
+    // is a page marked up to neither the old setting nor the new one. Reloading
+    // is the one way to give the new number a clean page, and dragging a
+    // settings slider is a moment where a reload costs the reader nothing.
+    // 'change' rather than 'input', so this fires once on release instead of on
+    // every pixel of the drag.
+    frequencySlider.addEventListener('change', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs && tabs[0];
+            // Only a page Merid actually runs on, and only one whose URL the
+            // activeTab grant let us read - never a blind reload of whatever is
+            // in front of the user.
+            if (!tab || !/^https?:/i.test(tab.url || '')) return;
+            chrome.tabs.reload(tab.id, {}, () => {
+                void chrome.runtime.lastError; // tab closed or not ours to reload
+            });
+        });
     });
 
     cardThemeBtn.addEventListener('click', () => {
@@ -141,14 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Scan-direction cards toggle independently - both can be on at once.
+    // Only the card that was clicked is written: the popup no longer offers
+    // every direction, and writing the ones it does not show would switch off
+    // a direction the reader turned on from the Settings page.
     modeCards.addEventListener('click', (e) => {
         const card = e.target.closest('.mode-card'); if (!card) return;
         const next = !card.classList.contains('active');
         setModeCard(card.dataset.mode, next);
-        chrome.storage.sync.set({
-            vieEngMode: isModeCardOn('vieEng'),
-            engEngMode: isModeCardOn('engEng')
-        });
+        chrome.storage.sync.set({ [card.dataset.mode + 'Mode']: next });
     });
 
     extensionToggle.addEventListener('click', () => {
@@ -160,12 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ---- Current-tab actions: revert + per-site pause ----
+    // ---- Current-tab action: per-site pause ----
     // Runs on the activeTab grant from opening the popup: the tab's URL is
     // readable for the active tab only, and only while the popup is open.
     // Hidden entirely on non-web pages (chrome://, the Web Store, PDFs...).
     const pageActions = document.getElementById('page-actions');
-    const revertBtn = document.getElementById('revert-btn');
     const siteToggle = document.getElementById('site-toggle');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs && tabs[0];
@@ -232,54 +259,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 chrome.storage.sync.set({ disabledSites, allowedSites }, renderSiteToggle);
             });
         }
-
-        revertBtn.addEventListener('click', () => {
-            chrome.tabs.sendMessage(tab.id, { action: 'revertPage' }, () => {
-                void chrome.runtime.lastError; // no content script on this page
-            });
-        });
     });
 
-    // AI Context Check: shows the on-state once configured. Until the user has
-    // saved their own Gemini API key, the onboarding modal that teaches how to
-    // create and paste the key auto-opens at most once per day - never on the
-    // user's first day with the popup, and never again once they pick "Don't
-    // show again". It can still be opened any time from the AI Context Check
-    // button.
-    const aiHint = document.getElementById('ai-hint');
+    // AI Context Check has no control in the popup: it is on by default, it is
+    // what decides whether a word appears at all, and a reader with a reason to
+    // switch it off can still do that from the Settings page.
+    //
+    // What is left here is onboarding. Until the user has saved their own Gemini
+    // API key, the modal that teaches how to create and paste one auto-opens at
+    // most once per day - never on the user's first day with the popup, and
+    // never again once they pick "Don't show again".
     const aiModal = document.getElementById('ai-key-modal');
     const openOptions = () => {
         if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
         else window.open(chrome.runtime.getURL('options.html'));
     };
-    let aiKeyConfigured = false;
     // Merid serves the AI check from its own keys, so a reader needs no key at
-    // all. The onboarding modal below only makes sense when that hosted path is
+    // all. The onboarding modal only makes sense when that hosted path is
     // switched off (aiProxyUrl empty) - otherwise it would nag every user, daily,
     // to do something that is already done for them.
     const hostedAi = !!(window.VMFirebaseConfig && window.VMFirebaseConfig.aiProxyUrl);
-    chrome.storage.sync.get(['aiCheckEnabled'], (raw) => {
-        const s = C.withDefaults(raw);
+    if (!hostedAi) {
         chrome.storage.local.get(['geminiApiKey', 'vm_ai_modal_day', 'vm_ai_modal_optout', 'vm_first_day'], (l) => {
-            aiKeyConfigured = !!l.geminiApiKey;
-            // "ON" whenever the check can actually run: hosted, or their own key.
-            if (s.aiCheckEnabled && (hostedAi || aiKeyConfigured)) {
-                aiHint.textContent = t('popupAiCheckOn', 'AI Context Check: ON');
-                aiHint.classList.add('on');
-            }
             const today = new Date().toDateString();
             if (!l.vm_first_day) chrome.storage.local.set({ vm_first_day: today });
             const isFirstDay = !l.vm_first_day || l.vm_first_day === today;
-            if (!hostedAi && !aiKeyConfigured && !l.vm_ai_modal_optout && !isFirstDay && l.vm_ai_modal_day !== today) {
+            if (!l.geminiApiKey && !l.vm_ai_modal_optout && !isFirstDay && l.vm_ai_modal_day !== today) {
                 aiModal.hidden = false;
                 chrome.storage.local.set({ vm_ai_modal_day: today });
             }
         });
-    });
-    aiHint.addEventListener('click', () => {
-        if (hostedAi || aiKeyConfigured) openOptions();
-        else aiModal.hidden = false;
-    });
+    }
     document.getElementById('ai-modal-settings').addEventListener('click', openOptions);
     // Guide URL is a fixed constant from lib/firebase-config.js - never
     // user-supplied (A10).
@@ -340,10 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!card) return;
         card.classList.toggle('active', !!on);
         card.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
-    function isModeCardOn(mode) {
-        return !!modeCards.querySelector(`.mode-card[data-mode="${mode}"]`)?.classList.contains('active');
     }
 
     function setSegActive(seg, val) {

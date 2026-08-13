@@ -13,8 +13,9 @@ Two **optional, off-by-default** features use the network once the user opts in:
 - **Deck sync** - sign in (on merid.site or in Settings) to back up your saved
   words to your own Firebase account and study them on merid.site/my-deck.
 - **AI context check** - paste **your own** Gemini API key and Merid verifies
-  each replaced word fits its sentence (short sentence snippets are sent to
-  Google's Gemini API; bad fits revert automatically).
+  each word fits its sentence *before* putting it on the page (short sentence
+  snippets are sent to Google's Gemini API; words that do not fit are never
+  shown).
 
 ---
 
@@ -51,7 +52,6 @@ Two **optional, off-by-default** features use the network once the user opts in:
   X serve DMs from the same host as the feed, so their messages are not covered.
   Neither is anything self-hosted, like a work webmail on a company domain.
   Turn those off yourself.
-- **Revert this page** button restores the original text with one click.
 - Works on dynamic / SPA pages (debounced `MutationObserver`), instant on/off.
 - **Localized UI:** English + Vietnamese (`_locales/`), following the browser language.
 - First-run onboarding tour (merid.site/welcome) and an uninstall exit survey.
@@ -63,9 +63,9 @@ Two **optional, off-by-default** features use the network once the user opts in:
 ```
 Chrome Extension
  ├─ lib/vocab-core.js   Pure, DOM-free logic (matching, normalization, CSV, per-site rules) - unit-tested
- ├─ content.js          Scans visible text, replaces matches, tooltip, revert, AI-check batching
+ ├─ content.js          Scans visible text, holds matches until checked, reveals, tooltip, AI-check batching
  ├─ background.js       Loads bundled CSV datasets, serves settings/vocabulary, optional sync + Gemini calls
- ├─ popup.*             Quick controls (dataset, intensity, mode, on/off, per-site pause, revert)
+ ├─ popup.*             Quick controls (dataset, intensity, mode, on/off, per-site pause)
  └─ options.*           Full config: replacement, datasets, account & sync, AI check, privacy
 ```
 
@@ -77,7 +77,7 @@ Chrome Extension
 | `lib/custom-datasets.js` | `chrome.storage.local` persistence for user-uploaded datasets (background only) |
 | `lib/firebase-config.js` | Firebase project identifiers + merid.site URLs (not secrets) |
 | `lib/firebase-rest.js`, `lib/sync.js` | Optional deck sync over Firebase REST (no SDK, no remote code) |
-| `content.js` | DOM scanning, replacement, tooltip, live re-processing, revert |
+| `content.js` | DOM scanning, deferred reveal, tooltip, live re-processing, revert |
 | `content-bridge.js` | merid.site single sign-on relay (session carries into the extension) |
 | `background.js` | Datasets, settings, optional sync + AI-check requests |
 | `popup.html/js/css` | Toolbar popup |
@@ -103,9 +103,10 @@ pick a dataset and browse.
 ## Using it
 
 - **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All / your own), set
-  the intensity, choose a display mode, toggle Vietnamese→English /
-  English→English, turn the extension on/off, pause it on the current site, or
-  revert the current page.
+  the intensity (the page reloads so the new setting starts from a clean scan),
+  choose a display mode, turn the extension on/off, or pause it on the current
+  site. English→English lives on the Settings page for now - the popup does not
+  offer it.
 - **Settings** (options page): the same replacement controls plus custom dataset
   upload, account & sync, the AI context check, and **Delete all stored data**.
 - Hover any replaced/highlighted word to see its definition, example,
@@ -140,7 +141,7 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
 | Permission | Why |
 |---|---|
 | `storage` | Save your settings, per-site pause list and deck locally; hold the optional sign-in session. |
-| `activeTab` | The popup's current-tab actions: read the active tab's hostname for "Turn off on this site" and message the page for "Revert this page". Only on user action. |
+| `activeTab` | The popup's current-tab actions: read the active tab's hostname for "Turn off on this site", and reload it after an intensity change. Only on user action. |
 | `content_scripts: <all_urls>` | The core feature is passive replacement **while you browse**, so the content script must run on the pages you visit. Matching is local; page snippets leave the browser only via the opt-in AI check. |
 
 No `host_permissions`, no optional permissions, no remote code. The `identity`
@@ -245,8 +246,9 @@ the learning card open - regenerate it with `node scripts/gen-real-screenshot.js
 1. `npm test && npm run lint && npm run build` → produces `dist/` and `dist.zip`.
 2. Load `dist/` unpacked in Chrome (`chrome://extensions` → Developer mode → Load unpacked).
 3. Test on several real Vietnamese sites (e.g. vnexpress.net, tuoitre.vn).
-4. Confirm word replacement, the on/off toggle, the dataset selector, per-site
-   pause and "Revert this page" all work.
+4. Confirm word replacement, the on/off toggle, the dataset selector and the
+   per-site pause all work, and that words appear only once the context check
+   has cleared them.
 5. Confirm the UI shows Vietnamese when Chrome's language is Vietnamese
    (`chrome://settings/languages`) and English otherwise.
 6. Confirm **no API key ships** in the built files (the build fails if a

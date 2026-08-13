@@ -162,7 +162,12 @@
             used: data.used, limit: data.limit,
             resetAt: Date.now() + (Number(data.resetIn) || 0) * 1000,
             anonymous: auth.anonymous,
-            exhausted: false
+            exhausted: false,
+            // The server is counting but not capping. Kept so the UI can say
+            // so instead of doing the "N of M left" arithmetic on a limit that
+            // is not being applied. Older endpoints omit it - absent means
+            // metered, which is what every build before this assumed.
+            unlimited: !!data.unlimited
         });
 
         return {

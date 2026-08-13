@@ -100,6 +100,28 @@
         'definition', 'example', 'vietnamese', 'synonyms', 'antonyms'];
 
     // ---------------------------------------------------------------------
+    // English → English is temporarily withdrawn from the product.
+    //
+    // The direction itself is finished and works - buildVocabMap indexes it,
+    // the scan handles it, the setting persists - it is simply not something
+    // Merid offers right now. One flag rather than deleted code: the popup and
+    // the Settings page hide their card while it is false, and the scan ignores
+    // a stored engEngMode, so nobody is left with a direction running that they
+    // have no way to switch off. Flip it to true and everything comes back,
+    // including for readers who had turned it on.
+    // ---------------------------------------------------------------------
+    const ENG_ENG_AVAILABLE = false;
+
+    /** The scan directions this build actually offers, from stored settings. */
+    function activeModes(settings) {
+        const s = settings || {};
+        return [
+            s.vieEngMode && 'vieEng',
+            ENG_ENG_AVAILABLE && s.engEngMode && 'engEng'
+        ].filter(Boolean);
+    }
+
+    // ---------------------------------------------------------------------
     // Settings model + defaults (single source of truth for both UIs).
     // Local-only: no context-check mode, no backend URL, no API keys.
     // ---------------------------------------------------------------------
@@ -1193,6 +1215,7 @@
         // datasets/settings
         DATASET_REGISTRY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
+        ENG_ENG_AVAILABLE, activeModes,
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
         isHostDefaultOff, DEFAULT_OFF_HOSTS, BLOCKED_BY_CATEGORY,
         DEFAULT_OFF_BY_CATEGORY, SITE_CATEGORY_LABELS, blockedCategory,

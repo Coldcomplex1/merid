@@ -216,24 +216,30 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 await page.goto(base + '/', { waitUntil: 'load' });
 await page.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(() => { });
-await page.waitForTimeout(4000); // 1.5s debounce + round trip
+await page.waitForTimeout(4000); // AI debounce + round trip
 
 const textOf = (sel) => page.$eval(sel, el => el.innerText.trim());
 
-// #top is on screen -> the swap must be parked, not applied.
-check((await textOf('#top')).toLowerCase().startsWith('abolish'),
-    'a word being read on screen is NOT swapped under the reader', await textOf('#top'));
+// #top is on screen the whole time, and the dataset's own pick for it was
+// "abolish" - which the model replaces with "terminate". Nothing is put on the
+// page until that verdict is in, so the word simply arrives as "terminate":
+// the reader is never shown one word being taken back for another.
+check((await textOf('#top')).toLowerCase().startsWith('terminate'),
+    'the word arrives already checked - no swap happens under the reader', await textOf('#top'));
 
 // #bottom is 2400px down, past the observer's lead - it has not been asked
-// about yet, so it must still be showing the dataset's own pick.
-check((await textOf('#bottom')).toLowerCase().includes('absence'),
-    'a word the reader has not reached yet is not checked yet', await textOf('#bottom'));
+// about yet, so nothing has been put in front of the reader there at all and
+// the paragraph still reads the way its author wrote it.
+const bottomBefore = (await textOf('#bottom')).toLowerCase();
+check(bottomBefore.includes('vắng mặt') && !bottomBefore.includes('absence'),
+    'a word the reader has not reached yet is not shown yet', await textOf('#bottom'));
 
-// Scroll away from #top; the parked swap should then land.
+// Scrolling away and back must not edit a word that is already on the page:
+// its verdict was spent before it appeared, and nothing else may move it.
 await page.evaluate(() => window.scrollTo(0, 1600));
 await page.waitForTimeout(600);
 check((await textOf('#top')).toLowerCase().startsWith('terminate'),
-    'the parked swap lands once the reader scrolls away', await textOf('#top'));
+    'a word already on the page is never edited again', await textOf('#top'));
 
 // Scrolling toward #bottom brings it inside the lookahead, so it gets checked
 // on the way; scrolling back off it lets the upgrade land unseen.

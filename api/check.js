@@ -24,6 +24,19 @@ import { readJsonBody, sendJson as send } from './_lib/http.js';
 const LIMIT_ANONYMOUS = Number(process.env.MERID_LIMIT_ANONYMOUS || 20);
 const LIMIT_SIGNED_IN = Number(process.env.MERID_LIMIT_SIGNED_IN || 50);
 
+// ...and while Merid is small enough that the whole day's Gemini spend is
+// noise, nobody is turned away: the limits above are counted but not enforced,
+// so a reader gets the check on every page instead of losing it at word 20.
+//
+// This is a deliberate, reversible trade. Metering is one environment variable
+// away - set MERID_AI_METERED=1 in the deployment and the caps above are in
+// force again on the next request, no deploy needed - and the counter keeps
+// running underneath either way, so the numbers that say when to flip it back
+// are already there. Watch it: with no cap, one abusive client can spend the
+// whole key pool, and the only thing standing in the way is how few users
+// know the endpoint exists.
+const METERED = process.env.MERID_AI_METERED === '1';
+
 const MAX_ITEMS = 20;
 const MAX_SENTENCE = 180;
 const MAX_WORD = 60;
@@ -86,18 +99,21 @@ export default async function handler(req, res) {
 
   // ---- Is there budget for it ----
   const limit = user.provider === 'anonymous' ? LIMIT_ANONYMOUS : LIMIT_SIGNED_IN;
-  if (!quotaConfigured()) return send(res, 500, { ok: false, code: 'server-misconfigured' });
+  if (METERED && !quotaConfigured()) return send(res, 500, { ok: false, code: 'server-misconfigured' });
 
-  let quota;
+  // Unmetered, the count is still worth keeping - it is the usage record that
+  // says when the caps need to come back - but it is only bookkeeping, so a
+  // counter that is down or absent no longer costs the reader their check.
+  let quota = { used: 0, limit, resetIn: 0 };
   try {
-    quota = await consume(user.uid, limit);
+    if (quotaConfigured()) quota = await consume(user.uid, limit);
   } catch (e) {
-    // Fail CLOSED. Serving without a working counter would put the whole key
-    // pool behind an unmetered endpoint, and the cost of that is unbounded;
-    // the cost of this is one page without an AI check.
-    return send(res, 503, { ok: false, code: 'quota-unavailable' });
+    // Metered, this fails CLOSED. Serving without a working counter would put
+    // the whole key pool behind an unmetered endpoint, and the cost of that is
+    // unbounded; the cost of this is one page without an AI check.
+    if (METERED) return send(res, 503, { ok: false, code: 'quota-unavailable' });
   }
-  if (!quota.allowed) {
+  if (METERED && !quota.allowed) {
     return send(res, 429, {
       ok: false, code: 'quota-exceeded',
       used: quota.used, limit: quota.limit, resetIn: quota.resetIn,
@@ -167,6 +183,10 @@ export default async function handler(req, res) {
     verdicts,
     betters,
     model: out.model,
+    // `used` keeps counting while unmetered; `limit` is what would apply if the
+    // caps came back. The flag is what stops a client turning those two into
+    // "17 of 20 left" when nothing is actually being withheld.
+    unlimited: !METERED,
     used: quota.used,
     limit: quota.limit,
     resetIn: quota.resetIn
