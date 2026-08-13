@@ -21,7 +21,8 @@ Two **optional, off-by-default** features use the network once the user opts in:
 
 ## Features
 
-- Vietnamese → English and English → English scanning (independently toggleable).
+- Vietnamese → English scanning. (English → English is built and works, but is
+  withdrawn from the UI for now - `VMCore.ENG_ENG_AVAILABLE` is the switch.)
 - Bundled datasets (**SAT**, **CEFR C1**, **CEFR C2**, or **All**).
 - **Custom datasets:** upload your own vocabulary CSV in Settings ("My datasets"),
   then select it from the popup or Settings. A guided builder at
@@ -34,7 +35,7 @@ Two **optional, off-by-default** features use the network once the user opts in:
   synonyms/antonyms, example.
 - **Personal deck:** *Save to Deck* keeps a word for review; *I know this*
   stops replacing words you already know. Optional cloud backup via sign-in.
-- **Per-site pause:** "Turn off on this site" in the popup keeps Merid away from
+- **Per-site pause:** "Stop scanning this site" in the popup keeps Merid away from
   sites where replacement is unwanted (banking, work tools…). Covers the site's
   subdomains too. Settings → **Sites** lists everything you have turned off and
   lets you add a site you are not currently on.
@@ -104,9 +105,10 @@ pick a dataset and browse.
 
 - **Popup** (toolbar icon): pick a dataset (SAT / C1 / C2 / All / your own), set
   the intensity (the page reloads so the new setting starts from a clean scan),
-  choose a display mode, turn the extension on/off, or pause it on the current
-  site. English→English lives on the Settings page for now - the popup does not
-  offer it.
+  choose a display mode, turn the extension on/off, or stop it scanning the
+  current site. Scan direction is not here - English→English is withdrawn for
+  now, which leaves Vietnamese→English as the only one, and the Settings page
+  still carries both cards.
 - **Settings** (options page): the same replacement controls plus custom dataset
   upload, account & sync, the AI context check, and **Delete all stored data**.
 - Hover any replaced/highlighted word to see its definition, example,
@@ -141,7 +143,7 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
 | Permission | Why |
 |---|---|
 | `storage` | Save your settings, per-site pause list and deck locally; hold the optional sign-in session. |
-| `activeTab` | The popup's current-tab actions: read the active tab's hostname for "Turn off on this site", and reload it after an intensity change. Only on user action. |
+| `activeTab` | The popup's current-tab actions: read the active tab's hostname for "Stop scanning this site", and reload it after an intensity change. Only on user action. |
 | `content_scripts: <all_urls>` | The core feature is passive replacement **while you browse**, so the content script must run on the pages you visit. Matching is local; page snippets leave the browser only via the opt-in AI check. |
 
 No `host_permissions`, no optional permissions, no remote code. The `identity`

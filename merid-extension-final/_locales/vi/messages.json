@@ -65,15 +65,6 @@
   "popupModeBeside": {
     "message": "Bên cạnh"
   },
-  "popupLanguagesLabel": {
-    "message": "Ngôn ngữ cần quét"
-  },
-  "popupVieEngSub": {
-    "message": "Thay từ tiếng Việt"
-  },
-  "popupEngEngSub": {
-    "message": "Đổi sang từ khó hơn"
-  },
   "popupExtensionOn": {
     "message": "Tiện ích đang BẬT"
   },
@@ -81,25 +72,49 @@
     "message": "Tiện ích đang TẮT"
   },
   "popupSiteOff": {
-    "message": "Tắt trên trang này"
+    "message": "Ngừng quét trang này"
+  },
+  "popupSiteOffHint": {
+    "message": "Merid đang thay từ trên $HOST$. Bấm để bỏ qua trang này — các trang khác vẫn chạy bình thường.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupSiteOn": {
-    "message": "Bật lại trên trang này"
+    "message": "Quét lại trang này"
+  },
+  "popupSiteOnHint": {
+    "message": "Merid đang tạm dừng trên $HOST$. Bấm để cho phép thay từ ở đây trở lại.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupSiteAlwaysOff": {
-    "message": "Luôn tắt ở đây"
+    "message": "Không bao giờ quét trang này"
   },
   "popupSiteAlwaysOffHint": {
     "message": "Merid không bao giờ đổi từ trên chính trang của mình."
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid không bao giờ chạy trên trang riêng tư: email, tin nhắn, ngân hàng, đăng nhập, sức khỏe và dịch vụ công."
+    "message": "Merid không bao giờ chạy trên trang riêng tư: email, tin nhắn, ngân hàng, đăng nhập, sức khỏe và dịch vụ công. Trang này không thể bật lên."
   },
   "popupSiteTurnOn": {
-    "message": "Bật trên trang này"
+    "message": "Bắt đầu quét trang này"
   },
   "popupSiteDefaultOffHint": {
-    "message": "Merid mặc định tắt ở đây — từ điển, trình soạn thảo và bài kiểm tra nên giữ nguyên."
+    "message": "Merid mặc định tắt trên $HOST$ — từ điển, trình soạn thảo và bài kiểm tra nên giữ nguyên. Bấm nếu bạn vẫn muốn thay từ ở đây.",
+    "placeholders": {
+      "HOST": {
+        "content": "$1",
+        "example": "vnexpress.net"
+      }
+    }
   },
   "popupViewDeck": {
     "message": "Xem bộ thẻ của tôi ↗"

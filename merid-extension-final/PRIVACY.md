@@ -121,7 +121,7 @@ There are two ways this request reaches Google, and you choose which:
 ## Your controls
 
 - **Turn the extension off** entirely with the popup toggle, or pause it on a
-  single website with **Turn off on this site**.
+  single website with **Stop scanning this site**.
 - **Revert a page** to its original text from the popup.
 - **Turn off the AI context check** or clear your API key in Settings at any time.
 - **Sign out** in Settings to stop deck sync immediately.
