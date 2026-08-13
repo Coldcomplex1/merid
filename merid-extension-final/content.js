@@ -561,13 +561,15 @@ function processTextNode(node, vocabMap) {
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
         span.dataset.level = item.dataset || '';
-        // Hold the swap back until the check has cleared this word (see
-        // "Deferred reveal"). Two candidates skip the wait, because for them no
-        // verdict is ever coming: one whose display mode changes nothing (the
-        // text on the page stays the writer's own, so there is no context
-        // question to ask), and every candidate on a page where the check
-        // cannot run at all.
-        if (contextCheckPossible() && displayTextFor(span) !== matchedText) {
+        // Hold the word back until the check has cleared it (see "Deferred
+        // reveal"). Two candidates skip the wait, because for them no verdict
+        // is ever coming: one whose English and Vietnamese are the same string,
+        // which leaves nothing to ask about, and every candidate on a page
+        // where the check cannot run at all.
+        //
+        // Note this is not "does the display change?": in highlight mode it
+        // never does, and the word still has to earn its highlight.
+        if (contextCheckPossible() && wl.trim() !== ml.trim()) {
             holdSpan(span);
         } else {
             applyDisplayMode(span);
@@ -995,11 +997,12 @@ function sentenceAround(span) {
     if (idx === -1) return text.slice(0, AI_SNIPPET_RADIUS * 2);
     // A word still waiting for its verdict has not been swapped in yet, so the
     // block around it still reads in Vietnamese. The question being asked is
-    // whether the English word fits the sentence it is about to make, so put it
-    // in place before clipping: the model is shown the sentence the reader
-    // would get, which is also what a word swapped in up front produces - same
-    // question, same verdict-cache key.
-    const shown = isPending(span) ? displayTextFor(span) : needle;
+    // whether the English word belongs in this sentence, so put it in the slot
+    // before clipping - and put in the word itself, whatever the display mode
+    // would eventually render. That way every mode asks the model the identical
+    // question, down to the string: a verdict earned in highlight mode is the
+    // same verdict replace mode needs, and they share one cache entry.
+    const shown = isPending(span) ? (span.dataset.replacement || needle) : needle;
     const full = text.slice(0, idx) + shown + text.slice(idx + needle.length);
     const start = Math.max(0, idx - AI_SNIPPET_RADIUS);
     return full.slice(start, idx + shown.length + AI_SNIPPET_RADIUS).trim();
@@ -1195,14 +1198,14 @@ function releaseUnchecked(spans) {
 /** True while a verdict could still arrive - so a candidate is worth holding
  *  back, and the scan is worth over-provisioning.
  *
- *  "Highlight" mode leaves every word in Vietnamese, so there is never anything
- *  for the check to judge and no verdict can ever come. Words there are shown
- *  as the scan finds them, under the plain cap: holding them for a verdict that
- *  cannot arrive would leave the page permanently unmarked, and scanning over-
- *  provisioned would mark it up far more heavily than the reader asked for. */
+ *  Every display mode, "highlight" included. It leaves the Vietnamese on the
+ *  page, so for a while it looked like there was nothing to judge - but the
+ *  English word is still what the card teaches when the reader hovers, and a
+ *  word that does not fit its sentence is exactly as wrong to teach as it is to
+ *  swap in. The question the check asks is the same one either way; all that
+ *  differs is what the answer does to the page. */
 function contextCheckPossible() {
-    return !aiDisabled && settings.aiCheckEnabled !== false &&
-        settings.replacementMode !== 'highlight';
+    return !aiDisabled && settings.aiCheckEnabled !== false;
 }
 
 // -------------------------------------------------------------

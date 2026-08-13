@@ -127,7 +127,7 @@ Full policy in [`PRIVACY.md`](PRIVACY.md). In short:
   in your own Firebase account for backup/study on merid.site. Signing out stops
   syncing.
 - If you enable the **AI context check** (optional, needs your own Gemini key),
-  short sentence snippets around replaced words are sent to Google Gemini to
+  short sentence snippets around the candidate words are sent to Google Gemini to
   verify fit. Nothing is proxied through Merid servers - there are none.
 - Merid **never runs on private pages** — email, messaging, banking, sign-in,
   health, tax/benefits/identity services — so nothing from them is scanned or

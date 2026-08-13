@@ -214,6 +214,44 @@ check(prof?.words?.abolish?.aiBad >= 1, 'AI rejection recorded as a training lab
 
 check(errors.length === 0, 'no page errors', errors.slice(0, 2).join(' | '));
 
+// --- 8. Highlight mode is checked too ---
+//
+// Nothing is swapped there - the Vietnamese stays on the page and the English
+// word lives in the learning card - but that word is still what the reader is
+// being taught, so it has to fit its sentence just the same. The check runs,
+// the question sent is word-for-word the one replace mode sends, and a word
+// that fails it is never highlighted at all.
+await page.close();
+await sw.evaluate(async () => {
+    await chrome.storage.sync.set({ replacementMode: 'highlight' });
+    await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile']);
+    self.__requests = [];
+    self.__rejectWords = ['abolish'];
+});
+
+const hl = await ctx.newPage();
+const hlErrors = [];
+hl.on('pageerror', e => hlErrors.push(String(e)));
+await hl.goto(url, { waitUntil: 'load' });
+await hl.waitForSelector('.vocab-master-pending', { timeout: 15000 }).catch(() => { });
+const hlHeld = await hl.$$eval('.vocab-master-pending', els => els.length);
+check(hlHeld >= 1, 'a highlight-mode word waits for its verdict too', `${hlHeld} held`);
+
+await hl.waitForTimeout(4000);
+const hlAsked = await sw.evaluate(() => {
+    const last = self.__requests[self.__requests.length - 1];
+    return last ? (last.prompt.match(/^\d+\.\s+english="abolish" replaced_vietnamese="[^"]*" sentence="[^"]*abolish[^"]*"/gm) || []).length : -1;
+});
+check(hlAsked === 1, 'and is asked about with the English word in the sentence, as in replace mode',
+    `${hlAsked} matching items`);
+
+const hlLeft = await hl.$$eval('.vocab-master-highlight, .vocab-master-pending',
+    els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
+check(hlLeft === 0, 'a rejected word is never highlighted', `${hlLeft} left`);
+const hlText = await hl.$eval('body', b => b.innerText.replace(/\s+/g, ' '));
+check((hlText.match(/[Bb]ãi bỏ/g) || []).length === 2, 'and the page still reads as its author wrote it', hlText);
+check(hlErrors.length === 0, 'no page errors in highlight mode', hlErrors.slice(0, 2).join(' | '));
+
 console.log('\n=== PASS ===');
 ok.forEach(l => console.log('  +', l));
 if (fail.length) { console.log('\n=== FAIL ==='); fail.forEach(l => console.log('  -', l)); }
