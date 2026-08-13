@@ -102,7 +102,7 @@
     "message": "Merid never runs on its own site."
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid never runs on private pages like email, banking and sign-in. It cannot be turned on here."
+    "message": "Merid never runs on private pages like chats, email and banking. It cannot be turned on here."
   },
   "popupSiteTurnOn": {
     "message": "Start scanning this site"

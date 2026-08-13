@@ -99,10 +99,10 @@
     "message": "Không bao giờ quét trang này"
   },
   "popupSiteAlwaysOffHint": {
-    "message": "Merid không chạy trên trang của chính nó."
+    "message": "Merid không chạy trên trang của chính mình"
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid không chạy trên trang riêng tư như email, ngân hàng hay đăng nhập. Không bật được ở đây."
+    "message": "Merid không chạy trên trang riêng tư như tin nhắn, email hay ngân hàng. Không bật được ở đây."
   },
   "popupSiteTurnOn": {
     "message": "Bắt đầu quét trang này"
