@@ -75,7 +75,7 @@
     "message": "Stop scanning this site"
   },
   "popupSiteOffHint": {
-    "message": "Merid replaces words on $HOST$. Click to leave this site alone - every other site keeps working.",
+    "message": "Stops replacing words on $HOST$. Other sites keep working.",
     "placeholders": {
       "HOST": {
         "content": "$1",
@@ -87,7 +87,7 @@
     "message": "Resume scanning this site"
   },
   "popupSiteOnHint": {
-    "message": "Merid is paused on $HOST$. Click to let it replace words here again.",
+    "message": "Merid is off on $HOST$. Click to turn it back on.",
     "placeholders": {
       "HOST": {
         "content": "$1",
@@ -99,16 +99,16 @@
     "message": "Never scans this site"
   },
   "popupSiteAlwaysOffHint": {
-    "message": "Merid never changes words on its own site."
+    "message": "Merid never runs on its own site."
   },
   "popupSiteAlwaysOffPrivate": {
-    "message": "Merid never runs on private pages: email, chats, banking, sign-in, health and official services. This one cannot be turned on."
+    "message": "Merid never runs on private pages like email, banking and sign-in. It cannot be turned on here."
   },
   "popupSiteTurnOn": {
     "message": "Start scanning this site"
   },
   "popupSiteDefaultOffHint": {
-    "message": "Merid starts off on $HOST$ - dictionaries, editors and tests read better unchanged. Click to let it replace words here anyway.",
+    "message": "Merid starts off on $HOST$. Click if you want it on here.",
     "placeholders": {
       "HOST": {
         "content": "$1",
