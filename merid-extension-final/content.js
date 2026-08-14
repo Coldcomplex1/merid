@@ -914,15 +914,31 @@ function processTextNode(node, vocabMap) {
         // paragraphs.
         const allowedSoFar = C.spreadAllowance(cap, stats.seen, stats.words);
         const match = candidateCount < MAX_REPLACEMENTS_PER_PAGE && stats.used < allowedSoFar
-            ? C.findMatch(tokens, i, vocabMap, {
-                allowSingleWord: true,
-                minSingleWordLen: 2,
-                // A lone Vietnamese syllable is usually a piece of a compound, not
-                // a word: "Tổng Bí thư" is a title, and swapping the "thư" out of
-                // it is noise. Longer phrases win first; a bare syllable only
-                // survives when nothing around it says it belongs to something.
-                guardBareSyllables: true
-            })
+            // Two syllables at least. A Vietnamese syllable on its own is
+            // hardly ever the word a reader would name - it is a piece of one,
+            // and which word it belongs to is decided by the syllable next to
+            // it. "số" is the "số" of "hộp số" (a gear) exactly as much as it
+            // is the "số" of "số ít" (the singular), and the dataset lists it
+            // for the first, so a grammar post about số ít and số nhiều came
+            // back talking about gearboxes. "giảm" in "GIẢM ĐẾN 50%" went the
+            // same way.
+            //
+            // `guardBareSyllables` used to hold this line, on two signals: a
+            // capital on the syllable before, and pairs learned from the
+            // multi-syllable keys in the datasets. Neither reaches these two -
+            // "số ít" is not a dataset key, and a banner set in capitals says
+            // nothing by having them. There is no third signal worth waiting
+            // for: the guard was trying to recover from one syllable what only
+            // two ever carried.
+            //
+            // Compounds are untouched, and were never the problem. Windows are
+            // still tried longest first, so "hộp số" and "Tổng Bí thư" match
+            // whole, and the 2,211 keys of three syllables and more still match
+            // exactly as before. What goes is the 575 keys that are one
+            // syllable, and with them the 76 entries whose only Vietnamese
+            // meaning was one - they stay in the dataset, silent, until a
+            // longer meaning is written for them.
+            ? C.findMatch(tokens, i, vocabMap, { allowSingleWord: false })
             : null;
 
         if (!match) { out.push(makeTextNode(tokens[i])); continue; }

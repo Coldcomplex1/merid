@@ -27,6 +27,14 @@ const EXT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 // only the guard can stop it being swapped.
 const TITLE = 'Tổng Bí thư, Chủ tịch nước Tô Lâm';
 const PARAS = [
+    // Bait for the lone-syllable rule, and it has to lead: the allowance is
+    // three words for the whole piece and is released by depth, so a sentence
+    // at the foot of the article is never reached with anything left to spend -
+    // it would read as "no lone syllable swapped" whatever the rule was.
+    // Offered first, one syllable at a time this sentence yields two wrong
+    // words: the "tầng" of "hạ tầng" (infrastructure) is a stratum, and a bare
+    // "giảm" is an abatement. Both are C2 entries and both used to be taken.
+    `Ngân sách dành cho hạ tầng đã giảm trong năm nay.`,
     `${TITLE} tại sân bay quốc tế Nội Bài ngày 9/8.`,
     `Đây là lần đầu tiên ${TITLE} tới Australia trên cương vị mới.`,
     `Chuyến thăm của ${TITLE} khẳng định đường lối đối ngoại của Việt Nam.`,
@@ -120,6 +128,14 @@ const badSyllable = replace.spans.filter((s) => (s.original || '').toLowerCase()
 check(badSyllable.length === 0,
     'the "thư" of "Tổng Bí thư" is left alone',
     badSyllable.length ? `${badSyllable.length} swapped` : 'none swapped');
+
+// The general form of that, and the rule the scan now runs on: a lone syllable
+// is a piece of a word, not a word, and which word it belongs to is settled by
+// the syllable beside it. "thư" was the reported case; "tầng" out of "hạ tầng"
+// and a bare "giảm" are the same shape, and this page carries both.
+const lone = replace.spans.filter((s) => !!(s.original || '').trim() && !/\s/.test((s.original || '').trim()));
+check(lone.length === 0, 'no lone syllable is swapped at all',
+    lone.length ? lone.map((s) => `${s.original}→${s.word}`).join(', ') : 'every swap is a phrase');
 
 const counts = {};
 replace.spans.forEach((s) => {
