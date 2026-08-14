@@ -13,17 +13,13 @@
 // stays untouched, which is the proof that the root really moved off body
 // rather than the words simply arriving by the mutation path.
 //
-// The rail assertion is the one with teeth, and it is fussier than it looks.
-// Two things had to be arranged for it to mean anything. The rail arrives as
-// several sibling blocks, so `structuralFeedItem` gives each one its own word
-// allowance - hung off a single container it shares the page's allowance, which
-// the headline spends in full, and it would read as "left alone" no matter what
-// the root was. And the fixture's script sits in <head>, because
-// `proseWords(document.body)` counts the source of an inline script in the body,
-// and this one carries the article as a string: left there it inflates the page
-// count enough that the article can never clear MAIN_TEXT_SHARE and the scan
-// never narrows at all. Checked against a build with the refresh disabled: this
-// assertion fails there (the rail collects a dozen words), and passes here.
+// The rail assertion is the one with teeth, and it is fussier than it looks:
+// the rail has to arrive as several sibling blocks, so `structuralFeedItem`
+// gives each one its own word allowance. Hung off a single container it shares
+// the page's allowance, which the headline spends in full, and it would then
+// read as "left alone" whatever the root was - passing for the wrong reason.
+// Checked against a build with the refresh disabled: this assertion fails there
+// (the rail collects a dozen words), and passes here.
 //
 // The context check is off - this is about what the scan is willing to look at.
 import { chromium } from 'playwright';
@@ -65,15 +61,25 @@ const RAIL_ITEMS = [
     'Cơ quan chức năng sẽ ban hành hướng dẫn chi tiết cho các doanh nghiệp trong tháng tới.'
 ];
 
-// The script lives in <head> on purpose. `proseWords(document.body)` measures
-// `document.body.textContent`, which includes the source of any inline <script>
-// in the body - and this one carries the whole article as a string. Left in the
-// body it inflates the page's word count enough that the article can no longer
-// clear MAIN_TEXT_SHARE, and the scan never narrows no matter how well the
-// refresh works. That cost a while to find; keep the fixture's data out of body.
-const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Tin tức</title>
+// The script sits in the body, where a real page's would, and it carries both
+// the article and the rail as strings - a fair imitation of the JSON-LD block
+// or serialised store that modern pages ship inline.
+//
+// That is load-bearing, not incidental. The word counts behind the scan root are
+// taken from `textContent`, which hands over the SOURCE of an inline script
+// along with the reading matter. Counted, the few hundred unreadable words here
+// swamp the real article, it can no longer clear MAIN_TEXT_SHARE, and the scan
+// never narrows however well the refresh works - so this fixture guards the
+// readable-text rule as much as the backoff.
+const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Tin tức</title></head>
+<body>
+<h1 data-region="headline">Cơ quan điều tra công bố kết luận ban đầu về sự cố</h1>
+<div id="shell">
+  <div id="slot" data-region="pending"><p>Đang tải nội dung bài viết, vui lòng chờ trong giây lát.</p></div>
+  <div id="rail" data-region="rail"><h3>Xem nhiều</h3></div>
+</div>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
   // The DOM keeps ticking, the way a real app's does - this is what gives
   // maybeRefreshScanRoots something to run on.
   var beat = document.createElement('div');
@@ -97,14 +103,8 @@ document.addEventListener('DOMContentLoaded', function () {
         `<div class="rail-item"><div>Tin liên quan</div><div>${t}</div></div>`).join(''))});
     window.__railAt = Date.now();
   }, ${RAIL_AFTER_MS});
-});
-</script></head>
-<body>
-<h1 data-region="headline">Cơ quan điều tra công bố kết luận ban đầu về sự cố</h1>
-<div id="shell">
-  <div id="slot" data-region="pending"><p>Đang tải nội dung bài viết, vui lòng chờ trong giây lát.</p></div>
-  <div id="rail" data-region="rail"><h3>Xem nhiều</h3></div>
-</div>
+})();
+</script>
 </body></html>`;
 
 const server = http.createServer((req, res) => {

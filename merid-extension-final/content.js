@@ -36,6 +36,11 @@ function t(key, fallback) {
 
 let settings = {};
 let vocabulary = [];
+// The same dataset, keyed by headword. Looking one up used to be a scan of the
+// whole array, on every hover and on every word the context check suggested -
+// a few thousand string comparisons for an answer a Map has waiting. Keyed in
+// lower case, which is how the only two callers already compared.
+let vocabByWord = new Map();
 let tooltipElement = null;
 let currentObserver = null;
 let replacedCount = 0;
@@ -61,6 +66,24 @@ const MUTATION_DEBOUNCE_MS = 300;
 // Text nodes we've already looked at (avoids MutationObserver reprocessing loops).
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
+
+/** Adopt a dataset, and index it. The only way `vocabulary` should be set. */
+function setVocabulary(list) {
+    vocabulary = list || [];
+    vocabByWord = new Map();
+    for (const item of vocabulary) {
+        const key = (item.word || '').toLowerCase();
+        // First entry wins, which is what Array.find did before this index.
+        if (key && !vocabByWord.has(key)) vocabByWord.set(key, item);
+    }
+}
+
+/** The dataset entry for a headword, or null. Case-insensitive - which is how
+ *  both callers already compared, and the shipped datasets hold no two entries
+ *  that differ only in case. */
+function vocabEntry(word) {
+    return vocabByWord.get(String(word || '').toLowerCase()) || null;
+}
 
 // Per-"post" (feed item or article body) scan stats:
 // { words, seen, used, candidates: [span] }. The scan picks up to
@@ -353,7 +376,7 @@ function startScan() {
             } else {
                 chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
                     if (chrome.runtime.lastError) { console.warn('[VM] getVocabulary failed:', chrome.runtime.lastError.message); return; }
-                    vocabulary = (resp && resp.vocabulary) || [];
+                    setVocabulary((resp && resp.vocabulary) || []);
                     if (vocabulary.length > 0) start();
                 });
             }
@@ -592,10 +615,30 @@ function linkWords(el) {
     return words;
 }
 
+// Text that is in the markup but never on the screen. `textContent` hands over
+// the SOURCE of inline <script> and <style> along with everything the reader
+// came for, and a modern page carries a lot of it: a JSON-LD block, a
+// framework's serialised state, an analytics snippet.
+//
+// It matters here because these counts are what the scan root is chosen with,
+// and the page-wide one is the DENOMINATOR. Hundreds of unreadable "words" in
+// the body make the real article look like a small fraction of the page, so it
+// fails MAIN_TEXT_SHARE, so the scan stays on document.body - and words go back
+// to landing in the rail and the footer, which is the very complaint
+// `resolveScanRoots` was written to answer.
+const UNREADABLE_SELECTOR = 'script, style, noscript';
+
+/** Words in `el` the reader can actually see. */
+function readableWords(el) {
+    let words = C.countWords(el.textContent || '');
+    for (const s of el.querySelectorAll(UNREADABLE_SELECTOR)) words -= C.countWords(s.textContent || '');
+    return Math.max(0, words);
+}
+
 /** Words that are the page's own prose, not the text of links through it. */
 function proseWords(el) {
     if (!el) return 0;
-    return Math.max(0, C.countWords(el.textContent || '') - linkWords(el));
+    return Math.max(0, readableWords(el) - linkWords(el));
 }
 
 /**
@@ -636,7 +679,7 @@ function resolveScanRoots() {
     // whole body, and the feed probe below then counted the identical string a
     // second time - two of the most expensive calls on the page, for one
     // number and the same number minus its links.
-    const bodyTotal = C.countWords(document.body.textContent || '');
+    const bodyTotal = readableWords(document.body);
     const bodyWords = Math.max(0, bodyTotal - linkWords(document.body));
     pageIsFeed = looksLikeFeedPage(bodyTotal);
 
@@ -825,7 +868,9 @@ function statsFor(container) {
     const now = Date.now();
     if (!stats) {
         stats = {
-            words: C.countWords(container.textContent || ''),
+            // Readable words only: a post's length is what buys its word
+            // allowance, and an inline script inside it is not reading matter.
+            words: readableWords(container),
             seen: 0,      // words of this post the scan has walked past
             used: 0,
             measuredAt: now,
@@ -837,7 +882,7 @@ function statsFor(container) {
     }
     if (now - stats.measuredAt >= POST_REMEASURE_MS) {
         stats.measuredAt = now;
-        const words = C.countWords(container.textContent || '');
+        const words = readableWords(container);
         if (words > stats.words * 1.25) stats.words = words;
     }
     return stats;
@@ -1706,7 +1751,7 @@ function findVocabEntry(word, container) {
     if (knownSet.has(w)) return null;
     // Nor one already in this post, or shown a moment ago somewhere else.
     if (container && !wordAvailable(container, w, w)) return null;
-    return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
+    return vocabEntry(w);
 }
 
 function isOnScreen(el) {
@@ -2024,7 +2069,7 @@ function handleMouseOver(e) {
     if (highlight || tooltip) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         if (highlight) {
-            const item = vocabulary.find(v => v.word === highlight.dataset.word);
+            const item = vocabEntry(highlight.dataset.word);
             if (item) showTooltip(highlight, item);
         }
     } else if (tooltipElement && tooltipElement.style.display !== 'none' && !hideTimeout) {
@@ -2169,7 +2214,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (changes.datasetKey || changes.datasetRev) {
         chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
             if (chrome.runtime.lastError) return;
-            vocabulary = (resp && resp.vocabulary) || vocabulary;
+            setVocabulary((resp && resp.vocabulary) || vocabulary);
             init();
         });
     } else {
