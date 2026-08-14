@@ -137,6 +137,21 @@
   "popupTutorial": {
     "message": "Hướng dẫn"
   },
+  "tutorialClose": {
+    "message": "Đóng"
+  },
+  "tutorialZoomIn": {
+    "message": "Phóng to"
+  },
+  "tutorialZoomOut": {
+    "message": "Thu nhỏ"
+  },
+  "tutorialHint": {
+    "message": "Lăn chuột để phóng, kéo để di chuyển, Esc để đóng"
+  },
+  "tutorialHintPage": {
+    "message": "Lăn chuột để phóng, kéo để di chuyển"
+  },
   "popupSyncingAs": {
     "message": "Đang đồng bộ bộ thẻ: $EMAIL$",
     "placeholders": {

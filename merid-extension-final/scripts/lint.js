@@ -8,6 +8,7 @@ const files = [
     'background.js',
     'content.js',
     'status-badge.js',
+    'tutorial.js',
     'popup.js',
     'options.js',
     'content-bridge.js',

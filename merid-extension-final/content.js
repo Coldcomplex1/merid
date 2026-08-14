@@ -1188,6 +1188,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         revertPage();
         sendResponse({ success: true });
     }
+    // The popup asking for the tutorial poster. Answered even where Merid is
+    // switched off or refuses to read the page - the reader pressed a button,
+    // and a page Merid leaves alone is exactly where someone may be trying to
+    // work out why.
+    if (request.action === 'showTutorial') {
+        let ok = false;
+        try { ok = !!(window.MeridTutorial && window.MeridTutorial.open()); } catch (e) { ok = false; }
+        // A false answer is what sends the popup to open it as a tab instead.
+        sendResponse({ ok });
+    }
     return false;
 });
 
