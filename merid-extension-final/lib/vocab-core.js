@@ -355,10 +355,27 @@
      * deterministic protection is the path list above; this is what catches the
      * cases a path cannot see.
      */
+    // What these sites call a chat window, in the label they put on it for
+    // screen readers - the one part of a generated DOM that has to stay
+    // meaningful. Both languages, because the label follows the reader's own
+    // Facebook setting, not ours.
+    const CHAT_LABEL_SELECTOR =
+        '[role="dialog"], ' +
+        '[aria-label*="chat" i], [aria-label*="message" i], ' +
+        '[aria-label*="tin nhắn" i], [aria-label*="trò chuyện" i], ' +
+        '[aria-label*="đoạn chat" i]';
+
     const CHAT_SURFACE_SELECTORS = {
-        'x.com': '[data-testid="DMDrawer"], [data-testid="dmDrawer"]',
-        'twitter.com': '[data-testid="DMDrawer"], [data-testid="dmDrawer"]',
-        'linkedin.com': '[class*="msg-overlay" i]'
+        // The popups pinned to the corner of the feed, and the Messenger panel
+        // that opens beside it. Both are labelled; neither has a URL of its own.
+        'facebook.com': CHAT_LABEL_SELECTOR,
+        'instagram.com': CHAT_LABEL_SELECTOR,
+        'threads.net': CHAT_LABEL_SELECTOR,
+        'x.com': CHAT_LABEL_SELECTOR + ', [data-testid="DMDrawer"], [data-testid="dmDrawer"]',
+        'twitter.com': CHAT_LABEL_SELECTOR + ', [data-testid="DMDrawer"], [data-testid="dmDrawer"]',
+        'linkedin.com': CHAT_LABEL_SELECTOR + ', [class*="msg-overlay" i]',
+        'tiktok.com': CHAT_LABEL_SELECTOR,
+        'reddit.com': CHAT_LABEL_SELECTOR
     };
 
     /** The chat-surface selector for a host, or '' when it has none. */
