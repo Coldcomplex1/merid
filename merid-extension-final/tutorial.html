@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  Where the popup sends a reader whose current tab cannot host a content script:
+  a new tab, a chrome:// page, the Web Store, the built-in PDF viewer. The
+  poster is the whole of this page, so it uses the same overlay in standalone
+  mode - no backdrop to click off, and no close button, because the tab's own
+  is the one that applies.
+
+  No inline script: extension pages run under script-src 'self', which refuses
+  one. tutorial.js starts itself here instead - see the bootstrap at its foot.
+-->
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Merid</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #0b1020;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="tutorial.js"></script>
+</body>
+
+</html>

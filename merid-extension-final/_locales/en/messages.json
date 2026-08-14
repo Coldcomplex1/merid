@@ -137,6 +137,21 @@
   "popupTutorial": {
     "message": "Tutorial"
   },
+  "tutorialClose": {
+    "message": "Close"
+  },
+  "tutorialZoomIn": {
+    "message": "Zoom in"
+  },
+  "tutorialZoomOut": {
+    "message": "Zoom out"
+  },
+  "tutorialHint": {
+    "message": "Scroll to zoom, drag to move, Esc to close"
+  },
+  "tutorialHintPage": {
+    "message": "Scroll to zoom, drag to move"
+  },
   "popupSyncingAs": {
     "message": "Syncing to your deck as $EMAIL$",
     "placeholders": {

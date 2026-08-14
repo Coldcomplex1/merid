@@ -338,10 +338,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Opens the merid.site tutorial in a new tab. The URL is a fixed constant
-    // from lib/firebase-config.js - never user-supplied (A10).
+    // Puts the tutorial poster up over the page the reader is already on.
+    //
+    // It cannot be shown here: this panel is a few hundred pixels wide and
+    // closes the moment focus leaves it, so the poster goes to the content
+    // script instead and this window gets out of the way.
+    //
+    // Not every tab can take it. A new tab, a chrome:// page, the Web Store and
+    // the built-in PDF viewer run no content script, and there the poster opens
+    // as a tab of its own rather than the button doing nothing. Both paths show
+    // the same sheet - see tutorial.js.
     document.getElementById('tutorial-btn').addEventListener('click', () => {
-        chrome.tabs.create({ url: window.VMFirebaseConfig.webTutorialUrl });
+        const openInTab = () => chrome.tabs.create({ url: chrome.runtime.getURL('tutorial.html') });
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs && tabs[0];
+            if (!tab) { openInTab(); window.close(); return; }
+            // Whether a content script is there is not something to infer from
+            // the URL - `tabs.url` is only ours to read by the activeTab grant,
+            // and guessing from it would put the poster in a tab on pages that
+            // could have hosted it perfectly well. Ask, and let the answer
+            // decide: no listener means no reply, which arrives as lastError.
+            chrome.tabs.sendMessage(tab.id, { action: 'showTutorial' }, (res) => {
+                if (chrome.runtime.lastError || !res || !res.ok) openInTab();
+                window.close();
+            });
+        });
     });
 
     document.getElementById('options-btn').addEventListener('click', openOptions);

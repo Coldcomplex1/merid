@@ -27,6 +27,7 @@
         "lib/vocab-core.js",
         "lib/profile.js",
         "status-badge.js",
+        "tutorial.js",
         "content.js"
       ],
       "css": [
@@ -57,6 +58,17 @@
     "page": "options.html",
     "open_in_tab": true
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "tutorial-vi.webp"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "use_dynamic_url": true
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://generativelanguage.googleapis.com https://merid.site"
   }

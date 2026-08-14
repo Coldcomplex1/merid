@@ -17,6 +17,8 @@ const FILES = [
     'content.js',
     'status-badge.js',
     'content.css',
+    // The tutorial poster: the overlay, the page it falls back to, and the sheet.
+    'tutorial.js', 'tutorial.html', 'tutorial-vi.webp',
     'popup.html', 'popup.js', 'popup.css',
     'options.html', 'options.js', 'options.css',
     'content-bridge.js',
