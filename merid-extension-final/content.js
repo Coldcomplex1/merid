@@ -1054,12 +1054,37 @@ function applyDisplayMode(span) {
     span.classList.add('vocab-master-highlight', 'vocab-highlight');
     span.textContent = text;
 
+    // Both ways round, because a span can be redrawn as well as drawn: moving
+    // to highlight mode puts the writer's own word back, and a span that is no
+    // longer a replacement must stop counting as one.
     const didReplace = text !== matchedText;
-    if (didReplace && !span.classList.contains('vocab-replaced')) {
+    const counted = span.classList.contains('vocab-replaced');
+    if (didReplace && !counted) {
         span.classList.add('vocab-replaced');
         replacedCount++;
+    } else if (!didReplace && counted) {
+        span.classList.remove('vocab-replaced');
+        replacedCount = Math.max(0, replacedCount - 1);
     }
     return didReplace;
+}
+
+/**
+ * Redraw the words already on the page in the current display mode.
+ *
+ * The mode decides what a candidate SHOWS, never which candidates there are -
+ * `applyDisplayMode` builds the text from the span's own dataset, so the same
+ * span reads as the English word, the Vietnamese one, or both, without the
+ * scan being consulted at all.
+ *
+ * Candidates still waiting on a verdict are left where they are. They are
+ * showing the writer's text and nothing about them is visible yet; they will be
+ * drawn in whatever mode is current when they are finally revealed. Selecting
+ * on `.vocab-master-highlight` is what leaves them out - `holdSpan` gives a
+ * pending candidate that class and no other.
+ */
+function redrawShownCandidates() {
+    document.querySelectorAll('.vocab-master-highlight').forEach(span => applyDisplayMode(span));
 }
 
 function makeTextNode(text) {
@@ -2219,12 +2244,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
     for (const key in changes) settings[key] = changes[key].newValue;
 
-    // The card's palette is the one setting that changes nothing about which
-    // words are on the page. Every other change below starts by reverting and
-    // re-scanning, and re-scanning re-picks words - so flipping the card from
-    // light to dark would quietly rewrite the paragraph the reader is in.
-    if (Object.keys(changes).every(k => k === 'cardTheme')) {
-        if (tooltipElement) applyCardScheme(tooltipElement);
+    // The settings that change how the page LOOKS without changing which words
+    // are on it. Both are applied to what is already there.
+    //
+    // Everything below this starts by reverting and re-scanning, and a re-scan
+    // re-picks words - so a reader nudging the display mode would have the
+    // paragraph they are reading rewritten under them. With the context check
+    // on it is worse than that: the scan holds every candidate back until a
+    // verdict lands, so the whole page would empty out and trickle back in, and
+    // a second round of requests would be spent arriving at the same answers
+    // for the same words. None of that buys anything. The display mode is a
+    // question about the same candidates - show me the English, the Vietnamese,
+    // or both - and it is answered by redrawing them.
+    const COSMETIC = new Set(['cardTheme', 'replacementMode']);
+    if (Object.keys(changes).every(k => COSMETIC.has(k))) {
+        if (changes.cardTheme && tooltipElement) applyCardScheme(tooltipElement);
+        if (changes.replacementMode) redrawShownCandidates();
         return;
     }
 
