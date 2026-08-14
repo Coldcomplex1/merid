@@ -37,20 +37,29 @@ const FEED_LINES = [
 
 const li = (lines, cls) => lines.map(t => `<p class="${cls}">${t}</p>`).join('\n');
 
+// The chat popup pinned to the corner of a feed: no URL of its own, so the
+// path list cannot see it, and the label is what names it. Vietnamese, because
+// that is what a Vietnamese reader's Facebook renders.
+const POPUP = `<div role="dialog" aria-label="Đoạn chat với Minh" id="popup">
+  <h2>Minh</h2>${li(CHAT_LINES, 'msg')}</div>`;
+
 // One document that renders either surface and can switch between them with
 // history.pushState - which is how the real site does it, and the case a
 // scan-time-only check cannot see.
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>Fixture</title></head><body>
 <div id="app"></div>
+<div id="overlay"></div>
 <script>
   const FEED = ${JSON.stringify(`<div role="main"><h1>Bảng tin</h1>${li(FEED_LINES, 'feed')}</div>`)};
   const INBOX = ${JSON.stringify(`<div role="main"><h1>Tin nhắn</h1>${li(CHAT_LINES, 'msg')}</div>`)};
+  const POPUP = ${JSON.stringify(POPUP)};
   function render() {
     document.getElementById('app').innerHTML =
       location.pathname.indexOf('/messages') === 0 ? INBOX : FEED;
   }
   window.go = (url) => { history.pushState({}, '', url); render(); };
+  window.openChat = () => { document.getElementById('overlay').innerHTML = POPUP; };
   window.addEventListener('popstate', render);
   render();
 </script>
@@ -147,7 +156,21 @@ const news = await open('http://vnexpress.net/kinh-doanh/bai-viet');
 check(await touched(news.p) > 0, 'an ordinary site is unaffected', `${await touched(news.p)} candidates`);
 await news.p.close();
 
-// --- 3. Feed -> inbox, without a page load ---
+// --- 3. A chat popup over the feed, which has no URL to block ---
+const chat = await open('http://facebook.com/');
+check(await touched(chat.p) > 0, 'the feed under the popup is scanned');
+await chat.p.evaluate(() => window.openChat());
+await chat.p.waitForTimeout(1600);
+const inPopup = await chat.p.$$eval('#popup .vocab-master-highlight, #popup .vocab-master-pending',
+    els => els.length);
+check(inPopup === 0, 'nothing is touched inside the chat popup', `${inPopup} candidates`);
+const popupText = await chat.p.$eval('#popup', el => el.innerText.replace(/\s+/g, ' '));
+check(/bãi bỏ/.test(popupText) && !/abolish/i.test(popupText),
+    'the conversation in it reads as written', popupText.slice(0, 70));
+check(await touched(chat.p) > 0, 'and the feed behind it still has its words');
+await chat.p.close();
+
+// --- 4. Feed -> inbox, without a page load ---
 const spa = await open('http://facebook.com/');
 const before = await touched(spa.p);
 check(before > 0, 'the feed was scanned before navigating', `${before} candidates`);
@@ -161,7 +184,7 @@ const inboxText = await spa.p.$eval('body', b => b.innerText.replace(/\s+/g, ' '
 check(!/abolish|cautious|absence/i.test(inboxText),
     'and no English is left in the conversation', inboxText.slice(0, 80));
 
-// --- 4. ...and back out again ---
+// --- 5. ...and back out again ---
 await spa.p.evaluate(() => window.go('/'));
 await spa.p.waitForTimeout(2000);
 const afterBack = await touched(spa.p);

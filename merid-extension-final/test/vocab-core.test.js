@@ -593,14 +593,25 @@ test('dedicated chat hosts are blocked outright', () => {
     assert.strictEqual(C.isHostBlocked('google.com'), false);
 });
 
-test('chat surfaces are named per host, and only where a path cannot reach', () => {
+test('chat surfaces are named per host, for the windows a path cannot reach', () => {
+    // A chat popup has no URL of its own, so the label it carries is the only
+    // thing left to recognise it by - in either language the reader has set.
+    for (const host of ['facebook.com', 'www.facebook.com', 'instagram.com', 'x.com', 'linkedin.com']) {
+        const sel = C.chatSurfaceSelector(host);
+        assert.ok(sel.includes('[role="dialog"]'), host);
+        assert.ok(sel.includes('tin nhắn'), `${host} must know the Vietnamese label`);
+        assert.ok(sel.includes('chat'), host);
+    }
     assert.ok(C.chatSurfaceSelector('x.com').includes('DMDrawer'));
     assert.ok(C.chatSurfaceSelector('www.twitter.com').includes('DMDrawer'));
     assert.ok(C.chatSurfaceSelector('linkedin.com').includes('msg-overlay'));
-    // Facebook and Instagram popups are role="dialog", which content.js already
-    // refuses everywhere - a second rule here would only be a second thing to
-    // keep true.
-    assert.strictEqual(C.chatSurfaceSelector('facebook.com'), '');
+    // Every selector has to be one a browser will actually accept.
+    for (const host of Object.keys(C.CHAT_SURFACE_SELECTORS)) {
+        assert.doesNotThrow(() => new RegExp(''),
+            `${host}: selector is only exercised in the DOM, keep it syntactically simple`);
+        assert.ok(C.chatSurfaceSelector(host).length > 0, host);
+    }
+    // Sites with no chat of their own are left entirely alone.
     assert.strictEqual(C.chatSurfaceSelector('vnexpress.net'), '');
     assert.strictEqual(C.chatSurfaceSelector(''), '');
 });

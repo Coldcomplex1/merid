@@ -58,9 +58,13 @@
      *
      * The anonymous account is how the context check runs for a reader who
      * never signs in, which is most of them - it is not a lesser path, it is
-     * the default one. That makes creating it worth a second attempt: a blip on
-     * the very first page would otherwise leave that page unchecked for no
-     * better reason than timing.
+     * the default one.
+     *
+     * A failed sign-up is NOT retried here. Every batch that goes out calls
+     * this again, and nothing was stored, so the next one attempts it afresh -
+     * the retry is already in the design. Doing it inline instead would make
+     * the page wait out two network failures before showing its words, which
+     * is the whole cost of being offline paid twice.
      */
     async function getIdentity() {
         const r = await storeGet([AUTH_KEY, ANON_KEY]);
@@ -79,12 +83,7 @@
     }
 
     async function createAnonymousIdentity() {
-        let created;
-        try {
-            created = await FB.signUpAnonymous();
-        } catch (e) {
-            created = await FB.signUpAnonymous();   // one retry, then it is real
-        }
+        const created = await FB.signUpAnonymous();
         const record = { uid: created.uid, refreshToken: created.refreshToken };
         await storeSet({ [ANON_KEY]: record });
         // Reuse the token we were just handed instead of spending a refresh.
