@@ -37,11 +37,33 @@ const FEED_LINES = [
 
 const li = (lines, cls) => lines.map(t => `<p class="${cls}">${t}</p>`).join('\n');
 
-// The chat popup pinned to the corner of a feed: no URL of its own, so the
-// path list cannot see it, and the label is what names it. Vietnamese, because
-// that is what a Vietnamese reader's Facebook renders.
-const POPUP = `<div role="dialog" aria-label="Đoạn chat với Minh" id="popup">
-  <h2>Minh</h2>${li(CHAT_LINES, 'msg')}</div>`;
+// The chat window pinned to the corner of a feed: no URL of its own, so the
+// path list cannot see it. Copied from a real Messenger thread a reader
+// captured - and the shape is the point:
+//
+//   - NOT inside any role="dialog". The whole ancestry from the message text
+//     up is role="presentation" and role="none", with one role="article" per
+//     message, which is what a feed post carries too.
+//   - The class names are Facebook's generated ones, worth nothing.
+//   - The only two things that mean anything are the role="log" on the
+//     transcript and the Vietnamese label on it.
+const ROW = (t) => `<div role="presentation"><div role="none">` +
+    `<div role="article"><div aria-label="Lúc 23:33, Bạn: ${t.slice(0, 24)}" ` +
+    `class="x78zum5 xdt5ytf x1n2onr6"><div class="html-div xexx8yu xyri2b x18d9i69">` +
+    `<span class="x193iq5w xeuugli x13faqbe">${t}</span></div></div></div></div></div>`;
+
+const POPUP = `<div class="x9f619 x1n2onr6" id="popup">
+  <div role="log" aria-label="Tin nhắn trong cuộc trò chuyện với Văn Quyết Đoàn">
+    ${CHAT_LINES.map(ROW).join('\n')}
+  </div></div>`;
+
+// The same window as it arrives for a reader whose Facebook is in neither of
+// the two languages the label rules know. Everything nameable is gone and the
+// role is all that is left - which is the point of leaning on it.
+const POPUP_UNLABELLED = `<div class="x9f619 x1n2onr6" id="popup2">
+  <div role="log">
+    ${CHAT_LINES.map(ROW).join('\n')}
+  </div></div>`;
 
 // One document that renders either surface and can switch between them with
 // history.pushState - which is how the real site does it, and the case a
@@ -54,12 +76,14 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
   const FEED = ${JSON.stringify(`<div role="main"><h1>Bảng tin</h1>${li(FEED_LINES, 'feed')}</div>`)};
   const INBOX = ${JSON.stringify(`<div role="main"><h1>Tin nhắn</h1>${li(CHAT_LINES, 'msg')}</div>`)};
   const POPUP = ${JSON.stringify(POPUP)};
+  const POPUP_UNLABELLED = ${JSON.stringify(POPUP_UNLABELLED)};
   function render() {
     document.getElementById('app').innerHTML =
       location.pathname.indexOf('/messages') === 0 ? INBOX : FEED;
   }
   window.go = (url) => { history.pushState({}, '', url); render(); };
   window.openChat = () => { document.getElementById('overlay').innerHTML = POPUP; };
+  window.openChatUnlabelled = () => { document.getElementById('overlay').innerHTML = POPUP_UNLABELLED; };
   window.addEventListener('popstate', render);
   render();
 </script>
@@ -164,10 +188,19 @@ await chat.p.waitForTimeout(1600);
 const inPopup = await chat.p.$$eval('#popup .vocab-master-highlight, #popup .vocab-master-pending',
     els => els.length);
 check(inPopup === 0, 'nothing is touched inside the chat popup', `${inPopup} candidates`);
+check(await chat.p.$eval('#popup', el => !el.closest('[role="dialog"]')),
+    'the fixture is the real shape - no dialog anywhere above the messages');
 const popupText = await chat.p.$eval('#popup', el => el.innerText.replace(/\s+/g, ' '));
 check(/bãi bỏ/.test(popupText) && !/abolish/i.test(popupText),
     'the conversation in it reads as written', popupText.slice(0, 70));
 check(await touched(chat.p) > 0, 'and the feed behind it still has its words');
+
+// Strip the label and the role has to carry it alone.
+await chat.p.evaluate(() => window.openChatUnlabelled());
+await chat.p.waitForTimeout(1600);
+const inBare = await chat.p.$$eval('#popup2 .vocab-master-highlight, #popup2 .vocab-master-pending',
+    els => els.length);
+check(inBare === 0, 'nor in one with no label at all, only role="log"', `${inBare} candidates`);
 await chat.p.close();
 
 // --- 4. Feed -> inbox, without a page load ---

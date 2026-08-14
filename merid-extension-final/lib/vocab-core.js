@@ -355,12 +355,20 @@
      * deterministic protection is the path list above; this is what catches the
      * cases a path cannot see.
      */
-    // What these sites call a chat window, in the label they put on it for
-    // screen readers - the one part of a generated DOM that has to stay
-    // meaningful. Both languages, because the label follows the reader's own
-    // Facebook setting, not ours.
+    // What these sites call a chat window, in the terms they hand a screen
+    // reader - the one part of a generated DOM that has to stay meaningful,
+    // where the class names are `x78zum5 xdt5ytf` and change without notice.
+    //
+    // `role="log"` leads because it is the standard role for a transcript that
+    // updates as it goes, and it says so in every language: Facebook wraps a
+    // Messenger conversation in one. Taken from a real thread a reader
+    // captured, where there was no dialog anywhere above the message, the whole
+    // ancestry was `role="presentation"`, and the only two things that meant
+    // anything were that role and a Vietnamese label - hence both, and hence
+    // the labels in both languages, since that one follows the reader's own
+    // Facebook setting rather than ours.
     const CHAT_LABEL_SELECTOR =
-        '[role="dialog"], ' +
+        '[role="log"], [role="dialog"], ' +
         '[aria-label*="chat" i], [aria-label*="message" i], ' +
         '[aria-label*="tin nhắn" i], [aria-label*="trò chuyện" i], ' +
         '[aria-label*="đoạn chat" i]';
