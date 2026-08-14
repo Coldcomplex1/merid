@@ -193,6 +193,11 @@ const SKIP_REGION_SELECTOR =
     '[role="banner"], [role="contentinfo"], [role="complementary"], ' +
     '[role="navigation"], [role="search"], [role="dialog"], [role="tooltip"], ' +
     '[role="alert"], [role="toolbar"], ' +
+    // A transcript that updates as it goes: a chat window, a live commentary.
+    // The six sites that serve their own DMs refuse these unconditionally
+    // (VMCore.CHAT_SURFACE_SELECTORS); this is for every other site that embeds
+    // a support or messaging widget, which is most of them.
+    '[role="log"], ' +
     // Advertising.
     'ins, .adsbygoogle, [data-ad], [class~="ad"], [class~="ads"], ' +
     '[class*="advertis" i], [class*="sponsor" i], [aria-label*="advertis" i], ' +
