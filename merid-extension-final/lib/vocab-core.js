@@ -756,11 +756,23 @@
         return Math.max(1, Math.min(cap, share));
     }
 
+    // Reused rather than rebuilt per call, and stepped with `test` rather than
+    // collected with `match`. This is the hottest function in the extension -
+    // the scan measures whole posts, and whole pages, with it - and `match`
+    // with /g allocates an array holding EVERY word just to read its length,
+    // which on a long feed is tens of thousands of throwaway strings. `test`
+    // only advances lastIndex. The pattern can never match empty, so the loop
+    // always makes progress.
+    const WORD_RE = /[\p{L}\p{N}]+/gu;
+
     /** Word count used to size a post. Counts runs of letters/digits, so
      *  punctuation and emoji do not inflate a short caption into an article. */
     function countWords(text) {
-        const m = String(text || '').match(/[\p{L}\p{N}]+/gu);
-        return m ? m.length : 0;
+        const s = String(text || '');
+        WORD_RE.lastIndex = 0;
+        let n = 0;
+        while (WORD_RE.test(s)) n++;
+        return n;
     }
 
     // ---------------------------------------------------------------------
