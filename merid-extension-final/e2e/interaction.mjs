@@ -40,6 +40,28 @@ const fail = [];
 const ok = [];
 const check = (cond, label, extra = '') => (cond ? ok : fail).push(label + (extra ? ` -> ${extra}` : ''));
 
+/**
+ * Poll until `read()` hands back something truthy, then return it.
+ *
+ * Everything this test waits on is a chain, not a clock. A word reaches the
+ * profile only after the scan picks it, the context check gives up on it, the
+ * post reveals it, a 4s flush timer fires and the worker writes storage - and
+ * the same is true of a rating or an "I know this". Sleeping a fixed 4.5s
+ * happened to cover that on the machine this was written on and not on a slower
+ * one, where the test read an empty profile and crashed dereferencing it.
+ */
+async function until(read, timeout = 30000, step = 250) {
+    const deadline = Date.now() + timeout;
+    for (; ;) {
+        const value = await read();
+        if (value) return value;
+        if (Date.now() >= deadline) return null;
+        await new Promise((r) => setTimeout(r, step));
+    }
+}
+
+const readProfile = () => sw.evaluate(async () => (await chrome.storage.local.get('vm_profile')).vm_profile);
+
 // The service worker registers asynchronously after launch.
 let sw = ctx.serviceWorkers()[0];
 if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 15000 });
@@ -73,8 +95,18 @@ page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto(url, { waitUntil: 'load' });
-await page.waitForSelector('.vocab-master-highlight', { timeout: 15000 }).catch(() => { });
-await page.waitForTimeout(1200);
+// A word is only put on the page once the context check has cleared it, and
+// with no API key configured that means waiting for the worker to say the
+// feature is off - a round-trip, not an interval. Then the post reveals its
+// keepers together. So wait for the count to stop moving, rather than for a
+// fixed moment that was long enough on one machine and not on another.
+let seenSpans = -1;
+await until(async () => {
+    const n = await page.$$eval('.vocab-master-highlight', (els) => els.length);
+    const settled = n > 0 && n === seenSpans;
+    seenSpans = n;
+    return settled;
+}, 40000, 500);
 
 // --- 1. The engine still replaces words (no regression from the refactor) ---
 const spans = await page.$$('.vocab-master-highlight');
@@ -84,19 +116,21 @@ const levels = await page.$$eval('.vocab-master-highlight', els => els.map(e => 
 check(levels.length > 0 && levels.every(l => l === 'C1'), 'span carries its CEFR level', JSON.stringify([...new Set(levels)]));
 
 // --- 2. "shown" events reached the profile, deduped per headword ---
-await page.waitForTimeout(4500); // let the 4s flush timer fire
-let profile = await sw.evaluate(async () => (await chrome.storage.local.get('vm_profile')).vm_profile);
-check(!!profile, 'profile was created in storage.local');
-const shownWords = Object.keys(profile?.words || {});
+let profile = await until(async () => {
+    const p = await readProfile();
+    return p && p.words && Object.keys(p.words).length ? p : null;
+}) || {};
+check(!!profile.words, 'profile was created in storage.local');
+const shownWords = Object.keys(profile.words || {});
 check(shownWords.length > 0, 'shown events recorded', shownWords.join(', '));
 
 // "bãi bỏ" is seeded in two paragraphs but must be swapped exactly once: a
 // word is worth meeting once per page, and repeating it is just noise.
 const abolishSpans = await page.$$eval('.vocab-master-highlight',
     els => els.filter(e => (e.dataset.word || '').toLowerCase() === 'abolish').length);
-check(abolishSpans === 1 && profile.words.abolish?.shown === 1,
+check(abolishSpans === 1 && profile.words?.abolish?.shown === 1,
     'a repeated word is swapped exactly once',
-    `${abolishSpans} spans -> shown=${profile.words.abolish?.shown}`);
+    `${abolishSpans} spans -> shown=${profile.words?.abolish?.shown}`);
 const secondAbolish = await page.$eval('body', b => (b.innerText.match(/[Bb]ãi bỏ/g) || []).length);
 check(secondAbolish >= 1, 'the other occurrence keeps its original Vietnamese', `${secondAbolish} left as-is`);
 check(profile.events === 0, '"shown" alone is not feedback evidence', `events=${profile.events}`);
@@ -117,9 +151,13 @@ check(widths.length === 3 && widths[0] > widths[2] && widths[1] > widths[2],
 const beforeText = await page.$eval('body', b => b.innerText);
 const ratedWord = await page.$eval('.vocab-master-tooltip', el => el.dataset.currentWord);
 await page.click('.vm-down');
-await page.waitForTimeout(1200); // handleRate flushes immediately
-profile = await sw.evaluate(async () => (await chrome.storage.local.get('vm_profile')).vm_profile);
-check(profile.words[ratedWord.toLowerCase()]?.down === 1, 'thumbs-down recorded', ratedWord);
+// handleRate flushes at once, but "at once" still means a message to the worker
+// and a storage write.
+profile = await until(async () => {
+    const p = await readProfile();
+    return p && p.words?.[ratedWord.toLowerCase()]?.down === 1 ? p : null;
+}) || profile;
+check(profile.words?.[ratedWord.toLowerCase()]?.down === 1, 'thumbs-down recorded', ratedWord);
 check(profile.events > 0, 'rating counts as a feedback event', `events=${profile.events}`);
 check(profile.topics?.business, 'topic derived from the URL slug', JSON.stringify(profile.topics));
 
@@ -135,14 +173,19 @@ await page.$$eval('.vocab-master-highlight', els => els[0] && els[0].dispatchEve
 await page.waitForTimeout(400);
 const knowWord = await page.$eval('.vocab-master-tooltip', el => el.dataset.currentWord);
 await page.click('.vm-know');
-await page.waitForTimeout(900);
-const leftover = await page.$$eval('.vocab-master-highlight',
+const countLeft = () => page.$$eval('.vocab-master-highlight',
     (els, w) => els.filter(e => (e.dataset.word || '').toLowerCase() === w).length,
     knowWord.toLowerCase());
+// The unwrap happens in the storage callback, so wait for it rather than on it.
+await until(async () => (await countLeft()) === 0, 10000);
+const leftover = await countLeft();
 check(leftover === 0, '"I know this" unwrapped all instances', `${knowWord}: ${leftover} left`);
 
-profile = await sw.evaluate(async () => (await chrome.storage.local.get('vm_profile')).vm_profile);
-check(profile.words[knowWord.toLowerCase()]?.known === 1, '"known" recorded in the profile');
+profile = await until(async () => {
+    const p = await readProfile();
+    return p && p.words?.[knowWord.toLowerCase()]?.known === 1 ? p : null;
+}) || profile;
+check(profile.words?.[knowWord.toLowerCase()]?.known === 1, '"known" recorded in the profile');
 
 // --- 6. The ranker suppresses a known word entirely ---
 const suppressed = await sw.evaluate(async (w) => {

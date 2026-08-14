@@ -36,6 +36,11 @@ function t(key, fallback) {
 
 let settings = {};
 let vocabulary = [];
+// The same dataset, keyed by headword. Looking one up used to be a scan of the
+// whole array, on every hover and on every word the context check suggested -
+// a few thousand string comparisons for an answer a Map has waiting. Keyed in
+// lower case, which is how the only two callers already compared.
+let vocabByWord = new Map();
 let tooltipElement = null;
 let currentObserver = null;
 let replacedCount = 0;
@@ -61,6 +66,24 @@ const MUTATION_DEBOUNCE_MS = 300;
 // Text nodes we've already looked at (avoids MutationObserver reprocessing loops).
 // Reset on every init() so a settings change re-evaluates the whole page.
 let processedNodes = new WeakSet();
+
+/** Adopt a dataset, and index it. The only way `vocabulary` should be set. */
+function setVocabulary(list) {
+    vocabulary = list || [];
+    vocabByWord = new Map();
+    for (const item of vocabulary) {
+        const key = (item.word || '').toLowerCase();
+        // First entry wins, which is what Array.find did before this index.
+        if (key && !vocabByWord.has(key)) vocabByWord.set(key, item);
+    }
+}
+
+/** The dataset entry for a headword, or null. Case-insensitive - which is how
+ *  both callers already compared, and the shipped datasets hold no two entries
+ *  that differ only in case. */
+function vocabEntry(word) {
+    return vocabByWord.get(String(word || '').toLowerCase()) || null;
+}
 
 // Per-"post" (feed item or article body) scan stats:
 // { words, seen, used, candidates: [span] }. The scan picks up to
@@ -250,8 +273,10 @@ function init() {
     scanRootIsBody = true;
     pageIsFeed = false;
     scanRootsResolvedAt = 0;
+    rootRefreshDelay = ROOT_REFRESH_MS;
     recircCache = new WeakMap();
     containerCache = new WeakMap();
+    feedItemWords = new WeakMap();
     takenInPost = new WeakMap();
     feedContainers = new WeakSet();
     pageWordUses = new Map();
@@ -351,7 +376,7 @@ function startScan() {
             } else {
                 chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
                     if (chrome.runtime.lastError) { console.warn('[VM] getVocabulary failed:', chrome.runtime.lastError.message); return; }
-                    vocabulary = (resp && resp.vocabulary) || [];
+                    setVocabulary((resp && resp.vocabulary) || []);
                     if (vocabulary.length > 0) start();
                 });
             }
@@ -477,6 +502,30 @@ function blockChildCount(el) {
     return n;
 }
 
+// How long a post is, for the elements that turned out to be posts.
+//
+// Measuring one means reading its whole subtree, and the same elements are
+// measured again and again: `looksLikeFeedPage` walks hundreds of them on every
+// scan-root resolve, and `structuralFeedItem` asks about the same ancestors once
+// per text node underneath them.
+//
+// Only ANSWERS ABOVE THE THRESHOLD are kept. An element that came in under it is
+// short by definition, so re-counting costs almost nothing - and remembering that
+// it was short is the one thing that could do harm, because a feed item mounted
+// truncated and later expanded ("See more") would stay classified on its opening
+// line. The expensive elements are the long ones, which is exactly the half this
+// caches. Cleared on every init(), like the caches below it.
+let feedItemWords = new WeakMap();
+
+/** Words in `el`, remembered when there are enough of them to matter. */
+function feedItemWordCount(el) {
+    const cached = feedItemWords.get(el);
+    if (cached !== undefined) return cached;
+    const words = C.countWords(el.textContent || '');
+    if (words >= FEED_ITEM_MIN_WORDS) feedItemWords.set(el, words);
+    return words;
+}
+
 /** Could this element be one item of a feed, judged on its own shape? */
 function looksLikeFeedItem(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
@@ -484,7 +533,7 @@ function looksLikeFeedItem(el) {
     // A real post is BUILT of blocks - a header, a body, a footer. A paragraph
     // wrapper is built of inline runs, so it does not qualify.
     if (blockChildCount(el) < 2) return false;
-    return C.countWords(el.textContent || '') >= FEED_ITEM_MIN_WORDS;
+    return feedItemWordCount(el) >= FEED_ITEM_MIN_WORDS;
 }
 
 function structuralFeedItem(el) {
@@ -534,8 +583,24 @@ const HEADLINE_MIN_WORDS = 3;
 const FEED_PAGE_SIBLINGS_MIN = 4;
 const FEED_PAGE_TEXT_SHARE = 0.4;
 const FEED_PROBE_LIMIT = 600;
-// How often a page that has not found its main content may look again.
+// How soon a page that has not found its main content may look again, and how
+// far apart those looks are allowed to drift.
+//
+// Resolving is proportional to the size of the page, and "no main content" is a
+// standing answer, not a transient one: a feed, a forum, an app. Asking again
+// every second for the life of the tab spent that cost over and over on pages
+// that were never going to answer differently - and on a feed it got dearer as
+// the reader scrolled, because the page it re-measures keeps growing. Merid's
+// own spans generate the mutations that trigger it, so it kept itself alive.
+//
+// So the wait doubles after each fruitless look: 1s, 2s, 4s, 8s, then every 15s.
+// Four tries in the first quarter-minute still catch content that renders late,
+// and it never stops looking altogether. Anything that means the answer really
+// could have changed - a root leaving the DOM, an SPA changing URL, a re-init -
+// puts it back to one second.
 const ROOT_REFRESH_MS = 1000;
+const ROOT_REFRESH_MAX_MS = 15000;
+let rootRefreshDelay = ROOT_REFRESH_MS;
 
 let scanRoots = null;      // elements the scan may look inside (null = not resolved yet)
 let scanHeadline = null;   // the page's <h1> when it sits outside the root
@@ -543,12 +608,37 @@ let scanRootIsBody = true; // no main content found - every rule below stays off
 let pageIsFeed = false;
 let scanRootsResolvedAt = 0;
 
+/** Words carried by the links through an element, which prose does not count. */
+function linkWords(el) {
+    let words = 0;
+    for (const a of el.querySelectorAll('a[href]')) words += C.countWords(a.textContent || '');
+    return words;
+}
+
+// Text that is in the markup but never on the screen. `textContent` hands over
+// the SOURCE of inline <script> and <style> along with everything the reader
+// came for, and a modern page carries a lot of it: a JSON-LD block, a
+// framework's serialised state, an analytics snippet.
+//
+// It matters here because these counts are what the scan root is chosen with,
+// and the page-wide one is the DENOMINATOR. Hundreds of unreadable "words" in
+// the body make the real article look like a small fraction of the page, so it
+// fails MAIN_TEXT_SHARE, so the scan stays on document.body - and words go back
+// to landing in the rail and the footer, which is the very complaint
+// `resolveScanRoots` was written to answer.
+const UNREADABLE_SELECTOR = 'script, style, noscript';
+
+/** Words in `el` the reader can actually see. */
+function readableWords(el) {
+    let words = C.countWords(el.textContent || '');
+    for (const s of el.querySelectorAll(UNREADABLE_SELECTOR)) words -= C.countWords(s.textContent || '');
+    return Math.max(0, words);
+}
+
 /** Words that are the page's own prose, not the text of links through it. */
 function proseWords(el) {
     if (!el) return 0;
-    let words = C.countWords(el.textContent || '');
-    for (const a of el.querySelectorAll('a[href]')) words -= C.countWords(a.textContent || '');
-    return Math.max(0, words);
+    return Math.max(0, readableWords(el) - linkWords(el));
 }
 
 /**
@@ -567,7 +657,9 @@ function looksLikeFeedPage(bodyWords) {
         for (const child of el.children) {
             if (!looksLikeFeedItem(child)) continue;
             peers++;
-            words += C.countWords(child.textContent || '');
+            // Already measured by the test above, and kept: a child that got
+            // this far is over the threshold, so this is a cache hit.
+            words += feedItemWordCount(child);
         }
         if (peers >= FEED_PAGE_SIBLINGS_MIN && words >= bodyWords * FEED_PAGE_TEXT_SHARE) return true;
     }
@@ -583,8 +675,13 @@ function looksLikeFeedPage(bodyWords) {
  */
 function resolveScanRoots() {
     scanRootsResolvedAt = Date.now();
-    const bodyWords = proseWords(document.body);
-    pageIsFeed = looksLikeFeedPage(C.countWords(document.body.textContent || ''));
+    // Counted once and shared. `proseWords(document.body)` used to walk the
+    // whole body, and the feed probe below then counted the identical string a
+    // second time - two of the most expensive calls on the page, for one
+    // number and the same number minus its links.
+    const bodyTotal = readableWords(document.body);
+    const bodyWords = Math.max(0, bodyTotal - linkWords(document.body));
+    pageIsFeed = looksLikeFeedPage(bodyTotal);
 
     let best = null;
     let bestWords = Infinity;
@@ -626,9 +723,16 @@ function resolveScanRoots() {
  */
 function maybeRefreshScanRoots() {
     if (!scanRoots) return;
-    const stale = scanRootIsBody || scanRoots.some(r => !r.isConnected);
-    if (!stale || Date.now() - scanRootsResolvedAt < ROOT_REFRESH_MS) return;
+    // Two different situations, and only one of them is a failed search. A root
+    // that has left the DOM is a real change the page just made, so it is looked
+    // at on the spot rather than on the backed-off schedule.
+    const gone = scanRoots.some(r => !r.isConnected);
+    if (!scanRootIsBody && !gone) return;
+    const wait = gone ? ROOT_REFRESH_MS : rootRefreshDelay;
+    if (Date.now() - scanRootsResolvedAt < wait) return;
     resolveScanRoots();
+    if (!scanRootIsBody || gone) rootRefreshDelay = ROOT_REFRESH_MS;
+    else rootRefreshDelay = Math.min(rootRefreshDelay * 2, ROOT_REFRESH_MAX_MS);
 }
 
 /** The scan root `el` belongs to, or null when it is outside all of them. */
@@ -764,7 +868,9 @@ function statsFor(container) {
     const now = Date.now();
     if (!stats) {
         stats = {
-            words: C.countWords(container.textContent || ''),
+            // Readable words only: a post's length is what buys its word
+            // allowance, and an inline script inside it is not reading matter.
+            words: readableWords(container),
             seen: 0,      // words of this post the scan has walked past
             used: 0,
             measuredAt: now,
@@ -776,7 +882,7 @@ function statsFor(container) {
     }
     if (now - stats.measuredAt >= POST_REMEASURE_MS) {
         stats.measuredAt = now;
-        const words = C.countWords(container.textContent || '');
+        const words = readableWords(container);
         if (words > stats.words * 1.25) stats.words = words;
     }
     return stats;
@@ -1645,7 +1751,7 @@ function findVocabEntry(word, container) {
     if (knownSet.has(w)) return null;
     // Nor one already in this post, or shown a moment ago somewhere else.
     if (container && !wordAvailable(container, w, w)) return null;
-    return vocabulary.find(v => (v.word || '').toLowerCase() === w) || null;
+    return vocabEntry(w);
 }
 
 function isOnScreen(el) {
@@ -1963,7 +2069,7 @@ function handleMouseOver(e) {
     if (highlight || tooltip) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         if (highlight) {
-            const item = vocabulary.find(v => v.word === highlight.dataset.word);
+            const item = vocabEntry(highlight.dataset.word);
             if (item) showTooltip(highlight, item);
         }
     } else if (tooltipElement && tooltipElement.style.display !== 'none' && !hideTimeout) {
@@ -2108,7 +2214,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (changes.datasetKey || changes.datasetRev) {
         chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
             if (chrome.runtime.lastError) return;
-            vocabulary = (resp && resp.vocabulary) || vocabulary;
+            setVocabulary((resp && resp.vocabulary) || vocabulary);
             init();
         });
     } else {
@@ -2153,6 +2259,11 @@ function checkUrlChange() {
     const wasBlocked = C.isUrlBlocked(lastUrl);
     const nowBlocked = C.isUrlBlocked(location.href);
     lastUrl = location.href;
+    // A single-page app that has moved is showing something else now, so a page
+    // still reading from document.body earns a prompt look for the main content
+    // it may have just rendered - even when this is the common case below, where
+    // the move crosses no privacy boundary and nothing else here fires.
+    rootRefreshDelay = ROOT_REFRESH_MS;
     if (nowBlocked === wasBlocked) return;
     if (nowBlocked) stopOnPrivatePage();
     else init();   // back out on a normal page: scan it like any other
