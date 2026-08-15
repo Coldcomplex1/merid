@@ -197,18 +197,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Offering a toggle that does nothing is worse than no toggle.
         if (C.isUrlBlocked(tab.url)) {
             // The site is fine and stays fine - this page is not. Said as its
-            // own state, because "never scans this site" would be wrong about
-            // Facebook, and the reader is one click from the feed where Merid
-            // is working normally.
+            // own state, because "Merid doesn't scan this site" would be wrong
+            // about Facebook, and the reader is one click from the feed where
+            // Merid is working normally.
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
-            siteToggle.textContent = t('popupPageAlwaysOff', 'Never scans messages');
+            siteToggle.textContent = t('popupPageAlwaysOff', "Merid doesn't scan messages");
             siteToggle.title = t('popupPageAlwaysOffHint',
                 `Merid leaves message pages alone. The rest of ${host} works as usual.`, [host]);
         } else if (C.isHostBlocked(host)) {
             siteToggle.disabled = true;
             siteToggle.classList.add('off');
-            siteToggle.textContent = t('popupSiteAlwaysOff', 'Never scans this site');
+            siteToggle.textContent = t('popupSiteAlwaysOff', "Merid doesn't scan this site");
             siteToggle.title = C.blockedCategory(host) === 'own'
                 ? t('popupSiteAlwaysOffHint', 'Merid never runs on its own site.')
                 : t('popupSiteAlwaysOffPrivate',
@@ -236,7 +236,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         `Stops replacing words on ${host}. Other sites keep working.`, [host]);
                 }
                 siteToggle.classList.toggle('off', off);
-                siteToggle.classList.toggle('muted', state === 'default-off');
             };
             chrome.storage.sync.get(['disabledSites', 'allowedSites'], (s) => {
                 disabledSites = Array.isArray(s.disabledSites) ? s.disabledSites : [];

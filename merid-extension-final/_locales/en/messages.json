@@ -96,7 +96,7 @@
     }
   },
   "popupSiteAlwaysOff": {
-    "message": "Never scans this site"
+    "message": "Merid doesn't scan this site"
   },
   "popupSiteAlwaysOffHint": {
     "message": "Merid never runs on its own site."
@@ -105,7 +105,7 @@
     "message": "Merid never runs on private pages like chats, email and banking. It cannot be turned on here."
   },
   "popupPageAlwaysOff": {
-    "message": "Never scans messages"
+    "message": "Merid doesn't scan messages"
   },
   "popupPageAlwaysOffHint": {
     "message": "Merid leaves message pages alone. The rest of $HOST$ works as usual.",
