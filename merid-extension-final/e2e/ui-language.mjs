@@ -77,9 +77,9 @@ async function openOptions() {
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
         uiLang: 'auto', siteLang: '', datasetKey: 'c1', aiCheckEnabled: false,
-        // Installing leaves onboardingPending behind and the wizard is modal, so
-        // without this it opens over the page and swallows the pointer.
-        onboardingDone: true, onboardingPending: false
+        // A fresh install arms the setup wizard, and the popup hands itself over
+        // to it the first time it is opened: this page would close under the test.
+        onboardingPending: false, onboardingDone: true
     });
 });
 let popup = await openPopup();

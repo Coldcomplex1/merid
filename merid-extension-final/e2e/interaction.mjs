@@ -82,12 +82,7 @@ check(!!extId, 'service worker booted', extId);
 
 // Force the C1 dataset so the seeded sentences match.
 await sw.evaluate(async () => {
-    await chrome.storage.sync.set({
-        datasetKey: 'c1', frequency: 100, replacementMode: 'replace', extensionEnabled: true,
-        // Installing leaves onboardingPending behind and the wizard is modal, so
-        // without this it opens over the page and swallows every hover below.
-        onboardingDone: true, onboardingPending: false
-    });
+    await chrome.storage.sync.set({ datasetKey: 'c1', frequency: 100, replacementMode: 'replace', extensionEnabled: true });
     await chrome.storage.local.remove(['vm_profile', 'knownWords', 'savedWords', 'vm_ai_cache']);
     // Writing datasetKey alone does not rebuild the worker's cached vocabulary;
     // setDataset/loadVocabulary is the path the real UI uses.

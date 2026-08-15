@@ -1,17 +1,25 @@
 // The first-run wizard, driven the way a reader drives it.
 //
-// Two ways in, and both are checked here because they fail differently: over a
-// page, where the wizard is an overlay in a shadow root on someone else's DOM,
-// and as onboarding.html, which is what background.js opens on install because
-// the tab in front of a new reader runs no content script.
+// Two ways in, both through the popup and both checked here because they fail
+// differently: the first time it is opened after installing, and the button
+// afterwards. Plus onboarding.html, the fallback for a tab that runs no content
+// script at all.
 //
-// What is worth pinning is not that four panels exist. It is that the answers
-// survive the walk back and forth, and that finishing actually configures the
-// extension - which means two different roads: `replacementMode` is a plain
-// storage write, but `datasetKey` has to go through the setDataset message or
-// the worker keeps serving the vocabulary it already parsed. A wizard that
-// wrote the key and left the old words loaded would look completely correct
-// from the outside, so the last check reads the worker's own vocabulary.
+// What is worth pinning is not that four panels exist:
+//
+//   - The answers survive the walk back and forth, and finishing actually
+//     configures the extension. That means two different roads - `replacementMode`
+//     is a plain storage write, but `datasetKey` has to go through the setDataset
+//     message or the worker keeps serving the vocabulary it already parsed. A
+//     wizard that wrote the key and left the old words loaded would look entirely
+//     correct from the outside, so the check reads the worker's own vocabulary.
+//   - It is modal in earnest. Clicking away leaves it up AND does not reach the
+//     page's own controls underneath, which is measured against a real button
+//     sitting under the backdrop rather than assumed.
+//   - Reopening starts from the settings in force, not the defaults, or "Bỏ qua"
+//     would revert anyone who had changed either one.
+//   - Installing on its own puts nothing on screen. The wizard waits to be
+//     asked for, and a page loaded straight after an install must stay clear.
 import { chromium } from 'playwright';
 import http from 'node:http';
 import path from 'node:path';
@@ -370,27 +378,54 @@ check(afterEscape && afterEscape.onboardingDone === true,
     'and counts as having answered, like the button');
 
 // =====================================================================
-// 6b. The install path: no tab, a flag, and the next ordinary page
+// 6b. The install path: nothing until the popup is opened
 // =====================================================================
 await sw.evaluate(() => new Promise((r) => chrome.storage.sync.set(
     { onboardingPending: true, onboardingDone: false }, r)));
 
+// An install on its own is not an invitation. Loading a page right after one
+// must leave the reader alone.
 const fresh = await ctx.newPage();
 await fresh.goto(url, { waitUntil: 'load' });
-const cameUp = await until(async () => await probe(fresh, (root) => !!root.querySelector('.backdrop')));
-check(!!cameUp, 'a fresh install puts the wizard up on the next ordinary page');
+await fresh.waitForTimeout(1800);
+check((await fresh.$(HOST)) === null,
+    'installing does not put the wizard over the next page on its own');
+
+// Opening the popup is the invitation. This is what popup.js does on load when
+// it finds the flag: clear it, then hand the wizard to the tab.
+await fresh.bringToFront();
+const offered = await sw.evaluate(async () => {
+    const s = await new Promise((r) => chrome.storage.sync.get(
+        ['onboardingPending', 'onboardingDone'], r));
+    if (!s.onboardingPending || s.onboardingDone) return 'flag missing';
+    await new Promise((r) => chrome.storage.sync.set({ onboardingPending: false }, r));
+    // The active tab, which is the one the popup is anchored to - not the first
+    // tab that happens to answer. Getting this wrong would hand the wizard to
+    // some other window the reader is not looking at.
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return 'no active tab';
+    const res = await new Promise((resolve) => {
+        chrome.tabs.sendMessage(tab.id, { action: 'showOnboarding' }, (r) => {
+            resolve(chrome.runtime.lastError ? null : r);
+        });
+    });
+    return res && res.ok ? 'shown' : 'the active tab could not take it';
+});
+check(offered === 'shown', 'the first popup open hands it to the page', String(offered));
+check(!!(await until(async () => await probe(fresh, (root) => !!root.querySelector('.backdrop')))),
+    'and it comes up over the page the reader is on');
 
 const flag = await sw.evaluate(() => new Promise((resolve) => {
     chrome.storage.sync.get(['onboardingPending'], resolve);
 }));
-check(flag && flag.onboardingPending === false, 'and clears the flag as it opens',
+check(flag && flag.onboardingPending === false, 'the flag is spent, so it is offered once',
     JSON.stringify(flag));
 
-// A second page must not get a second copy.
+// A page opened afterwards must stay clear.
 const other = await ctx.newPage();
 await other.goto(url, { waitUntil: 'load' });
 await other.waitForTimeout(1200);
-check((await other.$(HOST)) === null, 'and does not follow the reader into the next tab');
+check((await other.$(HOST)) === null, 'and it does not follow the reader into the next tab');
 await other.close();
 await fresh.close();
 

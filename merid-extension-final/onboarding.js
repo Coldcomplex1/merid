@@ -7,20 +7,20 @@
 // highlighted - without ever being told those were choices.
 //
 // It comes up over whatever the reader is already looking at, the way the
-// tutorial poster does, rather than taking them to a page of its own. Three
-// things put it there:
+// tutorial poster does, rather than taking them to a page of its own. The popup
+// is what puts it there, both times:
 //
-//   - The first ordinary page loaded after installing. background.js cannot
-//     show it at the moment of installing: the tab in front of the reader then
-//     is the Web Store or a new tab, and neither runs a content script. So it
-//     leaves `onboardingPending` in storage and autoStart() below picks it up
-//     on the next real page.
-//   - The popup's "Hướng dẫn nhanh", which sends `showOnboarding` to the
-//     content script. The popup cannot host this itself: it is a few hundred
-//     pixels wide and closes the moment focus leaves it.
-//   - onboarding.html, kept only for where neither of those can reach - a
-//     chrome:// page or the Web Store, where the popup button would otherwise
-//     do nothing at all. `open({ standalone: true })` is that mode.
+//   - The first time the reader opens the popup after installing. Not the
+//     install itself, and not the first page they land on: arriving unasked over
+//     a page somebody was already reading is an interruption, and opening the
+//     toolbar button is the moment they have actually turned to Merid.
+//   - Afterwards, whenever they press "Hướng dẫn nhanh".
+//
+// Either way the popup sends `showOnboarding` to the content script and closes
+// itself. It cannot host this: it is a few hundred pixels wide and shuts the
+// moment focus leaves it. Where no content script can answer - a chrome:// page,
+// the Web Store - it falls back to onboarding.html, which is the only reason
+// that page still exists. `open({ standalone: true })` is that mode.
 //
 // It is modal in earnest. The backdrop swallows clicks meant for the page, Tab
 // cannot walk out of the sheet, and neither clicking away nor Escape abandons
@@ -960,67 +960,24 @@
 
     global.MeridOnboarding = { open, close };
 
-    /**
-     * Come up on the first ordinary page after installing.
-     *
-     * background.js leaves `onboardingPending` behind rather than showing this
-     * itself, because at the moment of installing the tab in front of the reader
-     * is the Web Store or a new tab and no content script runs on either. Here
-     * is the first place that can honour it.
-     *
-     * The flag is cleared as the wizard opens, not when it is answered. Left set
-     * until answered it would come up again in every tab the reader opened, and
-     * a modal that reappears until obeyed is a worse thing than a reader who
-     * closed the tab and kept the defaults. "Hướng dẫn nhanh" in the popup is
-     * always there for them.
-     */
-    function autoStart() {
-        if (window.top !== window) return;                 // top frame only
-        const p = location.protocol;
-        if (p !== 'http:' && p !== 'https:') return;
-        // Not over a bank, a webmail, a DM thread. The same list content.js
-        // refuses to read; a full-screen panel there is worse than a swapped word.
-        try {
-            if (global.VMCore && global.VMCore.isUrlBlocked(location.href)) return;
-        } catch (e) { /* if in doubt, carry on */ }
-        // Not on top of the tutorial poster. This one sits a layer above it, so
-        // arriving uninvited over a sheet the reader deliberately opened would
-        // bury it - and the wizard has the popup and the next page to come back on.
-        if (document.getElementById('merid-tutorial-host')) return;
-
-        try {
-            chrome.storage.sync.get(['onboardingPending', 'onboardingDone'], (s) => {
-                void chrome.runtime.lastError;
-                if (!s || !s.onboardingPending || s.onboardingDone) return;
-                chrome.storage.sync.set({ onboardingPending: false }, () => {
-                    void chrome.runtime.lastError;
-                    open();
-                });
-            });
-        } catch (e) { /* no storage, no wizard - the popup still has it */ }
-    }
-
     // Standing itself up on onboarding.html.
     //
     // Chrome runs no content script on a chrome-extension: page, so this file
     // finding itself on one means onboarding.html loaded it directly - the
     // fallback for a tab that cannot host an overlay at all. Everywhere else
-    // this is a content script, and it either has an install to honour or stays
-    // dormant until the popup asks.
+    // this is a content script and stays dormant until the popup asks.
     //
     // It is here rather than in an inline <script> in the page because
     // extension pages run under script-src 'self', which refuses one.
-    const start = () => {
-        if (location.protocol === 'chrome-extension:') {
+    if (location.protocol === 'chrome-extension:') {
+        const start = () => {
             document.title = VI.welcomeTitle + ' - Merid';
             open({ standalone: true });
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', start, { once: true });
         } else {
-            autoStart();
+            start();
         }
-    };
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start, { once: true });
-    } else {
-        start();
     }
 })(window);

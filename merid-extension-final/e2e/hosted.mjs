@@ -139,7 +139,10 @@ const calls = () => sw.evaluate(async () =>
 const reset = () => sw.evaluate(async () => {
     await chrome.storage.sync.set({
         datasetKey: 'c1', frequency: 100, replacementMode: 'replace',
-        extensionEnabled: true, aiCheckEnabled: true
+        extensionEnabled: true, aiCheckEnabled: true,
+        // A fresh install arms the setup wizard, and the popup hands itself over
+        // to it the first time it is opened: popup.html would close under the test.
+        onboardingPending: false, onboardingDone: true
     });
     await chrome.storage.local.remove([
         'geminiApiKey', 'vm_ai_cache', 'vm_profile', 'vm_ai_quota', 'vm_anon_auth', 'vm_auth'

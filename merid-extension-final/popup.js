@@ -356,6 +356,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         .addEventListener('click', () => showOverPage('showOnboarding', 'onboarding.html'));
 
     /**
+     * First time here: hand the reader the setup wizard instead of the panel.
+     *
+     * Opening the toolbar button is the moment somebody turns to Merid, which
+     * makes it the right moment to ask which vocabulary and how the words should
+     * appear. Installing is not: the wizard would have arrived over a page they
+     * were already reading, unasked, having interrupted rather than answered
+     * anything.
+     *
+     * `onboardingPending` is set by background.js on a fresh install only, so an
+     * existing reader coming back after an update is never asked - and it is
+     * cleared here rather than when the wizard is answered, so the panel is not
+     * withheld a second time from someone who dismissed it.
+     */
+    function offerOnboarding() {
+        chrome.storage.sync.get(['onboardingPending', 'onboardingDone'], (s) => {
+            void chrome.runtime.lastError;
+            if (!s || !s.onboardingPending || s.onboardingDone) return;
+            chrome.storage.sync.set({ onboardingPending: false }, () => {
+                void chrome.runtime.lastError;
+                showOverPage('showOnboarding', 'onboarding.html');
+            });
+        });
+    }
+    offerOnboarding();
+
+    /**
      * Hand an overlay to the content script on the current tab, falling back to
      * a tab of its own where there is no content script to hand it to.
      *
