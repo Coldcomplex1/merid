@@ -36,6 +36,8 @@ const FILES = [
     'lib/sync.js',
     'fonts/Outfit-latin.woff2',
     'fonts/Inter-latin.woff2',
+    // Vietnamese block: the other two files are latin subsets and lack it.
+    'fonts/Inter-vietnamese.woff2',
     'icon16.png',
     'icon32.png',
     'icon48.png',

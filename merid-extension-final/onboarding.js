@@ -71,10 +71,10 @@
         next: 'Tiếp tục',
 
         welcomeTitle: 'Chào mừng đến với Merid',
-        welcomeLead: 'Vừa đọc báo vừa học từ tiếng Anh, không cần mở sách vở.',
+        welcomeLead: 'Vừa lướt web vừa học tiếng Anh, không cần mở sách vở.',
         welcomeStart: 'Bắt đầu',
 
-        levelTitle: 'Bạn muốn học bộ từ nào?',
+        levelTitle: 'Chọn độ khó',
         levelDesc: {
             sat: 'Luyện thi SAT',
             c1: 'Nâng cao',
@@ -82,7 +82,7 @@
             all: 'Cả ba bộ'
         },
 
-        modeTitle: 'Từ tiếng Anh hiện ra sao?',
+        modeTitle: 'Cách hiển thị',
         modeName: {
             replace: 'Replace',
             highlight: 'Highlight',
@@ -151,11 +151,17 @@
            does nothing to it. */
         [hidden] { display: none !important; }
 
-        /* Outfit and Inter are the extension's own faces, but @font-face cannot
-           be registered from inside a shadow root - only a document can do
-           that. onboarding.html does, so the standalone wizard gets them; over
-           a page there is no such declaration and this falls through to the
-           system stack. */
+        /* Inter throughout, Outfit only on the handful of labels that are ASCII
+           by nature (the brand, SAT/C1/C2/All, Replace/Highlight/Beside).
+           Outfit has no Vietnamese: Google ships it as latin and latin-ext, and
+           Vietnamese lives in U+1EA0-1EF1, which neither covers. Setting a
+           Vietnamese heading in it left every "ạ ệ ơ đ ữ" to the system
+           fallback, so words changed shape halfway through.
+
+           @font-face cannot be registered from inside a shadow root, only by a
+           document. onboarding.html does it, which is where the fonts are
+           needed; over a page there is no such declaration and the whole stack
+           falls through to system-ui, which covers Vietnamese in one piece. */
         .backdrop {
             position: fixed;
             inset: 0;
@@ -267,12 +273,11 @@
 
         h2 {
             margin: 0 0 7px;
-            font-family: 'Outfit', system-ui, sans-serif;
             font-size: 25px;
             font-weight: 600;
             line-height: 1.25;
             color: #14202e;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.021em;
         }
         .lead { margin: 0 0 22px; font-size: 14px; line-height: 1.55; color: #6b737d; }
         h2.only { margin-bottom: 20px; }
@@ -425,7 +430,7 @@
             box-sizing: border-box;
             padding: 11px 22px;
             border-radius: 11px;
-            font-family: 'Outfit', system-ui, sans-serif;
+            font-family: inherit;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;

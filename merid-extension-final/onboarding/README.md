@@ -19,9 +19,9 @@ is both far heavier and far smaller on screen than it should be. The card's
 plate is set to the artwork's own 1.85:1, so replacements should keep roughly
 that shape or they will letterbox.
 
-A cut-out with a transparent background is fine too. The card lays a
-cream plate (`#fdfcf7`) behind the picture before drawing it, so dark text
-does not sink into the navy panel around it.
+A cut-out with a transparent background is fine too. The sheet is paper
+coloured and the card behind the picture is white, so dark text in a cut-out
+sits on light either way.
 
 ## Nothing here yet?
 
