@@ -9,6 +9,7 @@ const files = [
     'content.js',
     'status-badge.js',
     'tutorial.js',
+    'onboarding.js',
     'popup.js',
     'options.js',
     'content-bridge.js',

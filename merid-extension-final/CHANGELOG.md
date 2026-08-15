@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.6 — 2026-08-15
+
+**A short setup on the day you install Merid.**
+
+- Installing now asks which vocabulary you want and how the English should appear, rather than starting on our defaults without telling you either was a choice.
+- The three display modes are shown instead of described, so you can see the difference before picking one.
+- Reopen the setup any time from "Hướng dẫn nhanh" in the popup.
+
 ## 1.6.4 — 2026-08-13
 
 **Privacy fix for direct messages, plus popup and reading-flow polish.**

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
   "homepage_url": "https://merid.site",
@@ -28,6 +28,7 @@
         "lib/profile.js",
         "status-badge.js",
         "tutorial.js",
+        "onboarding.js",
         "content.js"
       ],
       "css": [
@@ -61,7 +62,11 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "tutorial-vi.webp"
+        "tutorial-vi.webp",
+        "logo-mark.png",
+        "onboarding/mode-replace.webp",
+        "onboarding/mode-highlight.webp",
+        "onboarding/mode-beside.webp"
       ],
       "matches": [
         "<all_urls>"

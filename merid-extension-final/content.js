@@ -1244,6 +1244,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // A false answer is what sends the popup to open it as a tab instead.
         sendResponse({ ok });
     }
+    // The popup asking for the first-run wizard. Same bargain as the poster
+    // above: answered wherever the content script runs, and a false answer is
+    // what sends the popup to open onboarding.html as a tab instead.
+    if (request.action === 'showOnboarding') {
+        let ok = false;
+        try { ok = !!(window.MeridOnboarding && window.MeridOnboarding.open()); } catch (e) { ok = false; }
+        sendResponse({ ok });
+    }
     return false;
 });
 
