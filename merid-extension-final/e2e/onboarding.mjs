@@ -242,10 +242,26 @@ if (hasArt) {
         'Beside shows both', drawn ? drawn[2] : 'n/a');
 }
 
+// The line under the row explains whichever mode is selected, and must be
+// showing the current one before anything is clicked - not waiting empty.
+const aboutStart = await probe(page, (root) => root.querySelector('.about').textContent);
+check(aboutStart && /tô đậm/i.test(aboutStart),
+    'the description under the row describes the selected mode from the start', aboutStart);
+
 await clickIn(page, '.modes .pick[data-value="beside"]');
 check(await probe(page, (root) =>
     root.querySelector('.modes .pick[data-value="beside"]').classList.contains('on')),
     'clicking a mode holds it selected');
+
+const aboutBeside = await probe(page, (root) => root.querySelector('.about').textContent);
+check(aboutBeside && aboutBeside !== aboutStart && /bên cạnh/i.test(aboutBeside),
+    'and the description follows the click', aboutBeside);
+
+await clickIn(page, '.modes .pick[data-value="replace"]');
+const aboutReplace = await probe(page, (root) => root.querySelector('.about').textContent);
+check(aboutReplace && /thay trực tiếp/i.test(aboutReplace),
+    'each mode has its own description', aboutReplace);
+await clickIn(page, '.modes .pick[data-value="beside"]');
 
 // =====================================================================
 // 4. Back and forth keeps the answers

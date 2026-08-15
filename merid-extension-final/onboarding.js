@@ -71,7 +71,7 @@
         next: 'Tiếp tục',
 
         welcomeTitle: 'Chào mừng đến với Merid',
-        welcomeLead: 'Vừa lướt web vừa học tiếng Anh, không cần mở sách vở.',
+        welcomeLead: 'Vừa lướt web vừa học tiếng Anh.',
         welcomeStart: 'Bắt đầu',
 
         levelTitle: 'Chọn độ khó',
@@ -92,6 +92,13 @@
             replace: 'Thay thế',
             highlight: 'Tô đậm',
             beside: 'Kế bên'
+        },
+        // Shown under the row, for whichever card is selected. The two-word
+        // label on the card names the mode; this says what it does.
+        modeAbout: {
+            replace: 'Thay trực tiếp từ tiếng Việt bằng từ tiếng Anh tương đương.',
+            highlight: 'Giữ nguyên tiếng Việt, chỉ tô đậm những từ đáng học.',
+            beside: 'Giữ từ gốc và đặt từ tiếng Anh ngay bên cạnh.'
         },
         modeBadge: 'Bài viết tốt',
 
@@ -401,6 +408,31 @@
         }
         .mode .desc { display: block; margin-top: 1px; font-size: 12.5px; color: #949ba4; }
 
+        /* What the selected mode actually does. It sits under the row rather
+           than inside a card because it is a sentence, and a sentence in a card
+           this size wraps to four lines and pushes the picture out of shape. */
+        .about {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 14px 0 0;
+            padding: 12px 15px;
+            background: #ffffff;
+            border: 1px solid #ebe7dd;
+            border-radius: 11px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #5b6572;
+        }
+        .about::before {
+            content: '';
+            flex: 0 0 auto;
+            width: 6px;
+            height: 6px;
+            border-radius: 99px;
+            background: #f4be37;
+        }
+
         /* ---------- step 4 ---------- */
         .chips { display: flex; flex-wrap: wrap; gap: 8px; }
         .chip {
@@ -564,7 +596,7 @@
         const g = grid('modes', VI.modeTitle);
         MODE_ORDER.forEach(mode => {
             const b = card(mode, m => { picked.replacementMode = m; paint(); });
-            b.setAttribute('aria-label', VI.modeName[mode] + '. ' + VI.modeDesc[mode]);
+            b.setAttribute('aria-label', VI.modeName[mode] + ', ' + VI.modeDesc[mode] + '. ' + VI.modeAbout[mode]);
 
             const box = el('span', 'mode');
             const plate = el('span', 'plate');
@@ -592,6 +624,12 @@
         });
 
         s.appendChild(g);
+        // aria-hidden: the same sentence is already in each card's own label,
+        // where a screen reader meets it on the way past. Live here as well and
+        // it would be read twice for every arrow key.
+        const about = el('p', 'about');
+        about.setAttribute('aria-hidden', 'true');
+        s.appendChild(about);
         return s;
     }
 
@@ -635,6 +673,9 @@
             b.setAttribute('aria-checked', String(on));
             b.tabIndex = on ? 0 : -1;
         });
+
+        const about = root.querySelector('.about');
+        if (about) about.textContent = VI.modeAbout[picked.replacementMode] || '';
 
         const level = root.querySelector('.sum-level');
         const mode = root.querySelector('.sum-mode');
