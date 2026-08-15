@@ -2,10 +2,9 @@
 // Merid - the first-run wizard
 //
 // Four questions asked once, on the day Merid is installed: hello, which
-// vocabulary, how should the words appear, done. Before this the answers were
-// there to be found in the popup, which meant a new reader met Merid already
-// running on whatever defaults we picked for them - C1 words, highlighted -
-// without ever being told those were choices.
+// vocabulary, how should the words appear, done. Before this a new reader met
+// Merid already running on whatever defaults we picked for them - C1 words,
+// highlighted - without ever being told those were choices.
 //
 // Two ways in, one implementation, the same arrangement tutorial.js uses:
 //
@@ -21,6 +20,13 @@
 // Everything lives in an open shadow root, like status-badge.js and
 // tutorial.js: this sits on pages whose CSS we do not control, and neither
 // side may reach into the other.
+//
+// On paper, not on the navy the popup and Settings wear. The three mode
+// pictures are screenshots of an article, and an article is white: on a dark
+// panel each one needed its own pale plate to sit on, and the step became three
+// bright rectangles floating on navy. A light sheet puts them on the ground the
+// reader already associates with reading, and the gold has something to carry
+// against.
 //
 // Vietnamese only, deliberately. The rest of the extension's own UI goes
 // through lib/i18n.js and _locales/, but the people meeting this screen are
@@ -56,57 +62,48 @@
 
     const STEP_COUNT = 4;
 
+    // Short on purpose. Nobody reads a setup screen; they look at it, decide,
+    // and press the button. Anything here that is not the question or the
+    // answer is in the way of that.
     const VI = {
         skip: 'Bỏ qua',
         back: 'Quay lại',
         next: 'Tiếp tục',
-        stepOf: (n, total) => `Bước ${n}/${total}`,
 
-        // 1 - welcome
         welcomeTitle: 'Chào mừng đến với Merid',
-        welcomeLead: 'Merid dạy bạn từ vựng tiếng Anh ngay trong lúc bạn đọc báo, đọc truyện, lướt mạng — không cần học riêng một buổi nào.',
-        welcomeP1: 'Thay vài từ tiếng Việt trên trang bằng từ tiếng Anh tương đương',
-        welcomeP2: 'Rê chuột vào từ để xem nghĩa, phiên âm và cách phát âm',
-        welcomeP3: 'Mọi thứ chạy ngay trên máy bạn — không gửi trang bạn đọc đi đâu cả',
+        welcomeLead: 'Vừa đọc báo vừa học từ tiếng Anh, không cần mở sách vở.',
         welcomeStart: 'Bắt đầu',
 
-        // 2 - dataset
-        levelTitle: 'Chọn bộ từ vựng',
-        levelLead: 'Merid sẽ chỉ lấy từ trong bộ bạn chọn. Đổi lại bất cứ lúc nào trong bảng điều khiển.',
+        levelTitle: 'Bạn muốn học bộ từ nào?',
         levelDesc: {
-            sat: 'Từ vựng luyện thi SAT',
-            c1: 'Trình độ nâng cao (CEFR C1)',
-            c2: 'Trình độ thành thạo (CEFR C2)',
-            all: 'Gộp cả ba bộ ở trên'
+            sat: 'Luyện thi SAT',
+            c1: 'Nâng cao',
+            c2: 'Thành thạo',
+            all: 'Cả ba bộ'
         },
 
-        // 3 - display mode
-        modeTitle: 'Cách hiển thị',
-        modeLead: 'Chọn cách từ tiếng Anh xuất hiện trong bài viết.',
+        modeTitle: 'Từ tiếng Anh hiện ra sao?',
         modeName: {
-            replace: 'Replace (thay thế)',
-            highlight: 'Highlight (tô đậm)',
-            beside: 'Beside (kế bên)'
+            replace: 'Replace',
+            highlight: 'Highlight',
+            beside: 'Beside'
         },
         modeDesc: {
-            replace: 'Thay trực tiếp từ tiếng Việt',
-            highlight: 'Tô đậm từ tiếng Việt',
-            beside: 'Để từ tiếng Anh kế bên'
+            replace: 'Thay thế',
+            highlight: 'Tô đậm',
+            beside: 'Kế bên'
         },
         modeBadge: 'Bài viết tốt',
 
-        // 4 - done
         doneTitle: 'Finish & enjoy!',
-        doneLead: 'Xong rồi. Mở một trang báo tiếng Việt bất kỳ và Merid sẽ bắt đầu làm việc.',
-        summaryLevel: 'Bộ từ vựng',
-        summaryMode: 'Cách hiển thị',
+        doneLead: 'Mở một trang tiếng Việt bất kỳ là Merid chạy ngay.',
         doneCta: 'Bắt đầu đọc',
         saving: 'Đang lưu…'
     };
 
-    // The sentence drawn in a mode card when its picture is missing. One
-    // sentence for all three, because the difference between the modes is only
-    // visible when nothing else differs.
+    // The sentence shown on step one, and drawn in a mode card when its picture
+    // is missing. One sentence throughout, because the difference between the
+    // modes is only visible when nothing else differs.
     const SAMPLE = {
         before: 'Nam ca sĩ đã ',
         vi: 'hợp tác',
@@ -154,17 +151,17 @@
            does nothing to it. */
         [hidden] { display: none !important; }
 
-        /* Outfit and Inter are the extension's own faces, but @font-face
-           cannot be registered from inside a shadow root - only the document
-           can do that. onboarding.html does, so the standalone wizard gets
-           them; over a page there is no such declaration and this falls
-           through to the system stack, which is what tutorial.js uses too. */
+        /* Outfit and Inter are the extension's own faces, but @font-face cannot
+           be registered from inside a shadow root - only a document can do
+           that. onboarding.html does, so the standalone wizard gets them; over
+           a page there is no such declaration and this falls through to the
+           system stack. */
         .backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(4, 9, 20, 0.72);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
+            background: rgba(10, 18, 30, 0.55);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -176,171 +173,131 @@
             transition: opacity 180ms ease;
         }
         .backdrop.show { opacity: 1; }
-        .backdrop.standalone { position: absolute; background: #050b17; backdrop-filter: none; }
+        .backdrop.standalone {
+            position: absolute;
+            background: #ece7dc;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
 
         .sheet {
             position: relative;
             display: flex;
             flex-direction: column;
-            /* :host { all: initial } resets this to content-box, and the 1px
-               border would otherwise put the sheet 2px over its stated width. */
             box-sizing: border-box;
-            width: min(94vw, 760px);
-            max-height: min(92vh, 700px);
-            background: #0a192f;
-            border: 1px solid rgba(244, 190, 55, 0.14);
-            border-radius: 20px;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+            width: min(94vw, 720px);
+            max-height: min(92vh, 660px);
+            background: #fbfaf7;
+            border-radius: 22px;
+            box-shadow: 0 24px 70px rgba(12, 20, 33, 0.3), 0 2px 6px rgba(12, 20, 33, 0.1);
             overflow: hidden;
-            transform: translateY(10px) scale(0.985);
-            transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+            transform: translateY(10px) scale(0.99);
+            transition: transform 240ms cubic-bezier(0.2, 0.8, 0.3, 1);
         }
         .backdrop.show .sheet { transform: none; }
 
-        /* A hairline of Merid's gold along the top edge. */
-        .sheet::before {
-            content: '';
+        /* Progress as a hairline filling across the top. It replaced a row of
+           dots, a "BƯỚC 2/4" kicker and a "Bước 2/4" caption in the footer,
+           which between them said the same thing three times. */
+        .rail {
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #f4be37, transparent);
+            height: 3px;
+            background: #eeeae0;
+        }
+        .rail span {
+            display: block;
+            height: 100%;
+            width: 25%;
+            background: #f4be37;
+            transition: width 320ms cubic-bezier(0.2, 0.8, 0.3, 1);
         }
 
         /* ---------- head ---------- */
         .head {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 18px 26px 0;
+            padding: 22px 30px 0;
             flex: 0 0 auto;
         }
         .brand {
             display: flex;
             align-items: center;
-            gap: 9px;
+            gap: 8px;
             font-family: 'Outfit', system-ui, sans-serif;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
-            color: #e6f1ff;
-            letter-spacing: 0.01em;
+            color: #16202e;
         }
-        .brand img { width: 24px; height: 24px; border-radius: 6px; display: block; }
-
-        .dots { display: flex; gap: 6px; margin-left: auto; }
-        .dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 99px;
-            background: rgba(230, 241, 255, 0.18);
-            border: 0;
-            padding: 0;
-            transition: width 220ms ease, background 220ms ease;
-        }
-        .dot.done { background: rgba(244, 190, 55, 0.45); cursor: pointer; }
-        .dot.here { width: 20px; background: #f4be37; }
+        /* The mark is drawn for a navy panel, so it keeps one of its own here. */
+        .brand img { width: 22px; height: 22px; border-radius: 6px; display: block; background: #0a192f; }
 
         .skip {
             all: unset;
-            margin-left: 4px;
-            padding: 5px 9px;
-            border-radius: 7px;
-            color: #8892b0;
-            font-size: 12px;
+            margin-left: auto;
+            padding: 6px 10px;
+            border-radius: 8px;
+            color: #9aa1a9;
+            font-size: 12.5px;
             cursor: pointer;
             transition: color 140ms ease, background 140ms ease;
         }
-        .skip:hover { color: #e6f1ff; background: rgba(230, 241, 255, 0.07); }
-        .skip:focus-visible { outline: 2px solid #f4be37; outline-offset: 2px; }
+        .skip:hover { color: #16202e; background: rgba(20, 32, 46, 0.05); }
+        .skip:focus-visible { outline: 2px solid #16202e; outline-offset: 2px; }
 
         /* ---------- body ---------- */
+        /* One step at a time, and they differ in height. The floor stops the
+           sheet resizing under the reader on every Next; centring is what keeps
+           the leftover room on the shorter ones from reading as a gap. */
         .body {
             flex: 1 1 auto;
             display: flex;
             flex-direction: column;
             justify-content: center;
             overflow-y: auto;
-            padding: 20px 26px 4px;
-            min-height: 336px;
+            padding: 10px 30px 0;
+            min-height: 316px;
         }
         .step { display: none; }
-        .step.here { display: block; animation: rise 260ms cubic-bezier(0.2, 0.8, 0.3, 1); }
+        .step.here { display: block; animation: rise 280ms cubic-bezier(0.2, 0.8, 0.3, 1); }
         @keyframes rise {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(6px); }
             to   { opacity: 1; transform: none; }
         }
 
-        .kicker {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-            color: #f4be37;
-            margin: 0 0 8px;
-        }
         h2 {
-            margin: 0 0 8px;
+            margin: 0 0 7px;
             font-family: 'Outfit', system-ui, sans-serif;
-            font-size: 24px;
+            font-size: 25px;
             font-weight: 600;
             line-height: 1.25;
-            color: #e6f1ff;
-            letter-spacing: -0.01em;
+            color: #14202e;
+            letter-spacing: -0.02em;
         }
-        .lead {
-            margin: 0 0 20px;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #8892b0;
-            max-width: 58ch;
-        }
+        .lead { margin: 0 0 22px; font-size: 14px; line-height: 1.55; color: #6b737d; }
+        h2.only { margin-bottom: 20px; }
 
         /* ---------- step 1 ---------- */
-        .hero {
-            display: grid;
-            place-items: center;
-            width: 66px;
-            height: 66px;
-            margin: 6px 0 18px;
-            border-radius: 18px;
-            background: rgba(244, 190, 55, 0.1);
-            border: 1px solid rgba(244, 190, 55, 0.28);
-        }
-        .hero img { width: 38px; height: 38px; display: block; }
+        .mark { display: block; width: 46px; height: 46px; margin-bottom: 18px; border-radius: 13px; background: #0a192f; }
 
-        .points { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 11px; }
-        .points li {
-            display: flex;
-            align-items: flex-start;
-            gap: 11px;
-            font-size: 13.5px;
-            line-height: 1.55;
-            color: #ccd6f6;
-        }
-        .tick {
-            flex: 0 0 auto;
-            display: grid;
-            place-items: center;
-            width: 19px;
-            height: 19px;
-            margin-top: 1px;
-            border-radius: 99px;
-            background: rgba(244, 190, 55, 0.14);
-            color: #f4be37;
-            font-size: 11px;
-            font-weight: 700;
+        /* One line of the thing itself, instead of a list of promises about it. */
+        .taste {
+            margin: 0;
+            padding: 16px 18px;
+            background: #ffffff;
+            border: 1px solid #ebe7dd;
+            border-radius: 13px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #2b3440;
         }
 
-        /* ---------- step 2: the dataset cards ---------- */
-        /* Four across, like .dataset-btns in the popup - the same shape the
-           reader will meet again there. Two-up once that would squeeze the
-           labels. */
-        .levels {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
+        /* ---------- the two grids ---------- */
+        .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         @media (max-width: 620px) {
             .levels { grid-template-columns: repeat(2, 1fr); }
+            .modes { grid-template-columns: 1fr; }
         }
 
         .pick {
@@ -348,220 +305,142 @@
             box-sizing: border-box;
             display: block;
             position: relative;
-            background: #112240;
-            border: 1.5px solid #1d2d50;
-            border-radius: 13px;
+            background: #ffffff;
+            border: 1.5px solid #e9e5db;
+            border-radius: 14px;
             cursor: pointer;
-            transition: border-color 160ms ease, background 160ms ease,
-                        transform 160ms ease, box-shadow 160ms ease;
+            transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
         }
         .pick:hover {
             border-color: #f4be37;
-            background: #16294a;
             transform: translateY(-2px);
-            box-shadow: 0 10px 26px rgba(244, 190, 55, 0.13);
+            box-shadow: 0 8px 22px rgba(20, 32, 46, 0.09);
         }
-        .pick:focus-visible { outline: 2px solid #f4be37; outline-offset: 3px; }
+        .pick:focus-visible { outline: 2px solid #16202e; outline-offset: 3px; }
         .pick.on {
             border-color: #f4be37;
-            background: #16294a;
-            box-shadow: 0 0 0 1px #f4be37 inset, 0 10px 26px rgba(244, 190, 55, 0.16);
+            box-shadow: 0 0 0 1.5px #f4be37, 0 8px 22px rgba(244, 190, 55, 0.22);
         }
 
-        .level { display: block; padding: 20px 12px 15px; text-align: center; }
-        .level .name {
-            display: block;
-            font-family: 'Outfit', system-ui, sans-serif;
-            font-size: 17px;
-            font-weight: 700;
-            color: #8892b0;
-            transition: color 160ms ease;
-        }
-        .pick:hover .level .name, .pick.on .level .name { color: #f4be37; }
-        .level .desc {
-            display: block;
-            margin-top: 5px;
-            font-size: 11.5px;
-            line-height: 1.45;
-            color: #64748b;
-        }
-
-        /* The tick that marks the chosen card, in both grids. */
-        .mark {
+        .tick {
             position: absolute;
-            top: 9px;
-            right: 9px;
+            top: 10px;
+            right: 10px;
             display: grid;
             place-items: center;
             width: 19px;
             height: 19px;
             border-radius: 99px;
             background: #f4be37;
-            color: #0a192f;
+            color: #16202e;
             font-size: 11px;
             font-weight: 800;
             opacity: 0;
             transform: scale(0.6);
-            transition: opacity 160ms ease, transform 160ms ease;
+            transition: opacity 150ms ease, transform 150ms ease;
             z-index: 2;
         }
-        .pick.on .mark { opacity: 1; transform: none; }
+        .pick.on .tick { opacity: 1; transform: none; }
 
-        /* ---------- step 3: the mode cards ---------- */
-        .modes {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+        /* ---------- step 2 ---------- */
+        /* The card innards are spans, because a <button> may not hold block-level
+           elements. Left inline the name and the hint run together on one line
+           and spill past the card's edge, so each is told to be a block. */
+        .level { display: block; padding: 21px 12px 18px; text-align: center; }
+        .level .name {
+            display: block;
+            font-family: 'Outfit', system-ui, sans-serif;
+            font-size: 19px;
+            font-weight: 700;
+            color: #14202e;
+            letter-spacing: -0.01em;
         }
-        @media (max-width: 620px) {
-            .modes { grid-template-columns: 1fr; }
-        }
+        .level .desc { display: block; margin-top: 3px; font-size: 12px; color: #949ba4; }
 
-        .mode { display: block; padding: 11px 11px 13px; }
-
-        /* A cream plate behind the picture. The screenshots are cut out with
-           no background of their own, and their text is dark - straight onto
-           the navy panel they would sink into it. This is also how the sample
-           in the brief looks: white cards on cream. */
+        /* ---------- step 3 ---------- */
+        .mode { display: block; padding: 10px 10px 12px; }
         .plate {
             display: flex;
-            position: relative;
             border-radius: 9px;
-            background: #fdfcf7;
-            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #eeeae0;
             overflow: hidden;
             aspect-ratio: 1.85;
-            display: flex;
-            flex-direction: column;
         }
-        .plate img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-        }
+        .plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-        /* The drawn stand-in, used until a picture is dropped in. */
-        .demo {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            text-align: left;
-        }
+        /* The drawn stand-in, used when a picture is missing. */
+        .demo { display: flex; flex-direction: column; padding: 9px 10px; text-align: left; }
         .demo-badge {
             align-self: flex-start;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
             padding: 3px 7px;
+            margin-bottom: 6px;
             border-radius: 5px;
             background: #1f9d55;
             color: #ffffff;
             font-size: 8.5px;
             font-weight: 700;
-            letter-spacing: 0.01em;
-            margin-bottom: 7px;
         }
-        .demo-text {
-            font-size: 10px;
-            line-height: 1.65;
-            color: #2c3444;
-            overflow: hidden;
-        }
-        /* The same marking content.css puts on a word in a real page:
-           two-pixel gold underline, an eighth-opacity gold wash. */
-        .w {
-            border-bottom: 2px solid #f4be37;
-            background-color: rgba(244, 190, 55, 0.14);
-            padding: 0 1px;
-        }
+        .demo-text { margin: 0; font-size: 10px; line-height: 1.6; color: #2c3444; overflow: hidden; }
+        /* The same marking content.css puts on a word in a real page. */
+        .w { border-bottom: 2px solid #f4be37; background-color: rgba(244, 190, 55, 0.16); padding: 0 1px; }
         .w.en { color: #0a3d91; font-weight: 600; }
 
         .mode .name {
             display: block;
             margin-top: 11px;
             font-family: 'Outfit', system-ui, sans-serif;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
-            color: #ccd6f6;
-            transition: color 160ms ease;
+            color: #14202e;
         }
-        .pick:hover .mode .name, .pick.on .mode .name { color: #f4be37; }
-        .mode .desc {
-            display: block;
-            margin-top: 3px;
-            font-size: 11.5px;
-            line-height: 1.45;
-            color: #64748b;
-        }
+        .mode .desc { display: block; margin-top: 1px; font-size: 12.5px; color: #949ba4; }
 
         /* ---------- step 4 ---------- */
-        .seal {
-            display: grid;
-            place-items: center;
-            width: 58px;
-            height: 58px;
-            margin: 4px 0 18px;
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 15px;
+            background: #ffffff;
+            border: 1px solid #e9e5db;
             border-radius: 99px;
-            background: rgba(31, 157, 85, 0.16);
-            border: 1px solid rgba(31, 157, 85, 0.45);
-            color: #34d399;
-            font-size: 26px;
-            font-weight: 700;
+            font-size: 12.5px;
+            color: #949ba4;
         }
-        .summary {
-            display: grid;
-            gap: 9px;
-            margin-top: 4px;
-            padding: 15px 17px;
-            background: #112240;
-            border: 1px solid #1d2d50;
-            border-radius: 13px;
-        }
-        .srow { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-        .srow .k { color: #8892b0; }
-        .srow .v {
-            margin-left: auto;
-            font-family: 'Outfit', system-ui, sans-serif;
-            font-weight: 600;
-            color: #f4be37;
-        }
+        .chip b { font-family: 'Outfit', system-ui, sans-serif; font-weight: 600; color: #14202e; }
 
         /* ---------- foot ---------- */
         .foot {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 18px 26px 22px;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 24px 30px 26px;
             flex: 0 0 auto;
         }
-        .count { margin-right: auto; font-size: 12px; color: #64748b; font-variant-numeric: tabular-nums; }
-
         .btn {
             all: unset;
             box-sizing: border-box;
-            padding: 10px 20px;
-            border-radius: 10px;
+            padding: 11px 22px;
+            border-radius: 11px;
             font-family: 'Outfit', system-ui, sans-serif;
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             text-align: center;
-            transition: background 160ms ease, color 160ms ease,
-                        border-color 160ms ease, opacity 160ms ease;
+            transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
         }
-        .btn:focus-visible { outline: 2px solid #f4be37; outline-offset: 2px; }
-        .btn.ghost {
-            border: 1px solid #1d2d50;
-            color: #8892b0;
-        }
-        .btn.ghost:hover { border-color: #f4be37; color: #f4be37; }
-        .btn.solid { background: #f4be37; color: #020c1b; }
-        .btn.solid:hover { background: #ffd15c; }
-        .btn.solid[disabled] { opacity: 0.6; cursor: default; background: #f4be37; }
+        .btn:focus-visible { outline: 2px solid #16202e; outline-offset: 2px; }
+        .btn.ghost { color: #6b737d; }
+        .btn.ghost:hover { color: #14202e; background: rgba(20, 32, 46, 0.05); }
+        .btn.solid { background: #14202e; color: #fbfaf7; }
+        .btn.solid:hover { background: #24374d; }
+        .btn.solid[disabled] { opacity: 0.55; cursor: default; background: #14202e; }
 
         @media (prefers-reduced-motion: reduce) {
-            .backdrop, .sheet, .pick, .dot, .mark { transition: none; }
+            .backdrop, .sheet, .pick, .tick, .rail span { transition: none; }
             .step.here { animation: none; }
         }
     `;
@@ -582,35 +461,32 @@
     }
 
     /**
-     * The sentence, marked up for one mode - the stand-in a card shows until
-     * its picture arrives.
+     * The sample sentence, marked up for one mode, appended into `into`.
      *
      * Mirrors what content.js:1048-1049 actually does: 'highlight' keeps the
      * Vietnamese, 'beside' appends the English in brackets, and anything else
      * swaps the word outright.
      */
+    function sentence(mode, into) {
+        into.appendChild(document.createTextNode(SAMPLE.before));
+        if (mode === 'highlight') {
+            into.appendChild(el('span', 'w', SAMPLE.vi));
+        } else if (mode === 'beside') {
+            into.appendChild(el('span', 'w', SAMPLE.vi));
+            into.appendChild(document.createTextNode(' '));
+            into.appendChild(el('span', 'w en', '(' + SAMPLE.en + ')'));
+        } else {
+            into.appendChild(el('span', 'w en', SAMPLE.en));
+        }
+        into.appendChild(document.createTextNode(SAMPLE.after));
+        return into;
+    }
+
+    /** A mode card's stand-in, for when its picture is missing. */
     function drawMode(mode) {
         const demo = el('div', 'demo');
-
-        const badge = el('span', 'demo-badge');
-        badge.append(el('span', null, '★'), el('span', null, VI.modeBadge));
-        demo.appendChild(badge);
-
-        const p = el('p', 'demo-text');
-        p.appendChild(document.createTextNode(SAMPLE.before));
-
-        if (mode === 'highlight') {
-            p.appendChild(el('span', 'w', SAMPLE.vi));
-        } else if (mode === 'beside') {
-            p.appendChild(el('span', 'w', SAMPLE.vi));
-            p.appendChild(document.createTextNode(' '));
-            p.appendChild(el('span', 'w en', '(' + SAMPLE.en + ')'));
-        } else {
-            p.appendChild(el('span', 'w en', SAMPLE.en));
-        }
-
-        p.appendChild(document.createTextNode(SAMPLE.after));
-        demo.appendChild(p);
+        demo.appendChild(el('span', 'demo-badge', VI.modeBadge));
+        demo.appendChild(sentence(mode, el('p', 'demo-text')));
         return demo;
     }
 
@@ -618,17 +494,23 @@
      * One selectable card, in either grid.
      *
      * `radio` rather than `button`: the four levels are one choice between
-     * four, and a screen reader should hear it that way. Arrow keys come free
-     * with the role only in a real radiogroup, which is why the grids carry it.
+     * four, and a screen reader should hear it that way.
      */
     function card(value, onPick) {
         const b = el('button', 'pick');
         b.type = 'button';
         b.setAttribute('role', 'radio');
         b.dataset.value = value;
-        b.appendChild(el('span', 'mark', '✓'));
+        b.appendChild(el('span', 'tick', '✓'));
         b.addEventListener('click', () => onPick(value));
         return b;
+    }
+
+    function grid(className, label) {
+        const g = el('div', className);
+        g.setAttribute('role', 'radiogroup');
+        g.setAttribute('aria-label', label);
+        return g;
     }
 
     // ---------------------------------------------------------------
@@ -637,36 +519,23 @@
 
     function stepWelcome() {
         const s = el('section', 'step');
-
-        const hero = el('div', 'hero');
-        const mark = el('img');
-        mark.src = iconUrl('logo-mark.png');
-        mark.alt = '';
-        hero.appendChild(mark);
-
-        const list = el('ul', 'points');
-        [VI.welcomeP1, VI.welcomeP2, VI.welcomeP3].forEach(text => {
-            const li = el('li');
-            li.append(el('span', 'tick', '✓'), el('span', null, text));
-            list.appendChild(li);
-        });
-
-        s.append(hero, el('h2', null, VI.welcomeTitle), el('p', 'lead', VI.welcomeLead), list);
+        const logo = el('img', 'mark');
+        logo.src = iconUrl('logo-mark.png');
+        logo.alt = '';
+        s.append(
+            logo,
+            el('h2', null, VI.welcomeTitle),
+            el('p', 'lead', VI.welcomeLead),
+            sentence('beside', el('p', 'taste'))
+        );
         return s;
     }
 
     function stepLevel() {
         const s = el('section', 'step');
-        s.append(
-            el('p', 'kicker', VI.stepOf(2, STEP_COUNT)),
-            el('h2', null, VI.levelTitle),
-            el('p', 'lead', VI.levelLead)
-        );
+        s.appendChild(el('h2', 'only', VI.levelTitle));
 
-        const grid = el('div', 'levels');
-        grid.setAttribute('role', 'radiogroup');
-        grid.setAttribute('aria-label', VI.levelTitle);
-
+        const g = grid('levels', VI.levelTitle);
         levelKeys().forEach(key => {
             const b = card(key, k => { picked.datasetKey = k; paint(); });
             const box = el('span', 'level');
@@ -674,30 +543,20 @@
                 el('span', 'name', levelLabel(key)),
                 el('span', 'desc', VI.levelDesc[key] || '')
             );
-            // The name is the accessible one; the blurb under it repeats in the
-            // label, which is why the whole card carries it rather than aria
-            // being left to guess from two spans.
             b.setAttribute('aria-label', levelLabel(key) + '. ' + (VI.levelDesc[key] || ''));
             b.appendChild(box);
-            grid.appendChild(b);
+            g.appendChild(b);
         });
 
-        s.appendChild(grid);
+        s.appendChild(g);
         return s;
     }
 
     function stepMode() {
         const s = el('section', 'step');
-        s.append(
-            el('p', 'kicker', VI.stepOf(3, STEP_COUNT)),
-            el('h2', null, VI.modeTitle),
-            el('p', 'lead', VI.modeLead)
-        );
+        s.appendChild(el('h2', 'only', VI.modeTitle));
 
-        const grid = el('div', 'modes');
-        grid.setAttribute('role', 'radiogroup');
-        grid.setAttribute('aria-label', VI.modeTitle);
-
+        const g = grid('modes', VI.modeTitle);
         MODE_ORDER.forEach(mode => {
             const b = card(mode, m => { picked.replacementMode = m; paint(); });
             b.setAttribute('aria-label', VI.modeName[mode] + '. ' + VI.modeDesc[mode]);
@@ -709,16 +568,12 @@
             // loads. That way the card is right from the first frame, and a
             // missing file is simply the drawing staying put - no flash, no
             // broken-image icon, no waiting.
-            const drawn = drawMode(mode);
-            plate.appendChild(drawn);
+            plate.appendChild(drawMode(mode));
 
             const url = iconUrl(MODE_IMAGE[mode]);
             if (url) {
                 const pic = new Image();
-                pic.onload = () => {
-                    pic.alt = '';
-                    plate.replaceChildren(pic);
-                };
+                pic.onload = () => { pic.alt = ''; plate.replaceChildren(pic); };
                 pic.src = url;
             }
 
@@ -728,25 +583,25 @@
                 el('span', 'desc', VI.modeDesc[mode])
             );
             b.appendChild(box);
-            grid.appendChild(b);
+            g.appendChild(b);
         });
 
-        s.appendChild(grid);
+        s.appendChild(g);
         return s;
     }
 
     function stepDone() {
         const s = el('section', 'step');
-        s.append(el('div', 'seal', '✓'), el('h2', null, VI.doneTitle), el('p', 'lead', VI.doneLead));
+        s.append(el('h2', null, VI.doneTitle), el('p', 'lead', VI.doneLead));
 
-        const sum = el('div', 'summary');
-        const rowLevel = el('div', 'srow');
-        rowLevel.append(el('span', 'k', VI.summaryLevel), el('span', 'v sum-level', ''));
-        const rowMode = el('div', 'srow');
-        rowMode.append(el('span', 'k', VI.summaryMode), el('span', 'v sum-mode', ''));
-        sum.append(rowLevel, rowMode);
+        const chips = el('div', 'chips');
+        const a = el('span', 'chip');
+        a.appendChild(el('b', 'sum-level', ''));
+        const b = el('span', 'chip');
+        b.appendChild(el('b', 'sum-mode', ''));
+        chips.append(a, b);
 
-        s.appendChild(sum);
+        s.appendChild(chips);
         return s;
     }
 
@@ -760,11 +615,8 @@
 
         root.querySelectorAll('.step').forEach((s, i) => s.classList.toggle('here', i === step));
 
-        root.querySelectorAll('.dot').forEach((d, i) => {
-            d.classList.toggle('here', i === step);
-            d.classList.toggle('done', i < step);
-            d.setAttribute('aria-current', i === step ? 'step' : 'false');
-        });
+        const fill = root.querySelector('.rail span');
+        if (fill) fill.style.width = ((step + 1) / STEP_COUNT * 100) + '%';
 
         root.querySelectorAll('.levels .pick').forEach(b => {
             const on = b.dataset.value === picked.datasetKey;
@@ -787,12 +639,10 @@
         const last = step === STEP_COUNT - 1;
         const back = root.querySelector('.btn-back');
         const next = root.querySelector('.btn-next');
-        const count = root.querySelector('.count');
         const skip = root.querySelector('.skip');
 
         back.hidden = step === 0;
         if (skip) skip.hidden = last;
-        count.textContent = VI.stepOf(step + 1, STEP_COUNT);
         next.textContent = saving ? VI.saving
             : last ? VI.doneCta
                 : step === 0 ? VI.welcomeStart
@@ -906,6 +756,9 @@
         sheet.setAttribute('aria-modal', 'true');
         sheet.setAttribute('aria-label', VI.welcomeTitle);
 
+        const rail = el('div', 'rail');
+        rail.appendChild(el('span'));
+
         // --- head ---
         const head = el('div', 'head');
         const brand = el('div', 'brand');
@@ -914,17 +767,6 @@
         logo.alt = '';
         brand.append(logo, el('span', null, 'Merid'));
 
-        const dots = el('div', 'dots');
-        for (let i = 0; i < STEP_COUNT; i++) {
-            const d = el('button', 'dot');
-            d.type = 'button';
-            d.setAttribute('aria-label', VI.stepOf(i + 1, STEP_COUNT));
-            // Only backwards. Jumping ahead would skip a question whose answer
-            // is about to be saved on the reader's behalf.
-            d.addEventListener('click', () => { if (i < step) go(i); });
-            dots.appendChild(d);
-        }
-
         const skip = el('button', 'skip', VI.skip);
         skip.type = 'button';
         // Skipping is still a decision, so it saves what is on screen - the
@@ -932,7 +774,7 @@
         // without writing would drop them back to being configured by us.
         skip.addEventListener('click', finish);
 
-        head.append(brand, dots, skip);
+        head.append(brand, skip);
 
         // --- body ---
         const body = el('div', 'body');
@@ -940,7 +782,6 @@
 
         // --- foot ---
         const foot = el('div', 'foot');
-        const count = el('span', 'count');
 
         const back = el('button', 'btn ghost btn-back', VI.back);
         back.type = 'button';
@@ -953,9 +794,9 @@
             else go(step + 1);
         });
 
-        foot.append(count, back, next);
+        foot.append(back, next);
 
-        sheet.append(head, body, foot);
+        sheet.append(rail, head, body, foot);
         backdrop.appendChild(sheet);
 
         if (!standalone) {

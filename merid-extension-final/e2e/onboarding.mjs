@@ -145,12 +145,12 @@ if (!appeared) {
     process.exit(1);
 }
 
-check(await probe(page, (root) => root.querySelectorAll('.dot').length === 4),
-    'there are four progress dots');
 check(await probe(page, (root) => root.querySelectorAll('.step').length === 4),
     'there are four steps');
 check(await probe(page, (root) => root.querySelectorAll('.step')[0].classList.contains('here')),
     'it starts on step one');
+check(await probe(page, (root) => root.querySelector('.rail span').style.width === '25%'),
+    'the progress rail starts a quarter filled');
 
 // The page sets `button { padding: 40px }` and a 44px font on everything. If any
 // of it reached in, the sheet would not still be the width its own CSS asks for.
@@ -158,7 +158,7 @@ const sheet = await probe(page, (root) => {
     const r = root.querySelector('.sheet').getBoundingClientRect();
     return { w: Math.round(r.width), h: Math.round(r.height) };
 });
-check(sheet && sheet.w === 760, 'the sheet keeps its own width through the page\'s CSS',
+check(sheet && sheet.w === 720, 'the sheet keeps its own width through the page\'s CSS',
     sheet ? sheet.w + 'px' : 'n/a');
 check(sheet && sheet.h > 200 && sheet.h <= 700, 'and its own height', sheet ? sheet.h + 'px' : 'n/a');
 
@@ -268,6 +268,8 @@ const summary = await probe(page, (root) => ({
     mode: root.querySelector('.sum-mode').textContent
 }));
 check(summary && summary.here, 'the last step is reached');
+check(await probe(page, (root) => root.querySelector('.rail span').style.width === '100%'),
+    'and the rail has filled');
 check(summary && summary.level === 'C2', 'it reports the chosen dataset', summary ? summary.level : 'n/a');
 check(summary && /Beside/.test(summary.mode), 'and the chosen mode', summary ? summary.mode : 'n/a');
 

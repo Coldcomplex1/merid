@@ -7,7 +7,7 @@ Drop them in this folder with exactly these names:
 | --- | --- |
 | `mode-replace.webp` | a Vietnamese word **swapped out** for its English one |
 | `mode-highlight.webp` | the Vietnamese kept, **marked in gold** |
-| `mode-beside.webp` | `tiếng Việt (english)` — the English alongside |
+| `mode-beside.webp` | `tiếng Việt (english)`, the English alongside |
 
 Shoot the same sentence in all three, or the difference between the modes is
 lost in the difference between the paragraphs.
@@ -28,7 +28,7 @@ does not sink into the navy panel around it.
 The wizard does not wait for these. A card whose picture is missing or fails to
 load draws the mode itself instead, in HTML, from the same
 `.vocab-master-highlight` rule (`content.css`) that marks words on a real page.
-Adding the files is a straight swap — no code changes.
+Adding the files is a straight swap, with no code changes.
 
 Whatever lands here must also go in the `FILES` list in `scripts/build.js` and
 in `web_accessible_resources` in `manifest.json`, or it will not ship.
