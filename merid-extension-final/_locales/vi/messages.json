@@ -96,7 +96,7 @@
     }
   },
   "popupSiteAlwaysOff": {
-    "message": "Không bao giờ quét trang này"
+    "message": "Merid không quét trang này"
   },
   "popupSiteAlwaysOffHint": {
     "message": "Merid không chạy trên trang của chính mình"
@@ -105,7 +105,7 @@
     "message": "Merid không chạy trên trang riêng tư như tin nhắn, email hay ngân hàng. Không bật được ở đây."
   },
   "popupPageAlwaysOff": {
-    "message": "Không quét tin nhắn"
+    "message": "Merid không quét tin nhắn"
   },
   "popupPageAlwaysOffHint": {
     "message": "Merid bỏ qua trang tin nhắn. Phần còn lại của $HOST$ vẫn chạy bình thường.",
