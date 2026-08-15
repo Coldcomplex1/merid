@@ -75,7 +75,12 @@ async function openOptions() {
 
 // --- 1. Nothing chosen anywhere: the browser's language decides (English here) ---
 await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ uiLang: 'auto', siteLang: '', datasetKey: 'c1', aiCheckEnabled: false });
+    await chrome.storage.sync.set({
+        uiLang: 'auto', siteLang: '', datasetKey: 'c1', aiCheckEnabled: false,
+        // Installing leaves onboardingPending behind and the wizard is modal, so
+        // without this it opens over the page and swallows the pointer.
+        onboardingDone: true, onboardingPending: false
+    });
 });
 let popup = await openPopup();
 let seen = await readPanel(popup);

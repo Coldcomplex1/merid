@@ -37,6 +37,15 @@ Each script prints a pass/fail list and exits non-zero on failure.
   and options page use. Write the key *and* call `loadVocabulary()`, or the
   test silently runs against the default SAT set.
 
+- **Installing arms the setup wizard, and it is modal.** `onInstalled` writes
+  `onboardingPending: true`, and every one of these scripts is a fresh install.
+  On the first ordinary page the wizard opens over it, covers the article and
+  swallows pointer events, so hovers time out on
+  `<div id="merid-onboarding-host"> intercepts pointer events`. Unless the
+  wizard IS what you are testing, set
+  `{ onboardingDone: true, onboardingPending: false }` alongside the rest of
+  your `chrome.storage.sync.set` setup.
+
 - **A `fetch` stub must only intercept `generativelanguage.googleapis.com`.**
   The worker also `fetch()`es the bundled dataset CSVs through
   `chrome.runtime.getURL`. A blanket stub swallows those too, leaving an empty

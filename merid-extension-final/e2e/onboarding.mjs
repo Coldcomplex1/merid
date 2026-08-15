@@ -30,6 +30,11 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>
 </style></head>
 <body>
 <p>Người dân trong khu vực cho biết họ đã quen với nhịp sống mới trong tuần qua.</p>
+<button id="pagebtn" style="position:fixed;top:0;left:0;width:240px;height:160px;z-index:99">Nút của trang</button>
+<script>
+  document.getElementById('pagebtn')
+    .addEventListener('click', () => { document.body.dataset.pageHit = '1'; });
+</script>
 </body></html>`;
 
 const server = http.createServer((req, res) => {
@@ -317,18 +322,77 @@ check(loaded && loaded.tags.length === 1 && loaded.tags[0] === 'C2',
     'the worker actually loaded the C2 vocabulary', loaded ? JSON.stringify(loaded.tags) : 'n/a');
 
 // =====================================================================
-// 6. Escape closes without saving over the answers
+// 6. There is no way out but the buttons
 // =====================================================================
 await pressOnboarding();
 await until(async () => await probe(page, (root) => !!root.querySelector('.backdrop')));
+
+// Reopened, it must show what the reader actually chose last time rather than
+// the extension's defaults - or "Bỏ qua" would hand back settings they had
+// already moved away from.
+const reopened = await until(async () => {
+    const r = await probe(page, (root) => ({
+        level: root.querySelector('.levels .pick.on')?.dataset.value,
+        mode: root.querySelector('.modes .pick.on')?.dataset.value
+    }));
+    return r && r.level === 'c2' ? r : null;
+});
+check(reopened && reopened.level === 'c2' && reopened.mode === 'beside',
+    'reopening starts from the settings in force, not the defaults',
+    JSON.stringify(reopened));
+
+// Press the backdrop where the page would be, well clear of the sheet.
+const box = await probe(page, (root) => {
+    const r = root.querySelector('.sheet').getBoundingClientRect();
+    return { top: r.top, left: r.left };
+});
+await page.mouse.click(Math.max(6, box.left / 2), Math.max(6, box.top / 2));
+await page.waitForTimeout(500);
+check((await page.$(HOST)) !== null, 'clicking outside the sheet does not close it');
+
+// And the page's own control, sitting right under where that click landed,
+// must not have fired. (Bubbling to `document` proves nothing: the overlay's
+// host is a child of the page's body, so its clicks travel out through it.)
+check(await page.evaluate(() => !document.body.dataset.pageHit),
+    'nor reach the page control underneath it');
+
+// Escape is the keyboard's "Bỏ qua": it leaves, and it saves on the way out.
+await sw.evaluate(() => new Promise((r) => chrome.storage.sync.set({ onboardingDone: false }, r)));
 await page.keyboard.press('Escape');
 check(!!(await until(async () => (await page.$(HOST)) === null)), 'Escape closes the wizard');
 
 const afterEscape = await sw.evaluate(() => new Promise((resolve) => {
-    chrome.storage.sync.get(['datasetKey', 'replacementMode'], resolve);
+    chrome.storage.sync.get(['datasetKey', 'replacementMode', 'onboardingDone'], resolve);
 }));
 check(afterEscape && afterEscape.datasetKey === 'c2' && afterEscape.replacementMode === 'beside',
-    'leaving without finishing changes nothing', JSON.stringify(afterEscape));
+    'leaving that way keeps the answers', JSON.stringify(afterEscape));
+check(afterEscape && afterEscape.onboardingDone === true,
+    'and counts as having answered, like the button');
+
+// =====================================================================
+// 6b. The install path: no tab, a flag, and the next ordinary page
+// =====================================================================
+await sw.evaluate(() => new Promise((r) => chrome.storage.sync.set(
+    { onboardingPending: true, onboardingDone: false }, r)));
+
+const fresh = await ctx.newPage();
+await fresh.goto(url, { waitUntil: 'load' });
+const cameUp = await until(async () => await probe(fresh, (root) => !!root.querySelector('.backdrop')));
+check(!!cameUp, 'a fresh install puts the wizard up on the next ordinary page');
+
+const flag = await sw.evaluate(() => new Promise((resolve) => {
+    chrome.storage.sync.get(['onboardingPending'], resolve);
+}));
+check(flag && flag.onboardingPending === false, 'and clears the flag as it opens',
+    JSON.stringify(flag));
+
+// A second page must not get a second copy.
+const other = await ctx.newPage();
+await other.goto(url, { waitUntil: 'load' });
+await other.waitForTimeout(1200);
+check((await other.$(HOST)) === null, 'and does not follow the reader into the next tab');
+await other.close();
+await fresh.close();
 
 // =====================================================================
 // 7. The standalone page - what a fresh install actually opens

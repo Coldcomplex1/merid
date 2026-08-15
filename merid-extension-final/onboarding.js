@@ -6,16 +6,27 @@
 // Merid already running on whatever defaults we picked for them - C1 words,
 // highlighted - without ever being told those were choices.
 //
-// Two ways in, one implementation, the same arrangement tutorial.js uses:
+// It comes up over whatever the reader is already looking at, the way the
+// tutorial poster does, rather than taking them to a page of its own. Three
+// things put it there:
 //
-//   - Over the page. The popup's "Hướng dẫn nhanh" sends `showOnboarding` to
-//     the content script, which calls open() here. The popup cannot host this
-//     itself: it is a few hundred pixels wide and closes the moment focus
-//     leaves it.
-//   - As a page of its own. background.js opens onboarding.html on install,
-//     because the tab sitting there at that moment is the Web Store or a new
-//     tab, and neither runs a content script. `open({ standalone: true })` is
-//     that mode - no backdrop to click off, and closing means closing the tab.
+//   - The first ordinary page loaded after installing. background.js cannot
+//     show it at the moment of installing: the tab in front of the reader then
+//     is the Web Store or a new tab, and neither runs a content script. So it
+//     leaves `onboardingPending` in storage and autoStart() below picks it up
+//     on the next real page.
+//   - The popup's "Hướng dẫn nhanh", which sends `showOnboarding` to the
+//     content script. The popup cannot host this itself: it is a few hundred
+//     pixels wide and closes the moment focus leaves it.
+//   - onboarding.html, kept only for where neither of those can reach - a
+//     chrome:// page or the Web Store, where the popup button would otherwise
+//     do nothing at all. `open({ standalone: true })` is that mode.
+//
+// It is modal in earnest. The backdrop swallows clicks meant for the page, Tab
+// cannot walk out of the sheet, and neither clicking away nor Escape abandons
+// it: the only ways out are the buttons, and both of them save. A setup screen
+// that can be dismissed by a stray click is a setup screen that silently leaves
+// people on defaults they were never shown.
 //
 // Everything lives in an open shadow root, like status-badge.js and
 // tutorial.js: this sits on pages whose CSS we do not control, and neither
@@ -124,9 +135,11 @@
     let step = 0;
     let saving = false;
 
-    // What the reader has picked. Seeded from the same defaults the rest of
-    // the extension starts on, so arriving at step 4 without touching anything
-    // saves exactly what would have been true anyway.
+    // What the reader has picked. Seeded from the extension's defaults, then
+    // corrected from storage by open() - because on a first run those defaults
+    // ARE the answer, but when the wizard is reopened later from the popup the
+    // answer is whatever the reader has since chosen, and "Bỏ qua" must not
+    // quietly hand them back the defaults they had moved away from.
     const defaults = (global.VMCore && global.VMCore.DEFAULT_SETTINGS) || {};
     const picked = {
         datasetKey: defaults.datasetKey || 'c1',
@@ -756,7 +769,13 @@
 
         try {
             chrome.storage.sync.set(
-                { replacementMode: picked.replacementMode, onboardingDone: true },
+                {
+                    replacementMode: picked.replacementMode,
+                    onboardingDone: true,
+                    // Clear the flag background.js set on install, so nothing
+                    // puts the wizard up again on the next page.
+                    onboardingPending: false
+                },
                 () => { void chrome.runtime.lastError; done(); }
             );
         } catch (e) { done(); }
@@ -768,10 +787,41 @@
 
     function onKeyDown(e) {
         if (!host) return;
-        if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+        // Escape is the keyboard's "Bỏ qua", not a trapdoor: it saves what is on
+        // screen and closes, exactly as the button does. Left as a bare close it
+        // would be the one way to get out of a modal setup screen without ever
+        // answering it, which is the hole this wizard exists to plug.
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(); return; }
+        if (e.key === 'Tab') { trapTab(e); return; }
         if (saving) return;
         if (e.key === 'ArrowRight') go(step + 1);
         else if (e.key === 'ArrowLeft') go(step - 1);
+    }
+
+    /**
+     * Keep Tab inside the sheet.
+     *
+     * Without this the backdrop stops the mouse reaching the page but the
+     * keyboard walks straight past it into whatever is behind, which for a modal
+     * is the same hole with a different input device.
+     */
+    function trapTab(e) {
+        if (!root) return;
+        const inSheet = [...root.querySelectorAll('button, [tabindex]')]
+            .filter(n => !n.hidden && n.tabIndex !== -1 && n.offsetParent !== null);
+        if (!inSheet.length) return;
+        const first = inSheet[0];
+        const last = inSheet[inSheet.length - 1];
+        // Inside a shadow root the focused node reads as the host from outside,
+        // so ask the root itself who has focus.
+        const here = root.activeElement;
+        if (e.shiftKey && (here === first || !inSheet.includes(here))) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && here === last) {
+            e.preventDefault();
+            first.focus();
+        }
     }
 
     function close() {
@@ -845,18 +895,10 @@
         sheet.append(rail, head, body, foot);
         backdrop.appendChild(sheet);
 
-        if (!standalone) {
-            // Only a press that both starts and ends on the backdrop closes.
-            // A drag that began inside the sheet and finished outside it is a
-            // selection, not a request to leave.
-            let downOutside = false;
-            backdrop.addEventListener('mousedown', (e) => { downOutside = e.target === backdrop; });
-            backdrop.addEventListener('click', (e) => {
-                if (e.target === backdrop && downOutside) close();
-                downOutside = false;
-            });
-        }
-
+        // Nothing is bound to the backdrop. It exists to cover the page - which
+        // it does by being fixed and full-viewport, so clicks aimed at whatever
+        // is behind land here and stop - and clicking it is not an answer to
+        // anything the sheet is asking. The way out is "Bỏ qua".
         return backdrop;
     }
 
@@ -875,7 +917,14 @@
 
         host = document.createElement('div');
         host.id = HOST_ID;
-        host.style.cssText = 'all:initial;position:static;';
+        // !important, because this div lives in the page's DOM and a page rule
+        // carrying !important beats a plain inline style. It only takes one
+        // `div { transform: ... !important }` for the host to become the
+        // containing block for everything fixed inside it - at which point the
+        // backdrop stops covering the viewport, and clicks meant for it land on
+        // the page instead. Inline !important is the one thing a page cannot
+        // out-rank, which is what makes the modal actually modal.
+        host.style.cssText = 'all:initial!important;position:static!important;';
         (document.body || document.documentElement).appendChild(host);
         root = host.attachShadow({ mode: 'open' });
 
@@ -888,6 +937,19 @@
         saving = false;
         paint();
 
+        // Correct the answers from what is actually stored. Asynchronous, and
+        // that is fine: step one shows neither of them, so it has settled long
+        // before the reader can reach a screen that does.
+        try {
+            chrome.storage.sync.get(['datasetKey', 'replacementMode'], (stored) => {
+                void chrome.runtime.lastError;
+                if (!stored || !root) return;
+                if (stored.datasetKey) picked.datasetKey = stored.datasetKey;
+                if (stored.replacementMode) picked.replacementMode = stored.replacementMode;
+                paint();
+            });
+        } catch (e) { /* the defaults already on screen are a fair answer */ }
+
         document.addEventListener('keydown', onKeyDown, true);
         requestAnimationFrame(() => {
             const backdrop = root && root.querySelector('.backdrop');
@@ -898,24 +960,67 @@
 
     global.MeridOnboarding = { open, close };
 
+    /**
+     * Come up on the first ordinary page after installing.
+     *
+     * background.js leaves `onboardingPending` behind rather than showing this
+     * itself, because at the moment of installing the tab in front of the reader
+     * is the Web Store or a new tab and no content script runs on either. Here
+     * is the first place that can honour it.
+     *
+     * The flag is cleared as the wizard opens, not when it is answered. Left set
+     * until answered it would come up again in every tab the reader opened, and
+     * a modal that reappears until obeyed is a worse thing than a reader who
+     * closed the tab and kept the defaults. "Hướng dẫn nhanh" in the popup is
+     * always there for them.
+     */
+    function autoStart() {
+        if (window.top !== window) return;                 // top frame only
+        const p = location.protocol;
+        if (p !== 'http:' && p !== 'https:') return;
+        // Not over a bank, a webmail, a DM thread. The same list content.js
+        // refuses to read; a full-screen panel there is worse than a swapped word.
+        try {
+            if (global.VMCore && global.VMCore.isUrlBlocked(location.href)) return;
+        } catch (e) { /* if in doubt, carry on */ }
+        // Not on top of the tutorial poster. This one sits a layer above it, so
+        // arriving uninvited over a sheet the reader deliberately opened would
+        // bury it - and the wizard has the popup and the next page to come back on.
+        if (document.getElementById('merid-tutorial-host')) return;
+
+        try {
+            chrome.storage.sync.get(['onboardingPending', 'onboardingDone'], (s) => {
+                void chrome.runtime.lastError;
+                if (!s || !s.onboardingPending || s.onboardingDone) return;
+                chrome.storage.sync.set({ onboardingPending: false }, () => {
+                    void chrome.runtime.lastError;
+                    open();
+                });
+            });
+        } catch (e) { /* no storage, no wizard - the popup still has it */ }
+    }
+
     // Standing itself up on onboarding.html.
     //
     // Chrome runs no content script on a chrome-extension: page, so this file
     // finding itself on one means onboarding.html loaded it directly - the
-    // first-run tab, which has nothing else to be. Everywhere else this is a
-    // content script and must stay dormant until the popup asks.
+    // fallback for a tab that cannot host an overlay at all. Everywhere else
+    // this is a content script, and it either has an install to honour or stays
+    // dormant until the popup asks.
     //
     // It is here rather than in an inline <script> in the page because
     // extension pages run under script-src 'self', which refuses one.
-    if (location.protocol === 'chrome-extension:') {
-        const start = () => {
+    const start = () => {
+        if (location.protocol === 'chrome-extension:') {
             document.title = VI.welcomeTitle + ' - Merid';
             open({ standalone: true });
-        };
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', start, { once: true });
         } else {
-            start();
+            autoStart();
         }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+        start();
     }
 })(window);

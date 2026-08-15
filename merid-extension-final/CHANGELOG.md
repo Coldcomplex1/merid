@@ -5,8 +5,10 @@
 **A short setup on the day you install Merid.**
 
 - Installing now asks which vocabulary you want and how the English should appear, rather than starting on our defaults without telling you either was a choice.
-- The three display modes are shown instead of described, so you can see the difference before picking one.
-- Reopen the setup any time from "Hướng dẫn nhanh" in the popup.
+- The setup appears over the first page you open rather than in a tab of its own, so you answer it where the answers apply instead of being taken somewhere else.
+- It closes on "Bỏ qua" and nowhere else. Clicking past it will not dismiss it, and both ways out save what is on screen.
+- The three display modes are shown instead of described, and selecting one says what it does.
+- Reopen the setup any time from "Hướng dẫn nhanh" in the popup. Reopened, it starts from the settings you are actually on.
 
 ## 1.6.4 — 2026-08-13
 

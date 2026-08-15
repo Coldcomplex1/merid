@@ -69,6 +69,13 @@ for (let i = 0; i < 60; i++) {
 }
 const extId = new URL(sw.url()).host;
 
+// The poster is what is under test here, not the setup wizard. Installing
+// leaves onboardingPending behind, and the wizard is modal and sits a layer
+// above the poster - left set, it covers the sheet and eats the click that is
+// meant to close it.
+await sw.evaluate(() => new Promise((r) => chrome.storage.sync.set(
+    { onboardingDone: true, onboardingPending: false }, r)));
+
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
