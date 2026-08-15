@@ -549,28 +549,27 @@ footer {
 
 .page-btn:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
 
-/* Site currently paused: the toggle reads as a warning state. */
+/* Merid not running here - paused, shipped off, or a page it never touches.
+   Nothing is wrong in any of those cases, so the button fills in rather than
+   raising an alarm, matching the "Extension is OFF" toggle above it. Hover
+   stays the shared yellow from .page-btn:hover. */
 .page-btn.off {
-    border-color: rgba(239, 68, 68, 0.55);
-    background: rgba(239, 68, 68, 0.10);
-    color: #f87171;
+    background: #1d2d50;
+    border-color: #2a3d63;
+    color: var(--text-secondary);
 }
 
-.page-btn.off:hover { background: rgba(239, 68, 68, 0.18); color: #f87171; border-color: rgba(239, 68, 68, 0.75); }
-
-/* Site that ships off (dictionary, editor, coursework). Nothing is wrong here
-   and nobody chose it, so it stays neutral rather than borrowing the red the
-   deliberate pause above uses. */
-.page-btn.off.muted {
-    border-color: rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.62);
+/* Pages Merid is never allowed on (its own site, chats, email, banking) render
+   this button disabled - it is a readout, not a control. Nothing here reacts to
+   the pointer, because there is nothing behind it to click. */
+.page-btn:disabled {
+    cursor: default;
+    opacity: 0.75;
 }
 
-.page-btn.off.muted:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--accent-yellow);
-    color: var(--accent-yellow);
+.page-btn:disabled:hover {
+    border-color: #2a3d63;
+    color: var(--text-secondary);
 }
 
 /* "View my deck" - secondary link-out to merid.site/my-deck. Deliberately
