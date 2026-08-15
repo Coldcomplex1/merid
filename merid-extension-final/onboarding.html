@@ -1,0 +1,62 @@
+<!doctype html>
+<!--
+  The first-run wizard as a page of its own. background.js opens this on
+  install, because the tab sitting there at that moment is the Web Store or a
+  new tab and neither runs a content script - so there is nothing to put an
+  overlay over.
+
+  The wizard is the whole of this page, so it uses the same overlay in
+  standalone mode: no backdrop to click off, and closing means closing the tab.
+
+  Two things this page does that the content-script path cannot:
+
+    - Registers Outfit and Inter. @font-face cannot be declared inside a shadow
+      root; only a document can do it. Declared here, the shadow root picks
+      them up, and over a page the same CSS falls through to the system stack.
+    - Loads lib/vocab-core.js, which over a page is already there as the first
+      content script. The wizard reads DATASET_REGISTRY and DEFAULT_SETTINGS
+      from it rather than restating either.
+
+  No inline script: extension pages run under script-src 'self', which refuses
+  one. onboarding.js starts itself here instead - see the bootstrap at its foot.
+-->
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+    <title>Merid</title>
+    <style>
+        /* Self-hosted woff2, same files the popup uses - no remote requests,
+           CSP-safe, works offline. */
+        @font-face {
+            font-family: 'Outfit';
+            font-style: normal;
+            font-weight: 400 700;
+            font-display: swap;
+            src: url('fonts/Outfit-latin.woff2') format('woff2');
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400 600;
+            font-display: swap;
+            src: url('fonts/Inter-latin.woff2') format('woff2');
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #050b17;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="lib/vocab-core.js"></script>
+    <script src="onboarding.js"></script>
+</body>
+
+</html>

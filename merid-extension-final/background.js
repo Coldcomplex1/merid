@@ -202,10 +202,19 @@ chrome.runtime.onInstalled.addListener((details) => {
     log('[VM] Installed/updated.');
     initVocabulary();
     Sync.kick();
-    // First-run onboarding: a short tour on merid.site (pick a dataset, open a
-    // Vietnamese site, hover a word). Fresh installs only - never on updates.
-    if (details && details.reason === 'install' && FBConfig.webWelcomeUrl) {
-        chrome.tabs.create({ url: FBConfig.webWelcomeUrl });
+    // First-run onboarding: the four-step wizard - hello, which vocabulary,
+    // how the words should appear, done. Fresh installs only, never on updates.
+    //
+    // It opens as a tab rather than over the page because at this moment there
+    // is no page: the tab in front of the reader is the Web Store or a new tab,
+    // and neither runs a content script for an overlay to live in.
+    //
+    // This used to send them to merid.site/welcome to read about Merid. The
+    // wizard asks instead, and the two settings it asks about are the ones that
+    // decide how every page they read from here on will look. The tour is still
+    // a click away from step four.
+    if (details && details.reason === 'install') {
+        chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
     }
 });
 chrome.runtime.onStartup.addListener(() => { log('[VM] Startup.'); initVocabulary(); Sync.kick(); });

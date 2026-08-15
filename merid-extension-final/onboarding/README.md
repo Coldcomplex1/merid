@@ -12,7 +12,7 @@ Drop them in this folder with exactly these names:
 Shoot the same sentence in all three, or the difference between the modes is
 lost in the difference between the paragraphs.
 
-`.png` or `.webp` both work; keep each under 60 KB. Any aspect ratio is fine —
+`.png` or `.webp` both work; keep each under 60 KB. Roughly 3:2 sits best in the card. Any ratio works —
 the card sizes them with `object-fit: contain`, so nothing is stretched.
 
 A cut-out with a transparent background is fine too. The card lays a

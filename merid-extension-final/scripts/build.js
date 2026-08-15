@@ -19,6 +19,10 @@ const FILES = [
     'content.css',
     // The tutorial poster: the overlay, the page it falls back to, and the sheet.
     'tutorial.js', 'tutorial.html', 'tutorial-vi.webp',
+    // The first-run wizard: the overlay and the page it opens as on install.
+    // Its mode pictures are matched dynamically below, so the step still works
+    // before they have been drawn.
+    'onboarding.js', 'onboarding.html',
     'popup.html', 'popup.js', 'popup.css',
     'options.html', 'options.js', 'options.css',
     'content-bridge.js',
@@ -43,6 +47,17 @@ const FILES = [
 // Datasets are matched dynamically so a future dataset-B2.csv ships automatically.
 for (const f of fs.readdirSync(root)) {
     if (/^dataset-.*\.csv$/.test(f)) FILES.push(f);
+}
+
+// The wizard's mode pictures, matched the same way and for the same reason:
+// they are artwork, dropped in on their own schedule, and a build must not fail
+// because one of them has not been drawn yet. The step falls back to drawing
+// the mode itself when a picture is absent (see onboarding.js).
+const onboardingDir = path.join(root, 'onboarding');
+if (fs.existsSync(onboardingDir)) {
+    for (const f of fs.readdirSync(onboardingDir)) {
+        if (/^mode-.*\.(png|webp)$/.test(f)) FILES.push(path.join('onboarding', f));
+    }
 }
 
 function copyFile(rel) {

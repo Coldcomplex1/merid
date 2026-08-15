@@ -23,6 +23,7 @@ node e2e/dark-mode.mjs        # the card's palette on dark pages and under force
 node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level advice
 node e2e/hosted.mjs           # Merid-hosted AI: identity, quota, personal-key priority
 node e2e/private-pages.mjs    # DMs on Facebook/Instagram: blocked by path, feed still scanned
+node e2e/onboarding.mjs       # first-run wizard: four steps, both ways in, and what it saves
 ```
 
 Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.

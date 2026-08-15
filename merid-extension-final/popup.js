@@ -348,22 +348,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     // the built-in PDF viewer run no content script, and there the poster opens
     // as a tab of its own rather than the button doing nothing. Both paths show
     // the same sheet - see tutorial.js.
-    document.getElementById('tutorial-btn').addEventListener('click', () => {
-        const openInTab = () => chrome.tabs.create({ url: chrome.runtime.getURL('tutorial.html') });
+    document.getElementById('tutorial-btn')
+        .addEventListener('click', () => showOverPage('showTutorial', 'tutorial.html'));
+
+    // The first-run wizard, by the same route and for the same reason.
+    document.getElementById('onboarding-btn')
+        .addEventListener('click', () => showOverPage('showOnboarding', 'onboarding.html'));
+
+    /**
+     * Hand an overlay to the content script on the current tab, falling back to
+     * a tab of its own where there is no content script to hand it to.
+     *
+     * Whether one is there is not something to infer from the URL - `tabs.url`
+     * is only ours to read by the activeTab grant, and guessing from it would
+     * open a tab for pages that could have hosted the overlay perfectly well.
+     * Ask, and let the answer decide: no listener means no reply, which arrives
+     * as lastError.
+     *
+     * Either way the popup closes. It is a panel anchored to the toolbar button
+     * that shuts the moment focus moves, so it cannot show either of these
+     * itself and has nothing left to do once it has asked.
+     */
+    function showOverPage(action, page) {
+        const openInTab = () => chrome.tabs.create({ url: chrome.runtime.getURL(page) });
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const tab = tabs && tabs[0];
             if (!tab) { openInTab(); window.close(); return; }
-            // Whether a content script is there is not something to infer from
-            // the URL - `tabs.url` is only ours to read by the activeTab grant,
-            // and guessing from it would put the poster in a tab on pages that
-            // could have hosted it perfectly well. Ask, and let the answer
-            // decide: no listener means no reply, which arrives as lastError.
-            chrome.tabs.sendMessage(tab.id, { action: 'showTutorial' }, (res) => {
+            chrome.tabs.sendMessage(tab.id, { action }, (res) => {
                 if (chrome.runtime.lastError || !res || !res.ok) openInTab();
                 window.close();
             });
         });
-    });
+    }
 
     document.getElementById('options-btn').addEventListener('click', openOptions);
 
