@@ -42,9 +42,9 @@
     // problem - drawMode() below renders the mode in HTML instead, so the step
     // is never blank and never waits.
     const MODE_IMAGE = {
-        replace: 'onboarding/mode-replace.png',
-        highlight: 'onboarding/mode-highlight.png',
-        beside: 'onboarding/mode-beside.png'
+        replace: 'onboarding/mode-replace.webp',
+        highlight: 'onboarding/mode-highlight.webp',
+        beside: 'onboarding/mode-beside.webp'
     };
 
     // Order asked for in the brief. The labels come from VMCore's registry
@@ -430,7 +430,7 @@
             background: #fdfcf7;
             padding: 10px;
             overflow: hidden;
-            aspect-ratio: 3 / 2;
+            aspect-ratio: 1.85;
             display: flex;
             flex-direction: column;
         }

@@ -64,9 +64,9 @@
       "resources": [
         "tutorial-vi.webp",
         "logo-mark.png",
-        "onboarding/mode-replace.png",
-        "onboarding/mode-highlight.png",
-        "onboarding/mode-beside.png"
+        "onboarding/mode-replace.webp",
+        "onboarding/mode-highlight.webp",
+        "onboarding/mode-beside.webp"
       ],
       "matches": [
         "<all_urls>"

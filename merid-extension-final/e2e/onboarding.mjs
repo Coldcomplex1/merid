@@ -201,23 +201,46 @@ const modes = await probe(page, (root) =>
 check(JSON.stringify(modes) === JSON.stringify(['replace', 'highlight', 'beside']),
     'the three modes are offered in order', JSON.stringify(modes));
 
-// No pictures have been drawn yet, so every card must have fallen back to
-// drawing its mode. This is the check that the step is never blank.
-const drawn = await probe(page, (root) => {
-    const cards = [...root.querySelectorAll('.modes .pick')];
-    return cards.map((c) => {
-        const demo = c.querySelector('.demo');
-        return demo ? demo.textContent.replace(/\s+/g, ' ').trim() : null;
-    });
+// Every card must show one of two things and never nothing: the picture, or
+// the mode drawn in its place. Which one is right depends on whether the
+// artwork has been added, so ask the extension rather than assuming - this way
+// the check keeps its meaning both before the pictures land and after.
+const hasArt = await sw.evaluate(() =>
+    fetch(chrome.runtime.getURL('onboarding/mode-replace.webp'))
+        .then((r) => r.ok).catch(() => false));
+
+const cards = await until(async () => {
+    const r = await probe(page, (root) =>
+        [...root.querySelectorAll('.modes .pick')].map((c) => {
+            const img = c.querySelector('.plate img');
+            const demo = c.querySelector('.demo');
+            return {
+                shot: img ? img.naturalWidth > 0 : false,
+                drawn: demo ? demo.textContent.replace(/\s+/g, ' ').trim() : null
+            };
+        }));
+    // Pictures arrive asynchronously; settle before judging.
+    return r && r.every((c) => c.shot || c.drawn) ? r : null;
 });
-check(drawn && drawn.every((t) => t && t.length > 20),
-    'each mode card draws itself when its picture is missing');
-check(drawn && /collaborate/.test(drawn[0]) && !/hợp tác/.test(drawn[0]),
-    'Replace shows the English in place of the Vietnamese', drawn ? drawn[0] : 'n/a');
-check(drawn && /hợp tác/.test(drawn[1]) && !/collaborate/.test(drawn[1]),
-    'Highlight keeps the Vietnamese', drawn ? drawn[1] : 'n/a');
-check(drawn && /hợp tác/.test(drawn[2]) && /collaborate/.test(drawn[2]),
-    'Beside shows both', drawn ? drawn[2] : 'n/a');
+
+check(cards && cards.every((c) => c.shot || c.drawn),
+    'every mode card shows either its picture or the mode drawn in its place');
+
+if (hasArt) {
+    check(cards && cards.every((c) => c.shot),
+        'with the artwork present, all three show their picture',
+        cards ? JSON.stringify(cards.map((c) => c.shot)) : 'n/a');
+} else {
+    const drawn = cards ? cards.map((c) => c.drawn) : null;
+    check(drawn && drawn.every((t) => t && t.length > 20),
+        'with no artwork, each card draws itself instead');
+    check(drawn && /collaborate/.test(drawn[0]) && !/hợp tác/.test(drawn[0]),
+        'Replace shows the English in place of the Vietnamese', drawn ? drawn[0] : 'n/a');
+    check(drawn && /hợp tác/.test(drawn[1]) && !/collaborate/.test(drawn[1]),
+        'Highlight keeps the Vietnamese', drawn ? drawn[1] : 'n/a');
+    check(drawn && /hợp tác/.test(drawn[2]) && /collaborate/.test(drawn[2]),
+        'Beside shows both', drawn ? drawn[2] : 'n/a');
+}
 
 await clickIn(page, '.modes .pick[data-value="beside"]');
 check(await probe(page, (root) =>
