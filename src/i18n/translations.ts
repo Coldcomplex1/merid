@@ -127,17 +127,18 @@ export interface Strings {
       }
     }
   }
-  /* The strip of award / "featured on" cards above the hero. The names of the
-     award and the platforms are proper nouns and live in the component; only
-     the labels around them are translated. */
+  /* The award strip above the hero: the TDTU card, then Unikorn's own embed
+     badge. The platform is a proper noun and lives in the component; only the
+     labels around it are translated. */
   awards: {
     label: string
     first: string
-    featuredOn: string
     newTab: string
-    /* The one name in the strip that differs by language. The platforms are
-       proper nouns and stay in the component. */
+    /* The name of the competition, which differs by language. */
     tdtu: string
+    /* Alt text for Unikorn's badge image - the only wording we control there,
+       since the artwork itself comes from them. */
+    unikorn: string
   }
   hero: {
     eyebrow: string
@@ -537,9 +538,9 @@ const vi: Strings = {
   awards: {
     label: 'Thành tích và ghi nhận',
     first: 'Giải Nhất',
-    featuredOn: 'Có mặt trên',
     newTab: 'mở trong tab mới',
     tdtu: 'Sáng tạo Công nghệ TDTU 2026',
+    unikorn: 'Merid trên Unikorn.vn',
   },
   hero: {
     eyebrow: 'Tiện ích Chrome cho người Việt học tiếng Anh',
@@ -1241,9 +1242,9 @@ const en: Strings = {
   awards: {
     label: 'Awards and recognition',
     first: '1st Place',
-    featuredOn: 'Featured on',
     newTab: 'opens in a new tab',
     tdtu: 'TDTU Innovation Competition 2026',
+    unikorn: 'Merid on Unikorn.vn',
   },
   hero: {
     eyebrow: 'Chrome extension for Vietnamese learners',
