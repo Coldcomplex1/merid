@@ -59,7 +59,7 @@ export default function WordTile({
 
   const style = STATUS_STYLE[w.status]
   const faceBase =
-    'absolute inset-0 rounded-2xl border-2 transition-shadow [backface-visibility:hidden]'
+    'absolute inset-0 rounded-xl border-2 transition-shadow [backface-visibility:hidden]'
   const frontBorder = isChosen ? 'border-accent/60 bg-accent/10' : `${style.border} bg-surface`
 
   const action =
@@ -114,7 +114,7 @@ export default function WordTile({
             tabIndex={showBack ? undefined : -1}
             onClick={() => setFlipped(false)}
             aria-label={t.deck.library.flipBack(w.word)}
-            className="absolute inset-0 z-0 cursor-pointer rounded-2xl"
+            className="absolute inset-0 z-0 cursor-pointer rounded-xl"
           />
 
           {/* Sits above the flip-back button but must not intercept its clicks,

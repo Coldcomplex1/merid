@@ -238,7 +238,7 @@ export default function MyDeck() {
             {t.deck.loading}
           </p>
         ) : words.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-line bg-surface p-8 text-center sm:p-12">
+          <div className="mt-8 rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
             <p className="text-4xl" aria-hidden="true">
               📚
             </p>
@@ -251,7 +251,7 @@ export default function MyDeck() {
           <>
             <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
               {stats.map(({ value, label, dot }) => (
-                <div key={label} className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
+                <div key={label} className="rounded-xl border border-line bg-surface p-4 sm:p-5">
                   <p className="text-3xl font-semibold text-heading sm:text-4xl">{value}</p>
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted sm:text-sm">
                     {dot && <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden="true" />}
@@ -320,7 +320,7 @@ export default function MyDeck() {
                 </div>
 
                 {customSet ? (
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
                     <span className="text-sm font-semibold text-accent">
                       {t.deck.puzzle.customSet(customSet.length)}
                     </span>
@@ -343,7 +343,7 @@ export default function MyDeck() {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-3 rounded-2xl border border-line bg-surface/60 px-5 py-6 text-sm leading-relaxed text-muted">
+                  <p className="mt-3 rounded-xl border border-line bg-surface/60 px-5 py-6 text-sm leading-relaxed text-muted">
                     {t.deck.library.noCollections}
                   </p>
                 )}
@@ -367,7 +367,7 @@ export default function MyDeck() {
 
             <div className="mt-6">
               {tab === 'explore' ? (
-                <div className="rounded-2xl border border-line bg-surface p-8 text-center sm:p-12">
+                <div className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
                   <p className="text-4xl" aria-hidden="true">
                     🧭
                   </p>
@@ -379,7 +379,7 @@ export default function MyDeck() {
               ) : tab === 'library' ? (
                 <>
                   {visibleWords.length === 0 ? (
-                    <div className="rounded-2xl border border-line bg-surface px-5 py-8 text-center">
+                    <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
                       <p className="text-sm text-muted">{t.deck.library.noMatches}</p>
                       {filtered && (
                         <button

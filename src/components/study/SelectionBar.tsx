@@ -19,7 +19,7 @@ export default function SelectionBar({ chosen, onMakePuzzle }: Props) {
   const enough = chosen >= MIN_PUZZLE_WORDS
 
   return (
-    <div className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-strong bg-surface/95 p-3 shadow-soft backdrop-blur-md">
+    <div className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line-strong bg-surface/95 p-3 shadow-soft backdrop-blur-md">
       <span className="pl-2 text-sm font-semibold text-body">
         {enough ? t.deck.select.chosen(chosen) : t.deck.select.needFour}
       </span>
