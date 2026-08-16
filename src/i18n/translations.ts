@@ -35,11 +35,9 @@ export interface Strings {
   deck: {
     title: string
     backHome: string
-    greeting: string
-    greetingSub: string
     statTotal: string
     emptyTitle: string
-    tabs: { words: string; puzzle: string; flashcards: string }
+    tabs: { explore: string; library: string; puzzle: string; flashcards: string }
     loading: string
     /** Shown wherever there is nothing to study; `min` is MIN_PUZZLE_WORDS. */
     empty: (min: number) => string
@@ -69,7 +67,6 @@ export interface Strings {
       playWholeDeck: string
     }
     select: {
-      start: string
       cancel: string
       all: string
       none: string
@@ -77,6 +74,30 @@ export interface Strings {
       makePuzzle: (n: number) => string
       needFour: string
       toggle: (word: string) => string
+    }
+    /** The Library tab: the word grid and the controls above it. */
+    library: {
+      soon: string
+      exploreSoon: string
+      collections: string
+      newCollection: string
+      noCollections: string
+      search: string
+      difficulty: string
+      allLevels: string
+      progress: string
+      allProgress: string
+      view: string
+      viewGrid: string
+      viewList: string
+      noMatches: string
+      clearFilters: string
+      /** Back of a tile for a word saved with neither a meaning nor a definition. */
+      noMeaning: string
+      /** Counted option labels, e.g. "Learning · 12". */
+      countedLabel: (label: string, n: number) => string
+      flip: (word: string) => string
+      flipBack: (word: string) => string
     }
     flash: { flipHint: string; prev: string; next: string; counter: (i: number, n: number) => string }
     menu: { deck: string; login: string; signup: string; logout: string; open: string }
@@ -405,11 +426,9 @@ const vi: Strings = {
   deck: {
     title: 'Deck của tôi',
     backHome: 'Về trang chủ',
-    greeting: 'Chào mừng bạn trở lại!',
-    greetingSub: 'Ôn lại những từ bạn đã lưu trong lúc lướt web nhé.',
     statTotal: 'Tổng số từ',
     emptyTitle: 'Tủ từ vựng của bạn còn trống',
-    tabs: { words: 'Từ vựng', puzzle: 'Puzzle', flashcards: 'Flashcard' },
+    tabs: { explore: 'Khám phá', library: 'Thư viện', puzzle: 'Puzzle', flashcards: 'Flashcard' },
     loading: 'Đang tải deck…',
     empty: (min: number) => `Hãy lưu ít nhất ${min} từ vựng để dùng được đầy đủ các tính năng.`,
     remove: 'Xoá',
@@ -438,7 +457,6 @@ const vi: Strings = {
       playWholeDeck: 'Chơi toàn bộ deck',
     },
     select: {
-      start: 'Chọn từ',
       cancel: 'Xong',
       all: 'Chọn tất cả',
       none: 'Bỏ chọn',
@@ -446,6 +464,28 @@ const vi: Strings = {
       makePuzzle: (n: number) => `Gộp thành bộ puzzle (${n})`,
       needFour: 'Cần ít nhất 4 từ để tạo một bộ puzzle.',
       toggle: (word: string) => `Chọn từ ${word}`,
+    },
+    library: {
+      soon: 'Sắp có',
+      exploreSoon: 'Duyệt toàn bộ danh sách từ sẽ sớm ra mắt.',
+      collections: 'Bộ sưu tập của tôi',
+      newCollection: 'Tạo bộ mới',
+      noCollections:
+        'Bạn chưa tạo bộ nào. Hãy tạo một bộ để luyện tập danh sách từ của riêng bạn và theo dõi tại đây.',
+      search: 'Tìm từ…',
+      difficulty: 'Độ khó',
+      allLevels: 'Mọi cấp độ',
+      progress: 'Tiến độ',
+      allProgress: 'Tất cả',
+      view: 'Hiển thị',
+      viewGrid: 'Lưới',
+      viewList: 'Danh sách',
+      noMatches: 'Không có từ nào khớp với bộ lọc.',
+      clearFilters: 'Xoá bộ lọc',
+      noMeaning: 'Từ này chưa có nghĩa.',
+      countedLabel: (label: string, n: number) => `${label} · ${n}`,
+      flip: (word: string) => `Xem nghĩa của “${word}”`,
+      flipBack: (word: string) => `Ẩn nghĩa của “${word}”`,
     },
     flash: {
       flipHint: 'Nhấn để lật thẻ',
@@ -1090,11 +1130,9 @@ const en: Strings = {
   deck: {
     title: 'My Deck',
     backHome: 'Back to home',
-    greeting: 'Welcome back!',
-    greetingSub: 'Review the words you saved while browsing.',
     statTotal: 'Total words',
     emptyTitle: 'Your vocabulary vault is empty',
-    tabs: { words: 'Words', puzzle: 'Puzzle', flashcards: 'Flashcards' },
+    tabs: { explore: 'Explore', library: 'Library', puzzle: 'Puzzle', flashcards: 'Flashcards' },
     loading: 'Loading your deck…',
     empty: (min: number) => `Save at least ${min} words to unlock every feature.`,
     remove: 'Remove',
@@ -1123,7 +1161,6 @@ const en: Strings = {
       playWholeDeck: 'Play the whole deck',
     },
     select: {
-      start: 'Select words',
       cancel: 'Done',
       all: 'Select all',
       none: 'Clear',
@@ -1131,6 +1168,28 @@ const en: Strings = {
       makePuzzle: (n: number) => `Make a puzzle set (${n})`,
       needFour: 'Pick at least 4 words to make a puzzle set.',
       toggle: (word: string) => `Select ${word}`,
+    },
+    library: {
+      soon: 'Soon',
+      exploreSoon: 'Browsing the full word lists is coming soon.',
+      collections: 'My collections',
+      newCollection: 'New collection',
+      noCollections:
+        "You haven't built a collection yet. Create one to practise your own word list and track it here.",
+      search: 'Search words…',
+      difficulty: 'Difficulty',
+      allLevels: 'All levels',
+      progress: 'Progress',
+      allProgress: 'All progress',
+      view: 'View',
+      viewGrid: 'Grid',
+      viewList: 'List',
+      noMatches: 'No words match these filters.',
+      clearFilters: 'Clear filters',
+      noMeaning: 'No meaning saved for this word yet.',
+      countedLabel: (label: string, n: number) => `${label} · ${n}`,
+      flip: (word: string) => `Show the meaning of “${word}”`,
+      flipBack: (word: string) => `Hide the meaning of “${word}”`,
     },
     flash: {
       flipHint: 'Click to flip',
