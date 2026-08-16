@@ -1,45 +1,4 @@
-import type { ReactNode } from 'react'
 import { useLang } from '../../i18n/LanguageContext'
-
-/* Where Merid has been recognised, in the order it is shown. The platform
- * names are proper nouns, so like the SAT/B2/C1/C2 tags in Hero they stay in
- * the component. The competition is the exception - it has a Vietnamese name
- * and an English one - so it reads its name from the translations.
- *
- * `badge` picks the label above the name: the TDTU entry is a win, the rest
- * are listings. Kept as a key rather than the string itself so both languages
- * stay in translations.ts. */
-type Badge = 'first' | 'featuredOn'
-
-interface Award {
-  id: string
-  name: string
-  badge: Badge
-  href: string
-  mark: ReactNode
-}
-
-/* The platform marks are the official artwork, served from public/awards/.
- * They are the first <img> tags on the marketing site - every other logo here
- * is an inline SVG - because a third party's mark should be their own file
- * rather than something we redrew. */
-function LogoImage({ src }: { src: string }) {
-  return (
-    <img
-      src={src}
-      alt=""
-      width={28}
-      height={28}
-      /* Above the fold: never lazy, and the dimensions are explicit so the
-         card does not resize once the file arrives. */
-      loading="eager"
-      decoding="async"
-      /* The Unikorn mark is near-black on its own tile; without the ring it
-         melts into the navy surface in dark mode. */
-      className="h-7 w-7 shrink-0 rounded-md ring-1 ring-line"
-    />
-  )
-}
 
 /* The competition has no square mark of its own, so the win wears a trophy
  * drawn in the same hand as the Features icons. */
@@ -64,6 +23,11 @@ const TROPHY = (
 
 /** The award / "featured on" strip that opens the homepage.
  *
+ *  Two entries, and they are deliberately shaped differently: the TDTU win is
+ *  ours to present, so it wears the site's own card, while the Unikorn listing
+ *  is their official embed widget, served whole from unikorn.vn - their badge,
+ *  their artwork, their dimensions.
+ *
  *  Sits above the hero, so it animates with `animate-fade-up` rather than the
  *  scroll-triggered `Reveal`: an IntersectionObserver on content that is
  *  already in view flashes on load. `animate-fade-up` also uses `backwards`
@@ -76,92 +40,82 @@ const TROPHY = (
 export default function AwardsStrip() {
   const { t } = useLang()
 
-  const awards: Award[] = [
-    {
-      id: 'tdtu',
-      name: t.awards.tdtu,
-      badge: 'first',
-      href: 'https://www.facebook.com/citt.tdtu/posts/pfbid025WpxvFyn3WpgGdPwsVTAqaXPdNRA8MGzFk3mJ7gg2epvdFSMwd7PBLKNEmHKX2mCl',
-      mark: TROPHY,
-    },
-    {
-      id: 'producthunt',
-      name: 'Product Hunt',
-      badge: 'featuredOn',
-      href: 'https://www.producthunt.com/products/merid-learn-english-as-you-browse',
-      mark: <LogoImage src="/awards/product-hunt.webp" />,
-    },
-    {
-      id: 'unikorn',
-      name: 'Unikorn',
-      badge: 'featuredOn',
-      href: 'https://unikorn.vn/p/merid',
-      mark: <LogoImage src="/awards/unikorn.png" />,
-    },
-    {
-      id: 'saashub',
-      name: 'SaaSHub',
-      badge: 'featuredOn',
-      href: 'https://www.saashub.com/merid',
-      mark: <LogoImage src="/awards/saashub.png" />,
-    },
-  ]
-
   return (
     <section
       aria-label={t.awards.label}
       className="animate-fade-up mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:pt-8"
     >
-      {/* One swipeable row until the whole set fits, which is `lg`: stacking
-          them would push the headline off a small screen, and letting them
-          wrap in between leaves a lone fourth card orphaned on its own line.
-          The gap and padding are trimmed so all four still fit at exactly
-          1024px, where the longer English name is widest. */}
-      <ul className="flex snap-x gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:justify-start lg:overflow-visible">
-        {awards.map((award) => (
-          <li key={award.id} className="shrink-0 snap-start">
-            <a
-              href={award.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              /* `relative` is load-bearing, not decoration: `sr-only` is
-                 position:absolute, and with no positioned ancestor it resolves
-                 against the body, escaping the row's overflow-x scroller and
-                 stretching the whole page's scroll width on phones. */
-              className="group relative flex items-center gap-3 rounded-2xl bg-surface px-3.5 py-2.5 ring-1 ring-line transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift hover:ring-gold-400/50"
-            >
-              {award.mark}
+      {/* One swipeable row until the pair fits, which it does from `sm` up:
+          stacking them would push the headline off a small screen. The badge is
+          taller than the card, so the row centres them against each other. */}
+      <ul className="flex snap-x items-center gap-3 overflow-x-auto pb-1 sm:overflow-visible">
+        <li className="shrink-0 snap-start">
+          <a
+            href="https://www.facebook.com/citt.tdtu/posts/pfbid025WpxvFyn3WpgGdPwsVTAqaXPdNRA8MGzFk3mJ7gg2epvdFSMwd7PBLKNEmHKX2mCl"
+            target="_blank"
+            rel="noopener noreferrer"
+            /* `relative` is load-bearing, not decoration: `sr-only` is
+               position:absolute, and with no positioned ancestor it resolves
+               against the body, escaping the row's overflow-x scroller and
+               stretching the whole page's scroll width on phones. */
+            className="group relative flex items-center gap-3 rounded-2xl bg-surface px-3.5 py-2.5 ring-1 ring-line transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift hover:ring-gold-400/50"
+          >
+            {TROPHY}
 
-              <span className="min-w-0">
-                <span className="block text-[0.65rem] font-extrabold tracking-[0.18em] text-accent uppercase">
-                  {t.awards[award.badge]}
-                </span>
-                <span className="block text-sm font-bold whitespace-nowrap text-heading">
-                  {award.name}
-                </span>
-                {/* No aria-label: the badge and the name already read well in
-                    order, and overriding them would only make the announcement
-                    clumsier. This just warns that the link leaves the page. */}
-                <span className="sr-only">, {t.awards.newTab}</span>
+            <span className="min-w-0">
+              <span className="block text-[0.65rem] font-extrabold tracking-[0.18em] text-accent uppercase">
+                {t.awards.first}
               </span>
+              <span className="block text-sm font-bold whitespace-nowrap text-heading">
+                {t.awards.tdtu}
+              </span>
+              {/* No aria-label: the badge and the name already read well in
+                  order, and overriding them would only make the announcement
+                  clumsier. This just warns that the link leaves the page. */}
+              <span className="sr-only">, {t.awards.newTab}</span>
+            </span>
 
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                className="ml-1 shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <path d="M7 17L17 7M8 7h9v9" />
-              </svg>
-            </a>
-          </li>
-        ))}
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="ml-1 shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <path d="M7 17L17 7M8 7h9v9" />
+            </svg>
+          </a>
+        </li>
+
+        {/* Unikorn's own embed widget, kept at the markup they hand out: their
+            URL, their `ref=embed-merid` attribution, their 256x64 artwork. The
+            dimensions are set as attributes as well as classes so the row does
+            not reflow once the remote file arrives, and it loads eagerly like
+            everything else above the fold. */}
+        <li className="relative shrink-0 snap-start">
+          <a
+            href="https://unikorn.vn/p/merid?ref=embed-merid"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block transition-transform duration-300 hover:-translate-y-0.5"
+          >
+            <img
+              src="https://unikorn.vn/api/widgets/badge/merid?theme=light"
+              alt={t.awards.unikorn}
+              width={256}
+              height={64}
+              loading="eager"
+              decoding="async"
+              className="h-16 w-64"
+            />
+            <span className="sr-only">, {t.awards.newTab}</span>
+          </a>
+        </li>
       </ul>
     </section>
   )
