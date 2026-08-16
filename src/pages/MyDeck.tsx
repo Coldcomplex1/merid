@@ -5,14 +5,22 @@ import { signOut } from '../lib/auth'
 import { createFirestoreDeck } from '../deck/firestoreDeck'
 import type { DeckWord, WordStatus } from '../deck/DeckSource'
 import WordList from '../components/study/WordList'
+import WordGrid from '../components/study/WordGrid'
+import LibraryToolbar from '../components/study/LibraryToolbar'
+import type { LevelFilter, ProgressFilter, ViewMode } from '../components/study/LibraryToolbar'
+import SelectionBar from '../components/study/SelectionBar'
 import PuzzleMode, { MIN_PUZZLE_WORDS } from '../components/study/PuzzleMode'
 import FlashcardMode from '../components/study/FlashcardMode'
 import LangToggle from '../components/ui/LangToggle'
 import ThemeToggle from '../components/ui/ThemeToggle'
 import MeridMark from '../components/ui/MeridMark'
+import { CardsIcon, PlayIcon } from '../components/ui/DeckIcons'
 import { useLang, usePageTitle } from '../i18n/LanguageContext'
 
-type Tab = 'words' | 'puzzle' | 'flashcards'
+type Tab = 'explore' | 'library' | 'puzzle' | 'flashcards'
+
+/** The generated word -> SAT/C1/C2 index, loaded on demand. */
+type LevelIndex = typeof import('../data/wordLevels')
 
 /** Standalone deck workspace for the signed-in user. Rendered outside the
  *  marketing chrome (no banner/navbar/footer), so it carries its own slim
@@ -24,9 +32,16 @@ export default function MyDeck() {
   usePageTitle(`${t.deck.title} · Merid`)
 
   const source = useMemo(() => createFirestoreDeck(user!.uid), [user])
-  const [tab, setTab] = useState<Tab>('words')
+  const [tab, setTab] = useState<Tab>('library')
   const [words, setWords] = useState<DeckWord[] | null>(null)
   const [error, setError] = useState(false)
+
+  // Library controls. These filter the Library tab and nothing else - see the
+  // note on `visibleWords` below.
+  const [query, setQuery] = useState('')
+  const [level, setLevel] = useState<LevelFilter>('all')
+  const [progress, setProgress] = useState<ProgressFilter>('all')
+  const [view, setView] = useState<ViewMode>('grid')
 
   // Building a puzzle out of specific words: `selected` is what is ticked in
   // the list, `puzzleWords` is the set handed to the Puzzle tab once confirmed.
@@ -35,6 +50,26 @@ export default function MyDeck() {
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [puzzleWords, setPuzzleWords] = useState<string[] | null>(null)
+
+  // Levels are not stored on a deck word - they are resolved against a
+  // generated index of the extension's datasets (see scripts/gen-word-levels).
+  // ~30 kB that only this page needs, so it is imported on demand rather than
+  // bundled into every marketing page. If it fails to load the Difficulty
+  // control simply never appears, and the other filters still work.
+  const [levelIndex, setLevelIndex] = useState<LevelIndex | null>(null)
+  useEffect(() => {
+    let live = true
+    import('../data/wordLevels')
+      .then((mod) => {
+        if (live) setLevelIndex(mod)
+      })
+      .catch(() => {
+        /* filter stays hidden */
+      })
+    return () => {
+      live = false
+    }
+  }, [])
 
   const reload = useCallback(() => {
     let cancelled = false
@@ -69,8 +104,9 @@ export default function MyDeck() {
     source.setStatus(word, status).catch(() => reload())
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'words', label: t.deck.tabs.words },
+  const tabs: { id: Tab; label: string; badge?: string }[] = [
+    { id: 'explore', label: t.deck.tabs.explore, badge: t.deck.library.soon },
+    { id: 'library', label: t.deck.tabs.library },
     { id: 'puzzle', label: t.deck.tabs.puzzle },
     { id: 'flashcards', label: t.deck.tabs.flashcards },
   ]
@@ -85,12 +121,36 @@ export default function MyDeck() {
   // What you are still learning comes first; a word you have marked "I know
   // this" sinks to the bottom instead of sitting in the middle of the list you
   // are working through. Sort is stable, so inside each group the newest-saved
-  // order the backend already returns is preserved. Only the Words tab reads
+  // order the backend already returns is preserved. Only the Library tab reads
   // this - the study modes filter by status, where order is irrelevant.
   const orderedWords = useMemo(() => {
     const rank = (w: DeckWord) => (w.status === 'known' ? 1 : 0)
     return [...(words ?? [])].sort((a, b) => rank(a) - rank(b))
   }, [words])
+
+  // Deliberately feeds the Library tab only. Routing this into PuzzleMode
+  // instead of `learning` would hand it a new array on every keystroke, and it
+  // would reshuffle a game in progress while you typed in the search box.
+  const visibleWords = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return orderedWords.filter((w) => {
+      if (progress !== 'all' && w.status !== progress) return false
+      if (level !== 'all' && levelIndex && !levelIndex.levelsFor(w.word).includes(level)) return false
+      if (!q) return true
+      return (
+        w.word.toLowerCase().includes(q) ||
+        w.vietnamese.toLowerCase().includes(q) ||
+        w.definition.toLowerCase().includes(q)
+      )
+    })
+  }, [orderedWords, query, progress, level, levelIndex])
+
+  const filtered = query.trim() !== '' || level !== 'all' || progress !== 'all'
+  const clearFilters = () => {
+    setQuery('')
+    setLevel('all')
+    setProgress('all')
+  }
 
   const toggleSelect = (word: string) =>
     setSelected((cur) => {
@@ -105,6 +165,14 @@ export default function MyDeck() {
     setSelecting(false)
     setTab('puzzle')
   }
+
+  // Select-all works on what the filters have left on screen, not the whole
+  // deck, so narrowing the grid first is a way to build a set.
+  const selectable = useMemo(
+    () => visibleWords.filter((w) => w.status === 'saved').map((w) => w.word),
+    [visibleWords],
+  )
+  const allChosen = selectable.length > 0 && selectable.every((w) => selected.has(w))
 
   // A word can be removed or marked known while a custom set is live, so the
   // set is resolved against the current deck rather than being frozen at the
@@ -122,6 +190,10 @@ export default function MyDeck() {
     { value: learning.length, label: t.deck.savedLabel, dot: 'bg-gold-400' },
     { value: known.length, label: t.deck.knownLabel, dot: 'bg-success' },
   ]
+
+  const pill = 'cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95'
+  const outlineButton =
+    'cursor-pointer rounded-full border border-line-strong px-3.5 py-1.5 text-xs font-semibold text-body transition-colors hover:border-accent hover:text-accent'
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -152,9 +224,10 @@ export default function MyDeck() {
       </header>
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-8">
-        <p className="text-xs font-extrabold tracking-[0.22em] text-accent uppercase">{t.deck.title}</p>
-        <h1 className="mt-2 text-3xl font-extrabold text-heading sm:text-4xl">{t.deck.greeting}</h1>
-        <p className="mt-2 max-w-xl leading-relaxed text-body">{t.deck.greetingSub}</p>
+        <div className="flex items-center gap-2.5">
+          <CardsIcon size={30} className="shrink-0 text-accent" />
+          <h1 className="text-3xl font-extrabold text-heading sm:text-4xl">{t.deck.title}</h1>
+        </div>
 
         {error ? (
           <p className="mt-8 rounded-xl border border-danger/40 bg-danger/10 p-6 text-danger">
@@ -188,36 +261,160 @@ export default function MyDeck() {
               ))}
             </div>
 
+            {/* The mockup's switcher: a raised white pill on a sunken track,
+                rather than the gold pill the language toggle uses. */}
             <div className="mt-8 inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-line-strong/70">
-              {tabs.map(({ id, label }) => (
+              {tabs.map(({ id, label, badge }) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setTab(id)}
                   aria-pressed={tab === id}
-                  className={`cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
-                    tab === id ? 'bg-gold-400 text-navy-900' : 'text-muted hover:text-heading'
+                  className={`${pill} ${
+                    tab === id ? 'bg-surface text-heading shadow-soft' : 'text-muted hover:text-heading'
                   }`}
                 >
                   {label}
+                  {badge && (
+                    <span className="ml-1.5 rounded-full bg-wiki-blue px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
 
+            {tab === 'library' && (
+              <>
+                <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-sm font-bold text-heading">{t.deck.library.collections}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selecting && (
+                      <>
+                        <span className="text-xs font-semibold text-muted">
+                          {t.deck.select.chosen(selected.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            allChosen ? setSelected(new Set()) : setSelected(new Set(selectable))
+                          }
+                          className={outlineButton}
+                        >
+                          {allChosen ? t.deck.select.none : t.deck.select.all}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelecting((s) => !s)}
+                      className={
+                        selecting
+                          ? 'cursor-pointer rounded-full bg-gold-400 px-3.5 py-1.5 text-xs font-bold text-navy-900 transition-all active:scale-95'
+                          : outlineButton
+                      }
+                    >
+                      {selecting ? t.deck.select.cancel : t.deck.library.newCollection}
+                    </button>
+                  </div>
+                </div>
+
+                {customSet ? (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3">
+                    <span className="text-sm font-semibold text-accent">
+                      {t.deck.puzzle.customSet(customSet.length)}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTab('puzzle')}
+                        className={`${outlineButton} inline-flex items-center gap-1.5`}
+                      >
+                        <PlayIcon size={11} />
+                        {t.deck.tabs.puzzle}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPuzzleWords(null)}
+                        className={outlineButton}
+                      >
+                        {t.deck.puzzle.playWholeDeck}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-2xl border border-line bg-surface/60 px-5 py-6 text-sm leading-relaxed text-muted">
+                    {t.deck.library.noCollections}
+                  </p>
+                )}
+
+                <div className="mt-6">
+                  <LibraryToolbar
+                    query={query}
+                    onQuery={setQuery}
+                    level={level}
+                    onLevel={setLevel}
+                    levels={levelIndex?.LEVELS ?? null}
+                    progress={progress}
+                    onProgress={setProgress}
+                    counts={{ saved: learning.length, known: known.length }}
+                    view={view}
+                    onView={setView}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="mt-6">
-              {tab === 'words' ? (
-                <WordList
-                  words={orderedWords}
-                  onRemove={handleRemove}
-                  onSetStatus={handleSetStatus}
-                  selecting={selecting}
-                  selected={selected}
-                  onToggleSelecting={() => setSelecting((s) => !s)}
-                  onToggleSelect={toggleSelect}
-                  onSelectAll={(all) => setSelected(new Set(all))}
-                  onClearSelection={() => setSelected(new Set())}
-                  onMakePuzzle={makePuzzle}
-                />
+              {tab === 'explore' ? (
+                <div className="rounded-2xl border border-line bg-surface p-8 text-center sm:p-12">
+                  <p className="text-4xl" aria-hidden="true">
+                    🧭
+                  </p>
+                  <h2 className="mt-3 text-xl font-bold text-heading">{t.deck.tabs.explore}</h2>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-body">
+                    {t.deck.library.exploreSoon}
+                  </p>
+                </div>
+              ) : tab === 'library' ? (
+                <>
+                  {visibleWords.length === 0 ? (
+                    <div className="rounded-2xl border border-line bg-surface px-5 py-8 text-center">
+                      <p className="text-sm text-muted">{t.deck.library.noMatches}</p>
+                      {filtered && (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className={`${outlineButton} mt-3`}
+                        >
+                          {t.deck.library.clearFilters}
+                        </button>
+                      )}
+                    </div>
+                  ) : view === 'grid' ? (
+                    <WordGrid
+                      words={visibleWords}
+                      onRemove={handleRemove}
+                      onSetStatus={handleSetStatus}
+                      selecting={selecting}
+                      selected={selected}
+                      onToggleSelect={toggleSelect}
+                    />
+                  ) : (
+                    <WordList
+                      words={visibleWords}
+                      onRemove={handleRemove}
+                      onSetStatus={handleSetStatus}
+                      selecting={selecting}
+                      selected={selected}
+                      onToggleSelect={toggleSelect}
+                    />
+                  )}
+
+                  {selecting && selected.size > 0 && (
+                    <SelectionBar chosen={selected.size} onMakePuzzle={makePuzzle} />
+                  )}
+                </>
               ) : tab === 'puzzle' ? (
                 <>
                   {puzzleQuestions === customSet && customSet && (
