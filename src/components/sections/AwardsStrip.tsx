@@ -93,10 +93,13 @@ export default function AwardsStrip() {
         </li>
 
         {/* Unikorn's own embed widget, kept at the markup they hand out: their
-            URL, their `ref=embed-merid` attribution, their 256x64 artwork. The
-            dimensions are set as attributes as well as classes so the row does
-            not reflow once the remote file arrives, and it loads eagerly like
-            everything else above the fold. */}
+            URL, their `ref=embed-merid` attribution, their artwork. Drawn at
+            three quarters of the 256x64 they ship, which sits it inside the
+            card's 56px rather than towering over it - and the extra source
+            pixels only sharpen it on a retina screen. The dimensions are set
+            as attributes as well as classes so the row does not reflow once
+            the remote file arrives, and it loads eagerly like everything else
+            above the fold. */}
         <li className="relative shrink-0 snap-start">
           <a
             href="https://unikorn.vn/p/merid?ref=embed-merid"
@@ -107,11 +110,11 @@ export default function AwardsStrip() {
             <img
               src="https://unikorn.vn/api/widgets/badge/merid?theme=light"
               alt={t.awards.unikorn}
-              width={256}
-              height={64}
+              width={192}
+              height={48}
               loading="eager"
               decoding="async"
-              className="h-16 w-64"
+              className="h-12 w-48"
             />
             <span className="sr-only">, {t.awards.newTab}</span>
           </a>
