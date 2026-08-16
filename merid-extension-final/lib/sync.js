@@ -303,6 +303,15 @@
         return [p.word, p.vietnamese, p.definition, p.example, p.pos, p.status].join('\u0001');
     }
 
+    /** The status inside a stored snapshot hash, or '' if it cannot be read.
+     *  Reading it back out is what lets a run tell "I am changing this status"
+     *  apart from "I am touching this word for some other reason", which is the
+     *  difference between keeping and destroying a mark made on the website. */
+    function statusFromHash(h) {
+        const parts = String(h == null ? '' : h).split('\u0001');
+        return parts.length === 6 ? parts[5] : '';
+    }
+
     // ---------------------------------------------------------
     // Commit builders (counter protocol shared with the web app)
     // ---------------------------------------------------------
@@ -325,14 +334,23 @@
         await FB.commit(idToken, writes);
     }
 
-    function updateWordCommit(idToken, uid, payload) {
+    /**
+     * Masked update of one word.
+     *
+     * `includeStatus` is the whole point of this signature. saved/known is not
+     * the extension's alone to decide - /my-deck writes it too - and this deck
+     * only ever syncs upwards, so a status pushed from here can only ever
+     * overwrite, never merge. The caller passes false whenever this run is not
+     * the thing that changed the status, and the cloud value is left alone.
+     */
+    function updateWordCommit(idToken, uid, payload, includeStatus) {
         const data = {
             vietnamese: payload.vietnamese,
             definition: payload.definition,
             example: payload.example,
-            pos: payload.pos,
-            status: payload.status
+            pos: payload.pos
         };
+        if (includeStatus) data.status = payload.status;
         return FB.commit(idToken, [FB.updateWrite(wordPath(uid, payload.word), data, ['updatedAt'])]);
     }
 
@@ -411,9 +429,16 @@
 
         for (const payload of upserts) {
             const knownToCloud = Object.prototype.hasOwnProperty.call(snapshot, payload.word);
+            // Push a status only when this run is the one changing it: the word
+            // is one we have pushed before AND its status has moved since. A
+            // word with no snapshot entry is one we are meeting for the first
+            // time - on a fresh install, or after signing in, which wipes the
+            // snapshot on purpose (see refresh()) - and "first time" is exactly
+            // when the local deck's 'saved' is least likely to be the truth.
+            const ownsStatus = knownToCloud && statusFromHash(snapshot[payload.word]) !== payload.status;
             try {
                 if (knownToCloud) {
-                    await updateWordCommit(idToken, auth.uid, payload);
+                    await updateWordCommit(idToken, auth.uid, payload, ownsStatus);
                 } else {
                     if (counter.count >= DAILY_LIMIT) { rateLimited = true; continue; }
                     await createWordCommit(idToken, auth.uid, payload, counter);
@@ -423,8 +448,11 @@
                 }
             } catch (e) {
                 if (e.code === 'ALREADY_EXISTS') {
-                    // The web app created it first - fall back to an update.
-                    await updateWordCommit(idToken, auth.uid, payload);
+                    // The document is already up there and this install did not
+                    // put it there - a second device, a reinstall, or the sign-in
+                    // that cleared the snapshot. Its saved/known state belongs to
+                    // whoever wrote it; adopt the document and leave the status.
+                    await updateWordCommit(idToken, auth.uid, payload, false);
                 } else if (e.code === 'NOT_FOUND') {
                     // Deleted from the web app - recreate.
                     if (counter.count >= DAILY_LIMIT) { rateLimited = true; continue; }

@@ -1042,13 +1042,14 @@ function processTextNode(node, vocabMap) {
  */
 function displayTextFor(span) {
     const matchedText = span.dataset.original || '';
-    const replaceWith = span.dataset.replacement || matchedText;
+    const replaceWith = C.matchCase(matchedText, span.dataset.replacement || matchedText);
     const isSameWord = matchedText.toLowerCase().trim() === replaceWith.toLowerCase().trim();
     const mode = settings.replacementMode || 'replace';
     if (isSameWord || mode === 'highlight') return matchedText; // highlighted + tooltip, same words
     if (mode === 'beside') return `${matchedText} (${replaceWith})`; // từ (word)
     return replaceWith;                                          // 'replace'
 }
+
 
 // Turn a span into its final displayed state per the current replacement mode.
 function applyDisplayMode(span) {

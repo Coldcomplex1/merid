@@ -8,8 +8,14 @@
 // hunted for.
 //
 // It is still deliberately quiet: hidden whenever there is nothing in flight,
-// gone entirely when the context check is off, and never interactive - it
-// reports, it does not ask for anything.
+// gone entirely when the context check is off, and it asks for nothing - the
+// one thing it accepts is being dragged out of the way.
+//
+// It sits bottom-LEFT. The bottom-right corner is where the web keeps its own
+// furniture - Facebook's new-message button, Messenger bubbles, chat widgets,
+// back-to-top arrows - and a badge that covers one of those is not quiet, it
+// is in the way. Dragging is the escape hatch for the sites this still
+// collides with, and where it is dropped is remembered.
 //
 // Everything lives in an open shadow root. The badge sits on pages whose CSS
 // we do not control and must not disturb: a shadow root means no page rule can
@@ -20,6 +26,12 @@
     'use strict';
 
     const HOST_ID = 'merid-status-host';
+    // Where the reader dragged it to, if they ever did. One position for every
+    // site: a reader who moved it once has said where they want it.
+    const POS_KEY = 'vm_badge_pos';
+    // Gap kept from the viewport edges, so it can never be dragged half off.
+    const MARGIN = 8;
+    const SIZE = 44;
     // How long the finished state stays up before fading. Long enough to
     // notice, short enough not to become furniture.
     const DONE_HOLD_MS = 1200;
@@ -34,7 +46,7 @@
         :host { all: initial; }
         .badge {
             position: fixed;
-            right: 20px;
+            left: 20px;
             bottom: 20px;
             width: 44px;
             height: 44px;
@@ -49,7 +61,12 @@
             pointer-events: none;
             z-index: 2147483000;
         }
-        .badge.show { opacity: 1; transform: scale(1); }
+        /* Grabbable only while it is actually on screen. An opacity:0 element
+           still receives clicks, so leaving this on would silently swallow
+           every click in that corner for the whole time the badge is hidden -
+           which is most of the time. */
+        .badge.show { opacity: 1; transform: scale(1); pointer-events: auto; cursor: grab; }
+        .badge.dragging { cursor: grabbing; transition: none; }
 
         svg { display: block; overflow: visible; }
 
@@ -125,12 +142,99 @@
             const wrap = document.createElement('div');
             wrap.innerHTML = MARKUP;
             root.appendChild(wrap.firstElementChild);
+            armDrag(root.querySelector('.badge'));
+            loadPlacement();
         }
         return true;
     }
 
     function badge() {
         return root && root.querySelector('.badge');
+    }
+
+    // ---------------------------------------------------------------
+    // Dragging
+    //
+    // Same shape as the site's useDraggable hook (src/hooks/useDraggable.ts):
+    // snapshot the rect on pointerdown, capture the pointer, then write
+    // left/top straight to the element on every move so following the finger
+    // never waits on anything. Clamped to the viewport, because a badge
+    // dragged off the edge cannot be dragged back.
+    // ---------------------------------------------------------------
+    let placed = null;   // { left, top } once dragged, in viewport px
+    let grab = null;
+
+    function clamp(v, lo, hi) {
+        return Math.min(Math.max(v, lo), Math.max(lo, hi));
+    }
+
+    /** Put the badge at `placed`, re-clamped to whatever the viewport is now.
+     *  Called on load, after a drag, and on resize - a position saved on a wide
+     *  window would otherwise sit off-screen on a narrow one. */
+    function applyPlacement() {
+        const el = badge();
+        if (!el || !placed) return;
+        const left = clamp(placed.left, MARGIN, window.innerWidth - SIZE - MARGIN);
+        const top = clamp(placed.top, MARGIN, window.innerHeight - SIZE - MARGIN);
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+    }
+
+    function loadPlacement() {
+        try {
+            chrome.storage.local.get([POS_KEY], (r) => {
+                const p = r && r[POS_KEY];
+                if (p && typeof p.left === 'number' && typeof p.top === 'number') {
+                    placed = { left: p.left, top: p.top };
+                    applyPlacement();
+                }
+            });
+        } catch (e) { /* no storage on this page: the default corner is fine */ }
+    }
+
+    function savePlacement() {
+        try {
+            chrome.storage.local.set({ [POS_KEY]: placed });
+        } catch (e) { /* the drag still holds for this page */ }
+    }
+
+    function onPointerDown(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        const el = badge();
+        if (!el) return;
+        e.preventDefault();   // no text selection, and no click reaching the page
+        const rect = el.getBoundingClientRect();
+        grab = { id: e.pointerId, startX: e.clientX, startY: e.clientY, left: rect.left, top: rect.top };
+        el.classList.add('dragging');
+        el.setPointerCapture(e.pointerId);
+    }
+
+    function onPointerMove(e) {
+        if (!grab || e.pointerId !== grab.id) return;
+        placed = { left: grab.left + (e.clientX - grab.startX), top: grab.top + (e.clientY - grab.startY) };
+        applyPlacement();
+    }
+
+    function onPointerUp(e) {
+        if (!grab || e.pointerId !== grab.id) return;
+        const el = badge();
+        if (el) {
+            el.classList.remove('dragging');
+            if (el.hasPointerCapture(grab.id)) el.releasePointerCapture(grab.id);
+        }
+        grab = null;
+        if (placed) savePlacement();
+    }
+
+    function armDrag(el) {
+        el.addEventListener('pointerdown', onPointerDown);
+        el.addEventListener('pointermove', onPointerMove);
+        el.addEventListener('pointerup', onPointerUp);
+        el.addEventListener('pointercancel', onPointerUp);
+        el.addEventListener('lostpointercapture', onPointerUp);
+        window.addEventListener('resize', applyPlacement);
     }
 
     function hide() {
