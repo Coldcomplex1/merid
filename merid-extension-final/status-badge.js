@@ -59,6 +59,7 @@
             transform: scale(0.85);
             transition: opacity ${FADE_MS}ms ease, transform ${FADE_MS}ms ease;
             pointer-events: none;
+            touch-action: none;
             z-index: 2147483000;
         }
         /* Grabbable only while it is actually on screen. An opacity:0 element
@@ -163,6 +164,7 @@
     // ---------------------------------------------------------------
     let placed = null;   // { left, top } once dragged, in viewport px
     let grab = null;
+    let pendingHide = false;   // a hide() that arrived mid-drag, owed on release
 
     function clamp(v, lo, hi) {
         return Math.min(Math.max(v, lo), Math.max(lo, hi));
@@ -226,6 +228,7 @@
         }
         grab = null;
         if (placed) savePlacement();
+        if (pendingHide) { pendingHide = false; hide(); }
     }
 
     function armDrag(el) {
@@ -238,6 +241,11 @@
     }
 
     function hide() {
+        // Never out from under a finger. The badge is only up while a check is
+        // in flight, so a check finishing mid-drag would otherwise take it away
+        // and cancel the drag - which is most of why dragging it felt like it
+        // did nothing. The next hide() lands when the pointer is released.
+        if (grab) { pendingHide = true; return; }
         const el = badge();
         if (el) el.classList.remove('show');
     }
