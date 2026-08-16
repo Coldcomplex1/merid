@@ -1,4 +1,4 @@
-// POST /api/check - AI context check on Merid's own Gemini keys.
+// POST /api/check - AI context check on Merid's own model-provider keys.
 //
 // Why this exists at all: shipping API keys inside a Chrome extension puts them
 // in every user's file system, and a per-user limit the extension counts is a
@@ -7,14 +7,17 @@
 //
 // Request  { items: [{word, original, sentence}], persona?: string }
 //          Authorization: Bearer <Firebase ID token>
-// Response { ok, verdicts: (0|1)[], betters: string[], model, used, limit }
+// Response { ok, verdicts: (0|1)[], betters: string[], model, provider, used, limit }
 //
 // The extension keeps working without this endpoint - the AI check is an
 // enhancement, and every failure path here degrades to "no check", never to a
 // broken page.
+//
+// Which provider answers is _lib/ai.js's business, not this file's: Qwen first,
+// Gemini underneath, both reachable through one generate().
 import { verifyIdToken } from './_lib/verify.js';
 import { consume, isConfigured as quotaConfigured } from './_lib/quota.js';
-import { generate } from './_lib/gemini.js';
+import { generate, parseVerdictArray } from './_lib/ai.js';
 import { readJsonBody, sendJson as send } from './_lib/http.js';
 
 // A signed-in reader is a known, recoverable identity; an anonymous one is a
@@ -24,7 +27,7 @@ import { readJsonBody, sendJson as send } from './_lib/http.js';
 const LIMIT_ANONYMOUS = Number(process.env.MERID_LIMIT_ANONYMOUS || 20);
 const LIMIT_SIGNED_IN = Number(process.env.MERID_LIMIT_SIGNED_IN || 50);
 
-// ...and while Merid is small enough that the whole day's Gemini spend is
+// ...and while Merid is small enough that a whole day's model spend is
 // noise, nobody is turned away: the limits above are counted but not enforced,
 // so a reader gets the check on every page instead of losing it at word 20.
 //
@@ -148,19 +151,17 @@ export default async function handler(req, res) {
 
   if (!out.ok) {
     return send(res, 502, {
-      ok: false, code: 'upstream', status: out.status,
+      ok: false, code: 'upstream', status: out.status, provider: out.provider,
       used: quota.used, limit: quota.limit
     });
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(out.text || '');
-  } catch (e) {
-    parsed = null;
-  }
-  if (!Array.isArray(parsed)) {
-    return send(res, 502, { ok: false, code: 'bad-response', used: quota.used, limit: quota.limit });
+  const parsed = parseVerdictArray(out.text);
+  if (!parsed) {
+    return send(res, 502, {
+      ok: false, code: 'bad-response', provider: out.provider,
+      used: quota.used, limit: quota.limit
+    });
   }
 
   // Default to "keep": an item the model skipped must never be reverted on the
@@ -182,7 +183,11 @@ export default async function handler(req, res) {
     ok: true,
     verdicts,
     betters,
+    // `model` stays the raw id the provider knows it by - the extension shows
+    // it verbatim in "Test the AI check" - and `provider` is added alongside
+    // rather than folded into it, so that display keeps working unchanged.
     model: out.model,
+    provider: out.provider,
     // `used` keeps counting while unmetered; `limit` is what would apply if the
     // caps came back. The flag is what stops a client turning those two into
     // "17 of 20 left" when nothing is actually being withheld.

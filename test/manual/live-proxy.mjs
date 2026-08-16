@@ -1,16 +1,27 @@
-// Drive the REAL api/check.js handler end to end: real Gemini keys, a local
+// Drive the REAL api/check.js handler end to end: real provider keys, a local
 // stand-in for Upstash, and a properly signed token verified against a stubbed
 // cert endpoint. Everything except the network hop to Vercel is the real thing.
 //
 // MANUAL - not part of `npm test` or CI. It needs live keys and spends real
 // quota, so it stays opt-in:
 //
-//   GEMINI_API_KEYS="key1,key2" node test/manual/live-proxy.mjs
+//   # the default path - Qwen answers
+//   QWEN_API_KEYS="sk-..." node test/manual/live-proxy.mjs
+//
+//   # the fallback on its own
+//   MERID_AI_PROVIDERS=gemini GEMINI_API_KEYS="key1,key2" node test/manual/live-proxy.mjs
+//
+//   # failover: a deliberately wrong Qwen key must land on Gemini, not a 502
+//   QWEN_API_KEYS="sk-wrong" GEMINI_API_KEYS="key1" node test/manual/live-proxy.mjs
 //
 // This is the only test that proves the deployed shape actually works: the
-// handler, the prompt, model selection across the key pool, the quota window
-// and token verification, all against Google rather than a stub. Run it after
-// changing anything in api/ and before trusting a deploy.
+// handler, the prompt, model selection across the key pool, provider failover,
+// the quota window and token verification, all against the real API rather
+// than a stub. It also covers the three things about Model Studio that a stub
+// cannot - that non-streaming calls need enable_thinking, that JSON mode needs
+// the word "json" in the prompt, and that it answers with an object where
+// Gemini answers with an array. Run it after changing anything in api/ and
+// before trusting a deploy.
 import http from 'node:http';
 import crypto from 'node:crypto';
 
@@ -109,7 +120,7 @@ t('empty batch is rejected 400', r.status === 400 && r.json?.code === 'no-items'
 // 4. THE REAL ONE: a signed anonymous user, real Gemini
 r = await call(handler, { auth: 'Bearer ' + token(), body: { items: ITEMS } });
 t('a real check returns verdicts', r.status === 200 && Array.isArray(r.json?.verdicts),
-    `${r.status} ${JSON.stringify(r.json?.verdicts)} model=${r.json?.model}`);
+    `${r.status} ${JSON.stringify(r.json?.verdicts)} provider=${r.json?.provider} model=${r.json?.model}`);
 t('the wrong-context word is caught', r.json?.verdicts?.[1] === 0,
     `verdicts=${JSON.stringify(r.json?.verdicts)} betters=${JSON.stringify(r.json?.betters)}`);
 t('quota is reported back', r.json?.used === 1 && r.json?.limit === 3, `used=${r.json?.used}/${r.json?.limit}`);

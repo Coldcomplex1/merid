@@ -7,13 +7,14 @@
 Bạn cần làm 2 việc, mất khoảng 10 phút. Không cần biết code.
 
 **Việc đang làm là gì:** Extension Merid thay từ tiếng Việt trên web bằng từ
-tiếng Anh, rồi hỏi Google Gemini xem từ đó có hợp ngữ cảnh không. Phần hỏi
-Gemini chạy trên server của Merid (đặt tại Vercel) để khóa API không bị lộ. Bạn
-đang cắm khóa và bật tài khoản cho server đó.
+tiếng Anh, rồi hỏi một mô hình AI xem từ đó có hợp ngữ cảnh không — hỏi Qwen
+trước, không được thì mới hỏi Google Gemini. Phần hỏi này chạy trên server của
+Merid (đặt tại Vercel) để khóa API không bị lộ. Bạn đang cắm khóa và bật tài
+khoản cho server đó.
 
 ---
 
-## Phần 1 — Vercel: thêm 4 biến môi trường
+## Phần 1 — Vercel: thêm 5 biến môi trường
 
 ### 1.1 Mở đúng trang
 
@@ -34,11 +35,30 @@ Với mỗi biến bên dưới, làm y hệt nhau:
 - Ở phần Environment, tick **Production** *(nên tick luôn Preview)*
 - Bấm **Save**
 
-Rồi lặp lại cho biến tiếp theo. Tổng cộng 4 lần.
+Rồi lặp lại cho biến tiếp theo. Tổng cộng 5 lần.
 
 ---
 
-**Biến 1 — khóa Gemini**
+**Biến 1 — khóa Qwen** (đây là bên trả lời chính)
+
+Key:
+```
+QWEN_API_KEYS
+```
+Value (chép nguyên khóa, dạng `sk-...`; nhiều khóa thì ngăn bằng **một dấu
+phẩy, không có dấu cách**):
+```
+<khóa-qwen>
+```
+
+> Nếu khóa được tạo ở trang console **tiếng Trung** (dashscope.aliyuncs.com)
+> chứ không phải bản quốc tế, thêm một biến nữa tên `QWEN_BASE_URL` với giá trị
+> `https://dashscope.aliyuncs.com/compatible-mode/v1`. Sai chỗ này thì mọi lời
+> gọi đều báo lỗi khóa không hợp lệ, dù khóa hoàn toàn đúng.
+
+---
+
+**Biến 2 — khóa Gemini** (bên dự phòng, dùng khi Qwen không trả lời được)
 
 Key:
 ```
@@ -51,7 +71,7 @@ Value (chép nguyên dòng, **một dấu phẩy ở giữa, không có dấu c�
 
 ---
 
-**Biến 2 — địa chỉ bộ đếm**
+**Biến 3 — địa chỉ bộ đếm**
 
 Key:
 ```
@@ -64,7 +84,7 @@ Value:
 
 ---
 
-**Biến 3 — mật khẩu bộ đếm**
+**Biến 4 — mật khẩu bộ đếm**
 
 Key:
 ```
@@ -77,7 +97,7 @@ Value:
 
 ---
 
-**Biến 4 — mã dự án Firebase**
+**Biến 5 — mã dự án Firebase**
 
 Key:
 ```
@@ -152,7 +172,7 @@ server từ chối — chứng tỏ nó đang chạy và không mở cho ngườ
 
 ## Xong rồi thì báo lại
 
-Nhắn cho chủ project: **"Đã set 4 biến, đã Redeploy, đã bật Anonymous,
+Nhắn cho chủ project: **"Đã set 5 biến, đã Redeploy, đã bật Anonymous,
 curl trả 401."**
 
 Còn một bước cuối thuộc về họ (merge một bản vá vào code extension) trước khi
@@ -183,11 +203,14 @@ chạy thử một lượt thật và nói thẳng mắt xích nào hỏng:
 Bất kỳ khóa nào đã đi qua tin nhắn, email, ảnh chụp màn hình hay một commit đều
 coi như không còn bí mật. Cách thay mới:
 
+- **Khóa Qwen:** console Model Studio → **API Keys** → xóa khóa cũ → tạo khóa
+  mới → cập nhật biến `QWEN_API_KEYS` → Redeploy.
 - **Khóa Gemini:** <https://aistudio.google.com/apikey> → xóa khóa cũ → tạo khóa
   mới trong **cùng project** → cập nhật biến `GEMINI_API_KEYS` → Redeploy.
 - **Token Upstash:** <https://console.upstash.com> → chọn database →
   **Details → Reset token** → cập nhật `UPSTASH_REDIS_REST_TOKEN` → Redeploy.
 
 Mất thêm một lần Redeploy, gần như không có gián đoạn. Để nguyên thì: khóa
-Gemini lộ = người khác xài hết lượt miễn phí của mình; token Upstash lộ =
-người khác xóa được bộ đếm của tất cả người dùng.
+model lộ = người khác xài hết lượt của mình — với Qwen trả tiền theo dùng thì
+đó là một hóa đơn, không chỉ là hết quota; token Upstash lộ = người khác xóa
+được bộ đếm của tất cả người dùng.

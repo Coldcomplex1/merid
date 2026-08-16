@@ -1,8 +1,14 @@
 # Running the AI context check on Merid's own keys
 
-The extension no longer asks every user for a Gemini API key. It calls
-`/api/check` on merid.site, which holds the keys and counts each person's daily
-usage. This page is how you set that up.
+The extension no longer asks every user for an API key. It calls `/api/check`
+on merid.site, which holds the keys and counts each person's daily usage. This
+page is how you set that up.
+
+**Two providers, in order.** Qwen (Alibaba Model Studio) answers first; Gemini
+sits underneath and only sees a request when Qwen cannot serve it. Section 1
+covers Gemini, section 1b covers Qwen, and either one alone is a working
+deployment - a deploy with no `QWEN_API_KEYS` behaves exactly as it did before
+Qwen existed.
 
 **Handing the setup to someone else?** `HUONG-DAN-VERCEL.md` is a
 click-by-click Vietnamese walkthrough of steps 2-4 for a non-developer. Fill in
@@ -17,7 +23,7 @@ means something.
 
 ---
 
-## 1. Create the Gemini keys
+## 1. Create the Gemini keys (the fallback)
 
 **Each key must be in its own Google Cloud project.** Free-tier quota is per
 *project*, not per key - ten keys in one project all share one project's
@@ -76,6 +82,55 @@ come.
 
 ---
 
+## 1b. Create the Qwen key (Alibaba Model Studio)
+
+This is the provider that answers by default. One key is enough to start.
+
+<https://modelstudio.console.alibabacloud.com/> → **API Keys** → create one.
+It looks like `sk-…`. `QWEN_API_KEYS` takes a comma-separated list, exactly
+like `GEMINI_API_KEYS`, so more keys can be added later without a code change.
+
+### Get the region right, or nothing works
+
+**This is the one mistake that costs an afternoon.** Model Studio runs two
+separate consoles with two separate endpoints, and a key from one is a flat
+**401** on the other - not a clear error, just "invalid api key" on every call:
+
+| Console | Endpoint |
+| --- | --- |
+| International (Singapore) - **the default** | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| Mainland China (Beijing) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+
+The proxy defaults to the international endpoint. If your key came from the
+mainland console, set `QWEN_BASE_URL` to the second URL. Nothing else changes.
+
+### Which model answers
+
+The proxy hardcodes no model names here either. It asks the key what it can run
+(`GET /compatible-mode/v1/models`), ranks the answer, and re-checks hourly.
+The ranking is **flash first**, then plus, then the open-weight sizes, then max,
+newest version first within each tier.
+
+Flash is not a compromise for this task - the whole job is one true/false
+verdict plus at most one replacement word. It is also how the free allowance
+gets spent well: **every model in the quota table carries its own 1M-token
+grant**, so walking down the list multiplies the free capacity, and the walk
+should start where a request costs least. Dated snapshots (`qwen3.7-max-2026-06-08`)
+stay in the list below their alias for the same reason - same model, separate
+grant, free fallback capacity.
+
+Only `qwen-*` ids are used. The same account usually also serves `deepseek-*`
+and `glm-*`; they are fine models, but this pool reports which model answered
+and mixing them in would make that report a lie. `QWEN_MODELS="a,b,c"` overrides
+the ranking with an explicit ordered list if you ever want them, or want to pin
+one model while testing.
+
+Non-text models (vl, asr, tts, image, embedding, coder, …) are filtered out, and
+so are `-thinking` variants: Model Studio refuses structured output while
+thinking is on, and structured output is all this endpoint asks for.
+
+---
+
 ## 2. Create the quota store
 
 The daily counter needs somewhere atomic to live. [Upstash](https://upstash.com)
@@ -124,6 +179,10 @@ value, tick **Production** (and **Preview** if you test there), **Save**.
 
 | Name | Value |
 | --- | --- |
+| `QWEN_API_KEYS` | The Model Studio keys, comma-separated, no spaces or quotes: `sk-a,sk-b` |
+| `QWEN_BASE_URL` | *(optional)* only if your key is from the **mainland** console - see 1b |
+| `QWEN_MODELS` | *(optional)* pin an explicit ordered list instead of the ranking |
+| `MERID_AI_PROVIDERS` | *(optional)* `qwen,gemini` is the default. Set `gemini` to take Qwen out without a deploy. |
 | `GEMINI_API_KEYS` | The Gemini keys, comma-separated, no spaces or quotes: `key1,key2` |
 | `UPSTASH_REDIS_REST_URL` | The `https://….upstash.io` URL |
 | `UPSTASH_REDIS_REST_TOKEN` | The Upstash REST token |
@@ -174,9 +233,15 @@ the read-only token was used - go back to 4b.
 
 **3. Does a key still have quota?**
 ```bash
+# Qwen - run this FIRST. A 401 here means the region is wrong, see 1b.
+curl -s https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models \
+  -H "Authorization: Bearer $QWEN_API_KEYS" | head -20
+
+# Gemini
 curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=3&key=YOUR_KEY" | head -5
 ```
-Expect a JSON list of models.
+Both expect a JSON list of models. For Qwen, `InvalidApiKey` on a key you just
+copied almost always means it came from the other console.
 
 **4. End to end, from the extension.** Load the extension, open
 **Settings → AI context check → Test the AI check**. It runs one real check and
@@ -184,22 +249,27 @@ names whichever link is broken rather than just failing:
 
 | What it says | What to fix |
 | --- | --- |
-| Working (model: …), N of M left today | Nothing. |
+| Working (model: qwen3.7-flash …) | Nothing - Qwen is answering. |
+| Working (model: gemini-…) | Working, but Qwen is not answering. Check `QWEN_API_KEYS` and step 3. |
 | The AI context check is switched off | The toggle above it. |
 | Could not create an account for this device | Step 3 - anonymous sign-in is not enabled. |
 | Could not reach the Merid AI endpoint | Not deployed, or no connection. |
 | …missing its environment variables | Step 4b. |
 | …cannot reach its quota store | The Upstash URL/token, step 2. |
-| …every Gemini key failed | Out of quota, or the keys are wrong. |
+| …every Gemini key failed | **Both** providers failed, not just Gemini - the wording is the extension's and predates Qwen. Out of quota, or the keys are wrong. Run step 3 for each. |
 | …rejected this device's token | `FIREBASE_PROJECT_ID` does not match the extension's Firebase project. |
 
 **5. The server on its own** (needs live keys, spends real quota):
 ```bash
-GEMINI_API_KEYS="key1,key2" node test/manual/live-proxy.mjs
+QWEN_API_KEYS="sk-…" node test/manual/live-proxy.mjs                  # the default path
+MERID_AI_PROVIDERS=gemini GEMINI_API_KEYS="key1,key2" node test/manual/live-proxy.mjs   # the fallback
+QWEN_API_KEYS="sk-deliberately-wrong" GEMINI_API_KEYS="key1" node test/manual/live-proxy.mjs  # failover
 ```
-Runs the real handler against real Gemini with a local stand-in for Upstash -
-the only check that proves the handler, the prompt, model selection across the
-key pool, the quota window and token verification all work together.
+Runs the real handler against the real provider with a local stand-in for
+Upstash - the only check that proves the handler, the prompt, model selection
+across the key pool, the quota window and token verification all work together.
+It prints which provider and model answered, so the third line above should say
+`gemini` and not return a 502.
 
 ## Behaviour worth knowing
 
@@ -233,15 +303,19 @@ the Chrome Web Store data disclosure need to say so.
 
 ## Rotate anything that has been pasted somewhere else
 
-`GEMINI_API_KEYS` and `UPSTASH_REDIS_REST_TOKEN` are real secrets, and Vercel's
-environment variables are the only place they belong. Any key that has been in
-a chat, an email, a screenshot or a commit should be replaced once setup works:
+`QWEN_API_KEYS`, `GEMINI_API_KEYS` and `UPSTASH_REDIS_REST_TOKEN` are real
+secrets, and Vercel's environment variables are the only place they belong. Any
+key that has been in a chat, an email, a screenshot or a commit should be
+replaced once setup works:
 
+- **Qwen:** Model Studio console → **API Keys** → delete the old key, create a
+  new one, update `QWEN_API_KEYS`, redeploy.
 - **Gemini:** <https://aistudio.google.com/apikey> → delete the old key, create
   a new one in the same project, update `GEMINI_API_KEYS`, redeploy.
 - **Upstash:** console → the database → **Details → Reset token**, update
   `UPSTASH_REDIS_REST_TOKEN`, redeploy.
 
 Rotating costs one redeploy and no downtime worth mentioning. Leaving a leaked
-Gemini key live means someone else spends your daily allowance; leaving a
-leaked Upstash token live means someone can clear every user's counter.
+model key live means someone else spends your allowance - and on Qwen's
+pay-as-you-go that is a bill, not just a quota; leaving a leaked Upstash token
+live means someone can clear every user's counter.
