@@ -759,3 +759,38 @@ test('the two-argument isSiteDisabled call still fails safe', () => {
     assert.strictEqual(C.isSiteDisabled('docs.google.com', []), true);
     assert.strictEqual(C.isSiteDisabled('vnexpress.net', []), false);
 });
+
+// ---------------------------------------------------------------------------
+// Case matching
+//
+// The datasets store every headword lower case, so without this a word landing
+// where "Khó" or "KHÓ KHĂN" stood arrives as "difficult" and announces itself
+// as a substitution - worst in headlines, which is where whole-caps text lives.
+// ---------------------------------------------------------------------------
+test('matchCase copies the capitalisation of the word it replaces', () => {
+    assert.strictEqual(C.matchCase('khó', 'difficult'), 'difficult');
+    assert.strictEqual(C.matchCase('Khó', 'difficult'), 'Difficult');
+    assert.strictEqual(C.matchCase('KHÓ', 'difficult'), 'DIFFICULT');
+});
+
+test('matchCase keeps Vietnamese diacritics out of the decision and the result', () => {
+    // /[A-Z]/ sees no letter at all in "Ở" or "ĐẸP"; \p{Lu} does. Getting this
+    // wrong leaves every accented word lower case.
+    assert.strictEqual(C.matchCase('Ở', 'at'), 'At');
+    assert.strictEqual(C.matchCase('ở', 'at'), 'at');
+    assert.strictEqual(C.matchCase('ĐẸP', 'beautiful'), 'BEAUTIFUL');
+    assert.strictEqual(C.matchCase('Đẹp', 'beautiful'), 'Beautiful');
+    assert.strictEqual(C.matchCase('đẹp', 'beautiful'), 'beautiful');
+});
+
+test('matchCase reads a multi-word phrase by its first letter, not its shape', () => {
+    // A title-cased phrase is capitalised, not shouted.
+    assert.strictEqual(C.matchCase('Tổng Bí thư', 'leader'), 'Leader');
+    assert.strictEqual(C.matchCase('KHÓ KHĂN', 'difficult'), 'DIFFICULT');
+});
+
+test('matchCase leaves the replacement alone when there is no case to copy', () => {
+    assert.strictEqual(C.matchCase('123', 'x'), 'x');
+    assert.strictEqual(C.matchCase('', 'word'), 'word');
+    assert.strictEqual(C.matchCase('khó', ''), '');
+});

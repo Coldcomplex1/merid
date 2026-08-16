@@ -148,7 +148,15 @@ export default function WordTile({
             <button
               type="button"
               tabIndex={showBack ? undefined : -1}
-              onClick={() => onSetStatus(w.word, w.status === 'known' ? 'saved' : 'known')}
+              onClick={() => {
+                onSetStatus(w.word, w.status === 'known' ? 'saved' : 'known')
+                // Turn back to the word. Marking one known is the end of
+                // looking it up, and the card carries the answer on the face
+                // you pressed the button from - so leaving it turned over
+                // hides the word behind its own meaning, and a grid of them
+                // stops being readable as a deck of words at all.
+                setFlipped(false)
+              }}
               aria-label={w.status === 'known' ? t.deck.markSaved : t.deck.markKnown}
               className={`${action} ${
                 w.status === 'known'

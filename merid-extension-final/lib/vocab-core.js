@@ -1359,6 +1359,38 @@
         });
     }
 
+/**
+ * Give `replacement` the capitalisation `source` was wearing.
+ *
+ * The datasets store every headword in lower case, so a word standing where
+ * "Khó" or "KHÓ KHĂN" stood used to arrive as "difficult" and announce itself
+ * as a substitution - at the start of a sentence, and loudest in headlines,
+ * which is where whole-caps text lives.
+ *
+ * Case is read off the Vietnamese, not guessed from position: a word mid-
+ * sentence that was already capitalised (a name, a title) keeps that too.
+ *
+ * Unicode-aware on purpose. Vietnamese carries its tone marks on the vowel, so
+ * `\p{Lu}`/`\p{Ll}` are what distinguish "Ở" from "ở" - an /[A-Z]/ test sees
+ * neither as a letter at all and would leave every accented word lower case.
+ * toUpperCase() preserves the marks, so "khó" -> "KHÓ", never "KHO".
+ */
+function matchCase(source, replacement) {
+    const src = String(source || '');
+    const out = String(replacement || '');
+    if (!out) return out;
+
+    const cased = src.match(/\p{Lu}|\p{Ll}/gu);
+    if (!cased) return out;   // digits, punctuation: nothing to copy
+
+    // ALL CAPS, and meant: at least two cased letters, none of them lower.
+    if (cased.length > 1 && !cased.some(ch => /\p{Ll}/u.test(ch))) return out.toUpperCase();
+
+    // Otherwise only the first letter speaks for the word.
+    if (/\p{Lu}/u.test(cased[0])) return out.charAt(0).toUpperCase() + out.slice(1);
+    return out;
+}
+
     return {
         // datasets/settings
         DATASET_REGISTRY, DEFAULT_DATASET_KEY, getDatasetFiles, datasetTagFor,
@@ -1382,6 +1414,8 @@
         hashToInt, gateByFrequency,
         // csv
         splitCsvLine, parseCSV, validateEntry, normalizeEntry,
+        // display
+        matchCase,
         // custom datasets
         CUSTOM_KEY_PREFIX, CUSTOM_LIMITS, CUSTOM_REQUIRED_COLUMNS, CUSTOM_KNOWN_COLUMNS,
         isCustomKey, customIdFromKey, customKeyFor,
