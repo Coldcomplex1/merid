@@ -413,7 +413,7 @@ const vi: Strings = {
     apiKeyGuideDescription:
       'Cách lấy API key Gemini miễn phí từ Google AI Studio và dán vào Merid để bật AI Context Check, tính năng tự đổi lại những từ không hợp với câu.',
     privacyPolicyDescription:
-      'Merid thay từ ngay trên máy bạn và không gửi nội dung trang web lên máy chủ. Trang này nói rõ dữ liệu nào được lưu, lưu ở đâu và bạn kiểm soát thế nào.',
+      'Merid tìm và thay từ ngay trên máy bạn; chỉ đoạn câu quanh từ đã thay được gửi đi để kiểm tra ngữ cảnh. Trang này nói rõ dữ liệu nào được lưu, lưu ở đâu và bạn kiểm soát thế nào.',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -550,7 +550,8 @@ const vi: Strings = {
     sub: 'Học từ vựng tiếng Anh một cách tự nhiên ngay khi đọc những trang web tiếng Việt bạn vẫn dùng mỗi ngày.',
     ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
-    privacy: 'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn, không cần tài khoản và không gửi dữ liệu trang web lên máy chủ.',
+    privacy:
+      'Riêng tư từ trong thiết kế. Merid tìm và thay từ ngay trên máy bạn, không cần tài khoản; chỉ đoạn câu quanh từ đã thay được gửi đi để kiểm tra ngữ cảnh, và bạn tắt được bất cứ lúc nào.',
     tagNote: 'Học theo ngữ cảnh · Miễn phí',
     scrollCue: 'Cuộn xuống thử demo trực tiếp',
   },
@@ -703,7 +704,7 @@ const vi: Strings = {
     ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
     privacy:
-      'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn: không tài khoản, không dịch vụ AI, không gửi dữ liệu trang web lên máy chủ.',
+      'Riêng tư từ trong thiết kế: không cần tài khoản, không quảng cáo, không theo dõi. Merid thay từ ngay trên máy bạn, và không bao giờ đọc tin nhắn, email hay trang ngân hàng của bạn.',
   },
   footer: {
     tagline: 'Làm cho người Việt học tiếng Anh.',
@@ -1117,7 +1118,7 @@ const en: Strings = {
     apiKeyGuideDescription:
       'How to create a free Gemini API key in Google AI Studio and paste it into Merid to turn on AI Context Check, which reverts replaced words that do not fit the sentence.',
     privacyPolicyDescription:
-      'Merid replaces words on your own device and never sends webpage content to a server. This page sets out exactly what is stored, where it lives, and what you control.',
+      'Merid matches and replaces words on your own device; only the sentence around a replaced word leaves it, for the AI context check. This page sets out what is stored, where it lives, and what you control.',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -1254,7 +1255,8 @@ const en: Strings = {
     sub: 'Learn English vocabulary naturally while reading the Vietnamese websites you already use.',
     ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
-    privacy: 'Private by design. It runs locally on your device, with no account and no webpage data sent to a server.',
+    privacy:
+      'Private by design. It matches and replaces words locally on your device, with no account needed; only the sentence around a replaced word is sent out for the context check, which you can switch off.',
     tagNote: 'Context-aware learning · Free',
     scrollCue: 'Scroll down to try the live demo',
   },
@@ -1407,7 +1409,7 @@ const en: Strings = {
     ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
     privacy:
-      'Private by design. Merid works locally on your device: no account, no AI service, and no webpage data sent to a server.',
+      'Private by design: no account needed, no ads, no tracking. Merid replaces words on your own device, and never reads your messages, your email or your banking pages.',
   },
   footer: {
     tagline: 'Made for Vietnamese learners.',
