@@ -17,6 +17,9 @@ hand-maintained and have no build step of their own.
 wears a concept glyph, so an empty `vis/` is a complete product, not a broken
 one. This pipeline decides how much of it is photographs.
 
+A step-by-step walkthrough in Vietnamese, aimed at whoever is running this
+rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
+
 ## What you need
 
 | | Where | Used by |
