@@ -30,36 +30,62 @@ const Visual = require(path.join(EXT, 'lib/visual.js'));
 const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
 
-/** Slugs for the first `n` C1 entries, computed the way the browser will. */
-function firstSlugs(n) {
+// The two headwords the fixture page below is written to surface. The test
+// guarantees these have a picture; everything else on the page is there to be
+// drawn as a glyph.
+const NEEDS_PHOTO = ['abolish', 'absence'];
+
+/** The slug for a C1 headword, computed the way the browser computes it. */
+function slugForWord(word) {
     const rows = C.parseCSV(fs.readFileSync(path.join(EXT, 'dataset-C1.csv'), 'utf8'))
-        .filter(C.validateEntry).slice(0, n);
-    return rows.map(r => Visual.slugFor(C.normalizeEntry(r, 'c1')));
+        .filter(C.validateEntry);
+    const row = rows.find(r => r.word === word);
+    return row ? Visual.slugFor(C.normalizeEntry(row, 'c1')) : null;
 }
 
 /**
- * Draw placeholder pictures, and say what to delete afterwards.
+ * Make sure the words this page shows actually have pictures, and say what to
+ * undo afterwards.
  *
- * Nothing in this repo encodes an image and the pipeline that will (sharp) runs
- * on a developer's machine, so the encoder used here is the browser: a canvas
- * and toDataURL('image/webp') produce real WebP bytes, which is all the test
- * needs - it asserts that a file decodes, not that it is beautiful.
+ * Not "generate pictures if vis/ is empty". Once the dataset pipeline has run,
+ * vis/ is full - of pictures for whichever words turned out to be
+ * photographable, which is a set that changes every time the pipeline runs and
+ * has no reason to include the two words this fixture happens to surface. A
+ * test that depended on that overlap would pass today and fail after an
+ * unrelated re-run.
+ *
+ * So it works the other way round: name the words the page needs, and fill in
+ * only what is missing. Real artwork is never touched, and the placeholders are
+ * removed on the way out - a checked-in gradient claiming to illustrate
+ * "abolish" would be worse than no picture at all.
+ *
+ * The encoder is the browser: canvas plus toDataURL('image/webp') gives real
+ * WebP bytes, and nothing in this repo encodes images.
  */
 async function makeFixtures() {
-    const hadVis = fs.existsSync(VIS_DIR) &&
-        fs.readdirSync(VIS_DIR).some(f => /\.(avif|webp)$/.test(f));
-    if (hadVis) return { made: [], indexWritten: false };
+    const index = fs.existsSync(INDEX_FILE)
+        ? JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'))
+        : { v: 1, fmt: 'webp', dim: [320, 160], photo: [], icon: {} };
+    const originalIndex = fs.existsSync(INDEX_FILE)
+        ? fs.readFileSync(INDEX_FILE, 'utf8') : null;
 
-    const slugs = firstSlugs(5);
+    const have = new Set(index.photo || []);
+    const wanted = NEEDS_PHOTO.map(slugForWord).filter(Boolean);
+    const missing = wanted.filter(slug =>
+        !have.has(slug) || !fs.existsSync(path.join(VIS_DIR, slug + '.' + (index.fmt || 'webp'))));
+    if (!missing.length) return { made: [], originalIndex: null, madeDir: false };
+
+    const madeDir = !fs.existsSync(VIS_DIR);
     fs.mkdirSync(VIS_DIR, { recursive: true });
+    const fmt = index.fmt || 'webp';
 
     const browser = await chromium.launch({
         executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium'
     });
     const page = await browser.newPage();
     const made = [];
-    for (const [i, slug] of slugs.entries()) {
-        const dataUrl = await page.evaluate(({ hue }) => {
+    for (const [i, slug] of missing.entries()) {
+        const dataUrl = await page.evaluate(({ hue, mime }) => {
             const c = document.createElement('canvas');
             c.width = 320; c.height = 160;
             const g = c.getContext('2d');
@@ -69,29 +95,27 @@ async function makeFixtures() {
             g.fillStyle = grad; g.fillRect(0, 0, 320, 160);
             g.fillStyle = 'rgba(255,255,255,.85)';
             for (let x = 10; x < 320; x += 26) for (let y = 10; y < 160; y += 26) g.fillRect(x, y, 6, 6);
-            return c.toDataURL('image/webp', 0.5);
-        }, { hue: (i * 47) % 360 });
-        const file = path.join(VIS_DIR, slug + '.webp');
+            return c.toDataURL(mime, 0.5);
+        }, { hue: (i * 97) % 360, mime: fmt === 'avif' ? 'image/webp' : 'image/' + fmt });
+        const file = path.join(VIS_DIR, slug + '.' + fmt);
         fs.writeFileSync(file, Buffer.from(dataUrl.split(',')[1], 'base64'));
         made.push(file);
+        if (!have.has(slug)) index.photo.push(slug);
     }
     await browser.close();
-
-    const indexWritten = !fs.existsSync(INDEX_FILE);
-    if (indexWritten) {
-        fs.writeFileSync(INDEX_FILE, JSON.stringify({
-            v: 1, generated: new Date().toISOString().slice(0, 10),
-            fmt: 'webp', dim: [320, 160], photo: slugs, icon: {}
-        }, null, 2) + '\n');
-    }
-    return { made, indexWritten };
+    fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2) + '\n');
+    return { made, originalIndex, madeDir };
 }
 
 const fixtures = await makeFixtures();
 function cleanUpFixtures() {
     for (const f of fixtures.made) { try { fs.unlinkSync(f); } catch (e) { /* gone */ } }
-    if (fixtures.made.length) { try { fs.rmdirSync(VIS_DIR); } catch (e) { /* not empty */ } }
-    if (fixtures.indexWritten) { try { fs.unlinkSync(INDEX_FILE); } catch (e) { /* gone */ } }
+    if (fixtures.originalIndex !== null) {
+        try { fs.writeFileSync(INDEX_FILE, fixtures.originalIndex); } catch (e) { /* gone */ }
+    } else if (fixtures.made.length) {
+        try { fs.unlinkSync(INDEX_FILE); } catch (e) { /* gone */ }
+    }
+    if (fixtures.madeDir) { try { fs.rmdirSync(VIS_DIR); } catch (e) { /* not empty */ } }
 }
 process.on('exit', cleanUpFixtures);
 
