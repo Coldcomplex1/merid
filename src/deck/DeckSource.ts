@@ -1,4 +1,5 @@
 import { sanitizeVocabText, LIMITS } from '../lib/sanitize'
+import type { Dataset } from '../data/vocab'
 
 export type WordStatus = 'saved' | 'known'
 
@@ -14,12 +15,49 @@ export interface DeckWord {
   createdAt: number
 }
 
+/** What Explore hands to addWord. Everything a DeckWord has except the fields
+ *  the backend owns: `status` always starts at 'saved', and `createdAt` is the
+ *  server's clock. `datasets` records which shipped word list the entry came
+ *  from - firestore.rules has always allowed the field, and Explore is the
+ *  first writer that actually knows the answer. */
+export interface NewDeckWord {
+  word: string
+  vietnamese: string
+  definition: string
+  example: string
+  pos: string
+  datasets: Dataset[]
+}
+
+/** Doc ids are the word itself, and firestore.rules constrains them to
+ *  lowercase letters plus internal space, hyphen or apostrophe. Four of the
+ *  2,806 shipped headwords cannot pass it - `e.g.`, `façade`, `naïve`,
+ *  `précis` - so Explore checks here and disables Add rather than letting the
+ *  write fail at the server. Keep the pattern identical to validWord() in
+ *  firestore.rules. */
+export function canSaveWord(word: string): boolean {
+  return word.length >= 1 && word.length <= LIMITS.word && /^[a-z](?:[a-z '-]*[a-z])?$/.test(word)
+}
+
+/** Thrown by addWord when the account has used its 200 creates for the UTC day.
+ *  A distinct type because the UI says something specific about it - every
+ *  other failure is just "could not save". */
+export class DailyLimitError extends Error {
+  constructor(readonly limit: number) {
+    super(`daily limit of ${limit} words reached`)
+    this.name = 'DailyLimitError'
+  }
+}
+
 /**
  * Swappable deck backend. `/my-deck` drives the whole deck UI through this
  * interface, keeping the Firestore implementation decoupled from components.
  */
 export interface DeckSource {
   listWords(): Promise<DeckWord[]>
+  /** Create a word in the deck at status 'saved'. Rejects with DailyLimitError
+   *  once the account's per-day create cap is spent. */
+  addWord(entry: NewDeckWord): Promise<void>
   removeWord(word: string): Promise<void>
   setStatus(word: string, status: WordStatus): Promise<void>
   /** Optional live feed: when provided, the UI subscribes instead of doing a

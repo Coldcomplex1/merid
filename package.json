@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/copy-blog-css.mjs && node scripts/prerender-seo.mjs",
+    "gen:datasets": "node scripts/gen-datasets.mjs",
     "preview": "vite preview",
     "audit": "npm audit --audit-level=high",
     "emulators": "firebase emulators:start --only auth,firestore",
-    "test:rules": "firebase emulators:exec --only firestore --project merid-rules-test \"node --test test/firestore-rules.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore --project merid-rules-test \"node --test --test-concurrency=1 test/firestore-rules.test.mjs test/deck-write.test.mjs\"",
     "test:api": "node --test test/api.test.mjs test/blog.test.mjs test/engines.test.mjs test/analytics.test.mjs test/seo.test.mjs",
     "test": "npm run test:api"
   },
