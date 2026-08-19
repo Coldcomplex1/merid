@@ -200,15 +200,25 @@ async function main() {
         progress('01', i + 1, batches.length);
     }
 
-    // Anything still unanswered is abstract. That is the safe direction: a word
-    // that could have had a photograph merely gets a glyph, whereas guessing
-    // "concrete" sends it into stages 02-04 looking for a picture of something
-    // unphotographable, and the best match for a bad query still scores.
+    // Anything the model was ASKED about and did not answer is abstract. That is
+    // the safe direction: a word that could have had a photograph merely gets a
+    // glyph, whereas guessing "concrete" sends it into stages 02-04 hunting for
+    // a picture of something unphotographable, and the best match for a bad
+    // query still scores.
+    //
+    // Only when the run actually asked about everything, though. Under --limit
+    // the rest were never asked, and marking them abstract turns a 20-word trial
+    // into a summary that reads like a finished classification - which is
+    // exactly how a trial run gets mistaken for the real thing. They are left
+    // unrecorded instead, so the next run picks them up.
+    const held = ask.length - todo.length;
     let defaulted = 0;
-    for (const entry of entries) {
-        if (!result.entries[entry.slug]) {
-            result.entries[entry.slug] = { kind: 'abstract', source: 'default' };
-            defaulted++;
+    if (!held) {
+        for (const entry of entries) {
+            if (!result.entries[entry.slug]) {
+                result.entries[entry.slug] = { kind: 'abstract', source: 'default' };
+                defaulted++;
+            }
         }
     }
     result.generated = new Date().toISOString();
@@ -217,8 +227,19 @@ async function main() {
 
     const totals = { concrete: 0, abstract: 0 };
     for (const v of Object.values(result.entries)) totals[v.kind]++;
-    console.log('[01] unanswered by the model: ' + unanswered + (defaulted ? ', ' + defaulted + ' defaulted to abstract' : ''));
-    console.log('[01] => concrete ' + totals.concrete + ', abstract ' + totals.abstract);
+    console.log('[01] unanswered by the model: ' + unanswered +
+        (defaulted ? ', ' + defaulted + ' defaulted to abstract' : ''));
+
+    if (held) {
+        // Say what this run was, so the totals below are not read as a result.
+        console.log('[01] --limit stopped after ' + todo.length + ' of ' + ask.length +
+            '; ' + held + ' still to classify.');
+        console.log('[01] Run again without --limit to finish. Answers so far are cached.');
+        console.log('[01] so far: concrete ' + totals.concrete + ', abstract ' + totals.abstract +
+            ' (incomplete)');
+    } else {
+        console.log('[01] => concrete ' + totals.concrete + ', abstract ' + totals.abstract);
+    }
     console.log('[01] wrote ' + OUT);
 }
 
