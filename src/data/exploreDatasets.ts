@@ -23,6 +23,15 @@ export interface DatasetMeta {
  *  marketing demo (a `tier`, a one-word `vi` gloss, a single `pron`) and has
  *  nowhere to put two IPA variants or a CEFR band. */
 export interface ExploreEntry {
+  /** Stable unique identity, for React keys.
+   *
+   *  `key` alone is NOT unique: 87 C1 headwords are deliberately listed two or
+   *  three times as different parts of speech (`alert` is adjective, noun and
+   *  verb), which the dataset audit records as intentional. Headword plus part
+   *  of speech collides nowhere across the three files. It has to be stable
+   *  rather than a list index, because a card owns flip state and an index key
+   *  would hand that state to a different word whenever a filter changes. */
+  id: string
   /** The headword as authored - "largess/largesse", "façade". What renders. */
   word: string
   /** Normalized lookup key: NFC, lowercase, first variant of a slash pair.
@@ -91,10 +100,13 @@ function toEntry(raw: unknown, tag: Dataset): ExploreEntry | null {
           .slice(0, MAX_TERMS)
       : []
 
+  const pos = sanitizeVocabText(r.pos, LIMITS.pos)
+
   return {
+    id: `${key}|${pos}`,
     word,
     key,
-    pos: sanitizeVocabText(r.pos, LIMITS.pos),
+    pos,
     phonBr: sanitizeVocabText(r.br, EXTRA_LIMITS.phon),
     phonAm: sanitizeVocabText(r.am, EXTRA_LIMITS.phon),
     definition: sanitizeVocabText(r.def, LIMITS.definition),

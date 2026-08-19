@@ -99,8 +99,17 @@ export interface Strings {
       saveFailed: string
       /** Button on the empty-deck card that opens this tab. */
       browseLists: string
+      example: string
       synonyms: string
       antonyms: string
+      /** Card faces. Not deck.library.flip - that one reads "see the meaning
+       *  of", and an Explore card already carries the meaning on its front. */
+      flip: (word: string) => string
+      flipBack: (word: string) => string
+      /** The A-Z rail beside the grid. */
+      letters: string
+      allLetters: string
+      jumpTo: (letter: string) => string
     }
     /** The Library tab: the word grid and the controls above it. */
     library: {
@@ -512,8 +521,14 @@ const vi: Strings = {
         `Bạn đã đạt giới hạn ${limit} từ mỗi ngày. Hãy quay lại vào ngày mai.`,
       saveFailed: 'Không lưu được từ này. Vui lòng thử lại.',
       browseLists: 'Duyệt danh sách từ',
+      example: 'Ví dụ',
       synonyms: 'Đồng nghĩa',
       antonyms: 'Trái nghĩa',
+      flip: (word: string) => `Xem ví dụ của “${word}”`,
+      flipBack: (word: string) => `Quay lại mặt trước của “${word}”`,
+      letters: 'Lọc theo chữ cái',
+      allLetters: 'Tất cả chữ cái',
+      jumpTo: (letter: string) => `Các từ bắt đầu bằng ${letter}`,
     },
     library: {
       collections: 'Bộ sưu tập của tôi',
@@ -1239,8 +1254,14 @@ const en: Strings = {
         `You have hit the limit of ${limit} words a day. Come back tomorrow.`,
       saveFailed: 'Could not save that word. Please try again.',
       browseLists: 'Browse the word lists',
+      example: 'Example',
       synonyms: 'Synonyms',
       antonyms: 'Antonyms',
+      flip: (word: string) => `See the example for “${word}”`,
+      flipBack: (word: string) => `Back to the front of “${word}”`,
+      letters: 'Filter by letter',
+      allLetters: 'All letters',
+      jumpTo: (letter: string) => `Words starting with ${letter}`,
     },
     library: {
       collections: 'My collections',

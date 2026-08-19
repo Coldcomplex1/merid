@@ -48,12 +48,13 @@ export default function MyDeck() {
   const [progress, setProgress] = useState<ProgressFilter>('all')
   const [view, setView] = useState<ViewMode>('grid')
 
-  // Explore's dataset choice and search box live here for the same reason the
-  // Library's controls do: the tab body unmounts when you switch away, and
-  // losing your place in a 2,806-word list on every trip to Flashcards is worse
-  // than carrying two fields on this component.
+  // Explore's dataset choice, search box and A-Z letter live here for the same
+  // reason the Library's controls do: the tab body unmounts when you switch
+  // away, and losing your place in a 2,806-word list on every trip to
+  // Flashcards is worse than carrying three fields on this component.
   const [exploreView, setExploreView] = useState<string>(ALL_ID)
   const [exploreQuery, setExploreQuery] = useState('')
+  const [exploreLetter, setExploreLetter] = useState<string | null>(null)
 
   // Building a puzzle out of specific words: `selected` is what is ticked in
   // the list, `puzzleWords` is the set handed to the Puzzle tab once confirmed.
@@ -420,6 +421,8 @@ export default function MyDeck() {
                   onView={setExploreView}
                   query={exploreQuery}
                   onQuery={setExploreQuery}
+                  letter={exploreLetter}
+                  onLetter={setExploreLetter}
                 />
               ) : words.length === 0 ? (
                 /* Library, Puzzle and Flashcards all need a deck. One empty

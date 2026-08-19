@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useLang } from '../../i18n/LanguageContext'
 import {
   ALL_ID,
@@ -10,6 +10,7 @@ import {
 import type { WordStatus } from '../../deck/DeckSource'
 import { SearchIcon } from '../ui/DeckIcons'
 import ExploreTile from './ExploreTile'
+import ExploreLetterRail from './ExploreLetterRail'
 
 interface Props {
   /** Normalized word -> its status in the deck. Built once by MyDeck from the
@@ -23,6 +24,9 @@ interface Props {
   onView: (next: string) => void
   query: string
   onQuery: (next: string) => void
+  /** Active letter from the A-Z rail, or null for the whole list. */
+  letter: string | null
+  onLetter: (next: string | null) => void
 }
 
 /** How many tiles are rendered before "Show more".
@@ -41,6 +45,8 @@ export default function ExploreBrowser({
   onView,
   query,
   onQuery,
+  letter,
+  onLetter,
 }: Props) {
   const { t } = useLang()
   const e = t.deck.explore
@@ -54,6 +60,7 @@ export default function ExploreBrowser({
   // Bumped by Retry. A rejected load is dropped from the module cache, so
   // re-running the effect genuinely refetches rather than replaying the failure.
   const [attempt, setAttempt] = useState(0)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let live = true
@@ -91,7 +98,11 @@ export default function ExploreBrowser({
   // input itself responsive on a slow phone without a hand-rolled debounce.
   const deferredQuery = useDeferredValue(query)
 
-  const matches = useMemo(() => {
+  // Search narrows first, the letter second. Order matters: the rail's counts
+  // are taken from this list, so a letter is only offered when it would leave
+  // something on screen, and picking one can never resurrect a word the search
+  // excluded.
+  const searched = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase()
     if (!q || !entries) return entries ?? []
     // Same three fields the Library searches, so the two tabs behave alike.
@@ -103,9 +114,38 @@ export default function ExploreBrowser({
     )
   }, [entries, deferredQuery])
 
+  const letterCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    // `key` is the normalized headword, so its first character is always a
+    // plain a-z letter - no bucket is needed for anything else.
+    for (const entry of searched) {
+      const first = entry.key[0]
+      counts.set(first, (counts.get(first) ?? 0) + 1)
+    }
+    return counts
+  }, [searched])
+
+  const matches = useMemo(
+    () => (letter ? searched.filter((entry) => entry.key[0] === letter) : searched),
+    [searched, letter],
+  )
+
   useEffect(() => {
     setShown(PAGE_SIZE)
-  }, [view, deferredQuery])
+  }, [view, deferredQuery, letter])
+
+  // A letter that is no longer on offer - the dataset changed, or the search
+  // narrowed past it - would otherwise leave an empty grid and no way back.
+  useEffect(() => {
+    if (letter && entries && !letterCounts.has(letter)) onLetter(null)
+  }, [letter, entries, letterCounts, onLetter])
+
+  const handleLetter = (next: string | null) => {
+    onLetter(next)
+    // The grid is long; without this a pick from halfway down the rail leaves
+    // you looking at the middle of the new, much shorter list.
+    resultsRef.current?.scrollIntoView({ block: 'nearest' })
+  }
 
   const handleAdd = async (entry: ExploreEntry) => {
     setSaveError(null)
@@ -176,7 +216,7 @@ export default function ExploreBrowser({
         </p>
       )}
 
-      <div className="mt-5">
+      <div className="mt-5" ref={resultsRef}>
         {failed ? (
           <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
             <p className="text-sm text-muted">{e.loadError}</p>
@@ -188,43 +228,55 @@ export default function ExploreBrowser({
           <p className="px-5 py-8 text-sm text-muted" role="status">
             {e.loading}
           </p>
-        ) : matches.length === 0 ? (
-          <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
-            <p className="text-sm text-muted">{e.noMatches}</p>
-          </div>
         ) : (
-          <>
-            <p className="text-xs font-semibold text-muted">
-              {e.showing(Math.min(shown, matches.length), matches.length)}
-            </p>
+          /* The rail sits outside the no-matches branch on purpose: a search
+             that leaves nothing still needs a way back to a letter that has
+             something. */
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              {matches.length === 0 ? (
+                <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
+                  <p className="text-sm text-muted">{e.noMatches}</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold text-muted">
+                    {e.showing(Math.min(shown, matches.length), matches.length)}
+                  </p>
 
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-              {matches.slice(0, shown).map((entry) => (
-                <ExploreTile
-                  key={entry.key}
-                  entry={entry}
-                  deckStatus={deckStatus.get(entry.key) ?? null}
-                  saving={saving.has(entry.key)}
-                  onAdd={handleAdd}
-                />
-              ))}
-            </ul>
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {matches.slice(0, shown).map((entry) => (
+                      <ExploreTile
+                        key={entry.id}
+                        entry={entry}
+                        deckStatus={deckStatus.get(entry.key) ?? null}
+                        saving={saving.has(entry.key)}
+                        onAdd={handleAdd}
+                      />
+                    ))}
+                  </ul>
 
-            {shown < matches.length && (
-              <div className="mt-5 text-center">
-                {/* A button rather than a scroll sentinel: useInView disconnects
-                    after the first intersection, so it cannot drive a repeating
-                    load, and an explicit control stays keyboard-reachable. */}
-                <button
-                  type="button"
-                  onClick={() => setShown((n) => n + PAGE_SIZE)}
-                  className={outlineButton}
-                >
-                  {e.showMore}
-                </button>
-              </div>
-            )}
-          </>
+                  {shown < matches.length && (
+                    <div className="mt-5 text-center">
+                      {/* A button rather than a scroll sentinel: useInView
+                          disconnects after the first intersection, so it cannot
+                          drive a repeating load, and an explicit control stays
+                          keyboard-reachable. */}
+                      <button
+                        type="button"
+                        onClick={() => setShown((n) => n + PAGE_SIZE)}
+                        className={outlineButton}
+                      >
+                        {e.showMore}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <ExploreLetterRail letter={letter} onLetter={handleLetter} counts={letterCounts} />
+          </div>
         )}
       </div>
     </div>
