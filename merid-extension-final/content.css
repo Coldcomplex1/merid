@@ -67,10 +67,28 @@
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 3px 10px rgba(15, 31, 61, 0.08);
+    /* A card taller than the window used to run off the bottom of it, and the
+       part below the fold was unreachable: the card hides 120ms after the
+       pointer leaves the word, so scrolling down to read the rest dismisses it.
+       Rare before - the longest definitions on a short laptop window - and not
+       rare at all once a ~146px picture sits on top.
+
+       So the card stops growing at the window and scrolls its body instead,
+       which also keeps the actions row on screen. The /0.95 undoes the zoom
+       above, which scales vh along with everything else. */
+    display: flex;
+    flex-direction: column;
+    max-height: calc((100vh - 24px) / 0.95);
 }
 
 .vm-body {
     padding: 15px 16px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;   /* do not hand the scroll back to the page */
+}
+
+.vm-actions {
+    flex: none;
 }
 
 .vm-close {
@@ -338,6 +356,149 @@
     opacity: 0.85;
 }
 
+/* -------------------------------------------------------------
+   Card artwork
+   -------------------------------------------------------------
+
+   Height, worked out rather than guessed. The tooltip is min(296px,
+   100vw - 18px) wide and .vm-card carries zoom: 0.95, so inside the card the
+   width is 296 / 0.95 = 311.6px; less 2px of border a side and 16px of
+   .vm-body padding a side, the full-bleed strip is 307.6px across. At 2:1 that
+   is ~154px in card space, ~146px on screen, taking a ~400px card to ~546px.
+
+   That is enough to matter, so max-height is load-bearing, not decoration. Both
+   terms resolve at layout time from the viewport and the width, with nothing
+   async in them - which is what lets showTooltip measure a card whose height is
+   already final, so a picture arriving later cannot move it.
+
+   2:1 rather than 16:9 because max-height caps the visible strip at 150px
+   anyway: a 16:9 source (173px) would ship ~13% of its pixels to be cropped off
+   every time. */
+.vm-visual {
+    position: relative;
+    aspect-ratio: 2 / 1;
+    max-height: min(150px, 20vh);
+    /* Negates .vm-body's padding exactly, so the strip goes edge to edge. The
+       top corners need no radius of their own - .vm-card is overflow: hidden
+       with a 16px radius and clips them. */
+    margin: -15px -16px 12px;
+    overflow: hidden;
+    background: linear-gradient(var(--vm-vis-angle, 135deg),
+            hsl(var(--vm-vis-hue, 210) 58% 52%),
+            hsl(calc(var(--vm-vis-hue, 210) + 38) 54% 66%));
+}
+
+/* Skeleton. Sits UNDER the picture, which fades in over it, so there is never a
+   frame of blank box - and never a shimmer with nothing behind it either, since
+   only the photo variant gets one. */
+.vm-visual--photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(255, 255, 255, 0.22) 50%,
+            rgba(255, 255, 255, 0.05) 70%);
+    background-size: 220% 100%;
+    animation: vm-shimmer 1.15s ease-in-out infinite;
+}
+
+/* absolute + inset: 0 is what makes this survive the host page's CSS. A class
+   selector already outranks a plain `img { height: auto }` reset, but not
+   `img { height: auto !important }`, which plenty of sites ship - and that one
+   would change the card's height after it had been positioned, undoing the
+   whole point of reserving the box. On an absolutely positioned element top and
+   bottom decide the height, so the container keeps control either way; the
+   width/height pair below is the second line, not the only one. */
+.vm-visual-img {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: 0;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.015);
+    transition: opacity 0.28s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vm-visual-img.vm-ready {
+    opacity: 1;
+    transform: none;
+}
+
+@keyframes vm-shimmer {
+    to { background-position: -120% 0; }
+}
+
+/* An abstract word gets a glyph on a generated gradient. Roughly two thirds of
+   an academic word list lands here, so this is the ordinary case.
+
+   With ~56 concept buckets over ~1,800 words, hue alone would leave five words
+   from one bucket looking identical - which a reader reads as a bug ("the
+   picture didn't change"), not as a family resemblance. Two more deterministic
+   axes fix that: the gradient's angle, and one of three textures. Both are
+   derived from the slug and cost no bytes. */
+.vm-visual--icon,
+.vm-visual--generic {
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+}
+
+/* Texture only where the ground is flat: under a photograph it is invisible and
+   would just add a compositing layer to every card. */
+.vm-visual:not(.vm-visual--photo)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.vm-visual:not(.vm-visual--photo)[data-vm-pat="0"]::before {
+    opacity: 0.16;
+    background-image: radial-gradient(#fff 1px, transparent 1px);
+    background-size: 12px 12px;
+}
+
+.vm-visual:not(.vm-visual--photo)[data-vm-pat="1"]::before {
+    opacity: 0.13;
+    background-image: repeating-linear-gradient(45deg, #fff 0 1px, transparent 1px 9px);
+}
+
+.vm-visual:not(.vm-visual--photo)[data-vm-pat="2"]::before {
+    opacity: 0.15;
+    background-image: repeating-radial-gradient(circle at 70% 30%, #fff 0 1px, transparent 1px 11px);
+}
+
+.vm-visual-icon,
+.vm-visual-letter {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+
+.vm-visual-icon svg {
+    display: block;
+    opacity: 0.95;
+}
+
+.vm-visual-letter {
+    font-size: 46px;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.94);
+}
+
+/* The shimmer is the only thing here that moves on its own, and a fade is the
+   only thing that moves on arrival. Both go. */
+@media (prefers-reduced-motion: reduce) {
+    .vm-visual--photo::after { animation: none; }
+    .vm-visual-img { transition: none; transform: none; }
+}
+
 @keyframes vm-slide-up {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -424,6 +585,32 @@
     --vm-trans-bg: #1e2b4d;
     --vm-hover: rgba(253, 249, 239, 0.08);
     --vm-aifix-bg: rgba(253, 249, 239, 0.07);
+}
+
+/* The artwork keeps its hue and loses some of its light: at the light card's
+   brightness a strip of colour reads as a hole punched in a dark card. The
+   photo is dimmed for the same reason, and lifts back to full on hover so the
+   reader can still look at it properly. */
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-visual {
+    background: linear-gradient(var(--vm-vis-angle, 135deg),
+            hsl(var(--vm-vis-hue, 210) 46% 34%),
+            hsl(calc(var(--vm-vis-hue, 210) + 38) 42% 46%));
+}
+
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-visual-img.vm-ready {
+    opacity: 0.88;
+}
+
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-visual:hover .vm-visual-img.vm-ready {
+    opacity: 1;
+}
+
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-visual--photo::after {
+    background: linear-gradient(100deg,
+            rgba(255, 255, 255, 0.03) 30%,
+            rgba(255, 255, 255, 0.12) 50%,
+            rgba(255, 255, 255, 0.03) 70%);
+    background-size: 220% 100%;
 }
 
 /* The card's own shadow is tuned for a light page; on a dark one it is just a

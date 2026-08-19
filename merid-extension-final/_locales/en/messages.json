@@ -367,6 +367,12 @@
   "optDirectionHint": {
     "message": "Turn on both to scan Vietnamese and English at the same time."
   },
+  "optVisualsLabel": {
+    "message": "Picture on the card"
+  },
+  "optVisualsHint": {
+    "message": "A photo for words you can picture, a symbol for the ones you cannot. Every image ships inside Merid, so nothing is downloaded and nothing is sent anywhere."
+  },
   "optMyDatasetsTitle": {
     "message": "My datasets"
   },

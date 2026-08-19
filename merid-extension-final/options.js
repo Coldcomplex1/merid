@@ -14,7 +14,13 @@ function t(key, fallback, subs) {
 
 const applyI18n = () => I18n.applyI18n();
 
-const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey', 'uiLang'];
+// Explicit, like the worker's getSettings list - and with the same trap. A key
+// missing here is not an absent feature: storage.sync.get simply does not
+// return it, withDefaults fills the hole with the default, and the control
+// renders the default however the reader actually set it. Add the key here
+// whenever you add a control below.
+const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey',
+    'uiLang', 'visualsEnabled'];
 
 const els = {
     modeSeg: document.getElementById('modeSeg'),
@@ -24,6 +30,7 @@ const els = {
     langSeg: document.getElementById('langSeg'),
     datasetSeg: document.getElementById('datasetSeg'),
     datasetInfo: document.getElementById('datasetInfo'),
+    visualsSeg: document.getElementById('visualsSeg'),
     aiSeg: document.getElementById('aiSeg'),
     aiKey: document.getElementById('aiKey'),
     aiSaveBtn: document.getElementById('aiSaveBtn'),
@@ -76,6 +83,7 @@ function load() {
         setCard('vieEng', !!s.vieEngMode);
         setCard('engEng', !!s.engEngMode);
         setActive(els.datasetSeg, s.datasetKey);
+        setActive(els.visualsSeg, s.visualsEnabled ? 'on' : 'off');
         refreshDatasetInfo();
     });
     // AI context check: toggle lives in sync, the key stays local-only.
@@ -734,6 +742,12 @@ function wire() {
             flashSaved();
             refreshDatasetInfo();
         });
+    });
+
+    els.visualsSeg.addEventListener('click', e => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        setActive(els.visualsSeg, btn.dataset.val);
+        saveSync({ visualsEnabled: btn.dataset.val === 'on' });
     });
 
     els.aiSeg.addEventListener('click', e => {

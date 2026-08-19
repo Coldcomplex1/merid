@@ -11,6 +11,7 @@
 // =============================================================
 
 const C = window.VMCore;
+const Visual = window.VMVisual;
 const P = window.VMProfile;
 // The corner badge that says a context check is running. A no-op stub keeps
 // every call site safe if status-badge.js ever fails to load - a missing
@@ -43,6 +44,34 @@ let vocabulary = [];
 let vocabByWord = new Map();
 let tooltipElement = null;
 let currentObserver = null;
+
+// -------------------------------------------------------------
+// Card artwork (see lib/visual.js)
+//
+// Everything here is read on hover and nowhere else. The scan does not touch
+// it: no lookup in processTextNode, nothing on the MutationObserver path,
+// nothing measured per frame. That is the whole design constraint.
+// -------------------------------------------------------------
+
+// Parsed once per page from the worker. Null until it lands, which just means
+// the first hover or two draw a generated glyph instead of a photo.
+let visualIndex = null;
+// Slugs whose file has decoded at least once in this tab, so a second hover
+// skips the skeleton. Names only: holding the <img> elements would pin ~8MB of
+// decoded bitmaps per tab and stop the browser evicting them, which is the
+// opposite of the goal. If the browser did evict one, the cost is one frame of
+// shimmer.
+const warmSet = new Set();
+// Slugs whose file failed to load. Asking again on every hover would be a
+// request per hover for an answer that will not change.
+const missingSet = new Set();
+// Three failures in a row is not three missing files, it is a browser that
+// cannot decode what we ship. Photos come off the table for the session and
+// every word wears its glyph instead.
+let photoFailures = 0;
+// entry.id -> slug. Hashing a definition is cheap, but mouseover re-fires
+// whenever the pointer crosses back onto a span, and this is free.
+let slugCache = new Map();
 let replacedCount = 0;
 // Every candidate the scan has wrapped this page visit, shown or not. The
 // page-level runaway guard counts these rather than the words actually on
@@ -293,6 +322,12 @@ function init() {
     aiQueued = new Set();
     aiInFlight = false;
     aiDisabled = false;
+    // Keyed by entry.id, which carries the dataset tag - so a dataset change
+    // makes new keys rather than colliding. Cleared anyway: the old entries can
+    // never be asked for again, and keeping them would grow the map for the
+    // life of the tab. warmSet/missingSet/photoFailures are NOT cleared: they
+    // describe files on disk and this browser, not the chosen dataset.
+    slugCache = new Map();
     clearAiTimers();
     startSpanObserver();
     Status.set('idle');
@@ -329,7 +364,25 @@ function init() {
     });
 }
 
+/**
+ * Fetch the artwork index, once per page.
+ *
+ * Fired next to the vocabulary request rather than after it, and nothing waits
+ * on the answer: the scan does not read the index, only hover does. A slow or
+ * failed reply costs the first hover its photo, not the page its start-up.
+ */
+function loadVisualIndex() {
+    if (visualIndex) return;
+    try {
+        chrome.runtime.sendMessage({ action: 'getVisualIndex' }, (resp) => {
+            if (chrome.runtime.lastError) return;   // glyphs are a fine answer
+            if (resp && resp.index) visualIndex = Visual.parseIndex(resp.index);
+        });
+    } catch (e) { /* worker asleep or gone; glyphs again */ }
+}
+
 function startScan() {
+    loadVisualIndex();
     // Load the local deck/known lists first so we can honour them while scanning.
     chrome.storage.local.get(['knownWords', 'savedWords'], (local) => {
         knownSet = new Set((local.knownWords || []).map(w => String(w).toLowerCase()));
@@ -2184,10 +2237,28 @@ function showTooltip(target, item) {
         : esc(t('tooltipNoExample', 'No example available.'));
     const titleFontSize = Math.max(18, 28 - Math.max(0, (item.word || '').length - 9) * 1.2);
 
+    // The picture, if the reader wants one. The box has a fixed aspect ratio
+    // and a max-height, both resolvable at layout time, so the card's height is
+    // final BEFORE it is measured below - an image arriving late cannot move a
+    // card that has already been placed.
+    const vis = settings.visualsEnabled === false ? null : Visual.visualFor(item, visualIndex, {
+        warm: warmSet, missing: missingSet, photoFailures
+    });
+    const visualHtml = vis ? `
+                <div class="vm-visual vm-visual--${vis.kind}" data-vm-pat="${vis.pattern}"
+                     style="--vm-vis-hue:${vis.hue};--vm-vis-angle:${vis.angle}deg">
+                    ${vis.kind === 'photo'
+            ? `<img class="vm-visual-img" alt="${esc(Visual.altFor(item))}" decoding="async" draggable="false"
+                                src="${esc(chrome.runtime.getURL(vis.file))}">`
+            : vis.kind === 'icon'
+                ? `<span class="vm-visual-icon" aria-hidden="true">${Visual.drawGlyph(vis.iconId)}</span>`
+                : `<span class="vm-visual-letter" aria-hidden="true">${esc(vis.letter)}</span>`}
+                </div>` : '';
+
     tooltipElement.innerHTML = `
         <div class="vm-card">
             <button class="vm-close" type="button" aria-label="${esc(t('tooltipClose', 'Close'))}">&times;</button>
-            <div class="vm-body">
+            <div class="vm-body">${visualHtml}
                 <div class="vm-header">
                     <div class="vm-title vm-word" style="font-size:${titleFontSize.toFixed(1)}px">${esc((item.word || '').toUpperCase())}</div>
                     <div class="vm-meta">
@@ -2217,6 +2288,7 @@ function showTooltip(target, item) {
         </div>`;
 
     tooltipElement.style.display = 'block';
+    if (vis) wireVisual(vis);
     const tRect = tooltipElement.getBoundingClientRect();
     const buffer = 20;
     let top;
@@ -2227,11 +2299,79 @@ function showTooltip(target, item) {
         top = rect.bottom + window.scrollY + 10;
         tooltipElement.style.animation = 'vm-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
     }
+    // Neither side fits, on a short window or a tall card: the two branches
+    // above each assume the side they picked has room, and without this the
+    // card simply runs off the screen. Which is worse than it sounds, because
+    // the card hides 120ms after the pointer leaves the word - so a reader
+    // cannot scroll down to the part that overflowed, they can only lose it.
+    const minTop = window.scrollY + 8;
+    const maxTop = window.scrollY + window.innerHeight - tRect.height - 8;
+    if (maxTop > minTop) top = Math.max(minTop, Math.min(top, maxTop));
+    else top = minTop;   // taller than the window even so: start from the top
+
     let left = rect.left + window.scrollX - (tRect.width / 2) + (rect.width / 2);
     if (left < 10) left = 10;
     if (left + tRect.width > window.innerWidth - 10) left = window.innerWidth - tRect.width - 10;
-    tooltipElement.style.top = `${top}px`;
-    tooltipElement.style.left = `${left}px`;
+
+    // `top` and `left` are document coordinates, but the values written below
+    // are resolved against the offset parent's padding box - <body> here, which
+    // every browser gives an 8px margin by default. Writing document
+    // coordinates straight in has always put the card off by that margin; it
+    // went unnoticed because the error is the same for every card, so the card
+    // just sat slightly low rather than visibly wrong.
+    //
+    // It stops being invisible once the clamp above exists, because the clamp
+    // reasons in document coordinates about a card that will land somewhere
+    // else - it would keep computing a correct limit and then miss it by the
+    // width of the page's body margin.
+    const host = tooltipElement.offsetParent;
+    let originY = 0;
+    let originX = 0;
+    if (host && host !== document.documentElement) {
+        const hostRect = host.getBoundingClientRect();
+        originY = hostRect.top + window.scrollY + host.clientTop;
+        originX = hostRect.left + window.scrollX + host.clientLeft;
+    }
+    tooltipElement.style.top = `${top - originY}px`;
+    tooltipElement.style.left = `${left - originX}px`;
+}
+
+/**
+ * Hand the freshly-written <img> its two outcomes.
+ *
+ * Called after innerHTML and before the card is measured, so whichever way it
+ * goes the height is already settled: the box keeps its size, and a failure
+ * swaps a glyph in where the photo was rather than collapsing it.
+ */
+function wireVisual(vis) {
+    if (vis.kind !== 'photo') return;
+    const img = tooltipElement.querySelector('.vm-visual-img');
+    if (!img) return;
+
+    // Already decoded in this tab and still in the browser's cache: show it now
+    // rather than fading it in over a shimmer that has nothing to wait for.
+    if (vis.warm && img.complete && img.naturalWidth > 0) {
+        img.classList.add('vm-ready');
+        return;
+    }
+    img.addEventListener('load', () => {
+        img.classList.add('vm-ready');
+        warmSet.add(vis.slug);
+        photoFailures = 0;
+    }, { once: true });
+    // A missing file and a format this browser cannot decode arrive the same
+    // way, and want the same answer.
+    img.addEventListener('error', () => {
+        missingSet.add(vis.slug);
+        photoFailures++;
+        const box = img.closest('.vm-visual');
+        if (!box) return;
+        box.classList.remove('vm-visual--photo');
+        box.classList.add(vis.iconId ? 'vm-visual--icon' : 'vm-visual--generic');
+        box.innerHTML = vis.iconId
+            ? `<span class="vm-visual-icon" aria-hidden="true">${Visual.drawGlyph(vis.iconId)}</span>`
+            : `<span class="vm-visual-letter" aria-hidden="true">${C.escapeHtml(vis.letter)}</span>`;
+    }, { once: true });
 }
 
 function hideTooltip() {
@@ -2270,7 +2410,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // for the same words. None of that buys anything. The display mode is a
     // question about the same candidates - show me the English, the Vietnamese,
     // or both - and it is answered by redrawing them.
-    const COSMETIC = new Set(['cardTheme', 'replacementMode']);
+    // visualsEnabled belongs here for a stronger reason than the other two: it
+    // changes nothing about WHICH words are on the page, only what the card
+    // looks like, and the card is rebuilt from scratch on the next hover. A
+    // revert-and-rescan would rewrite the paragraph under the reader for a
+    // setting that cannot affect it.
+    const COSMETIC = new Set(['cardTheme', 'replacementMode', 'visualsEnabled']);
     if (Object.keys(changes).every(k => COSMETIC.has(k))) {
         if (changes.cardTheme && tooltipElement) applyCardScheme(tooltipElement);
         if (changes.replacementMode) redrawShownCandidates();

@@ -14,6 +14,7 @@ const files = [
     'options.js',
     'content-bridge.js',
     'lib/vocab-core.js',
+    'lib/visual.js',
     'lib/i18n.js',
     'lib/profile.js',
     'lib/custom-datasets.js',

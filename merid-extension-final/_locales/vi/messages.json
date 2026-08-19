@@ -367,6 +367,12 @@
   "optDirectionHint": {
     "message": "Bật cả hai để quét tiếng Việt và tiếng Anh cùng lúc."
   },
+  "optVisualsLabel": {
+    "message": "Hình ảnh trên thẻ"
+  },
+  "optVisualsHint": {
+    "message": "Ảnh cho những từ có thể hình dung, ký hiệu cho những từ không. Mọi hình ảnh đều đi kèm sẵn trong Merid, nên không tải gì về và không gửi gì đi."
+  },
   "optMyDatasetsTitle": {
     "message": "Bộ từ của tôi"
   },
