@@ -197,6 +197,14 @@ async function main() {
         .map(([slug, q]) => ({ slug, ...q, entry: bySlug.get(slug) }))
         .filter(x => x.entry);
 
+    // An empty queries.json means stage 02 produced nothing, not that there is
+    // nothing to fetch. Refusing here keeps the failure next to its cause.
+    if (!searchable.length) {
+        console.error('[03] queries.json has no usable queries - stage 02 produced none.');
+        console.error('      Re-run: node scripts/visual/02-query.mjs');
+        process.exit(1);
+    }
+
     const result = readJson(OUT, { v: 1, entries: {} });
     result.entries = result.entries || {};
 

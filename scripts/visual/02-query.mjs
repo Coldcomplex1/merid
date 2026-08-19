@@ -21,7 +21,7 @@
 // Usage:
 //   node scripts/visual/02-query.mjs [--offline] [--limit N]
 import { loadEntries, statePath, writeJson, readJson, progress } from './lib/entries.mjs';
-import { Llm, parseJsonish, chunk } from './lib/llm.mjs';
+import { Llm, LlmUnusable, parseJsonish, chunk } from './lib/llm.mjs';
 
 const args = process.argv.slice(2);
 const OFFLINE = args.includes('--offline');
@@ -174,6 +174,29 @@ async function main() {
     console.log('[02] unanswered: ' + unanswered);
     console.log('[02] => ' + usable + ' searchable, ' + withNeg + ' of them with distractors');
     console.log('[02] wrote ' + OUT);
+
+    // Nothing to search for is not a result, it is a dead end - stage 03 will
+    // find no work, 04 will have nothing to score and 05 will report an empty
+    // queue three commands later. Say it here, where the cause is still in
+    // view.
+    if (!usable && concrete.length) {
+        console.error('\n[02] no searchable queries were produced, so stages 03-05 have nothing to do.');
+        console.error(OFFLINE
+            ? '      --offline never asks the model. It shows what a stage would do; it is\n' +
+              '      not a way to run the pipeline. Set GEMINI_API_KEY and drop the flag.'
+            : '      The model answered ' + unanswered + ' of ' + todo.length + ' entries with nothing usable.\n' +
+              '      Check the [llm] line above for which model answered.');
+        process.exit(1);
+    }
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(err => {
+    // A broken key is a message, not a stack trace: the reader needs to know
+    // which thing to go and fix, and the stack says nothing about that.
+    if (err instanceof LlmUnusable) {
+        console.error('\n[02] %s', err.message);
+        process.exit(1);
+    }
+    console.error(err);
+    process.exit(1);
+});

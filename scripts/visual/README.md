@@ -24,11 +24,25 @@ rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
 
 | | Where | Used by |
 |---|---|---|
-| `GEMINI_API_KEY` | aistudio.google.com/apikey | 01, 02, 02b |
+| `GEMINI_API_KEY` | aistudio.google.com/apikey — must start `AIzaSy` | 01, 02, 02b |
 | `PEXELS_API_KEY` | pexels.com/api — free, 200 req/hour | 03 |
 | `OPENVERSE_TOKEN` | api.openverse.org/v1/auth_tokens/register — optional, raises the rate limit | 03 |
 
 Wikimedia needs no key. All three sources are free; nothing here costs money.
+
+`GEMINI_API_KEYS` (plural, comma-separated) also works and is what
+`api/_lib/gemini.js` reads natively — use it if you have several keys to spread
+the daily allowance across.
+
+**The model is not chosen here.** Stages 01, 02 and 02b go through
+`api/_lib/gemini.js`, which asks each key which models it can actually call and
+ranks them, preferring `flash-lite`. Two reasons that matters:
+
+- Google retires model names continuously. An earlier version of this pipeline
+  pinned `gemini-2.0-flash` and got a plain 404 on a working key.
+- On the free tier `flash-lite` carries roughly 500 requests a day against 20
+  for full Flash. A whole run of the three model stages is about **131
+  requests** — comfortable on the first, a week's work on the second.
 
 ```bash
 npm i -D sharp                              # stage 06
@@ -56,8 +70,13 @@ costs nothing, and re-running a stage after editing a later one re-uses the
 answers it already has. Model answers are cached by prompt hash, so a re-run
 spends no quota on questions already asked.
 
-Add `--offline` to any of 01, 02 or 02b to see what it would do without
-spending anything. Add `--limit N` to try a stage on a handful of entries first.
+Add `--limit N` to try a stage on a handful of entries first.
+
+`--offline` shows what a stage would do without spending anything. It does not
+produce data: with nothing asked, stage 02 writes no queries and everything
+after it has no work. It is for inspection, not for running the pipeline
+without a key — and each stage now says so and exits non-zero rather than
+letting the emptiness travel three commands downstream.
 
 ## What each stage is for
 

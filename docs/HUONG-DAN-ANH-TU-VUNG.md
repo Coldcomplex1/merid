@@ -77,6 +77,10 @@ CLIP từ HuggingFace.
 
 ## 3. Đặt API key
 
+> **Key Gemini phải bắt đầu bằng `AIzaSy`.** Lấy ở
+> <https://aistudio.google.com/apikey>. Key bắt đầu bằng `AQ.` là ephemeral
+> token của Live API, không gọi được API này.
+
 **macOS / Linux** — trong cùng terminal bạn sẽ chạy pipeline:
 ```bash
 export GEMINI_API_KEY='key-gemini-moi-cua-ban'
@@ -98,12 +102,40 @@ node -e "console.log(process.env.GEMINI_API_KEY ? 'gemini OK' : 'gemini CHUA CO'
 node -e "console.log(process.env.PEXELS_API_KEY ? 'pexels OK' : 'pexels CHUA CO')"
 ```
 
+### Kiểm tra key Gemini có thật sự dùng được
+
+Nếu không chắc, hỏi thẳng Google xem key gọi được model nào:
+
+**Windows PowerShell**
+```powershell
+curl.exe "https://generativelanguage.googleapis.com/v1beta/models?key=$env:GEMINI_API_KEY"
+```
+
+**macOS / Linux**
+```bash
+curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"
+```
+
+| Trả về | Nghĩa |
+|---|---|
+| JSON dài, có nhiều `"name": "models/gemini-…"` | Key tốt |
+| `API_KEY_INVALID` | Sai loại key — tạo lại ở aistudio.google.com/apikey |
+| `PERMISSION_DENIED` | Project chưa bật Generative Language API |
+
+Không cần tự chọn model. Pipeline hỏi key xem gọi được gì rồi tự chọn, ưu tiên
+`flash-lite` vì hạn mức miễn phí của nhóm này gấp ~25 lần (500 request/ngày so
+với 20). Cả pipeline tốn khoảng **131 request**, vừa đủ trong một ngày.
+
 ---
 
 ## 4. Chạy thử 20 từ trước
 
 **Đừng chạy full ngay.** Chạy thử để xem chất lượng có ổn không, rồi mới chạy
 hết. Mọi bước đều resume được nên thử xong không mất gì.
+
+**Đừng dùng `--offline` để vòng qua lỗi.** Nó không hỏi model nên không sinh ra
+dữ liệu — các bước sau sẽ không có gì để làm. Nếu một bước báo lỗi, đọc thông
+báo: nó chỉ thẳng chỗ cần sửa.
 
 ```bash
 node scripts/visual/01-classify.mjs --limit 20
@@ -203,7 +235,10 @@ gitignore vì tái tạo được.
 
 | Hiện tượng | Nguyên nhân |
 |---|---|
-| `no GEMINI_API_KEY - offline` | Chưa `export`, hoặc đang ở terminal khác |
+| `no GEMINI_API_KEY set - offline` | Chưa `export`, hoặc đang ở terminal khác |
+| `the key was rejected (HTTP 400)` | Sai loại key. Phải là key `AIzaSy…` từ aistudio.google.com/apikey |
+| `the key works but can call no text model` | Project chưa bật Generative Language API |
+| `no searchable queries were produced` | Bước 02 không nhận được câu trả lời nào — xem dòng `[llm]` ngay trên đó |
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
 | Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |

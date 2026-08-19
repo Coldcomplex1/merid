@@ -30,7 +30,7 @@
 //   node scripts/visual/01-classify.mjs [--offline] [--limit N]
 import fs from 'node:fs';
 import { loadEntries, sensesPerWord, statePath, ensureState, writeJson, readJson, progress } from './lib/entries.mjs';
-import { Llm, parseJsonish, chunk } from './lib/llm.mjs';
+import { Llm, LlmUnusable, parseJsonish, chunk } from './lib/llm.mjs';
 
 const args = process.argv.slice(2);
 const OFFLINE = args.includes('--offline');
@@ -222,4 +222,13 @@ async function main() {
     console.log('[01] wrote ' + OUT);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(err => {
+    // A broken key is a message, not a stack trace: the reader needs to know
+    // which thing to go and fix, and the stack says nothing about that.
+    if (err instanceof LlmUnusable) {
+        console.error('\n[01] %s', err.message);
+        process.exit(1);
+    }
+    console.error(err);
+    process.exit(1);
+});

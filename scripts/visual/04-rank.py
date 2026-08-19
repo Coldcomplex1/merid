@@ -102,6 +102,14 @@ def main():
     # Rather than parse them here in a second language, stage 03 already wrote
     # the query and distractors next to each candidate list.
     slugs = [s for s, e in entries.items() if e.get("candidates")]
+    # No candidates is stage 03 having found nothing, not a quiet success. Left
+    # to continue, this writes an empty ranked.json and the failure only shows
+    # up in stage 05, two commands from its cause.
+    if not slugs:
+        sys.exit(
+            "[04] no candidates to score - stage 03 downloaded none.\n"
+            "      Re-run: node scripts/visual/03-fetch.mjs"
+        )
     if args.limit:
         slugs = slugs[: args.limit]
     print("[04] {} entries with candidates".format(len(slugs)))

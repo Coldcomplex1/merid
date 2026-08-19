@@ -200,7 +200,27 @@ boot();
 function main() {
     const queue = buildQueue();
     if (!queue.length) {
-        console.error('[05] nothing to review - did 03 and 04 run?');
+        // "did 03 and 04 run?" was the old message here, and it was wrong in
+        // the case that actually happens: they had run, and produced nothing.
+        // Point at the stage that came up empty rather than at the reader.
+        const ranked = readJson(RANKED, { entries: {} });
+        const scored = Object.keys(ranked.entries || {}).length;
+        const candidates = readJson(statePath('candidates.json'), { entries: {} });
+        const fetched = Object.values(candidates.entries || {})
+            .reduce((a, e) => a + (e.candidates || []).length, 0);
+
+        if (!fetched) {
+            console.error('[05] nothing to review: stage 03 downloaded no candidates.');
+            console.error('      Check that 02-query.mjs produced queries, then re-run 03-fetch.mjs.');
+        } else if (!scored) {
+            console.error('[05] nothing to review: ' + fetched + ' candidates were downloaded but ' +
+                'none have been scored.');
+            console.error('      Run: python3 scripts/visual/04-rank.py');
+        } else {
+            console.error('[05] nothing to review: ' + scored + ' entries were scored but none kept ' +
+                'a candidate.');
+            console.error('      Their files may have gone missing from state/candidates/.');
+        }
         process.exit(1);
     }
 
