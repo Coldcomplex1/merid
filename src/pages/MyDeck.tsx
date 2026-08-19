@@ -4,6 +4,9 @@ import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../lib/auth'
 import { createFirestoreDeck } from '../deck/firestoreDeck'
 import type { DeckWord, WordStatus } from '../deck/DeckSource'
+import type { ExploreEntry } from '../data/exploreDatasets'
+import { ALL_ID } from '../data/exploreDatasets'
+import ExploreBrowser from '../components/study/ExploreBrowser'
 import WordList from '../components/study/WordList'
 import WordGrid from '../components/study/WordGrid'
 import LibraryToolbar from '../components/study/LibraryToolbar'
@@ -32,7 +35,9 @@ export default function MyDeck() {
   usePageTitle(`${t.deck.title} · Merid`)
 
   const source = useMemo(() => createFirestoreDeck(user!.uid), [user])
-  const [tab, setTab] = useState<Tab>('library')
+  // Null until the user picks: the default depends on whether the deck has
+  // anything in it, which is not known on the first render. See `activeTab`.
+  const [tab, setTab] = useState<Tab | null>(null)
   const [words, setWords] = useState<DeckWord[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -42,6 +47,13 @@ export default function MyDeck() {
   const [level, setLevel] = useState<LevelFilter>('all')
   const [progress, setProgress] = useState<ProgressFilter>('all')
   const [view, setView] = useState<ViewMode>('grid')
+
+  // Explore's dataset choice and search box live here for the same reason the
+  // Library's controls do: the tab body unmounts when you switch away, and
+  // losing your place in a 2,806-word list on every trip to Flashcards is worse
+  // than carrying two fields on this component.
+  const [exploreView, setExploreView] = useState<string>(ALL_ID)
+  const [exploreQuery, setExploreQuery] = useState('')
 
   // Building a puzzle out of specific words: `selected` is what is ticked in
   // the list, `puzzleWords` is the set handed to the Puzzle tab once confirmed.
@@ -99,13 +111,49 @@ export default function MyDeck() {
     source.removeWord(word).catch(() => reload())
   }
 
+  /** Save a word Explore found. Optimistic like handleRemove: the live
+   *  subscription replaces the array within a moment, so only the rollback
+   *  path really matters. Rethrows so Explore can say what went wrong. */
+  const handleAdd = async (entry: ExploreEntry) => {
+    // Provenance for the deck document. levelsFor() knows every dataset the
+    // word belongs to, not just the one being browsed, so it is preferred; the
+    // entry's own tags cover the index failing to load, and a key the index
+    // does not know. Neither can ever be 'ALL', which firestore.rules rejects.
+    const indexed = levelIndex?.levelsFor(entry.key)
+    const datasets = indexed?.length ? indexed : entry.datasets
+    const optimistic: DeckWord = {
+      word: entry.key,
+      vietnamese: entry.vietnamese,
+      definition: entry.definition,
+      example: entry.example,
+      pos: entry.pos,
+      status: 'saved',
+      createdAt: Date.now(),
+    }
+    // Prepended to match the backend's createdAt-desc order.
+    setWords((cur) => [optimistic, ...(cur ?? [])])
+    try {
+      await source.addWord({
+        word: entry.key,
+        vietnamese: entry.vietnamese,
+        definition: entry.definition,
+        example: entry.example,
+        pos: entry.pos,
+        datasets,
+      })
+    } catch (err) {
+      setWords((cur) => (cur ? cur.filter((w) => w.word !== entry.key) : cur))
+      throw err
+    }
+  }
+
   const handleSetStatus = (word: string, status: WordStatus) => {
     setWords((cur) => (cur ? cur.map((w) => (w.word === word ? { ...w, status } : w)) : cur))
     source.setStatus(word, status).catch(() => reload())
   }
 
-  const tabs: { id: Tab; label: string; badge?: string }[] = [
-    { id: 'explore', label: t.deck.tabs.explore, badge: t.deck.library.soon },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'explore', label: t.deck.tabs.explore },
     { id: 'library', label: t.deck.tabs.library },
     { id: 'puzzle', label: t.deck.tabs.puzzle },
     { id: 'flashcards', label: t.deck.tabs.flashcards },
@@ -183,6 +231,19 @@ export default function MyDeck() {
   )
   const puzzleQuestions = customSet && customSet.length >= MIN_PUZZLE_WORDS ? customSet : learning
 
+  // What Explore joins against to tell an owned word from a new one. Both sides
+  // are the same normalization (NFC, lowercase, collapsed), which is the whole
+  // reason the lookup can be exact - see scripts/gen-word-levels.mjs.
+  const deckStatus = useMemo(
+    () => new Map((words ?? []).map((w) => [w.word, w.status] as const)),
+    [words],
+  )
+
+  // An empty deck opens on Explore: the Library has nothing to show, and
+  // browsing is exactly what that user came to do. Derived rather than set in
+  // an effect, so it cannot flash the wrong tab or fight a click.
+  const activeTab: Tab = tab ?? (words && words.length === 0 ? 'explore' : 'library')
+
   // Values stay in heading ink; the small dot beside the label carries the
   // status identity (gold = learning, green = known).
   const stats: { value: number; label: string; dot?: string }[] = [
@@ -237,16 +298,6 @@ export default function MyDeck() {
           <p className="mt-8 p-6 text-muted" role="status">
             {t.deck.loading}
           </p>
-        ) : words.length === 0 ? (
-          <div className="mt-8 rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
-            <p className="text-4xl" aria-hidden="true">
-              📚
-            </p>
-            <h2 className="mt-3 text-xl font-bold text-heading">{t.deck.emptyTitle}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-body">
-              {t.deck.empty(MIN_PUZZLE_WORDS)}
-            </p>
-          </div>
         ) : (
           <>
             <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
@@ -264,27 +315,22 @@ export default function MyDeck() {
             {/* The mockup's switcher: a raised white pill on a sunken track,
                 rather than the gold pill the language toggle uses. */}
             <div className="mt-8 inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-line-strong/70">
-              {tabs.map(({ id, label, badge }) => (
+              {tabs.map(({ id, label }) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setTab(id)}
-                  aria-pressed={tab === id}
+                  aria-pressed={activeTab === id}
                   className={`${pill} ${
-                    tab === id ? 'bg-surface text-heading shadow-soft' : 'text-muted hover:text-heading'
+                    activeTab === id ? 'bg-surface text-heading shadow-soft' : 'text-muted hover:text-heading'
                   }`}
                 >
                   {label}
-                  {badge && (
-                    <span className="ml-1.5 rounded-full bg-wiki-blue px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {badge}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
 
-            {tab === 'library' && (
+            {activeTab === 'library' && words.length > 0 && (
               <>
                 <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-sm font-bold text-heading">{t.deck.library.collections}</h2>
@@ -366,17 +412,35 @@ export default function MyDeck() {
             )}
 
             <div className="mt-6">
-              {tab === 'explore' ? (
+              {activeTab === 'explore' ? (
+                <ExploreBrowser
+                  deckStatus={deckStatus}
+                  onAdd={handleAdd}
+                  view={exploreView}
+                  onView={setExploreView}
+                  query={exploreQuery}
+                  onQuery={setExploreQuery}
+                />
+              ) : words.length === 0 ? (
+                /* Library, Puzzle and Flashcards all need a deck. One empty
+                   state covers them, and it points at the tab that does not. */
                 <div className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
                   <p className="text-4xl" aria-hidden="true">
-                    🧭
+                    📚
                   </p>
-                  <h2 className="mt-3 text-xl font-bold text-heading">{t.deck.tabs.explore}</h2>
+                  <h2 className="mt-3 text-xl font-bold text-heading">{t.deck.emptyTitle}</h2>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-body">
-                    {t.deck.library.exploreSoon}
+                    {t.deck.empty(MIN_PUZZLE_WORDS)}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setTab('explore')}
+                    className="mt-5 cursor-pointer rounded-full bg-gold-400 px-4 py-2 text-sm font-bold text-navy-900 transition-all active:scale-95"
+                  >
+                    {t.deck.explore.browseLists}
+                  </button>
                 </div>
-              ) : tab === 'library' ? (
+              ) : activeTab === 'library' ? (
                 <>
                   {visibleWords.length === 0 ? (
                     <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
@@ -415,7 +479,7 @@ export default function MyDeck() {
                     <SelectionBar chosen={selected.size} onMakePuzzle={makePuzzle} />
                   )}
                 </>
-              ) : tab === 'puzzle' ? (
+              ) : activeTab === 'puzzle' ? (
                 <>
                   {puzzleQuestions === customSet && customSet && (
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">

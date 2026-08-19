@@ -155,3 +155,34 @@ export function PlayIcon({ size = 12, className }: IconProps) {
     </svg>
   )
 }
+
+/** Plus - "add this word to my deck", on an Explore tile. */
+export function PlusIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg {...svgProps(size, className)}>
+      <path
+        d="M12 5.5v13M5.5 12h13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/** Compass - the Explore tab's mark, replacing the placeholder emoji. */
+export function CompassIcon({ size = 24, className }: IconProps) {
+  return (
+    <svg {...svgProps(size, className)}>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="m15.2 8.8-1.9 4.5-4.5 1.9 1.9-4.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
