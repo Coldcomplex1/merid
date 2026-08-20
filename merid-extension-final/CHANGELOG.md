@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.7 — 2026-08-20
+
+**A word that starts a sentence starts it with a capital.**
+
+- An English word standing at the front of a sentence is capitalised, even where the Vietnamese it replaced was not. Copying the case off the Vietnamese, as 1.6.6 does, only carries as far as the writer's own capital: in a post written without one — most of a feed, most comments — the swapped word opened the sentence on a small letter and gave itself away as a substitution, which is the very thing the capital was added to stop. Position is now read as well: a word after a full stop, a question or exclamation mark, or at the start of a paragraph, heading or list item takes the capital regardless. A word inside a sentence is untouched, and in "từ (word)" mode the Vietnamese still leads and still keeps its own case.
+
 ## 1.6.6 — 2026-08-16
 
 **Three fixes: a lost "I know this", lower-case words in headlines, and a badge in the way.**

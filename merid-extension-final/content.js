@@ -188,6 +188,15 @@ const FORBIDDEN_TAGS = new Set([
     'kbd', 'samp', 'var', 'option', 'button', 'svg', 'math', 'canvas', 'iframe',
     'audio', 'video'
 ]);
+// Where a run of text begins, and with it a sentence. Read by
+// `textBeforeNode` to decide whether a candidate carries its sentence's
+// capital: walking back past an inline wrapper keeps a sentence split across
+// <b> or <a> in one piece, walking back past one of these would not.
+const BLOCK_TAGS = new Set([
+    'p', 'li', 'dd', 'dt', 'td', 'th', 'tr', 'table', 'ul', 'ol', 'dl',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'figcaption',
+    'div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'form', 'body'
+]);
 const SKIP_ANCESTOR_SELECTOR =
     'nav, [role="button"], [role="menu"], [role="menubar"], [role="tab"], ' +
     '[contenteditable=""], [contenteditable="true"], [aria-hidden="true"], ' +
@@ -893,6 +902,31 @@ function statsFor(container) {
     return stats;
 }
 
+/**
+ * The text running up to `node` inside its own block, '' when the node opens
+ * one.
+ *
+ * Walks back over inline wrappers only - <b>, <a>, <span> - so a sentence
+ * broken across tags still reads as one, and stops at the first non-space text
+ * it finds, which is all `opensSentence` needs to see. Without this a text node
+ * that merely starts after a tag ("Đây là một <b>từ</b> khó hiểu.") would look
+ * like the start of a sentence and take a capital it has not earned.
+ */
+function textBeforeNode(node) {
+    let cur = node;
+    while (cur) {
+        for (let prev = cur.previousSibling; prev; prev = prev.previousSibling) {
+            if (prev.nodeName === 'BR') return '';   // a new line is a new sentence
+            const text = prev.textContent || '';
+            if (/\S/.test(text)) return text.length > 200 ? text.slice(-200) : text;
+        }
+        const parent = cur.parentElement;
+        if (!parent || BLOCK_TAGS.has(parent.tagName.toLowerCase())) return '';
+        cur = parent;
+    }
+    return '';
+}
+
 function processTextNode(node, vocabMap) {
     const original = node.textContent;
     if (!original || !original.trim() || vocabMap.size === 0) { processedNodes.add(node); return; }
@@ -988,6 +1022,12 @@ function processTextNode(node, vocabMap) {
         span.dataset.original = matchedText;
         span.dataset.replacement = replaceWith;
         span.dataset.level = item.dataset || '';
+        // Does this word carry the sentence's capital? Read here, while the
+        // token stream and the node's neighbours are still to hand -
+        // `displayTextFor` is handed a detached span and can no longer tell.
+        const localBefore = tokens.slice(0, i).join('');
+        const before = /\S/.test(localBefore) ? localBefore : textBeforeNode(node) + localBefore;
+        if (C.opensSentence(before)) span.dataset.sentenceStart = '1';
         // Hold the word back until the check has cleared it (see "Deferred
         // reveal"). Two candidates skip the wait, because for them no verdict
         // is ever coming: one whose English and Vietnamese are the same string,
@@ -1047,7 +1087,13 @@ function displayTextFor(span) {
     const mode = settings.replacementMode || 'replace';
     if (isSameWord || mode === 'highlight') return matchedText; // highlighted + tooltip, same words
     if (mode === 'beside') return `${matchedText} (${replaceWith})`; // từ (word)
-    return replaceWith;                                          // 'replace'
+    // 'replace': the English word is the one standing at the front of the
+    // sentence, so it carries the capital even where the writer left the
+    // Vietnamese in lower case. `matchCase` cannot see this - it only knows
+    // what the word it replaced was wearing. In 'beside' the Vietnamese still
+    // leads and keeps its own case, so the rule does not apply there.
+    if (span.dataset.sentenceStart === '1') return C.capitalizeFirst(replaceWith);
+    return replaceWith;
 }
 
 
