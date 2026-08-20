@@ -15,6 +15,7 @@ node e2e/scroll-feed.mjs      # endless feed: deep posts checked, caps, 20s ceil
 node e2e/spread.mjs           # words land through a whole article, and in every feed post
 node e2e/article-repeat.mjs   # a news article: no repeated word, no bare syllable of a title
 node e2e/sentence-case.mjs    # a word opening a sentence carries the sentence's capital
+node e2e/badge-host.mjs       # a host the badge did not create: no throw, words still land
 node e2e/main-content.mjs     # a news page: the article is scanned, the rail and promos are not
 node e2e/ui-language.mjs      # panel language: site choice, Settings override, English card
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
