@@ -24,8 +24,20 @@
 // words illustrated by the same photograph means at least one of them is
 // wrong, and it is much easier to see here than on a card.
 //
+// This stage also reads the reviewing as a measurement rather than as a list of
+// answers. Nobody wants to look at three hundred cards, and nobody has to: what
+// a person keeps or rejects at a given score says how often the top candidate
+// is right at that score, and that is enough to decide what happens to the ones
+// they never opened. Run 05-review.mjs --sample 50, then run this to see the
+// answer. --accept-above then acts on it.
+//
+// The alternative to acting on it is that every unreviewed entry takes a drawn
+// symbol. That is the safe default and it stays the default - a symbol is never
+// wrong, only less helpful than the right photograph.
+//
 // Usage:
 //   node scripts/visual/06-build.mjs [--format avif|webp] [--dry-run]
+//                                    [--accept-above 0.284]
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -41,6 +53,22 @@ try { sharp = require('sharp'); } catch (e) {
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
+
+// Take the first candidate, unseen, for every unreviewed entry scoring at least
+// this. There is no default and there deliberately is not one: the number comes
+// out of the reviewing, which is different for every dataset, and a number
+// picked here would be a guess dressed as a setting.
+const ACCEPT_ABOVE = (() => {
+    const i = args.indexOf('--accept-above');
+    if (i < 0) return null;
+    const n = Number(args[i + 1]);
+    if (!Number.isFinite(n)) {
+        console.error('[06] --accept-above needs a score, e.g. --accept-above 0.284');
+        console.error('      Run without it first - the table it prints ends with the number to use.');
+        process.exit(1);
+    }
+    return n;
+})();
 const FORMAT = (() => {
     const i = args.indexOf('--format');
     const v = i >= 0 ? String(args[i + 1]).toLowerCase() : 'avif';
@@ -55,6 +83,8 @@ const FILE_MAX = 9 * 1024;               // matches scripts/build.js
 const BUDGET = 6.0 * 1024 * 1024;
 
 const DECISIONS = statePath('decisions.json');
+const RANKED = statePath('ranked.json');
+const AUTO_FILE = statePath('auto-accepted.json');
 const CANDIDATES = statePath('candidates.json');
 const ICONMAP = statePath('iconmap.json');
 const VIS_DIR = path.join(EXT, 'vis');
@@ -81,6 +111,208 @@ async function phash(buf) {
     return bits;
 }
 
+// How many bands the sample was drawn from. Must match 05-review.mjs: the bands
+// are quintiles by position in the queue, not by score, so a different count
+// here would put a word in a band the reviewer never saw and measure agreement
+// against boundaries that did not exist.
+const BANDS = 5;
+
+/**
+ * The list stage 05 builds its queue from, in the same order.
+ *
+ * Rebuilt rather than stored, because it has to match what the reviewer was
+ * actually shown - same filter, same sort. The one case it does not cover is a
+ * review run with --all, whose extra entries are counted separately below.
+ */
+function eligible(ranked, entries) {
+    const items = [];
+    for (const [slug, r] of Object.entries(ranked.entries || {})) {
+        if (!entries.has(slug) || !r.candidates || !r.candidates.length) continue;
+        if (!r.anyClear) continue;
+        items.push({ slug, best: r.best, candidates: r.candidates });
+    }
+    items.sort((a, b) => a.best - b.best);
+    return items;
+}
+
+function bandsOf(items, n = BANDS) {
+    const out = [];
+    for (let b = 0; b < n; b++) {
+        out.push(items.slice(Math.floor(items.length * b / n), Math.floor(items.length * (b + 1) / n)));
+    }
+    return out;
+}
+
+/**
+ * The low end of a one-sided 90% Wilson interval.
+ *
+ * Nine out of ten is not 90%. It is a sample of ten, and the honest reading of
+ * it is "somewhere upwards of 72%". Printing the raw fraction is what makes a
+ * fifty-word sample look like it settled something it did not, and the whole
+ * point of the sample is to decide the fate of entries nobody will ever check.
+ * So the report leads with this number and the cutoff is chosen on it.
+ */
+function wilsonLow(hits, n) {
+    if (!n) return 0;
+    const z = 1.2816;
+    const p = hits / n;
+    const d = 1 + z * z / n;
+    const centre = p + z * z / (2 * n);
+    const spread = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+    return Math.max(0, (centre - spread) / d);
+}
+
+// How sure the sample has to make us before an unreviewed picture ships. Seven
+// in ten: below that the symbol is better, because a wrong photograph on a
+// vocabulary card does not merely fail to help, it teaches the wrong thing.
+const CONFIDENCE = 0.70;
+
+/**
+ * Read the reviewing as a measurement of stage 04's ranking.
+ *
+ * Two tables. The first is per band and shows the shape: if agreement does not
+ * climb with the score then the score is not measuring anything and no cutoff
+ * will rescue it - that is worth knowing before trusting any of this. The
+ * second is cumulative from the top, which is the question --accept-above
+ * actually asks: take the first candidate for everything at or above here, and
+ * how often is it right?
+ *
+ * Returns a `boundFor(cutoff)` so the accept step can quote the same evidence
+ * rather than computing its own version of it.
+ */
+function analyse(items, decisions) {
+    const none = { boundFor: null };
+    const verdict = slug => {
+        const d = decisions[slug];
+        if (!d) return null;
+        if (d.pick === 'none' || !d.candidate) return 'refused';
+        return Number(d.pick) === 0 ? 'first' : 'other';
+    };
+
+    if (!items.length) {
+        console.log('[06] no ranked.json queue to measure against - the agreement report is skipped.');
+        return none;
+    }
+
+    const inQueue = new Set(items.map(i => i.slug));
+    const offQueue = Object.keys(decisions).filter(sl => !inQueue.has(sl)).length;
+
+    const rows = [];
+    let seenTotal = 0;
+    for (const band of bandsOf(items)) {
+        if (!band.length) continue;
+        const t = { first: 0, other: 0, refused: 0 };
+        for (const it of band) { const v = verdict(it.slug); if (v) t[v]++; }
+        const seen = t.first + t.other + t.refused;
+        seenTotal += seen;
+        rows.push({ lo: band[0].best, hi: band[band.length - 1].best, n: band.length, seen, ...t });
+    }
+
+    if (!seenTotal) {
+        console.log('[06] none of the reviewed entries are in stage 05\'s queue' +
+            (offQueue ? ' (' + offQueue + ' were reviewed with --all)' : '') +
+            ', so there is nothing to measure agreement from.');
+        return none;
+    }
+
+    // Column widths in one place. The headings were written out by hand once
+    // and sat two characters left of their own numbers, which is the kind of
+    // thing nobody notices while reading the figures and everybody notices
+    // instead of reading them.
+    const pad = (v, w) => String(v).padStart(w);
+    // One row-drawing function per table, so a heading cannot end up in a
+    // different column from its own numbers - which is exactly what a
+    // hand-written heading row did here, and it makes a table of figures
+    // unreadable long before anyone works out why.
+    const row = cols => (first, ...rest) =>
+        '       ' + String(first).padEnd(13) + rest.map((v, i) => pad(v, cols[i])).join('');
+    const bandRow = row([11, 10, 10, 12, 10]);
+    const cutRow = row([13, 10, 10, 17]);
+    console.log('');
+    console.log('[06] you saw ' + seenTotal + ' of ' + items.length + ' entries in the queue. How often the');
+    console.log('     FIRST candidate was the one you kept, by score:');
+    console.log('');
+    console.log(bandRow('score range', 'in queue', 'you saw', 'kept #1', 'took #2/3', 'refused'));
+    for (const r of rows) {
+        console.log(bandRow(r.lo.toFixed(3) + ' - ' + r.hi.toFixed(3),
+            r.n, r.seen, r.first, r.other, r.refused));
+    }
+    if (offQueue) {
+        console.log('       (' + offQueue + ' more decisions are for entries outside the queue - ' +
+            'reviewed with --all, not counted)');
+    }
+
+    const at = cutoff => {
+        let seen = 0, first = 0, unreviewed = 0;
+        for (const it of items) {
+            if (it.best < cutoff) continue;
+            const v = verdict(it.slug);
+            if (!v) { unreviewed++; continue; }
+            seen++;
+            if (v === 'first') first++;
+        }
+        return { cutoff, seen, first, unreviewed, low: wilsonLow(first, seen) };
+    };
+
+    console.log('');
+    console.log('[06] what taking the first candidate unseen would mean, at each cutoff:');
+    console.log('');
+    console.log(cutRow('cutoff', 'would ship', 'you saw', 'kept #1', 'right at least'));
+    // Rounded up to the three decimals the command line will carry, and rounded
+    // BEFORE the counting rather than after. toFixed alone rounds to nearest, so
+    // a boundary of 0.3352 would print as 0.335 and quietly accept entries below
+    // the point the sample actually measured; and rounding only for display
+    // would make the table's counts describe a cutoff nobody can type.
+    const cuts = rows.map(r => at(Math.ceil(r.lo * 1000) / 1000)).reverse();
+    for (const c of cuts) {
+        console.log(cutRow('>= ' + c.cutoff.toFixed(3),
+            c.unreviewed, c.seen, c.first, Math.round(c.low * 100) + '%'));
+    }
+
+    // Walk down from the strictest and stop at the first cutoff that does not
+    // hold. Picking the lowest passing row instead would let one lucky band
+    // below a failing one set the cutoff, which is how a rule like this quietly
+    // stops meaning anything.
+    let best = null;
+    for (const c of cuts) {
+        if (c.seen >= 8 && c.low >= CONFIDENCE) best = c; else break;
+    }
+
+    console.log('');
+    console.log('     "right at least" is the low end of a 90% interval, not the raw fraction:');
+    console.log('     a sample this size cannot promise more than that, and the entries it');
+    console.log('     decides are ones nobody will ever look at.');
+    console.log('');
+    if (best) {
+        console.log('[06] the first candidate still holds up at ' + best.cutoff.toFixed(3) +
+            ' (' + best.first + ' of ' + best.seen + ' kept, so at least ' +
+            Math.round(best.low * 100) + '% right).');
+        console.log('     To use it for the ' + best.unreviewed + ' entries at or above that:');
+        console.log('');
+        console.log('       node scripts/visual/06-build.mjs --accept-above ' + best.cutoff.toFixed(3));
+        console.log('');
+        console.log('     Everything below it takes a drawn symbol, which is the honest answer for');
+        console.log('     a picture nobody checked.');
+    } else {
+        console.log('[06] no cutoff is safe on what you reviewed: even at the top of the range the');
+        console.log('     first candidate was wrong too often to ship unseen' +
+            (cuts[0] && cuts[0].seen < 8 ? ' (and the top band had only ' + cuts[0].seen +
+                ' looked at - too few to tell)' : '') + '.');
+        console.log('     Review more of the queue, or let the unreviewed entries take symbols.');
+    }
+
+    // Null rather than zero when nothing above the cutoff was ever looked at.
+    // wilsonLow(0, 0) is 0, and reporting that as "supports 0% correct" would be
+    // a measurement nobody took - which is the exact failure this whole report
+    // exists to avoid.
+    return {
+        boundFor: cutoff => {
+            const a = at(cutoff);
+            return a.seen ? a.low : null;
+        }
+    };
+}
+
 async function main() {
     const decisions = readJson(DECISIONS, null);
     if (!decisions) { console.error('[06] no decisions.json - run 05-review.mjs first'); process.exit(1); }
@@ -92,6 +324,52 @@ async function main() {
         .filter(([slug, d]) => d && d.pick !== 'none' && d.candidate && entries.has(slug));
     console.log('[06] ' + Object.keys(decisions).length + ' decisions, ' +
         picked.length + ' of them chose a picture');
+
+    // What the reviewing measured, and what it says about everything nobody
+    // opened. Printed every run, with or without --accept-above: the number to
+    // pass to that flag is the last line of it.
+    const ranked = readJson(RANKED, { entries: {} });
+    const items = eligible(ranked, entries);
+    const measured = analyse(items, decisions);
+
+    if (ACCEPT_ABOVE !== null) {
+        const taken = [];
+        for (const it of items) {
+            // A decision of any kind wins, including a refusal. Overriding an
+            // `x` with the candidate the person just rejected would be the
+            // worst thing this script could do.
+            if (decisions[it.slug]) continue;
+            if (!(it.best >= ACCEPT_ABOVE) || !it.candidates[0]) continue;
+            picked.push([it.slug, { pick: 0, candidate: it.candidates[0] }]);
+            taken.push({
+                slug: it.slug,
+                word: (entries.get(it.slug) || {}).word || '',
+                best: it.best
+            });
+        }
+        const bound = measured.boundFor ? measured.boundFor(ACCEPT_ABOVE) : null;
+        console.log('');
+        console.log('[06] --accept-above ' + ACCEPT_ABOVE.toFixed(3) + ': took the first candidate for ' +
+            taken.length + ' entries nobody looked at.');
+        if (bound === null) {
+            console.log('     WARNING: nothing was reviewed at or above that score, so this cutoff is');
+            console.log('     a guess. Review a sample first:  node scripts/visual/05-review.mjs --sample 50');
+        } else if (bound < CONFIDENCE) {
+            console.log('     WARNING: what you reviewed above that score only supports ' +
+                Math.round(bound * 100) + '% correct.');
+            console.log('     That is below the ' + Math.round(CONFIDENCE * 100) +
+                '% this script treats as good enough to ship unseen.');
+        } else {
+            console.log('     The sample says at least ' + Math.round(bound * 100) + '% of those are right.');
+        }
+        // Which words got a picture on the strength of a statistic rather than
+        // a person, so a later pass can go straight to them.
+        if (!DRY) {
+            writeJson(AUTO_FILE, {
+                v: 1, cutoff: ACCEPT_ABOVE, at: new Date().toISOString(), entries: taken
+            });
+        }
+    }
 
     if (!picked.length) {
         console.log('[06] nothing to encode - the index will be glyphs only');

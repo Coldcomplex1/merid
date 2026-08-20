@@ -190,8 +190,16 @@ node scripts/visual/02-query.mjs        # ~5 phút
 node scripts/visual/02b-iconmap.mjs     # ~15 phút (nhiều từ nhất)
 node scripts/visual/03-fetch.mjs        # ~40-60 phút, tải ảnh về
 python3 scripts/visual/04-rank.py       # ~15-25 phút, CPU chạy hết công suất
-node scripts/visual/05-review.mjs       # ~1 giờ CỦA BẠN
-node scripts/visual/06-build.mjs        # ~2 phút
+
+# bạn ngồi xem 50 từ, ~10 phút
+node scripts/visual/05-review.mjs --sample 50
+
+# in ra bảng: 50 từ đó nói gì về 240 từ còn lại
+node scripts/visual/06-build.mjs
+
+# làm theo bảng. 0.284 là con số bảng vừa in, không phải số cố định.
+# mã hoá AVIF ~1 giây/ảnh, nên 350 ảnh ≈ 6 phút
+node scripts/visual/06-build.mjs --accept-above 0.284
 ```
 
 Ước lượng thời gian sẽ chính xác hơn sau bước 01 — nó in ra bao nhiêu từ thật
@@ -205,6 +213,8 @@ Vài điều khi chạy:
 - **Bước 03 gặp 429** sẽ tự dừng 60 giây rồi thử lại. Không cần làm gì.
 - **Bước 05** xếp từ khó nhất lên đầu. Hết giờ cứ đóng — từ chưa duyệt tự dùng
   icon, không nhận ảnh bừa.
+- **Không cần duyệt hết.** `--sample 50` đổi công việc chứ không phải rút ngắn
+  nó — xem mục dưới.
 
 ### Bước 05 cho bạn xem gì
 
@@ -234,6 +244,80 @@ Muốn hạ ngưỡng: `$env:MERID_CLIP_FLOOR='0.20'` rồi chạy lại bước
 | `←` | quay lại từ trước |
 
 Mỗi phím bấm là ghi xuống đĩa ngay. Đóng tab không mất gì.
+
+### Duyệt 50 từ thay vì 290: `--sample 50`
+
+```bash
+node scripts/visual/05-review.mjs --sample 50
+```
+
+Duyệt hết 290 từ là **tự tay quyết định 290 tấm ảnh**. Duyệt 50 từ trải đều dải
+điểm là **đo** một chuyện khác: *ở mức điểm nào thì ảnh số 1 của bước 04 là ảnh
+mà người thật sự giữ lại?* Câu trả lời đó nói về cả 240 từ bạn không mở.
+
+Nên 50 từ này **không phải 50 từ tệ nhất**. Chương trình chia hàng đợi thành 5
+dải điểm bằng nhau và lấy đều mỗi dải 10 từ. Mẫu lấy dồn về một đầu chỉ đo được
+đúng cái đầu đó, không suy ra được gì cho phần còn lại.
+
+Bấm phím như bình thường: `Enter` nếu ảnh đầu đúng, `2`/`3` nếu ảnh khác đúng
+hơn, `x` nếu không ảnh nào dùng được. Ba loại phím này chính là ba cột trong
+bảng ở bước sau — nên **đừng bấm `Enter` cho qua**: mỗi lần bấm bừa là một dòng
+sai trong phép đo, và phép đo đó quyết định 240 từ.
+
+### Bước 06 đọc lại 50 phím bấm đó
+
+```bash
+node scripts/visual/06-build.mjs
+```
+
+Nó in hai bảng. Bảng đầu — tỉ lệ giữ ảnh số 1 theo từng dải điểm:
+
+```
+       score range     in queue   you saw   kept #1   took #2/3   refused
+       0.196 - 0.221         58        10         4           3         3
+       ...
+       0.284 - 0.371         58        10         9           1         0
+```
+
+Nhìn cột `kept #1` từ trên xuống. Nếu nó **tăng dần** thì điểm của bước 04 thật
+sự có ý nghĩa. Nếu nó phẳng thì điểm không đo được gì và không ngưỡng nào cứu
+được — bước 06 sẽ nói thẳng như vậy và không gợi ý lệnh nào cả.
+
+Bảng thứ hai trả lời đúng câu hỏi cần hỏi: *lấy đại ảnh số 1 cho mọi từ từ điểm
+này trở lên thì đúng bao nhiêu phần trăm?*
+
+```
+       cutoff          would ship   you saw   kept #1   right at least
+       >= 0.284               40        10         9              72%
+       >= 0.249               98        20        17              66%
+       ...
+```
+
+`would ship` = số từ sẽ được nhận ảnh mà **không ai xem**. Cột cuối là **cận
+dưới của khoảng tin cậy 90%**, không phải tỉ lệ thô — 9/10 không phải là 90%,
+nó là "khoảng từ 72% trở lên", và 240 tấm ảnh này sẽ không ai kiểm lại nữa nên
+phải nói con số thật.
+
+Cuối bảng là một lệnh để copy:
+
+```bash
+node scripts/visual/06-build.mjs --accept-above 0.284
+```
+
+Nó chỉ được gợi ý khi cận dưới còn giữ được **70%**. Dưới mức đó thì ký hiệu vẽ
+sẵn là câu trả lời tốt hơn: một tấm ảnh sai trên thẻ từ vựng không phải là
+"không giúp được gì", nó **dạy sai**.
+
+Ba điều lệnh đó **không** làm:
+
+- Không đè lên quyết định của bạn. Từ nào bạn đã bấm `x` thì vẫn dùng ký hiệu,
+  kể cả khi điểm rất cao.
+- Không đụng tới từ dưới ngưỡng — chúng dùng ký hiệu.
+- Không giấu chuyện gì. Danh sách từ được nhận ảnh nhờ thống kê chứ không nhờ
+  mắt người nằm ở `scripts/visual/state/auto-accepted.json`, muốn duyệt lại lúc
+  nào cũng được.
+
+Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguyên.
 
 ---
 

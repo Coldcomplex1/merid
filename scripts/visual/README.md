@@ -81,8 +81,11 @@ node scripts/visual/02-query.mjs        # what to search for, and what to avoid
 node scripts/visual/02b-iconmap.mjs     # a concept for everything else
 node scripts/visual/03-fetch.mjs        # collect candidates — run overnight
 python3 scripts/visual/04-rank.py       # score them — 15-25 min on CPU
-node scripts/visual/05-review.mjs       # you look at them — about an hour
-npm i -D sharp && node scripts/visual/06-build.mjs
+node scripts/visual/05-review.mjs --sample 50   # you look at 50 — ten minutes
+npm i -D sharp
+node scripts/visual/06-build.mjs                # measures what those 50 proved
+node scripts/visual/06-build.mjs --accept-above 0.284   # acts on it, using the
+                                                # number the line above printed
 
 cd merid-extension-final && npm test && npm run build && node e2e/visual.mjs
 ```
@@ -139,15 +142,35 @@ without asking, and `--all` overrides that.
 Least confident first, because that is where looking decides something. The cost
 is that stopping early leaves the confident ones unreviewed - and unreviewed
 means a symbol - so `--order best` is there for when you know you will not
-finish.
-Ordered by score ascending, so the doubtful ones come first; stop whenever you
-like and the rest take glyphs. `state/decisions.json` is the one file here that
-is committed — it is the only thing in the pipeline that cannot be recomputed.
+finish. `state/decisions.json` is the one file here that is committed — it is
+the only thing in the pipeline that cannot be recomputed.
+
+`--sample 50` changes the job rather than shortening it. Reviewing every entry
+means deciding every picture yourself. Reviewing fifty drawn evenly across the
+score range means *measuring* how often stage 04's top candidate is the one a
+person keeps, which is a fact about the other two hundred and forty as well.
+The sample is spread across all five score bands on purpose: a sample taken off
+either end can say how good that end is and nothing else.
 
 **06 — build.** Encodes to 320×160, 2:1 to match `.vm-visual` in `content.css`,
 smart-cropped. Reports any picture used for two different words, which means at
 least one of them is wrong. Measures AVIF against WebP on a sample of your
 actual pictures and says which is smaller before encoding the rest.
+
+It also reads the reviewing. Two tables: agreement per score band, which shows
+whether the score predicts correctness at all, and agreement cumulative from the
+top, which is the question `--accept-above` asks — take the first candidate for
+everything at or above here, how often is it right? The figure it reports is the
+low end of a 90% interval rather than the raw fraction, because nine out of ten
+from a sample of ten is not ninety percent, and the entries it decides are ones
+nobody will ever look at. A cutoff is recommended only where that low end holds
+at 70%; below that a drawn symbol is the better answer, since a wrong photograph
+on a vocabulary card does not merely fail to help, it teaches the wrong thing.
+If agreement never climbs with the score, no cutoff is offered and no command is
+printed to run by reflex.
+
+`state/auto-accepted.json` lists what shipped on the strength of that statistic
+rather than a person, so a later pass can go straight to it.
 
 There is no stage 07. Verification lives in
 `merid-extension-final/test/visual-index.test.js`, which runs under `npm test`
@@ -162,9 +185,25 @@ the rate-limit handling and the resume logic all run for real:
 ```bash
 node --import ./scripts/visual/test/fake-gemini.mjs scripts/visual/02-query.mjs
 python3 scripts/visual/04-rank.py --pretrained none   # architecture, random weights
+node scripts/visual/test/agreement.mjs                # the sample → measure → accept loop
 ```
 
 The answers are invented; the plumbing is not.
+
+`agreement.mjs` is the one that matters most, because it covers the only part of
+the pipeline with nothing to look at when it goes wrong. Every other stage fails
+visibly — a missing file, an empty JSON, a photograph of the wrong thing on a
+card. Stage 06's cutoff fails by printing a confident number. So the test starts
+the real 05, answers its HTTP API the way a person's keystrokes would against a
+planted truth, runs the real 06 and reads what it concluded — including the run
+where the score predicts nothing and the right answer is to refuse to name a
+cutoff at all.
+
+It takes a few minutes and looks stalled while it runs: it calls stage 06 five
+times and each call encodes a sample in AVIF at effort 9, which is about a
+second a picture. That is stage 06 being itself, not the test hanging — the same
+second a picture applies to a real run, so 350 pictures is six minutes.
+`MERID_KEEP=1` leaves the fixture in `state/test-agreement/` to poke at.
 
 ## Data credit
 

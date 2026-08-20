@@ -62,6 +62,34 @@ const ORDER = (() => {
     return v;
 })();
 
+// Review a sample instead of the whole queue.
+//
+// Reviewing 290 entries to pick 290 pictures is one job. Reviewing 50 to find
+// out whether the other 240 can be trusted is a different job and a much
+// shorter one, and it is the one most people actually want: the answer to "at
+// which score does the top candidate stop being right" is a fact about every
+// entry, not only the ones that were looked at. 06-build.mjs reads the answer
+// back out of the keystrokes.
+//
+// The sample is spread evenly across the score range rather than taken off
+// either end. A sample drawn from one end can say how good that end is and
+// nothing whatever about the rest, which is precisely what it would be used to
+// decide.
+const SAMPLE = (() => {
+    const i = args.indexOf('--sample');
+    if (i < 0) return 0;
+    const n = Number(args[i + 1]);
+    if (!Number.isFinite(n) || n < 5) {
+        console.error('[05] --sample needs a number of at least 5');
+        process.exit(1);
+    }
+    return Math.floor(n);
+})();
+
+// How many entries were eligible before sampling cut it down, so the review UI
+// can say what the sample is standing in for.
+let QUEUE_TOTAL = 0;
+
 const RANKED = statePath('ranked.json');
 const DECISIONS = statePath('decisions.json');
 const STATE_DIR = statePath();
@@ -105,8 +133,35 @@ function buildQueue() {
             'they will use a symbol. Pass --all to review them anyway.');
     }
 
-    items.sort((a, b) => ORDER === 'worst' ? a.best - b.best : b.best - a.best);
-    return items;
+    items.sort((a, b) => a.best - b.best);
+
+    // Take the sample before applying the reading order: five equal bands by
+    // score, an equal share drawn evenly from each. A sample skewed to one end
+    // would measure that end and say nothing about the rest.
+    let queue = items;
+    if (SAMPLE && items.length > SAMPLE) {
+        const bands = 5;
+        const perBand = Math.ceil(SAMPLE / bands);
+        const picked = [];
+        for (let b = 0; b < bands; b++) {
+            const from = Math.floor(items.length * b / bands);
+            const to = Math.floor(items.length * (b + 1) / bands);
+            const band = items.slice(from, to);
+            const step = Math.max(1, Math.floor(band.length / perBand));
+            for (let i = 0, n = 0; i < band.length && n < perBand; i += step, n++) {
+                picked.push(band[i]);
+            }
+        }
+        queue = picked.slice(0, SAMPLE);
+        QUEUE_TOTAL = items.length;
+        console.log('[05] sampling ' + queue.length + ' of ' + items.length +
+            ' entries, spread evenly across the score range');
+        console.log('[05] scores ' + queue[0].best.toFixed(3) + ' to ' +
+            queue[queue.length - 1].best.toFixed(3));
+    }
+
+    if (ORDER === 'best') queue = queue.slice().reverse();
+    return queue;
 }
 
 const PAGE = String.raw`<!doctype html><meta charset="utf-8">
@@ -154,12 +209,21 @@ const PAGE = String.raw`<!doctype html><meta charset="utf-8">
   <kbd>&rarr;</kbd> skip for now
 </footer>
 <script>
-let queue = [], decisions = {}, i = 0;
+let queue = [], decisions = {}, i = 0, sample = null, inQueue = new Set();
+
+// Only decisions about entries in THIS queue count towards the progress bar.
+// decisions.json accumulates across runs, so with --sample most of what is in
+// it belongs to some other queue, and counting all of it would show the bar
+// full before the first card was answered.
+function reviewedHere() {
+  return Object.keys(decisions).filter(s => inQueue.has(s)).length;
+}
 
 async function boot() {
   const r = await fetch('/api/queue');
   const data = await r.json();
-  queue = data.queue; decisions = data.decisions;
+  queue = data.queue; decisions = data.decisions; sample = data.sample;
+  inQueue = new Set(queue.map(q => q.slug));
   // Resume where the reviewing stopped rather than at the top.
   i = queue.findIndex(q => !(q.slug in decisions));
   if (i < 0) i = queue.length;
@@ -168,13 +232,17 @@ async function boot() {
 
 function draw() {
   const main = document.getElementById('main');
-  const reviewed = Object.keys(decisions).length;
+  const reviewed = reviewedHere();
   document.getElementById('count').textContent = reviewed + ' / ' + queue.length;
   document.getElementById('prog').style.width = (100 * reviewed / Math.max(1, queue.length)) + '%';
 
   if (i >= queue.length) {
     main.innerHTML = '<div class="done"><h2>All done.</h2>' +
-      '<p>' + reviewed + ' reviewed. Run <code>node scripts/visual/06-build.mjs</code> next.</p></div>';
+      '<p>' + reviewed + ' reviewed. Run <code>node scripts/visual/06-build.mjs</code> next.</p>' +
+      (sample
+        ? '<p>It will print how often the first candidate was the one you kept, at each ' +
+          'score, and what that means for the ' + sample.remaining + ' entries you did not see.</p>'
+        : '') + '</div>';
     return;
   }
   const q = queue[i];
@@ -274,7 +342,10 @@ function main() {
 
         if (url.pathname === '/api/queue') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ queue, decisions: readJson(DECISIONS, {}) }));
+            return res.end(JSON.stringify({
+                queue, decisions: readJson(DECISIONS, {}),
+                sample: SAMPLE ? { size: queue.length, remaining: QUEUE_TOTAL - queue.length } : null
+            }));
         }
 
         if (url.pathname === '/api/decide' && req.method === 'POST') {
@@ -311,14 +382,21 @@ function main() {
     });
 
     server.listen(PORT, '127.0.0.1', () => {
-        const reviewed = Object.keys(readJson(DECISIONS, {})).length;
+        const inQueue = new Set(queue.map(q => q.slug));
+        const reviewed = Object.keys(readJson(DECISIONS, {})).filter(sl => inQueue.has(sl)).length;
         console.log('[05] ' + queue.length + ' entries to review, ' + reviewed + ' already done');
-        console.log('[05] ' + (ORDER === 'worst'
-            ? 'least confident first - your attention goes where it decides something.\n' +
-              '     Stopping early leaves the CONFIDENT ones unreviewed, and unreviewed\n' +
-              '     means a symbol. Use --order best if you know you will not finish.'
-            : 'most confident first - stopping early only leaves behind entries that\n' +
-              '     were unlikely to survive a look anyway.'));
+        if (SAMPLE) {
+            console.log('[05] this is a measurement, not a selection: finish the sample,\n' +
+                '     then run 06-build.mjs to see how often the top candidate was right\n' +
+                '     at each score, and what that means for the entries you did not see.');
+        } else {
+            console.log('[05] ' + (ORDER === 'worst'
+                ? 'least confident first - your attention goes where it decides something.\n' +
+                  '     Stopping early leaves the CONFIDENT ones unreviewed, and unreviewed\n' +
+                  '     means a symbol. Use --order best if you know you will not finish.'
+                : 'most confident first - stopping early only leaves behind entries that\n' +
+                  '     were unlikely to survive a look anyway.'));
+        }
         console.log('[05] open http://127.0.0.1:' + PORT + '  (ctrl-c when you have had enough)');
     });
 }
