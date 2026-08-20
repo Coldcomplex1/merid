@@ -1,19 +1,14 @@
 # Changelog
 
-## 1.6.7 — 2026-08-20
+## 1.6.6 — 2026-08-20
 
-**A word that starts a sentence starts it with a capital.**
-
-- An English word standing at the front of a sentence is capitalised, even where the Vietnamese it replaced was not. Copying the case off the Vietnamese, as 1.6.6 does, only carries as far as the writer's own capital: in a post written without one — most of a feed, most comments — the swapped word opened the sentence on a small letter and gave itself away as a substitution, which is the very thing the capital was added to stop. Position is now read as well: a word after a full stop, a question or exclamation mark, or at the start of a paragraph, heading or list item takes the capital regardless. A word inside a sentence is untouched, and in "từ (word)" mode the Vietnamese still leads and still keeps its own case.
-
-## 1.6.6 — 2026-08-16
-
-**Three fixes: a lost "I know this", lower-case words in headlines, and a badge in the way.**
+**Fixes: a lost "I know this", lower-case words where a capital belongs, a badge in the way, and a badge that took the page down after an update.**
 
 - Marking a word "Đã thuộc" in your deck sticks. Signing in on a device cleared that device's record of what it had already sent, after which the extension re-introduced every word it knew and stamped its own "still learning" over marks made on the site — so a deck marked up on merid.site came back untouched at the next sign-in. The extension now only sends a saved/known state when it is the thing that changed it.
-- A word standing where a capitalised one stood is capitalised too: "Khó" gives "Difficult" and a headline's "KHÓ KHĂN" gives "DIFFICULT", instead of a lower-case word announcing itself as a substitution. Vietnamese tone marks survive the change.
+- A word standing where a capitalised one stood is capitalised too: "Khó" gives "Difficult" and a headline's "KHÓ KHĂN" gives "DIFFICULT", instead of a lower-case word announcing itself as a substitution. Where the Vietnamese carried no capital of its own, position supplies one: a word after a full stop, a question or exclamation mark, or at the start of a paragraph, heading or list item opens with a capital regardless — most of a feed and most comments are written without that capital, and a swapped word starting the sentence small is the very giveaway the capital is here to stop. A word inside a sentence is untouched, in "từ (word)" mode the Vietnamese still leads and still keeps its own case, and Vietnamese tone marks survive the change.
 - A card in the deck turns back to the word when you mark it known. The tick lives on the meaning side, so pressing it used to leave the card face-down on its own definition — a grid of them stopped reading as a deck of words.
 - The reading badge sits bottom-left instead of bottom-right, out from under Facebook's new-message button and the chat bubbles, back-to-top arrows and support widgets that live in that corner. You can drag it anywhere, and it stays where you drop it on every site.
+- Updating or reloading Merid no longer breaks it on the pages you already had open. The badge's element stays in the page across a reload while the script that draws it is replaced, and the fresh script's attempt to build a second time on top of that element threw outright — taking the rest of Merid on that page with it, so nothing was read or swapped there until the tab was reloaded by hand. The element left behind is now taken over and redrawn.
 
 ## 1.6.5 — 2026-08-16
 

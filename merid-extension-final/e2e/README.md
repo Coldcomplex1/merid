@@ -20,6 +20,7 @@ node e2e/ui-language.mjs      # panel language: site choice, Settings override, 
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
 node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you
+node e2e/badge-reinject.mjs   # the badge after a reload leaves its host behind in the page
 node e2e/dark-mode.mjs        # the card's palette on dark pages and under forced dark
 node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level advice
 node e2e/hosted.mjs           # Merid-hosted AI: identity, quota, personal-key priority

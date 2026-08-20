@@ -124,19 +124,38 @@
     `;
 
     function mount() {
-        if (host && host.isConnected) return true;
+        if (host && host.isConnected && root) return true;
         if (!document.body) return false;
-        host = document.getElementById(HOST_ID);
-        if (!host) {
-            host = document.createElement('div');
-            host.id = HOST_ID;
+
+        // A host left in the page by an earlier run of this script is reused
+        // rather than stacked on. Reloading or updating the extension takes the
+        // world the old content script lived in but not the DOM it built, so a
+        // page open across a reload still carries that first host.
+        let el = document.getElementById(HOST_ID);
+        if (!el || !el.isConnected) {
+            el = document.createElement('div');
+            el.id = HOST_ID;
             // The host itself must take no space and catch no clicks; the badge
             // inside is position:fixed and does the positioning.
-            host.style.cssText = 'all:initial;position:static;';
-            document.body.appendChild(host);
+            el.style.cssText = 'all:initial;position:static;';
+            document.body.appendChild(el);
         }
+        // Adopting a host means adopting its shadow tree: whatever `root` held
+        // belonged to the host before it and went out of the document with it.
+        if (el !== host) { host = el; root = null; }
+
         if (!root) {
-            root = host.attachShadow({ mode: 'open' });
+            // attachShadow throws NotSupportedError outright on a host that
+            // already carries a tree, so an adopted host has to be re-entered
+            // through .shadowRoot - the mode is 'open' precisely so this is
+            // possible - and emptied. Emptying is the point: the badge in there
+            // answers to listeners from a world that no longer exists, which
+            // leaves it frozen mid-spin and immovable. Reusing the ShadowRoot
+            // object rather than a fresh one also keeps any earlier copy of
+            // set() working, since it reaches the badge by query, not by
+            // reference.
+            root = host.shadowRoot || host.attachShadow({ mode: 'open' });
+            root.replaceChildren();
             const style = document.createElement('style');
             style.textContent = STYLE;
             root.appendChild(style);
