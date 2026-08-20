@@ -133,8 +133,13 @@ any sentence containing "spring", and is only obviously wrong once something
 notices it scores better against "metal coil".
 
 **05 — review.** You look at the top three for each entry and press a key. Only
-entries where stage 04 found something above the bar, best first; the rest take
-a symbol without asking. `--all` overrides that.
+entries where stage 04 found something above the bar; the rest take a symbol
+without asking, and `--all` overrides that.
+
+Least confident first, because that is where looking decides something. The cost
+is that stopping early leaves the confident ones unreviewed - and unreviewed
+means a symbol - so `--order best` is there for when you know you will not
+finish.
 Ordered by score ascending, so the doubtful ones come first; stop whenever you
 like and the rest take glyphs. `state/decisions.json` is the one file here that
 is committed — it is the only thing in the pipeline that cannot be recomputed.

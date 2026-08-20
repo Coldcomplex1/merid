@@ -209,7 +209,12 @@ Vài điều khi chạy:
 ### Bước 05 cho bạn xem gì
 
 Chỉ những từ mà bước 04 tìm được **ít nhất một ứng viên vượt ngưỡng**, xếp theo
-điểm **giảm dần** — từ chắc chắn nhất trước.
+điểm **tăng dần** — từ kém chắc chắn nhất trước, vì đó là chỗ nhìn bằng mắt mới
+quyết định được điều gì; những từ chắc chắn chỉ cần bấm `Enter`.
+
+Đánh đổi: dừng giữa chừng thì phần **chưa duyệt là phần chắc chắn nhất**, và
+chưa duyệt nghĩa là dùng ký hiệu — tức là mất ảnh tốt. Nếu biết trước sẽ không
+duyệt hết, dùng `--order best` để phần bỏ lại là phần kém tin nhất.
 
 Những từ không ứng viên nào đạt sẽ **tự dùng ký hiệu**, không đưa ra hỏi. Bắt
 bạn xác nhận một kết luận mà pipeline đã đưa ra rồi, vài trăm lần, chỉ tổ mệt

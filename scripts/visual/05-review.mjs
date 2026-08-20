@@ -40,6 +40,28 @@ const PORT = (() => {
 // are being tuned and you want to see what is behind them.
 const REVIEW_ALL = args.includes('--all');
 
+// Which end of the queue to start from.
+//
+// Worst-first by default: the entries whose best candidate only just cleared
+// are the ones where looking actually decides something, and the confident ones
+// can be waved through with Enter. This was best-first for a while, but that
+// was solving a problem that no longer exists - back then entries with nothing
+// above the floor were still in the queue, so opening the tool meant four
+// screens of rubbish. They are refused before the queue is built now.
+//
+// The cost is at the other end: stop halfway through a worst-first queue and
+// what is left unreviewed is the CONFIDENT half, and unreviewed means a symbol.
+// So --order best is there for when you know you will not finish.
+const ORDER = (() => {
+    const i = args.indexOf('--order');
+    const v = i >= 0 ? String(args[i + 1]) : 'worst';
+    if (!['worst', 'best'].includes(v)) {
+        console.error("[05] --order must be 'worst' or 'best'");
+        process.exit(1);
+    }
+    return v;
+})();
+
 const RANKED = statePath('ranked.json');
 const DECISIONS = statePath('decisions.json');
 const STATE_DIR = statePath();
@@ -83,18 +105,7 @@ function buildQueue() {
             'they will use a symbol. Pass --all to review them anyway.');
     }
 
-    // Best first.
-    //
-    // This used to be worst-first, on the theory that the doubtful cases deserved
-    // a fresh eye. That was wrong twice over. The doubtful cases are not ones
-    // where a human decision adds something - they are ones where stage 04
-    // already knows nothing matched, and the reviewer can only press `x`. And
-    // opening the tool onto four screens of obvious rubbish teaches you not to
-    // trust the tool, which is the opposite of what an hour of reviewing needs.
-    //
-    // So the plausible ones come first, and stopping early leaves behind only
-    // entries that were going to be refused anyway.
-    items.sort((a, b) => b.best - a.best);
+    items.sort((a, b) => ORDER === 'worst' ? a.best - b.best : b.best - a.best);
     return items;
 }
 
@@ -302,6 +313,12 @@ function main() {
     server.listen(PORT, '127.0.0.1', () => {
         const reviewed = Object.keys(readJson(DECISIONS, {})).length;
         console.log('[05] ' + queue.length + ' entries to review, ' + reviewed + ' already done');
+        console.log('[05] ' + (ORDER === 'worst'
+            ? 'least confident first - your attention goes where it decides something.\n' +
+              '     Stopping early leaves the CONFIDENT ones unreviewed, and unreviewed\n' +
+              '     means a symbol. Use --order best if you know you will not finish.'
+            : 'most confident first - stopping early only leaves behind entries that\n' +
+              '     were unlikely to survive a look anyway.'));
         console.log('[05] open http://127.0.0.1:' + PORT + '  (ctrl-c when you have had enough)');
     });
 }
