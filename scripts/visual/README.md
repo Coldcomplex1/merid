@@ -49,6 +49,28 @@ npm i -D sharp                              # stage 06
 pip install open_clip_torch pillow torch    # stage 04, ~2GB
 ```
 
+## Trying it on ten words first
+
+```bash
+node scripts/visual/try.mjs              # a deliberately hard default set
+node scripts/visual/try.mjs anchor monk  # words you choose
+node scripts/visual/try.mjs --review     # and open the review UI afterwards
+```
+
+Runs the whole chain on one small set of words and prints what each stage
+decided about each of them: how it was classified and by what, what was
+searched for, what the pictures were scored against, and the scores.
+
+Each stage's own `--limit` cannot do this. 01 limits the entries it asks the
+model about, 02 limits the concrete ones, 03 limits the searchable ones - so
+`--limit 10` three times gives three different tens whose overlap can be empty.
+
+Working files go to `state/trial/`; a real run's state is never touched.
+
+The default words are chosen to be hard rather than typical. Half are verbs with
+a physical sense and an abstract meaning - `skirt`, `table`, `eclipse` - which is
+the case that has gone wrong before.
+
 ## Running it
 
 ```bash

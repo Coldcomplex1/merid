@@ -15,7 +15,11 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 export const EXT = path.join(ROOT, 'merid-extension-final');
-export const STATE = path.join(ROOT, 'scripts', 'visual', 'state');
+// Overridable so a trial run can keep its working files somewhere of its own
+// and never disturb a real run's state.
+export const STATE = process.env.MERID_STATE
+    ? path.resolve(process.env.MERID_STATE)
+    : path.join(ROOT, 'scripts', 'visual', 'state');
 
 export const C = require(path.join(EXT, 'lib/vocab-core.js'));
 export const Visual = require(path.join(EXT, 'lib/visual.js'));
@@ -53,7 +57,18 @@ export function loadEntries() {
             if (!bySlug.has(slug)) bySlug.set(slug, { ...entry, slug });
         }
     }
-    return [...bySlug.values()];
+    const all = [...bySlug.values()];
+
+    // A trial run restricts every stage to the same handful of words.
+    //
+    // Each stage's own --limit cannot do this: 01 limits the entries it asks
+    // about, 02 limits the concrete ones, 03 limits the searchable ones, so
+    // "--limit 10" three times gives three different tens whose overlap may be
+    // empty. Filtering here means one set of words travels the whole chain.
+    const only = process.env.MERID_ONLY;
+    if (!only) return all;
+    const wanted = new Set(only.split(',').map(w => w.trim().toLowerCase()).filter(Boolean));
+    return all.filter(e => wanted.has(e.word.toLowerCase()));
 }
 
 /** How many entries share each headword. >1 means the word is polysemous here. */

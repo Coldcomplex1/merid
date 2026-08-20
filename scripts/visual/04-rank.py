@@ -40,7 +40,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-STATE = ROOT / "scripts" / "visual" / "state"
+# Overridable, and it must be: try.mjs runs the whole chain into a directory of
+# its own so a trial cannot overwrite a real run's candidates and scores.
+STATE = (
+    Path(os.environ["MERID_STATE"]).resolve()
+    if os.environ.get("MERID_STATE")
+    else ROOT / "scripts" / "visual" / "state"
+)
 CANDIDATES = STATE / "candidates.json"
 OUT = STATE / "ranked.json"
 
@@ -77,9 +83,24 @@ def load_model(name, pretrained):
     import torch
     import open_clip
 
-    model, _, preprocess = open_clip.create_model_and_transforms(
-        name, pretrained=pretrained
-    )
+    try:
+        model, _, preprocess = open_clip.create_model_and_transforms(
+            name, pretrained=pretrained
+        )
+    except Exception as e:
+        # The weights come from Hugging Face on first use. When that is blocked
+        # - a proxy, an offline machine, a corporate network - the traceback is
+        # forty lines of httpx internals that say nothing about what to do.
+        sys.exit(
+            "[04] could not load the {} weights: {}\n"
+            "      They download from huggingface.co the first time. If that host is\n"
+            "      unreachable here, run stage 04 somewhere it is reachable, or skip it:\n"
+            "      stage 05 works without scores, it just cannot order or filter by them.\n"
+            "      To check the rest of the chain without any weights:\n"
+            "        python3 scripts/visual/04-rank.py --pretrained none".format(
+                name, str(e).splitlines()[-1][:160]
+            )
+        )
     model.eval()
     torch.set_grad_enabled(False)
     return model, preprocess, open_clip.get_tokenizer(name)

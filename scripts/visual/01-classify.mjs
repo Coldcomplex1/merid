@@ -81,6 +81,27 @@ async function loadNorms() {
     return norms;
 }
 
+/**
+ * Does the norms' score describe the same word this entry is about?
+ *
+ * Brysbaert rates a word FORM, and the file records which part of speech that
+ * form usually is. When ours disagrees, the number is about something else:
+ * `skirt` scores 4.82 as a Noun, which is the garment, while our entry is the
+ * verb meaning "evade a question". `table` scores 4.9 as a Noun against our
+ * verb "lay aside to discuss later". Both were classified concrete on the
+ * strength of a score for a different word, and both then went looking for a
+ * photograph of one.
+ *
+ * Our own type field can list more than one ("verb, noun"); the first is the
+ * sense the definition leads with, so that is the one that has to match.
+ */
+function posAgrees(entryType, normPos) {
+    const ours = String(entryType || '').split(',')[0].trim().toLowerCase();
+    const theirs = String(normPos || '').trim().toLowerCase();
+    if (!ours || !theirs || theirs === '#n/a') return false;
+    return ours === theirs;
+}
+
 /** Which bucket an entry lands in, and why - the "why" is what makes a re-run reviewable. */
 function classifyLocally(entry, norms, senses) {
     if (NEVER_CONCRETE_POS.test(entry.type || '')) {
@@ -96,7 +117,17 @@ function classifyLocally(entry, norms, senses) {
     // A word most raters did not recognise has a score built from very few
     // opinions. Treat it as unknown rather than trusting a thin average.
     if (Number.isFinite(n.known) && n.known < 0.85) return null;
-    if (n.conc >= CONCRETE_AT) return { kind: 'concrete', source: 'norms', conc: n.conc };
+
+    // Where the parts of speech disagree, the score is trusted in one direction
+    // only. "Abstract" is safe to accept from the wrong sense: a word given a
+    // symbol loses little, and a form that is abstract as a noun is rarely
+    // photographable as a verb either. "Concrete" is not safe, because that is
+    // precisely how a garment gets a verb sent out looking for photographs of
+    // itself - so it goes to the model, with the definition attached.
+    const agrees = posAgrees(entry.type, n.pos);
+    if (n.conc >= CONCRETE_AT) {
+        return agrees ? { kind: 'concrete', source: 'norms', conc: n.conc } : null;
+    }
     if (n.conc <= ABSTRACT_AT) return { kind: 'abstract', source: 'norms', conc: n.conc };
     return null;   // borderline: worth a question
 }
@@ -179,7 +210,7 @@ async function main() {
     result.entries = result.entries || {};
 
     const ask = [];
-    const counts = { pos: 0, norms: 0, cached: 0, polysemous: 0, unknown: 0, borderline: 0 };
+    const counts = { pos: 0, norms: 0, cached: 0, polysemous: 0, unknown: 0, borderline: 0, posMismatch: 0 };
 
     for (const entry of entries) {
         if (result.entries[entry.slug] && result.entries[entry.slug].source !== 'default') {
@@ -194,8 +225,10 @@ async function main() {
         }
         // Why it could not be answered locally - only for the summary, but a
         // summary that cannot explain itself is not worth printing.
+        const n = norms.get(entry.word.toLowerCase());
         if ((senses.get(entry.word.toLowerCase()) || 1) > 1) counts.polysemous++;
-        else if (!norms.has(entry.word.toLowerCase())) counts.unknown++;
+        else if (!n) counts.unknown++;
+        else if (n.conc >= CONCRETE_AT && !posAgrees(entry.type, n.pos)) counts.posMismatch++;
         else counts.borderline++;
         ask.push(entry);
     }
@@ -205,6 +238,7 @@ async function main() {
         (counts.cached ? ', ' + counts.cached + ' already done' : ''));
     console.log('[01] need the model: ' + ask.length +
         ' (' + counts.polysemous + ' polysemous, ' + counts.unknown + ' not in norms, ' +
+        counts.posMismatch + ' scored as a different part of speech, ' +
         counts.borderline + ' borderline)');
 
     const todo = ask.slice(0, LIMIT === Infinity ? ask.length : LIMIT);

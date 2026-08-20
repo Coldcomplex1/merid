@@ -128,7 +128,33 @@ với 20). Cả pipeline tốn khoảng **131 request**, vừa đủ trong một
 
 ---
 
-## 4. Chạy thử 20 từ trước
+## 4. Chạy thử 10 từ trước
+
+```powershell
+node scripts/visual/try.mjs
+```
+
+Một lệnh, chạy trọn chuỗi 01 → 04 trên **cùng một nhóm từ**, rồi in ra bảng:
+mỗi từ được phân loại thế nào và bởi cái gì, tìm bằng câu gì, chấm điểm so với
+cái gì, và điểm bao nhiêu.
+
+Đừng dùng `--limit` của từng bước cho việc này: bước 01 giới hạn nhóm nó đem đi
+hỏi, bước 02 giới hạn nhóm concrete, bước 03 giới hạn nhóm tìm được — ba lần
+"10 từ" cho ra ba nhóm khác nhau, giao nhau có khi bằng 0.
+
+File tạm nằm ở `state/trial/`, **không đụng** vào state của lần chạy thật.
+
+Từ mặc định được chọn cho **khó**, không phải cho tiêu biểu: một nửa là động từ
+có nghĩa vật lý nhưng dùng theo nghĩa trừu tượng (`skirt`, `table`, `eclipse`) —
+đúng loại đã từng sai. Muốn chọn từ khác: `node scripts/visual/try.mjs anchor monk aisle`.
+
+Xem ảnh luôn: thêm `--review`.
+
+**Đọc dòng `searched` đối chiếu với định nghĩa ngay trên nó.** Nếu câu tìm kiếm
+tả một cảnh có nghĩa đúng như định nghĩa thì chuỗi đang chạy đúng. Nếu nó tả một
+phép ẩn dụ thì bước 01 đã phân loại nhầm.
+
+## 4b. Hoặc thử 20 từ theo kiểu cũ
 
 **Đừng chạy full ngay.** Chạy thử để xem chất lượng có ổn không, rồi mới chạy
 hết. Mọi bước đều resume được nên thử xong không mất gì.
