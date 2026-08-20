@@ -56,24 +56,37 @@ const SKIP_SUBJECT = new RegExp([
 ].join('|'), 'i');
 
 const PROMPT_HEAD = [
-    'You write image-search queries for an English vocabulary app.',
+    'You write image-search queries for an English vocabulary app. Each query is',
+    'sent to photo archives, and the best result is shown to a learner next to the',
+    'definition below it.',
     '',
-    'For each entry, produce a short search query that would find a photograph a',
-    'learner would recognise as THIS meaning of the word - the meaning in the',
-    'definition, not any other meaning the spelling might have.',
+    'Describe a REAL SCENE a camera could have photographed, in which the meaning',
+    'below is plainly what is happening. Name what is in the frame: who or what,',
+    'doing what, where.',
     '',
     'Rules for the query:',
-    ' - 2 to 6 words, plain nouns and adjectives, no punctuation',
-    ' - describe what would be IN the photograph, not the abstract idea',
-    ' - never just repeat the headword on its own',
+    ' - 3 to 7 words, concrete nouns and verbs, no punctuation',
+    ' - "children splashing in paddling pool", not "childhood" or "fun"',
+    ' - never the headword alone, and avoid the headword entirely if a plainer',
+    '   word describes the same scene',
+    ' - no abstractions in the query itself: no "concept", "symbolising",',
+    '   "representing", "idea of"',
+    '',
+    'Then set "depictable" to FALSE - and leave the query empty - whenever:',
+    ' - the scene you would have to describe is a metaphor for the meaning rather',
+    '   than the meaning itself',
+    ' - the photograph would only work if the learner already knew the word',
+    ' - it would be a person LOOKING like they are doing it, staged for the camera',
+    ' - it would need one particular person to stand for a whole group of people',
+    '',
+    'Being unable to depict something is a useful answer, not a failure. Those',
+    'words get a drawn symbol instead, which is honest. A photograph of the wrong',
+    'sense is not.',
     '',
     'Also list "negative": short phrases naming the OTHER things this spelling',
-    'could bring back, which would be the wrong picture here. Example: for the',
-    'season "spring", the negatives are "metal coil", "water source", "jump".',
-    'If the word has only one sense and no confusable neighbours, use [].',
-    '',
-    'Set "depictable" to false if no single photograph could honestly show this',
-    'meaning, or if illustrating it would need a person standing in for a group.',
+    'could bring back, which would be the wrong picture here. For the season',
+    '"spring" those are "metal coil", "water source", "jump". If nothing is',
+    'confusable, use [].',
     '',
     'Reply with a JSON array only, one object per entry, in the same order:',
     '  {"id": <id>, "query": "...", "negative": ["...", "..."], "depictable": true}',
@@ -99,14 +112,21 @@ function parseBatch(text) {
         if (!row || typeof row !== 'object') continue;
         const id = String(row.id || '');
         const query = String(row.query || '').trim().replace(/\s+/g, ' ');
-        if (!id || !query) continue;
+        if (!id) continue;
+        // "cannot be depicted" is an answer, and losing it would send the entry
+        // back round to be asked about again on the next run.
+        if (!query && row.depictable !== false) continue;
         const negative = Array.isArray(row.negative)
             ? row.negative.map(s => String(s).trim()).filter(Boolean).slice(0, 6)
             : [];
+        const depictable = row.depictable !== false;
         out.set(id, {
-            query: query.slice(0, 120),
+            // A query kept alongside depictable:false is a trap: it reads as
+            // usable and one relaxed filter downstream would send it to the
+            // archives anyway.
+            query: depictable ? query.slice(0, 120) : '',
             negative,
-            depictable: row.depictable !== false
+            depictable
         });
     }
     return out;
@@ -154,7 +174,7 @@ async function main() {
             id: e.slug, word: e.word, type: e.type, definition: e.definition, example: e.example
         }));
         const answers = await llm.askBatch(items, {
-            render: renderBatch, parse: parseBatch, schemaName: 'query-v1'
+            render: renderBatch, parse: parseBatch, schemaName: 'query-v2'
         });
         for (const e of batch) {
             const a = answers.get(e.slug);

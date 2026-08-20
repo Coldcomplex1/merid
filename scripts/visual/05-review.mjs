@@ -36,6 +36,9 @@ const PORT = (() => {
     const i = args.indexOf('--port');
     return i >= 0 ? Number(args[i + 1]) : 8787;
 })();
+// Show even the entries stage 04 found nothing for. Useful when the thresholds
+// are being tuned and you want to see what is behind them.
+const REVIEW_ALL = args.includes('--all');
 
 const RANKED = statePath('ranked.json');
 const DECISIONS = statePath('decisions.json');
@@ -49,9 +52,15 @@ function buildQueue() {
     }
     const entries = new Map(loadEntries().map(e => [e.slug, e]));
     const items = [];
+    let refused = 0;
     for (const [slug, r] of Object.entries(ranked.entries || {})) {
         const entry = entries.get(slug);
         if (!entry || !r.candidates || !r.candidates.length) continue;
+        // Nothing cleared the floor, so every candidate is a picture of
+        // something else. Showing these asks the reviewer to confirm a verdict
+        // the pipeline has already reached, several hundred times. They take a
+        // drawn symbol, like any other word without a usable photograph.
+        if (!r.anyClear && !REVIEW_ALL) { refused++; continue; }
         items.push({
             slug,
             word: entry.word,
@@ -69,8 +78,23 @@ function buildQueue() {
             }))
         });
     }
-    // Least confident first: see the header comment.
-    items.sort((a, b) => a.best - b.best);
+    if (refused) {
+        console.log('[05] ' + refused + ' entries had no candidate clearing stage 04 - ' +
+            'they will use a symbol. Pass --all to review them anyway.');
+    }
+
+    // Best first.
+    //
+    // This used to be worst-first, on the theory that the doubtful cases deserved
+    // a fresh eye. That was wrong twice over. The doubtful cases are not ones
+    // where a human decision adds something - they are ones where stage 04
+    // already knows nothing matched, and the reviewer can only press `x`. And
+    // opening the tool onto four screens of obvious rubbish teaches you not to
+    // trust the tool, which is the opposite of what an hour of reviewing needs.
+    //
+    // So the plausible ones come first, and stopping early leaves behind only
+    // entries that were going to be refused anyway.
+    items.sort((a, b) => b.best - a.best);
     return items;
 }
 
@@ -217,9 +241,14 @@ function main() {
                 'none have been scored.');
             console.error('      Run: python3 scripts/visual/04-rank.py');
         } else {
-            console.error('[05] nothing to review: ' + scored + ' entries were scored but none kept ' +
-                'a candidate.');
-            console.error('      Their files may have gone missing from state/candidates/.');
+            // Everything was filtered out above rather than lost. Say which of
+            // the two it was, because the fixes are opposite: one is a threshold
+            // to loosen, the other is files to go and find.
+            console.error('[05] nothing to review: none of the ' + scored +
+                ' scored entries had a candidate clearing stage 04.');
+            console.error('      They will all take a symbol, which may well be the right answer.');
+            console.error('      To look at them anyway:  node scripts/visual/05-review.mjs --all');
+            console.error('      To loosen the bar:       MERID_CLIP_FLOOR=0.20 python3 scripts/visual/04-rank.py');
         }
         process.exit(1);
     }

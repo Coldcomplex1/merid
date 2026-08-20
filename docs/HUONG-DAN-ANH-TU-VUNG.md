@@ -180,6 +180,18 @@ Vài điều khi chạy:
 - **Bước 05** xếp từ khó nhất lên đầu. Hết giờ cứ đóng — từ chưa duyệt tự dùng
   icon, không nhận ảnh bừa.
 
+### Bước 05 cho bạn xem gì
+
+Chỉ những từ mà bước 04 tìm được **ít nhất một ứng viên vượt ngưỡng**, xếp theo
+điểm **giảm dần** — từ chắc chắn nhất trước.
+
+Những từ không ứng viên nào đạt sẽ **tự dùng ký hiệu**, không đưa ra hỏi. Bắt
+bạn xác nhận một kết luận mà pipeline đã đưa ra rồi, vài trăm lần, chỉ tổ mệt
+và làm mất niềm tin vào công cụ.
+
+Muốn xem cả những từ đó: `node scripts/visual/05-review.mjs --all`.
+Muốn hạ ngưỡng: `$env:MERID_CLIP_FLOOR='0.20'` rồi chạy lại bước 04.
+
 ### Phím trong bước 05
 
 | Phím | Việc |
@@ -243,7 +255,8 @@ gitignore vì tái tạo được.
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
 | Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |
 | `npm test` báo `vis/... is over the cap` | Có ảnh > 9KB. Chạy lại bước 06 với `--format webp` |
-| Ảnh sai nghĩa nhiều | Chỉnh prompt bước 02, hoặc nâng `MERID_CLIP_FLOOR` / `MERID_CLIP_MARGIN`, rồi chạy lại bước 02 trở đi |
+| Ảnh sai nghĩa nhiều | Thường là bước **01** phân loại nhầm từ trừu tượng thành "chụp được", chứ không phải lỗi tìm ảnh. Xoá `state/classification.json` + `state/queries.json` + `state/llm-cache-*.json` rồi chạy lại từ 01 |
+| Ảnh là bản đồ, biểu đồ, sơ đồ | Query đang tả một phép ẩn dụ. Xem `state/queries.json` — nếu query tả cảnh vật lý cho một nghĩa trừu tượng thì gốc rễ ở bước 01 |
 
 ## 9. Sau khi xong
 

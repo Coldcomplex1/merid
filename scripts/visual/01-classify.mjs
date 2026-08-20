@@ -102,16 +102,37 @@ function classifyLocally(entry, norms, senses) {
 }
 
 const PROMPT_HEAD = [
-    'You are helping decide which English vocabulary entries can be illustrated',
-    'with a single photograph.',
+    'You decide which English vocabulary entries a photograph could honestly',
+    'illustrate, for a tool that shows learners a picture beside a definition.',
     '',
-    'CONCRETE means: a photograph of a real scene or object would show what this',
-    'entry means, and a learner seeing that photograph would recognise the meaning.',
-    'ABSTRACT means: it could only be illustrated by metaphor or staging - a',
-    'quality, a relation, a state of mind, a process, a manner of doing something.',
+    'Apply one test. Imagine sending a photographer out with only this entry as',
+    'their brief. Could they come back with a photograph, and would a learner who',
+    'saw it - without being told the word - arrive at roughly this meaning?',
     '',
-    'Judge the SENSE given by the definition, not the word in general. The same',
-    'spelling may appear twice with different definitions; answer each on its own.',
+    'If yes, "concrete". If it would take a metaphor, a staged scene, a caption or',
+    'an arrow to work, "abstract".',
+    '',
+    'Read the EXAMPLE SENTENCE before deciding. It shows the sense actually being',
+    'taught, and it overrides any other sense the spelling might have. "skirt" is',
+    'defined as "go around, evade" and its example is about evading a question:',
+    'that entry is ABSTRACT. A photograph of a path around a hill illustrates a',
+    'different word than the one being taught.',
+    '',
+    'Say ABSTRACT for:',
+    ' - manner, degree, relation, likelihood, obligation, attitude',
+    ' - a process or change with no single moment that shows it',
+    ' - a verb whose object is a thought, a claim, a feeling or a rule, however',
+    '   physical the verb sounds (grasp an idea, weigh an argument, skirt a topic)',
+    ' - anything where the photograph would be of a person LOOKING like they are',
+    '   doing it, rather than of the thing itself',
+    '',
+    'Say CONCRETE for:',
+    ' - a physical object, place, plant, animal, tool, garment, building',
+    ' - a visible action caught mid-motion, with a real subject doing it',
+    ' - an occupation or role recognisable by what the person wears or holds',
+    '',
+    'When you hesitate, answer ABSTRACT. A word given a symbol loses nothing; a',
+    'word given a photograph of the wrong sense teaches the wrong sense.',
     '',
     'Reply with a JSON array only. One object per entry, in the same order:',
     '  {"id": <the id given>, "kind": "concrete" | "abstract"}',
@@ -123,7 +144,12 @@ function renderBatch(items) {
         'id: ' + e.id,
         'word: ' + e.word,
         'part of speech: ' + (e.type || 'unknown'),
-        'definition: ' + (e.definition || '').slice(0, 220)
+        'definition: ' + (e.definition || '').slice(0, 220),
+        // The example is the whole point. A definition can list several senses -
+        // "Border, lie along the edge of, go around; evade" - and the model will
+        // seize on whichever sounds most photographable. The sentence shows the
+        // one the reader will actually meet on the card.
+        'example: ' + (e.example || '(none)').slice(0, 180)
     ].join('\n'));
     return PROMPT_HEAD + '\n' + lines.join('\n\n');
 }
@@ -187,9 +213,12 @@ async function main() {
     let unanswered = 0;
 
     for (const [i, batch] of batches.entries()) {
-        const items = batch.map(e => ({ id: e.slug, word: e.word, type: e.type, definition: e.definition }));
+        const items = batch.map(e => ({
+            id: e.slug, word: e.word, type: e.type,
+            definition: e.definition, example: e.example
+        }));
         const answers = await llm.askBatch(items, {
-            render: renderBatch, parse: parseBatch, schemaName: 'classify-v1'
+            render: renderBatch, parse: parseBatch, schemaName: 'classify-v2'
         });
         for (const e of batch) {
             const kind = answers.get(e.slug);

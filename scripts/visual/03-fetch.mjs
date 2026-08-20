@@ -208,7 +208,15 @@ async function main() {
     const result = readJson(OUT, { v: 1, entries: {} });
     result.entries = result.entries || {};
 
-    const todo = searchable.filter(x => !result.entries[x.slug]);
+    // Re-fetch when the query has changed. Skipping on slug alone was fine while
+    // the queries were fixed, but stage 02 can be re-run with a better prompt -
+    // and then the cached candidates answer a question nobody is asking any more.
+    const todo = searchable.filter(x => {
+        const had = result.entries[x.slug];
+        return !had || had.query !== x.query;
+    });
+    const restale = todo.filter(x => result.entries[x.slug]).length;
+    if (restale) console.log('[03] ' + restale + ' entries have a new query and will be fetched again');
     const work = todo.slice(0, LIMIT === Infinity ? todo.length : LIMIT);
     console.log('[03] ' + searchable.length + ' searchable, ' +
         (searchable.length - todo.length) + ' already fetched, doing ' + work.length);
@@ -218,25 +226,50 @@ async function main() {
     let empty = 0;
 
     for (const [i, item] of work.entries()) {
-        const found = [];
+        // Ask every source, then let stage 04 choose between them.
+        //
+        // This used to stop as soon as it had enough, which in practice meant
+        // Openverse and Wikimedia filled the list and Pexels was never asked -
+        // and Pexels is the one that returns photographs of SCENES. Wikimedia
+        // answers a query like "hiking trail going around mountain base" with a
+        // topographic map, which is a perfectly good picture of a completely
+        // useless kind. Pooling all three costs two more requests an entry and
+        // gives CLIP something to choose from.
+        const perSource = Math.max(3, Math.ceil(PER_ENTRY / 2));
+        const pool = [];
         for (const provider of PROVIDERS) {
-            if (found.length >= PER_ENTRY) break;
             await provider.throttle.wait();
             let batch;
-            try { batch = await provider.search(item.query, PER_ENTRY); } catch (e) { batch = null; }
+            try { batch = await provider.search(item.query, perSource); } catch (e) { batch = null; }
             if (batch && batch.rateLimited) {
                 // Being told to slow down is not a reason to lose the run.
                 console.log('[03] ' + provider.name + ' rate-limited, standing down for ' +
                     Math.round(RATE_WAIT_MS / 1000) + 's');
                 await sleep(RATE_WAIT_MS);
-                try { batch = await provider.search(item.query, PER_ENTRY); } catch (e) { batch = null; }
+                try { batch = await provider.search(item.query, perSource); } catch (e) { batch = null; }
             }
             if (!Array.isArray(batch)) continue;
             for (const c of batch) {
-                if (found.length >= PER_ENTRY) break;
-                if (found.some(f => f.thumbUrl === c.thumbUrl)) continue;
-                found.push(c);
+                if (pool.some(f => f.thumbUrl === c.thumbUrl)) continue;
+                pool.push(c);
             }
+        }
+
+        // Interleave by source so the cap cannot hand every slot to whichever
+        // archive happened to answer first.
+        const found = [];
+        const bySource = new Map();
+        for (const c of pool) {
+            if (!bySource.has(c.source)) bySource.set(c.source, []);
+            bySource.get(c.source).push(c);
+        }
+        for (let round = 0; found.length < PER_ENTRY; round++) {
+            let added = false;
+            for (const list of bySource.values()) {
+                if (found.length >= PER_ENTRY) break;
+                if (list[round]) { found.push(list[round]); added = true; }
+            }
+            if (!added) break;
         }
 
         const kept = [];
