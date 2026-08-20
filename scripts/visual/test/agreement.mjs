@@ -100,6 +100,20 @@ function build(slugs, { rising }) {
     });
 
     fs.writeFileSync(path.join(STATE, 'ranked.json'), JSON.stringify(ranked));
+
+    // What stage 02 recorded about each word. Stage 06 reads the kind back out
+    // to decide what a concrete word shows when it ends without a photograph -
+    // a box, a stride or a figure rather than its own first letter. One in nine
+    // is left with no kind at all, because stage 02 does skip entries and the
+    // letter has to stay reachable.
+    const kinds = ['object', 'action', 'role'];
+    const queries = { v: 1, entries: {} };
+    slugs.forEach((slug, i) => {
+        queries.entries[slug] = i % 9 === 8
+            ? { query: '', depictable: false }
+            : { query: slug + ' photograph', kind: kinds[i % 3], negative: [] };
+    });
+    fs.writeFileSync(path.join(STATE, 'queries.json'), JSON.stringify(queries));
     return truth;
 }
 
@@ -222,6 +236,34 @@ async function main() {
         'at a cutoff below everything, it takes the ' + (N - SAMPLE) + ' unreviewed and leaves all ' +
         SAMPLE + ' decisions alone - including the ' + refused + ' refusals (got ' +
         (tookAll ? tookAll[1] : '?') + ')');
+
+    console.log('\nwhat a concrete word shows when it has no photograph');
+    const kindLine = accepted.match(/(\d+) concrete words ended without a photograph/);
+    ok(!!kindLine, 'stage 06 says how many words fell back to a kind');
+    const letterLine = accepted.match(/(\d+) words show only their first letter/);
+    ok(!!letterLine, 'and how many are left with just a letter');
+
+    // Every unphotographed entry is accounted for as one or the other. A word
+    // silently getting neither is the bug this whole section exists to catch.
+    const shippedPics = Number((accepted.match(/\[06\] (\d+) pictures,/) || [])[1]);
+    const totalEntries = (await import('../lib/entries.mjs')).loadEntries().length;
+    ok(Number(kindLine[1]) + Number(letterLine[1]) + shippedPics <= totalEntries,
+        'kinds + letters + pictures does not exceed the vocabulary');
+    ok(Number(kindLine[1]) > 0 && Number(letterLine[1]) > 0,
+        'both paths are exercised (' + kindLine[1] + ' kinds, ' + letterLine[1] + ' letters)');
+
+    // Named individually, so a run that quietly used one bucket for everything
+    // would show up. Read from the console rather than from visual-index.json:
+    // every 06 here is --dry-run, and a test that asserted on the real index
+    // would be reading whatever the last real build left behind - or, worse,
+    // would need a run that overwrote it.
+    const named = ['object', 'action', 'role']
+        .filter(k => new RegExp('\\d+ ' + k + '\\b').test(accepted));
+    ok(named.length === 3, 'all three kinds are used and reported (got ' + named.join(',') + ')');
+    const Visual = (await import('../lib/entries.mjs')).Visual;
+    for (const k of named) {
+        ok(!!Visual.GLYPH['kind-' + k], 'kind-' + k + ' has a glyph the card can draw');
+    }
 
     console.log('\nrefusing to promise what it cannot');
     const far = build06(['--accept-above', '0.9']);

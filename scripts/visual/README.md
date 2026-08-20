@@ -136,8 +136,25 @@ any sentence containing "spring", and is only obviously wrong once something
 notices it scores better against "metal coil".
 
 **05 — review.** You look at the top three for each entry and press a key. Only
-entries where stage 04 found something above the bar; the rest take a symbol
+entries where stage 04 found something above the bar; the rest are dropped
 without asking, and `--all` overrides that.
+
+Dropped does not mean "gets a concept". Stage 02b only assigns those to
+abstract entries, and everything in this queue is concrete by construction -
+stage 02 went looking for a photograph of it. The 56 concepts are abstractions
+and not one of them is what `anchor` is about.
+
+So a concrete word without a photograph gets one of three **kind** glyphs
+instead - a box, a stride, a figure - from the `object`/`action`/`role` stage 02
+already recorded in `queries.json`. It costs nothing and says far more than the
+letter A. Only an entry stage 02 recorded no kind for falls through to its own
+first letter. Stage 06 prints both counts; read them before settling on a
+cutoff, because a strict one turns photographs into boxes.
+
+The three are in `GLYPH` but deliberately not in `ICON_IDS`, so the concept
+mapper is never offered them - `kind-object` coming back for an abstract word
+would be worse than any of the 56 and indistinguishable in the index from a
+genuine fallback.
 
 Least confident first, because that is where looking decides something. The cost
 is that stopping early leaves the confident ones unreviewed - and unreviewed

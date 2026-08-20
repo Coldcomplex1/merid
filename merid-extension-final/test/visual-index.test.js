@@ -63,6 +63,19 @@ test('every concept bucket has a glyph and a hue', () => {
     }
 });
 
+test('the three kind glyphs are drawable but not offered to the mapper', () => {
+    for (const id of Visual.KIND_IDS) {
+        assert.ok(Visual.GLYPH[id], `${id} has no glyph`);
+        assert.ok(Visual.drawGlyph(id).includes('<path'), `${id} draws nothing`);
+        assert.strictEqual(typeof Visual.BUCKET_HUE[id], 'number', `${id} has no hue`);
+        // 02b-iconmap.mjs asks the model to choose from ICON_IDS. If these were
+        // in it, "kind-object" would start coming back for abstract words - a
+        // worse answer than any of the 56, and indistinguishable in the index
+        // from a concrete word that genuinely fell back to it.
+        assert.ok(!Visual.ICON_IDS.includes(id), `${id} must not be a concept the mapper can pick`);
+    }
+});
+
 test('drawGlyph refuses a bucket it does not know', () => {
     assert.strictEqual(Visual.drawGlyph('not-a-bucket'), '');
     assert.strictEqual(Visual.drawGlyph(undefined), '');

@@ -152,7 +152,11 @@ function buildQueue() {
     }
     if (refused) {
         console.log('[05] ' + refused + ' entries had no candidate clearing stage 04 - ' +
-            'they will use a symbol. Pass --all to review them anyway.');
+            'they get no picture. Pass --all to review them anyway.');
+        console.log('[05] NOTE: these are concrete words - stage 02 went looking for photographs of');
+        console.log('     them - so stage 02b never gave them a concept either. The 56 concepts are');
+        console.log('     abstractions and none of them is what "anchor" is about. Without a picture');
+        console.log('     they show their first letter on a gradient, not a symbol.');
     }
 
     items.sort((a, b) => a.best - b.best);
@@ -358,7 +362,8 @@ function main() {
             // to loosen, the other is files to go and find.
             console.error('[05] nothing to review: none of the ' + scored +
                 ' scored entries had a candidate clearing stage 04.');
-            console.error('      They will all take a symbol, which may well be the right answer.');
+            console.error('      Being concrete words, they have no concept glyph to fall back on');
+            console.error('      either, so they would show only their first letter.');
             console.error('      To look at them anyway:  node scripts/visual/05-review.mjs --all');
             console.error('      To loosen the bar:       MERID_CLIP_FLOOR=0.20 python3 scripts/visual/04-rank.py');
         }

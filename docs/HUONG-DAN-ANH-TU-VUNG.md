@@ -223,10 +223,24 @@ Chỉ những từ mà bước 04 tìm được **ít nhất một ứng viên v
 quyết định được điều gì; những từ chắc chắn chỉ cần bấm `Enter`.
 
 Đánh đổi: dừng giữa chừng thì phần **chưa duyệt là phần chắc chắn nhất**, và
-chưa duyệt nghĩa là dùng ký hiệu — tức là mất ảnh tốt. Nếu biết trước sẽ không
-duyệt hết, dùng `--order best` để phần bỏ lại là phần kém tin nhất.
+chưa duyệt nghĩa là **không có ảnh** — tức là mất ảnh tốt. Nếu biết trước sẽ
+không duyệt hết, dùng `--order best` để phần bỏ lại là phần kém tin nhất.
 
-Những từ không ứng viên nào đạt sẽ **tự dùng ký hiệu**, không đưa ra hỏi. Bắt
+> **"Không có ảnh" nghĩa là gì?**
+>
+> Bước 02b chỉ gán ký hiệu khái niệm cho từ **trừu tượng**. 56 ký hiệu đó đều
+> là khái niệm trừu tượng (`growth`, `doubt`, `restriction`…) — không cái nào
+> là thứ mà "anchor" nói về.
+>
+> Nên từ **cụ thể** không có ảnh sẽ nhận một trong **3 ký hiệu loại**: một khối
+> hộp (`object` — vật), một người đang bước (`action` — hành động), một hình
+> người (`role` — người/vai trò). Bước 02 đã ghi sẵn `kind` cho mọi từ nó đi
+> tìm ảnh, nên cái này không tốn thêm gì cả.
+>
+> Chỉ từ nào bước 02 **không ghi kind** mới hiện chữ cái đầu. Bước 06 in ra cả
+> hai con số — đọc trước khi chốt `--accept-above`.
+
+Những từ không ứng viên nào đạt **không được đưa ra hỏi**. Bắt
 bạn xác nhận một kết luận mà pipeline đã đưa ra rồi, vài trăm lần, chỉ tổ mệt
 và làm mất niềm tin vào công cụ.
 
@@ -310,9 +324,9 @@ sẵn là câu trả lời tốt hơn: một tấm ảnh sai trên thẻ từ v�
 
 Ba điều lệnh đó **không** làm:
 
-- Không đè lên quyết định của bạn. Từ nào bạn đã bấm `x` thì vẫn dùng ký hiệu,
+- Không đè lên quyết định của bạn. Từ nào bạn đã bấm `x` thì vẫn không ảnh,
   kể cả khi điểm rất cao.
-- Không đụng tới từ dưới ngưỡng — chúng dùng ký hiệu.
+- Không đụng tới từ dưới ngưỡng — chúng không có ảnh.
 - Không giấu chuyện gì. Danh sách từ được nhận ảnh nhờ thống kê chứ không nhờ
   mắt người nằm ở `scripts/visual/state/auto-accepted.json`, muốn duyệt lại lúc
   nào cũng được.
@@ -369,9 +383,10 @@ gitignore vì tái tạo được.
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
 | Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |
-| Bước 06 báo `N picture(s) would not fit` | Ảnh quá rối, nén hết cỡ vẫn > 9KB. Nó tự bỏ ảnh đó và dùng ký hiệu — không cần làm gì |
+| Bước 06 báo `N picture(s) would not fit` | Ảnh quá rối, nén hết cỡ vẫn > 9KB. Nó tự bỏ ảnh đó — không cần làm gì |
 | Bước 06 báo `pictures are used twice` | Hai từ gần nghĩa nhận cùng một ảnh, ít nhất một cái sai. Mở lại đúng cặp đó: `node scripts/visual/05-review.mjs --only craft,artisan` |
-| Nhiều từ chỉ hiện chữ cái đầu | Từ cụ thể nhưng không được ảnh nào. 56 ký hiệu đều là khái niệm trừu tượng nên không có cái nào hợp. Hạ `--accept-above` xuống, hoặc duyệt thêm |
+| Nhiều từ chỉ hiện ký hiệu khối hộp / người bước | Từ cụ thể nhưng không được ảnh nào, nên nhận ký hiệu loại. Hạ `--accept-above` xuống, hoặc duyệt thêm, để chúng thành ảnh thật |
+| Từ hiện chữ cái đầu | Bước 02 không ghi `kind` cho từ đó — không có ảnh và cũng không có loại. Số này phải nhỏ; nếu lớn thì xem lại `state/queries.json` |
 | Ảnh sai nghĩa nhiều | Thường là bước **01** phân loại nhầm từ trừu tượng thành "chụp được", chứ không phải lỗi tìm ảnh. Xoá `state/classification.json` + `state/queries.json` + `state/llm-cache-*.json` rồi chạy lại từ 01 |
 | Ảnh là bản đồ, biểu đồ, sơ đồ | Query đang tả một phép ẩn dụ. Xem `state/queries.json` — nếu query tả cảnh vật lý cho một nghĩa trừu tượng thì gốc rễ ở bước 01 |
 

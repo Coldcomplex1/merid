@@ -89,6 +89,7 @@ const FILE_MAX = 9 * 1024;               // matches scripts/build.js
 const QUALITY_STEPS = [45, 38, 32, 26, 20];
 const BUDGET = 6.0 * 1024 * 1024;
 
+const QUERIES = statePath('queries.json');
 const DECISIONS = statePath('decisions.json');
 const RANKED = statePath('ranked.json');
 const AUTO_FILE = statePath('auto-accepted.json');
@@ -113,8 +114,8 @@ const encode = (buf, format, quality = QUALITY_STEPS[0]) => sharp(buf)
  * is not to soften the other three hundred.
  *
  * A picture that will not fit even at the bottom of the steps gets no picture
- * at all and takes a drawn symbol. A word with a symbol builds; a word with a
- * 12KB picture does not.
+ * at all, and falls back to whatever the index has for it. A word without a
+ * picture builds; a word with a 12KB picture does not.
  */
 async function encodeToFit(buf, format) {
     let out = null;
@@ -320,8 +321,9 @@ function analyse(items, decisions) {
         console.log('');
         console.log('       node scripts/visual/06-build.mjs --accept-above ' + best.cutoff.toFixed(3));
         console.log('');
-        console.log('     Everything below it takes a drawn symbol, which is the honest answer for');
-        console.log('     a picture nobody checked.');
+        console.log('     Everything below it goes without. Read the last line of this run before');
+        console.log('     settling on a number: these are concrete words, so going without mostly');
+        console.log('     means showing a first letter rather than a drawn concept.');
     } else {
         console.log('[06] no cutoff is safe on what you reviewed: even at the top of the range the');
         console.log('     first candidate was wrong too often to ship unseen' +
@@ -478,21 +480,36 @@ async function main() {
         (icon[bucket] = icon[bucket] || []).push(slug);
         glyphs++;
     }
+
+    // Everything with neither a photograph nor a concept, which is always a
+    // concrete word: stage 01 judged it photographable and stage 02 went
+    // looking, so stage 02b never gave it a concept. The 56 concepts are
+    // abstractions and not one of them is what "anchor" is about.
+    //
+    // These used to fall to GENERIC - the word's own first letter on a
+    // gradient - which was designed for a word the index has never heard of,
+    // not for the several hundred we ship. Stage 02 already recorded whether it
+    // was searching for a thing, an action or a person, so that answer is free
+    // and it is worth far more than a letter.
+    const iconSet = new Set(Object.keys(icon).flatMap(b => icon[b]));
+    const queries = readJson(QUERIES, { entries: {} });
+    const KIND_BUCKET = { object: 'kind-object', action: 'kind-action', role: 'kind-role' };
+    const byKind = {};
+    let lettered = 0;
+    for (const slug of entries.keys()) {
+        if (photoSet.has(slug) || iconSet.has(slug)) continue;
+        const q = queries.entries[slug];
+        const bucket = KIND_BUCKET[q && q.kind];
+        // No kind recorded - stage 02 skipped it, or answered outside its own
+        // closed list. The letter is the honest answer there.
+        if (!bucket) { lettered++; continue; }
+        (icon[bucket] = icon[bucket] || []).push(slug);
+        (byKind[bucket] = byKind[bucket] || []).push(slug);
+        glyphs++;
+    }
+
     const iconOut = {};
     for (const [bucket, slugs] of Object.entries(icon)) iconOut[bucket] = slugs.sort().join(' ');
-
-    // Everything else falls to GENERIC - the first letter on a gradient. That
-    // state was designed for a word the index has never heard of, not for words
-    // we shipped, and the count had better be small.
-    //
-    // These are always concrete words: stage 01 judged them photographable and
-    // stage 02 went looking, so stage 02b never gave them a concept. The 56
-    // concepts are abstractions - growth, doubt, restriction - and not one of
-    // them is what "anchor" is about, so there is nothing to fall back to.
-    // Which makes this number the real cost of a strict --accept-above, and it
-    // was not being reported at all.
-    const iconSet = new Set(Object.keys(icon).flatMap(b => icon[b]));
-    const lettered = [...entries.keys()].filter(sl => !photoSet.has(sl) && !iconSet.has(sl));
 
     const index = {
         v: 1,
@@ -528,14 +545,16 @@ async function main() {
 
     console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' concept symbols, ' +
         Object.keys(iconOut).length + ' buckets in use' + (failed ? ', ' + failed + ' failed to encode' : ''));
-    if (lettered.length) {
-        console.log('[06] ' + lettered.length + ' words get neither: they show their first letter on a');
-        console.log('     gradient. All of them are words a photograph could have shown, which ended');
-        console.log('     without one - refused, below the cutoff, or nothing cleared stage 04. The 56');
-        console.log('     concepts are abstractions, so there is no symbol to give them instead.');
-        console.log('     e.g. ' + lettered.slice(0, 8).map(sl => sl.replace(/-[0-9a-z]{4}$/, '')).join(', ') +
-            (lettered.length > 8 ? ', ...' : ''));
-        console.log('     A lower --accept-above gives more of them a picture, at a lower confidence.');
+    const kindTotal = Object.values(byKind).reduce((a, v) => a + v.length, 0);
+    if (kindTotal) {
+        console.log('[06] ' + kindTotal + ' concrete words ended without a photograph and show what KIND of' +
+            '\n     thing they are instead: ' +
+            Object.entries(byKind).map(([b, v]) => v.length + ' ' + b.replace('kind-', '')).join(', ') + '.');
+        console.log('     A lower --accept-above turns more of these into photographs, at lower confidence.');
+    }
+    if (lettered) {
+        console.log('[06] ' + lettered + ' words show only their first letter - no photograph, no concept,' +
+            '\n     and stage 02 recorded no kind for them either.');
     }
     console.log('[06] vis/ is ' + (total / 1024 / 1024).toFixed(2) + 'MB' +
         ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)');
@@ -558,7 +577,7 @@ async function main() {
     }
     if (oversized.length) {
         console.log('[06] ' + oversized.length + ' picture(s) would not fit under the cap even at Q' +
-            QUALITY_STEPS[QUALITY_STEPS.length - 1] + ', so they take a symbol instead:');
+            QUALITY_STEPS[QUALITY_STEPS.length - 1] + ', so they go without a picture:');
         for (const [s, n] of oversized.slice(0, 10)) console.log('       ' + s + ' (' + n + 'B)');
     }
     if (total > BUDGET) {
