@@ -298,7 +298,18 @@ async function main() {
             kept.push({ ...c, file: path.relative(statePath(), file) });
         }
         if (!kept.length) empty++;
-        result.entries[item.slug] = { query: item.query, negative: item.negative || [], candidates: kept };
+        result.entries[item.slug] = {
+            // The query is how the pictures were FOUND. The word and definition
+            // are what stage 04 checks them against, and they have to travel
+            // with them - scoring a picture against the query that fetched it
+            // asks whether the search worked, not whether the picture means the
+            // word.
+            word: item.entry.word,
+            definition: item.entry.definition || '',
+            query: item.query,
+            negative: item.negative || [],
+            candidates: kept
+        };
 
         if ((i + 1) % 20 === 0 || i + 1 === work.length) writeJson(OUT, result);
         progress('03', i + 1, work.length);

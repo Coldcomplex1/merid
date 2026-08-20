@@ -93,7 +93,7 @@ def gloss_for(entry):
     the wrong quantity.
     """
     definition = (entry.get("definition") or "").strip().rstrip(".")
-    word = entry.get("word", "")
+    word = entry.get("word") or ""
     if not definition:
         return "a photo of {}".format(word)
     return "a photo of {}, {}".format(word, definition[:110])
@@ -157,9 +157,16 @@ def main():
         if not cands:
             continue
 
-        positive = "a photo of {}, {}".format(
-            slug.rsplit("-", 1)[0].replace("-", " "), entry.get("query", "")
-        )
+        # Against the DEFINITION, not the query that found the pictures.
+        #
+        # This scored against entry["query"] until it was noticed that the check
+        # was circular: stage 02 invents a query, stage 03 fetches what matches
+        # it, and stage 04 then confirmed those matched the query. They always
+        # did. The definition - the words the learner reads under the picture -
+        # was never part of the test, so "skirt: evade a question" passed with a
+        # photograph of a hiking trail, because the trail did match "hiking
+        # trail going around mountain base".
+        positive = gloss_for(entry)
         negatives = [n for n in entry.get("negative", []) if n][:6]
         prompts = [positive] + ["a photo of " + n for n in negatives]
 
@@ -222,6 +229,23 @@ def main():
     print("[04] scored {} entries ({} new)".format(total, done))
     print("[04] {} have at least one candidate clearing both tests, {} do not".format(
         clear, total - clear))
+
+    # Where the scores actually landed. The floor is a guess until it has been
+    # held against real numbers, and the right value depends on the model and on
+    # how literal the definitions are - not on anything that can be decided in
+    # advance. Printing it here means nobody has to go and compute it.
+    bests = sorted(e["best"] for e in result["entries"].values())
+    if bests:
+        def pct(p):
+            return bests[min(len(bests) - 1, int(len(bests) * p))]
+        print("[04] best-candidate score: min {:.3f} | p10 {:.3f} | median {:.3f} "
+              "| p90 {:.3f} | max {:.3f}".format(
+                  bests[0], pct(0.10), pct(0.50), pct(0.90), bests[-1]))
+        print("[04] floor is {:.2f}; {} of {} entries have their best above it".format(
+            FLOOR, sum(1 for b in bests if b >= FLOOR), len(bests)))
+        if clear < total * 0.25:
+            print("[04] Most entries cleared nothing. If the pictures look right when you "
+                  "run 05 --all,\n     the floor is too high: MERID_CLIP_FLOOR=0.20 and score again.")
     print("[04] wrote {}".format(OUT))
     if pretrained is None:
         print("[04] NOTE: random weights - these scores mean nothing, this was a dry run")
