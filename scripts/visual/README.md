@@ -154,8 +154,20 @@ either end can say how good that end is and nothing else.
 
 **06 — build.** Encodes to 320×160, 2:1 to match `.vm-visual` in `content.css`,
 smart-cropped. Reports any picture used for two different words, which means at
-least one of them is wrong. Measures AVIF against WebP on a sample of your
-actual pictures and says which is smaller before encoding the rest.
+least one of them is wrong — `05-review.mjs --only craft,artisan` reopens just
+that pair. Measures AVIF against WebP on a sample of your actual pictures and
+says which is smaller before encoding the rest.
+
+Each picture is encoded at the best quality that fits under the 9KB per-file
+cap `scripts/build.js` enforces, starting at 45 and stepping down only for the
+few busy photographs that need it. One that will not fit even at the bottom
+gets no picture rather than one the build refuses.
+
+It also counts the words that end with neither a photograph nor a concept
+symbol and fall back to their first letter. Those are always concrete words —
+stage 01 judged them photographable so stage 02b never gave them a concept, and
+the 56 concepts are abstractions with nothing that fits *anchor*. That count is
+the real price of a strict `--accept-above`, so it is printed next to it.
 
 It also reads the reviewing. Two tables: agreement per score band, which shows
 whether the score predicts correctness at all, and agreement cumulative from the

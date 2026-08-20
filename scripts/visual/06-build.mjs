@@ -78,8 +78,15 @@ const FORMAT = (() => {
 
 const WIDTH = 320;
 const HEIGHT = 160;      // 2:1, matching .vm-visual's aspect-ratio in content.css
-const QUALITY = 45;
 const FILE_MAX = 9 * 1024;               // matches scripts/build.js
+
+// Quality 45 puts almost every picture well under the cap. The exceptions are
+// busy photographs - foliage, crowds, texture - and there is no single quality
+// that suits both those and the rest: raising the cap is not ours to do, and
+// lowering the quality for all 300 to rescue two is a bad trade. So each
+// picture is encoded at the best quality that fits, which is 45 for nearly all
+// of them.
+const QUALITY_STEPS = [45, 38, 32, 26, 20];
 const BUDGET = 6.0 * 1024 * 1024;
 
 const DECISIONS = statePath('decisions.json');
@@ -91,10 +98,32 @@ const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
 const CREDITS_FILE = path.join(VIS_DIR, 'CREDITS.json');
 
-const encode = (buf, format) => sharp(buf)
+const encode = (buf, format, quality = QUALITY_STEPS[0]) => sharp(buf)
     .resize(WIDTH, HEIGHT, { fit: 'cover', position: 'attention' })
-    [format]({ quality: QUALITY, effort: format === 'avif' ? 9 : 6 })
+    [format]({ quality, effort: format === 'avif' ? 9 : 6 })
     .toBuffer();
+
+/**
+ * Encode at the best quality that fits under the per-file cap.
+ *
+ * scripts/build.js refuses any picture over FILE_MAX, so an oversized file is
+ * not a warning to read later - it is a build that will not run, discovered
+ * three commands further on. This used to print "lower --quality", which was
+ * doubly unhelpful: there is no such flag, and the answer to two fat pictures
+ * is not to soften the other three hundred.
+ *
+ * A picture that will not fit even at the bottom of the steps gets no picture
+ * at all and takes a drawn symbol. A word with a symbol builds; a word with a
+ * 12KB picture does not.
+ */
+async function encodeToFit(buf, format) {
+    let out = null;
+    for (const quality of QUALITY_STEPS) {
+        out = await encode(buf, format, quality);
+        if (out.length <= FILE_MAX) return { out, quality };
+    }
+    return { out, quality: null };
+}
 
 /**
  * A cheap perceptual hash: 8x8 greyscale, each pixel against the mean.
@@ -403,21 +432,26 @@ async function main() {
     const seenHash = new Map();
     const duplicates = [];
     const oversized = [];
+    const softened = [];
     let total = 0;
     let failed = 0;
 
     for (const [i, [slug, d]] of picked.entries()) {
         const src = path.join(statePath(), d.candidate.file);
         if (!fs.existsSync(src)) { failed++; continue; }
-        let out;
-        try { out = await encode(fs.readFileSync(src), FORMAT); }
+        let out, quality;
+        try { ({ out, quality } = await encodeToFit(fs.readFileSync(src), FORMAT)); }
         catch (e) { failed++; continue; }
+
+        // Would not fit at any quality. Ship nothing rather than something the
+        // build refuses; the glyph half below picks it up.
+        if (quality === null) { oversized.push([slug, out.length]); continue; }
+        if (quality !== QUALITY_STEPS[0]) softened.push([slug, quality]);
 
         const h = await phash(out);
         if (seenHash.has(h)) duplicates.push([slug, seenHash.get(h)]);
         else seenHash.set(h, slug);
 
-        if (out.length > FILE_MAX) oversized.push([slug, out.length]);
         total += out.length;
         photo.push(slug);
 
@@ -447,6 +481,19 @@ async function main() {
     const iconOut = {};
     for (const [bucket, slugs] of Object.entries(icon)) iconOut[bucket] = slugs.sort().join(' ');
 
+    // Everything else falls to GENERIC - the first letter on a gradient. That
+    // state was designed for a word the index has never heard of, not for words
+    // we shipped, and the count had better be small.
+    //
+    // These are always concrete words: stage 01 judged them photographable and
+    // stage 02 went looking, so stage 02b never gave them a concept. The 56
+    // concepts are abstractions - growth, doubt, restriction - and not one of
+    // them is what "anchor" is about, so there is nothing to fall back to.
+    // Which makes this number the real cost of a strict --accept-above, and it
+    // was not being reported at all.
+    const iconSet = new Set(Object.keys(icon).flatMap(b => icon[b]));
+    const lettered = [...entries.keys()].filter(sl => !photoSet.has(sl) && !iconSet.has(sl));
+
     const index = {
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
@@ -461,8 +508,17 @@ async function main() {
         writeJson(CREDITS_FILE, { v: 1, generated: index.generated, credits });
     }
 
-    console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' glyph assignments, ' +
+    console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' concept symbols, ' +
         Object.keys(iconOut).length + ' buckets in use' + (failed ? ', ' + failed + ' failed to encode' : ''));
+    if (lettered.length) {
+        console.log('[06] ' + lettered.length + ' words get neither: they show their first letter on a');
+        console.log('     gradient. All of them are words a photograph could have shown, which ended');
+        console.log('     without one - refused, below the cutoff, or nothing cleared stage 04. The 56');
+        console.log('     concepts are abstractions, so there is no symbol to give them instead.');
+        console.log('     e.g. ' + lettered.slice(0, 8).map(sl => sl.replace(/-[0-9a-z]{4}$/, '')).join(', ') +
+            (lettered.length > 8 ? ', ...' : ''));
+        console.log('     A lower --accept-above gives more of them a picture, at a lower confidence.');
+    }
     console.log('[06] vis/ is ' + (total / 1024 / 1024).toFixed(2) + 'MB' +
         ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)');
 
@@ -471,10 +527,16 @@ async function main() {
             'one word in each pair is illustrated with the wrong thing:');
         for (const [a, b] of duplicates.slice(0, 10)) console.log('       ' + a + ' == ' + b);
     }
+    if (softened.length) {
+        console.log('[06] ' + softened.length + ' picture(s) needed a lower quality to fit the ' +
+            (FILE_MAX / 1024) + 'KB cap: ' +
+            softened.slice(0, 6).map(([s, q]) => s + ' Q' + q).join(', ') +
+            (softened.length > 6 ? ', ...' : ''));
+    }
     if (oversized.length) {
-        console.log('[06] WARNING: ' + oversized.length + ' over the ' + FILE_MAX + 'B per-picture cap; ' +
-            'the build will refuse these. Lower --quality or re-crop:');
-        for (const [s, n] of oversized.slice(0, 10)) console.log('       ' + s + ' ' + n + 'B');
+        console.log('[06] ' + oversized.length + ' picture(s) would not fit under the cap even at Q' +
+            QUALITY_STEPS[QUALITY_STEPS.length - 1] + ', so they take a symbol instead:');
+        for (const [s, n] of oversized.slice(0, 10)) console.log('       ' + s + ' (' + n + 'B)');
     }
     if (total > BUDGET) {
         console.log('[06] WARNING: over the total budget - scripts/build.js will refuse this');

@@ -369,7 +369,9 @@ gitignore vì tái tạo được.
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
 | Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |
-| `npm test` báo `vis/... is over the cap` | Có ảnh > 9KB. Chạy lại bước 06 với `--format webp` |
+| Bước 06 báo `N picture(s) would not fit` | Ảnh quá rối, nén hết cỡ vẫn > 9KB. Nó tự bỏ ảnh đó và dùng ký hiệu — không cần làm gì |
+| Bước 06 báo `pictures are used twice` | Hai từ gần nghĩa nhận cùng một ảnh, ít nhất một cái sai. Mở lại đúng cặp đó: `node scripts/visual/05-review.mjs --only craft,artisan` |
+| Nhiều từ chỉ hiện chữ cái đầu | Từ cụ thể nhưng không được ảnh nào. 56 ký hiệu đều là khái niệm trừu tượng nên không có cái nào hợp. Hạ `--accept-above` xuống, hoặc duyệt thêm |
 | Ảnh sai nghĩa nhiều | Thường là bước **01** phân loại nhầm từ trừu tượng thành "chụp được", chứ không phải lỗi tìm ảnh. Xoá `state/classification.json` + `state/queries.json` + `state/llm-cache-*.json` rồi chạy lại từ 01 |
 | Ảnh là bản đồ, biểu đồ, sơ đồ | Query đang tả một phép ẩn dụ. Xem `state/queries.json` — nếu query tả cảnh vật lý cho một nghĩa trừu tượng thì gốc rễ ở bước 01 |
 
