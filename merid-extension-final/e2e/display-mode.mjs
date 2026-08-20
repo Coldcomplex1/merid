@@ -108,10 +108,15 @@ const readSpans = () => page.$$eval('.vocab-master-highlight', (els) => els.map(
 
 const setMode = (mode) => sw.evaluate((m) => chrome.storage.sync.set({ replacementMode: m }), mode);
 
+// What is asserted here is which MODE is showing, never the case it shows it
+// in: a candidate that opens a sentence is capitalised on purpose (see
+// e2e/sentence-case.mjs), and that must not read as the wrong mode.
+const sameText = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
 // --- Replace: the English word stands in for the Vietnamese ---
 const replaced = await readSpans();
 check(replaced.length > 0, 'words were replaced on the page', `${replaced.length} spans`);
-check(replaced.every((s) => s.text === s.word), 'replace mode shows the English word',
+check(replaced.every((s) => sameText(s.text, s.word)), 'replace mode shows the English word',
     replaced.map((s) => `${s.original}→${s.text}`).join(', '));
 
 // Brand every span. Only a redraw keeps these; a re-scan builds new nodes.
@@ -133,7 +138,7 @@ check(!!highlighted && highlighted.every((s) => s.brand),
 await setMode('beside');
 const beside = await until(async () => {
     const s = await readSpans();
-    return s.length && s.every((x) => x.text === `${x.original} (${x.word})`) ? s : null;
+    return s.length && s.every((x) => sameText(x.text, `${x.original} (${x.word})`)) ? s : null;
 });
 check(!!beside, 'beside mode shows the Vietnamese and the English',
     beside ? beside[0].text : 'never happened');
@@ -143,7 +148,7 @@ check(!!beside && beside.every((s) => s.brand), 'still the same spans', 'brands 
 await setMode('replace');
 const back = await until(async () => {
     const s = await readSpans();
-    return s.length && s.every((x) => x.text === x.word) ? s : null;
+    return s.length && s.every((x) => sameText(x.text, x.word)) ? s : null;
 });
 check(!!back, 'switching back restores the English');
 check(!!back && back.every((s) => s.brand), 'and never rebuilt the page once', 'brands intact');

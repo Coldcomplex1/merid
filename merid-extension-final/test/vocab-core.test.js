@@ -794,3 +794,64 @@ test('matchCase leaves the replacement alone when there is no case to copy', () 
     assert.strictEqual(C.matchCase('', 'word'), 'word');
     assert.strictEqual(C.matchCase('khó', ''), '');
 });
+
+// ---------------------------------------------------------------------------
+// Sentence position
+//
+// The half `matchCase` cannot reach. It copies what the Vietnamese was wearing,
+// so a sentence the writer opened in lower case - most of an informal feed -
+// got a lower-case English word standing at the front of it.
+// ---------------------------------------------------------------------------
+test('opensSentence: a full stop before the word opens a sentence', () => {
+    assert.strictEqual(C.opensSentence('Anh nói vậy. '), true);
+    assert.strictEqual(C.opensSentence('Thật không! '), true);
+    assert.strictEqual(C.opensSentence('Ai biết được? '), true);
+    assert.strictEqual(C.opensSentence('rồi thì… '), true);
+});
+
+test('opensSentence: nothing before the word means it opens its block', () => {
+    assert.strictEqual(C.opensSentence(''), true);
+    assert.strictEqual(C.opensSentence('   '), true);
+    assert.strictEqual(C.opensSentence(undefined), true);
+});
+
+test('opensSentence: quotes and brackets are stepped over, not counted', () => {
+    // The stop is still what decides; the bracket only leads into the sentence.
+    assert.strictEqual(C.opensSentence('Anh nói vậy. "'), true);
+    assert.strictEqual(C.opensSentence('Anh nói vậy. ('), true);
+    assert.strictEqual(C.opensSentence('“'), true);
+    // ...and a bracket with ordinary prose behind it opens nothing.
+    assert.strictEqual(C.opensSentence('văn hóa ('), false);
+});
+
+test('opensSentence: mid-sentence punctuation does not open one', () => {
+    assert.strictEqual(C.opensSentence('nhưng '), false);
+    assert.strictEqual(C.opensSentence('Anh nói: '), false);
+    assert.strictEqual(C.opensSentence('một là thế này; '), false);
+    assert.strictEqual(C.opensSentence('trong đó, '), false);
+    assert.strictEqual(C.opensSentence('gồm hai phần - '), false);
+    // A date is not a sentence: what precedes the space is a digit, not a stop.
+    assert.strictEqual(C.opensSentence('Ngày 20.8 '), false);
+});
+
+test('capitalizeFirst raises the first letter and leaves the rest alone', () => {
+    assert.strictEqual(C.capitalizeFirst('difficult'), 'Difficult');
+    assert.strictEqual(C.capitalizeFirst('in spite of'), 'In spite of');
+    assert.strictEqual(C.capitalizeFirst('Difficult'), 'Difficult');
+    assert.strictEqual(C.capitalizeFirst('DIFFICULT'), 'DIFFICULT');
+    assert.strictEqual(C.capitalizeFirst(''), '');
+    assert.strictEqual(C.capitalizeFirst(null), '');
+});
+
+test('capitalizeFirst keeps Vietnamese tone marks on the letter it raises', () => {
+    assert.strictEqual(C.capitalizeFirst('ở'), 'Ở');
+    assert.strictEqual(C.capitalizeFirst('đẹp'), 'Đẹp');
+});
+
+test('a sentence-opening word is capitalised whatever case it replaced', () => {
+    // The two rules compose: copy what the source wore, then raise the first
+    // letter if the word is standing at the front of a sentence.
+    assert.strictEqual(C.capitalizeFirst(C.matchCase('khó', 'difficult')), 'Difficult');
+    assert.strictEqual(C.capitalizeFirst(C.matchCase('Khó', 'difficult')), 'Difficult');
+    assert.strictEqual(C.capitalizeFirst(C.matchCase('KHÓ KHĂN', 'difficult')), 'DIFFICULT');
+});
