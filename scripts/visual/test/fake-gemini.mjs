@@ -49,8 +49,13 @@ function answerFor(prompt) {
         return ids.map((id, i) => ({ id, kind: i % 3 === 0 ? 'concrete' : 'abstract' }));
     }
     if (/"query"/.test(prompt)) {
+        const kinds = ['object', 'action', 'role'];
         return ids.map((id, i) => ({
             id,
+            // Cycle the kinds so the reporting and the parser's closed list are
+            // both exercised; every fourth answer uses a name outside the list,
+            // which must come back as no kind rather than as itself.
+            kind: i % 4 === 3 ? 'something-else' : kinds[i % 3],
             query: id.replace(/-[0-9a-z]{4}$/, '') + ' photograph scene',
             negative: i % 2 ? ['a different sense', 'another meaning'] : [],
             // One in seven refuses, so the "not depictable" path is not dead code.

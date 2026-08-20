@@ -60,19 +60,38 @@ const PROMPT_HEAD = [
     'sent to photo archives, and the best result is shown to a learner next to the',
     'definition below it.',
     '',
-    'Describe a REAL SCENE a camera could have photographed, in which the meaning',
-    'below is plainly what is happening. Name what is in the frame: who or what,',
-    'doing what, where.',
+    'The query decides what the photograph is OF. Every word you add moves the',
+    'subject. "heavy metal anchor on ship deck" returns photographs of ship decks',
+    'that happen to contain an anchor - or its chain - because that is what was',
+    'asked for. "ship anchor close up" returns anchors.',
     '',
-    'Rules for the query:',
-    ' - 3 to 7 words, concrete nouns and verbs, no punctuation',
-    ' - "children splashing in paddling pool", not "childhood" or "fun"',
-    ' - never the headword alone, and avoid the headword entirely if a plainer',
-    '   word describes the same scene',
-    ' - no abstractions in the query itself: no "concept", "symbolising",',
-    '   "representing", "idea of"',
+    'So first decide which kind of thing the definition describes, and follow the',
+    'matching rule. Put your choice in "kind".',
     '',
-    'Then set "depictable" to FALSE - and leave the query empty - whenever:',
+    'kind = "object" - a thing, animal, plant, tool, garment, building, place',
+    '  Name the thing and nothing else. Two or three words. Add a disambiguating',
+    '  word only if the bare noun is ambiguous, and "close up" or "isolated" when',
+    '  the thing is small or usually photographed as part of something bigger.',
+    '  NO setting, NO people, NO activity around it.',
+    '    anchor   -> ship anchor close up',
+    '    aisle    -> supermarket aisle',
+    '    cobbler  -> shoemaker repairing shoe',
+    '',
+    'kind = "action" - something being done, a situation, an event',
+    '  Describe the scene: who or what, doing what, where if it matters. Three to',
+    '  seven words.',
+    '    splash   -> children splashing in paddling pool',
+    '    harvest  -> farmers cutting wheat field',
+    '',
+    'kind = "role" - a person defined by what they do or wear',
+    '  The person plus the one thing that identifies them.',
+    '    monk     -> buddhist monk orange robes',
+    '',
+    'In every case: plain nouns and verbs, no punctuation, never the headword',
+    'alone, and no abstractions in the query itself - no "concept", "symbolising",',
+    '"representing", "idea of".',
+    '',
+    'Set "depictable" to FALSE - and leave the query empty - whenever:',
     ' - the scene you would have to describe is a metaphor for the meaning rather',
     '   than the meaning itself',
     ' - the photograph would only work if the learner already knew the word',
@@ -89,7 +108,8 @@ const PROMPT_HEAD = [
     'confusable, use [].',
     '',
     'Reply with a JSON array only, one object per entry, in the same order:',
-    '  {"id": <id>, "query": "...", "negative": ["...", "..."], "depictable": true}',
+    '  {"id": <id>, "kind": "object"|"action"|"role", "query": "...",',
+    '   "negative": ["..."], "depictable": true}',
     ''
 ].join('\n');
 
@@ -120,7 +140,10 @@ function parseBatch(text) {
             ? row.negative.map(s => String(s).trim()).filter(Boolean).slice(0, 6)
             : [];
         const depictable = row.depictable !== false;
+        const kind = ['object', 'action', 'role'].includes(String(row.kind))
+            ? String(row.kind) : '';
         out.set(id, {
+            kind,
             // A query kept alongside depictable:false is a trap: it reads as
             // usable and one relaxed filter downstream would send it to the
             // archives anyway.
@@ -174,7 +197,7 @@ async function main() {
             id: e.slug, word: e.word, type: e.type, definition: e.definition, example: e.example
         }));
         const answers = await llm.askBatch(items, {
-            render: renderBatch, parse: parseBatch, schemaName: 'query-v2'
+            render: renderBatch, parse: parseBatch, schemaName: 'query-v3'
         });
         for (const e of batch) {
             const a = answers.get(e.slug);

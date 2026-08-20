@@ -11,11 +11,19 @@
 // so this can be run as often as you like, including halfway through a real
 // run.
 //
-// The default words are chosen to be hard rather than representative. Half of
-// them are verbs with a physical sense and an abstract meaning - skirt, grasp,
-// eclipse, table - which is the case the pipeline got wrong before: "skirt: to
-// evade a question" was illustrated with a photograph of a hiking trail. If
-// those come back sensibly, the easy words will too.
+// The default words are chosen to be hard rather than representative, in three
+// groups, because the two ways this goes wrong look nothing alike:
+//
+//   Verbs with a physical sense and an abstract meaning - skirt, table, eclipse.
+//   These are the ones that got a photograph of the wrong word: "skirt: to evade
+//   a question" was illustrated with a hiking trail. They should end as symbols.
+//
+//   Plain objects and roles - anchor, monk, aisle. These should end as
+//   photographs, and the picture should be OF the thing rather than of a scene
+//   containing it somewhere.
+//
+//   Harder concrete words - buffet, ballad, clergy. Photographable in principle,
+//   easy to illustrate with something adjacent instead.
 //
 // Usage:
 //   node scripts/visual/try.mjs                    the default hard set
@@ -34,11 +42,11 @@ const args = process.argv.slice(2);
 const REVIEW = args.includes('--review');
 const words = args.filter(a => !a.startsWith('--'));
 
-// Traps first, then a few that should be easy, so the report shows both.
 const DEFAULT_WORDS = [
     'skirt', 'grasp', 'eclipse', 'table', 'stem',   // physical verb, abstract sense
     'delegate',                                      // two senses, one of each kind
-    'anchor', 'monk', 'aisle', 'antiseptic'          // should be straightforward
+    'anchor', 'monk', 'aisle',                       // plain objects and roles
+    'buffet', 'ballad', 'clergy'                     // harder, but still photographable
 ];
 
 const chosen = words.length ? words : DEFAULT_WORDS;
@@ -152,7 +160,7 @@ function report() {
             continue;
         }
 
-        console.log('  searched   : ' + q.query);
+        console.log('  searched   : ' + q.query + (q.kind ? '   [' + q.kind + ']' : ''));
         if ((q.negative || []).length) console.log('  not        : ' + q.negative.join(', '));
 
         if (!r || !r.candidates || !r.candidates.length) {
