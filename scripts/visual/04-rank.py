@@ -169,6 +169,26 @@ def main():
         except Exception:
             pass
 
+    # Thresholds are applied here rather than baked into the file, so trying a
+    # different floor costs nothing. Scoring 4,000 images takes ten minutes;
+    # deciding whether 0.24 or 0.22 is the right bar should not.
+    def apply_thresholds(scored):
+        for s in scored:
+            s["clear"] = bool(
+                s["score"] >= FLOOR and (s["margin"] is None or s["margin"] >= MARGIN)
+            )
+        return any(s["clear"] for s in scored)
+
+    rescored = 0
+    for slug, e in result["entries"].items():
+        e["anyClear"] = apply_thresholds(e.get("candidates", []))
+        rescored += 1
+    if rescored and (result.get("floor") != FLOOR or result.get("margin") != MARGIN):
+        print("[04] re-applied floor {:.2f} / margin {:.2f} to {} entries already scored"
+              .format(FLOOR, MARGIN, rescored))
+    result["floor"] = FLOOR
+    result["margin"] = MARGIN
+
     done = 0
     for slug in slugs:
         if slug in result["entries"]:
@@ -222,26 +242,31 @@ def main():
             )
 
         scored.sort(key=lambda s: -s["score"])
-        # A candidate is "clear" when it passes both tests. The margin test is
-        # skipped when stage 02 found no confusable senses to name - there is
-        # nothing to be confused with.
-        for s in scored:
-            s["clear"] = bool(
-                s["score"] >= FLOOR and (s["margin"] is None or s["margin"] >= MARGIN)
-            )
+        # "clear" means it passed both tests. The margin test is skipped when
+        # stage 02 named no confusable senses - there is nothing to confuse it
+        # with.
+        any_clear = apply_thresholds(scored)
 
         best = scored[0]["score"] if scored else 0.0
         result["entries"][slug] = {
             "query": entry.get("query", ""),
             "negative": negatives,
             "best": round(best, 4),
-            "anyClear": any(s["clear"] for s in scored),
+            "anyClear": any_clear,
             "candidates": scored,
         }
         done += 1
         if done % 25 == 0:
             write_json_text(OUT, result)
             print("[04] {}/{}".format(done, len(slugs)))
+
+    # candidates.json is the authority on which entries exist; stage 03 removes
+    # the ones stage 02 stopped wanting, and their scores must go with them.
+    stale = [s for s in result["entries"] if s not in entries]
+    for s in stale:
+        del result["entries"][s]
+    if stale:
+        print("[04] dropped {} entries no longer in candidates.json".format(len(stale)))
 
     write_json_text(OUT, result)
 

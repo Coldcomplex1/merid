@@ -209,6 +209,22 @@ async function main() {
     const result = readJson(OUT, { v: 1, entries: {} });
     result.entries = result.entries || {};
 
+    // Drop entries stage 02 no longer wants a picture for.
+    //
+    // Re-running 02 with a stricter prompt turns some words from "searchable"
+    // into "no photograph could show this". Their candidates stay on disk
+    // otherwise, and stage 04 scores them, and stage 05 offers them - so a word
+    // the pipeline has since decided is abstract still gets shown with three
+    // photographs to choose between.
+    const wanted = new Set(searchable.map(x => x.slug));
+    let dropped = 0;
+    for (const slug of Object.keys(result.entries)) {
+        if (!wanted.has(slug)) { delete result.entries[slug]; dropped++; }
+    }
+    if (dropped) {
+        console.log('[03] dropped ' + dropped + ' entries that are no longer searchable');
+    }
+
     // Re-fetch when the query has changed. Skipping on slug alone was fine while
     // the queries were fixed, but stage 02 can be re-run with a better prompt -
     // and then the cached candidates answer a question nobody is asking any more.
