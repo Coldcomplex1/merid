@@ -33,6 +33,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { statePath, ensureState, writeJson, readJson, loadEntries, progress } from './lib/entries.mjs';
+import crypto from 'node:crypto';
 
 const args = process.argv.slice(2);
 const numArg = (name, dflt) => {
@@ -273,8 +274,21 @@ async function main() {
         }
 
         const kept = [];
-        for (const [n, c] of found.entries()) {
-            const file = path.join(THUMBS, item.slug + '-' + n + '.img');
+        for (const c of found) {
+            // Named after the image, not after its position in the list.
+            //
+            // Position was wrong the moment re-fetching became possible: with a
+            // new query, candidate 0 is a different photograph, but slug-0.img
+            // was already on disk from the previous run - so the download was
+            // skipped and the OLD picture was kept under the NEW candidate's
+            // author and licence. Bytes and provenance disagreeing is not a
+            // cosmetic problem when the file ships inside the extension.
+            //
+            // Hashing the source URL also makes the cache do what a cache
+            // should: the same picture found twice is downloaded once, and a
+            // different picture always lands somewhere else.
+            const file = path.join(THUMBS, item.slug + '-' +
+                crypto.createHash('sha1').update(c.thumbUrl).digest('hex').slice(0, 10) + '.img');
             if (!fs.existsSync(file)) {
                 let ok = false;
                 try { ok = await download(c.thumbUrl, file); } catch (e) { ok = false; }
@@ -292,6 +306,20 @@ async function main() {
 
     result.generated = new Date().toISOString();
     writeJson(OUT, result);
+
+    // Re-fetching leaves the previous query's downloads behind. They are no
+    // longer referenced by anything, and on a full re-run there can be
+    // thousands of them.
+    let swept = 0;
+    const referenced = new Set();
+    for (const e of Object.values(result.entries)) {
+        for (const c of e.candidates) referenced.add(path.basename(c.file));
+    }
+    for (const f of fs.readdirSync(THUMBS)) {
+        if (referenced.has(f)) continue;
+        try { fs.unlinkSync(path.join(THUMBS, f)); swept++; } catch (e) { /* in use */ }
+    }
+    if (swept) console.log('[03] removed ' + swept + ' files left over from an earlier query');
 
     const total = Object.values(result.entries).reduce((a, e) => a + e.candidates.length, 0);
     console.log('[03] ' + downloaded + ' new files, ' + total + ' candidates over ' +
