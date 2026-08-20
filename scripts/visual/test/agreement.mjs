@@ -231,6 +231,28 @@ async function main() {
     ok(/only supports \d+% correct/.test(all),
         'a cutoff below what the sample supports is warned about');
 
+    // ---- the sweep of vis/ -------------------------------------------------
+    //
+    // Only the dry-run half is exercised, and deliberately: the risky property
+    // is that --dry-run does NOT delete, and a test that let the real sweep run
+    // would be deleting from the repository's own artwork directory to prove
+    // it. The unlink itself is one line behind that guard.
+    console.log('\nsweeping pictures the index no longer names');
+    const visDir = path.join(ROOT, 'merid-extension-final', 'vis');
+    const visExisted = fs.existsSync(visDir);
+    const stray = path.join(visDir, 'not-a-real-slug-zzzz.webp');
+    fs.mkdirSync(visDir, { recursive: true });
+    fs.writeFileSync(stray, makePng(8, 8, 1));
+    try {
+        const swept = build06();
+        ok(/would remove 1 picture\(s\) from vis\//.test(swept),
+            'a picture the index no longer names is reported for removal');
+        ok(fs.existsSync(stray), '--dry-run reports the sweep without performing it');
+    } finally {
+        fs.rmSync(stray, { force: true });
+        if (!visExisted) fs.rmSync(visDir, { recursive: true, force: true });
+    }
+
     // ---- a run where the score means nothing -------------------------------
     console.log('\na score that predicts nothing');
     fs.rmSync(path.join(STATE, 'decisions.json'), { force: true });

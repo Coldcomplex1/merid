@@ -503,6 +503,24 @@ async function main() {
         icon: iconOut
     };
 
+    // Sweep pictures the index no longer names.
+    //
+    // vis/ is written into, never cleaned, so every earlier run's files are
+    // still sitting there: a word whose picture was dropped for being over the
+    // cap keeps the oversized file, and scripts/build.js reads the DIRECTORY,
+    // not the index. Fixing the encoder without this would leave the build
+    // failing on exactly the files the fix was for. Only the picture extensions
+    // are touched, and only ones this run did not write.
+    const orphans = [];
+    if (fs.existsSync(VIS_DIR)) {
+        const want = new Set(photo.map(sl => sl + '.' + FORMAT));
+        for (const name of fs.readdirSync(VIS_DIR)) {
+            if (!/\.(avif|webp)$/.test(name) || want.has(name)) continue;
+            orphans.push(name);
+            if (!DRY) fs.unlinkSync(path.join(VIS_DIR, name));
+        }
+    }
+
     if (!DRY) {
         writeJson(INDEX_FILE, index);
         writeJson(CREDITS_FILE, { v: 1, generated: index.generated, credits });
@@ -526,6 +544,11 @@ async function main() {
         console.log('[06] WARNING: ' + duplicates.length + ' pictures are used twice - at least ' +
             'one word in each pair is illustrated with the wrong thing:');
         for (const [a, b] of duplicates.slice(0, 10)) console.log('       ' + a + ' == ' + b);
+    }
+    if (orphans.length) {
+        console.log('[06] ' + (DRY ? 'would remove ' : 'removed ') + orphans.length +
+            ' picture(s) from vis/ that the index no longer names' +
+            (orphans.length <= 6 ? ': ' + orphans.join(', ') : ''));
     }
     if (softened.length) {
         console.log('[06] ' + softened.length + ' picture(s) needed a lower quality to fit the ' +

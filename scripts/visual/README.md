@@ -161,7 +161,10 @@ says which is smaller before encoding the rest.
 Each picture is encoded at the best quality that fits under the 9KB per-file
 cap `scripts/build.js` enforces, starting at 45 and stepping down only for the
 few busy photographs that need it. One that will not fit even at the bottom
-gets no picture rather than one the build refuses.
+gets no picture rather than one the build refuses — and `vis/` is swept of
+files the new index no longer names, because `scripts/build.js` reads the
+directory rather than the index, so a picture dropped here but left on disk
+would fail the build it was dropped to save.
 
 It also counts the words that end with neither a photograph nor a concept
 symbol and fall back to their first letter. Those are always concrete words —
