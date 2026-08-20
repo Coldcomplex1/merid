@@ -212,10 +212,21 @@ async function main() {
     writeJson(OUT, result);
     llm.report('02-query');
 
-    const usable = Object.values(result.entries).filter(v => v.depictable && v.query).length;
-    const withNeg = Object.values(result.entries).filter(v => (v.negative || []).length).length;
+    const all = Object.values(result.entries);
+    const searchable = all.filter(v => v.depictable && v.query);
+    const usable = searchable.length;
+    // Counted over the searchable ones, not over every entry. Entries the model
+    // refused keep the distractors it named for them, so counting the lot could
+    // report more distractors than there are queries to use them - which it did.
+    const withNeg = searchable.filter(v => (v.negative || []).length).length;
+    const byKind = {};
+    for (const v of searchable) byKind[v.kind || '(unsaid)'] = (byKind[v.kind || '(unsaid)'] || 0) + 1;
+    const refused = all.filter(v => v.depictable === false).length;
     console.log('[02] unanswered: ' + unanswered);
-    console.log('[02] => ' + usable + ' searchable, ' + withNeg + ' of them with distractors');
+    console.log('[02] => ' + usable + ' searchable, ' + withNeg + ' of them with distractors; ' +
+        refused + ' refused as not depictable');
+    console.log('[02] query kinds: ' + Object.entries(byKind)
+        .sort((a, b) => b[1] - a[1]).map(([k, n]) => k + ' ' + n).join(', '));
     console.log('[02] wrote ' + OUT);
 
     // Nothing to search for is not a result, it is a dead end - stage 03 will
