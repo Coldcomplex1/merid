@@ -51,6 +51,28 @@ FLOOR = float(os.environ.get("MERID_CLIP_FLOOR", "0.24"))
 MARGIN = float(os.environ.get("MERID_CLIP_MARGIN", "0.03"))
 
 
+def read_json_text(path):
+    """Read a JSON file as UTF-8, whatever the machine's locale says.
+
+    Path.read_text() defaults to the locale encoding, which on Windows is
+    cp1252. Everything this pipeline writes is UTF-8 and carries names from
+    Wikimedia and Pexels - "Müller", "Sørensen" - so on a Windows box the
+    default decoder hits a byte it has no character for and the stage dies
+    before it has scored anything. The Node stages all pass 'utf8' explicitly;
+    this is the same rule, stated where Python needs it stated.
+    """
+    return path.read_text(encoding="utf-8")
+
+
+def write_json_text(path, value):
+    """Write JSON as UTF-8, and let non-ASCII stay non-ASCII.
+
+    ensure_ascii=False keeps the file readable and matches what the Node
+    stages produce, so the same names survive a round trip through both.
+    """
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def load_model(name, pretrained):
     import torch
     import open_clip
@@ -95,7 +117,7 @@ def main():
     import torch
     from PIL import Image
 
-    candidates = json.loads(CANDIDATES.read_text())
+    candidates = json.loads(read_json_text(CANDIDATES))
     entries = candidates.get("entries", {})
 
     # Every entry needs its own words, which live with the extension's CSVs.
@@ -121,7 +143,7 @@ def main():
     result = {"v": 1, "floor": FLOOR, "margin": MARGIN, "entries": {}}
     if OUT.exists():
         try:
-            result = json.loads(OUT.read_text())
+            result = json.loads(read_json_text(OUT))
             result.setdefault("entries", {})
         except Exception:
             pass
@@ -190,10 +212,10 @@ def main():
         }
         done += 1
         if done % 25 == 0:
-            OUT.write_text(json.dumps(result, indent=2) + "\n")
+            write_json_text(OUT, result)
             print("[04] {}/{}".format(done, len(slugs)))
 
-    OUT.write_text(json.dumps(result, indent=2) + "\n")
+    write_json_text(OUT, result)
 
     total = len(result["entries"])
     clear = sum(1 for e in result["entries"].values() if e["anyClear"])
