@@ -988,5 +988,14 @@
   },
   "optDeleteAllConfirm": {
     "message": "Xóa TOÀN BỘ dữ liệu đã lưu (cài đặt + bộ thẻ của bạn)? Không thể hoàn tác."
+  },
+  "popupVisualsLabel": {
+    "message": "Ảnh trên thẻ"
+  },
+  "popupOn": {
+    "message": "Bật"
+  },
+  "popupOff": {
+    "message": "Tắt"
   }
 }

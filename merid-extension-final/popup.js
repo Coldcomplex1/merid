@@ -39,15 +39,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const extensionToggle = document.getElementById('extension-toggle');
     const datasetBtns = document.querySelectorAll('.dataset-btn');
     const modeSeg = document.getElementById('mode-seg');
+    const visualsSeg = document.getElementById('visuals-seg');
     const cardThemeBtn = document.getElementById('card-theme-btn');
 
     // ---- Load settings ----
     chrome.storage.sync.get(
-        ['frequency', 'replacementMode', 'extensionEnabled', 'datasetKey', 'cardTheme'],
+        ['frequency', 'replacementMode', 'extensionEnabled', 'datasetKey', 'cardTheme',
+            'visualsEnabled'],
         (raw) => {
             const s = C.withDefaults(raw);
             frequencySlider.value = String(sliderValue(s.frequency));
             setSegActive(modeSeg, s.replacementMode);
+            setSegActive(visualsSeg, s.visualsEnabled ? 'on' : 'off');
             document.querySelector(`.dataset-btn[data-key="${s.datasetKey}"]`)?.classList.add('active');
             updateExtensionToggleButton(s.extensionEnabled !== false);
             updateSliderLabels(s.frequency);
@@ -98,6 +101,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const btn = e.target.closest('button'); if (!btn) return;
         setSegActive(modeSeg, btn.dataset.val);
         chrome.storage.sync.set({ replacementMode: btn.dataset.val });
+    });
+
+    // Cosmetic: content.js applies it to the next card rather than re-scanning,
+    // so the words on the page do not move when this is switched.
+    visualsSeg.addEventListener('click', (e) => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        setSegActive(visualsSeg, btn.dataset.val);
+        chrome.storage.sync.set({ visualsEnabled: btn.dataset.val === 'on' });
     });
 
     datasetBtns.forEach(btn => {

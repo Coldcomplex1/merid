@@ -988,5 +988,14 @@
   },
   "optDeleteAllConfirm": {
     "message": "Delete ALL stored data (settings + your deck)? This cannot be undone."
+  },
+  "popupVisualsLabel": {
+    "message": "Picture on the card"
+  },
+  "popupOn": {
+    "message": "On"
+  },
+  "popupOff": {
+    "message": "Off"
   }
 }
