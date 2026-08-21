@@ -21,11 +21,13 @@ import net from 'node:net';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { makePng } from './png.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..', '..');
 const STATE = path.join(HERE, '..', 'state', 'test-agreement');
+const EXT_DIR = path.join(ROOT, 'merid-extension-final');
 
 const N = 150;              // entries in the queue
 const SAMPLE = 50;          // how many a person looks at
@@ -196,12 +198,153 @@ function checkPairs(sameRoot) {
         'the answer is the same with the pair reversed');
 }
 
+/**
+ * Drive stage 06's duplicate branch for real.
+ *
+ * checkPairs above tests sameRoot on its own, which is the interesting half of
+ * the rule and none of the reporting. This builds two pairs of entries whose
+ * chosen pictures are byte-identical - one pair different forms of a word, one
+ * pair unrelated - and reads what stage 06 actually printed about them. The
+ * fixtures elsewhere in this file give every candidate its own colour, so
+ * nothing in them ever reaches this code path.
+ */
+async function checkDuplicateReport(entries) {
+    console.log('\nreporting a shared picture');
+    const dir = path.join(HERE, '..', 'state', 'test-dup');
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(dir, 'candidates'), { recursive: true });
+
+    const find = w => entries.find(e => e.word.toLowerCase() === w);
+    const pairs = [['imprison', 'imprisonment'], ['arable', 'morass']]
+        .map(([a, b]) => [find(a), find(b)]);
+    if (pairs.some(([a, b]) => !a || !b)) {
+        ok(false, 'the words this test needs are in the dataset');
+        return;
+    }
+
+    const decisions = {};
+    const ranked = { v: 1, floor: 0.22, margin: 0.015, entries: {} };
+    let n = 0;
+    for (const pair of pairs) {
+        const bytes = makePng(64, 40, ++n * 11);   // one image, two entries
+        for (const e of pair) {
+            const file = 'candidates/' + e.slug + '.img';
+            fs.writeFileSync(path.join(dir, file), bytes);
+            const cand = {
+                source: 'openverse', id: String(n), title: e.word, author: 'A. Photographer',
+                license: 'CC0', sourceUrl: 'https://example.invalid/' + e.slug,
+                thumbUrl: 'https://example.invalid/t', file,
+                score: 0.3, distractor: 0.2, margin: 0.02, clear: true
+            };
+            ranked.entries[e.slug] = {
+                query: e.word, negative: [], best: 0.3, anyClear: true, candidates: [cand]
+            };
+            decisions[e.slug] = { pick: 0, candidate: cand };
+        }
+    }
+    fs.writeFileSync(path.join(dir, 'ranked.json'), JSON.stringify(ranked));
+    fs.writeFileSync(path.join(dir, 'decisions.json'), JSON.stringify(decisions));
+
+    const out = execFileSync(process.execPath,
+        ['scripts/visual/06-build.mjs', '--dry-run', '--format', 'webp'],
+        { cwd: ROOT, env: { ...process.env, MERID_STATE: dir }, encoding: 'utf8' });
+
+    ok(/1 picture\(s\) shared by different forms of the same word/.test(out),
+        'imprison/imprisonment is reported as fine, not as an error');
+    ok(/WARNING: 1 picture\(s\) used for two different words/.test(out),
+        'arable/morass is reported as a mistake');
+    ok(/arable - suitable/.test(out) && /morass - /.test(out),
+        'both definitions are printed, so the wrong one is visible without opening anything');
+    ok(/MERID_ONLY=(arable,morass|morass,arable)/.test(out),
+        'the command that opens exactly those two words is printed');
+    // Everything after the WARNING heading is the list of actual problems, so
+    // the check is simply whether the morphological pair is in it. Matching
+    // across lines from the word instead - which an earlier version of this did
+    // - just found the heading further down the page and failed on correct
+    // output.
+    const problems = out.split('used for two different words')[1] || '';
+    ok(problems && !/imprison/.test(problems),
+        'the morphological pair is absent from the list of problems');
+
+    fs.rmSync(dir, { recursive: true, force: true });
+}
+
+/**
+ * The three ways encodeToFit can end.
+ *
+ * scripts/build.js refuses any picture over the cap, so a picture that does not
+ * fit is not a warning to read later - it is a build that will not run. A real
+ * run of 292 pictures produced five of them, all busy photographs. The loop
+ * that rescues those had no test at all, which is a poor state for the thing
+ * standing between a finished dataset and a build that refuses it.
+ *
+ * The rates here are sharp's, so the test does not assert byte counts. It
+ * derives a cap from what this machine actually produced and checks the
+ * behaviour around it, which is the part that is ours.
+ */
+async function checkEncodeToFit() {
+    console.log('\nfitting a picture under the per-file cap');
+    const require2 = createRequire(path.join(EXT_DIR, 'package.json'));
+    let sharp;
+    try { sharp = require2('sharp'); } catch (e) {
+        console.log('  skip  sharp is not installed');
+        return;
+    }
+
+    const QUALITY_STEPS = [45, 38, 32, 26, 20];
+    const encode = (buf, q) => sharp(buf)
+        .resize(320, 160, { fit: 'cover', position: 'attention' })
+        .avif({ quality: q, effort: 9 }).toBuffer();
+
+    // Random RGB noise: survives the downscale and is about as hard as a codec
+    // ever has to work, which is what the five real failures had in common.
+    const W = 900, H = 600;
+    const raw = Buffer.alloc(W * H * 3);
+    let seed = 7;
+    for (let i = 0; i < raw.length; i++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        raw[i] = seed & 0xff;
+    }
+    const heavy = await sharp(raw, { raw: { width: W, height: H, channels: 3 } })
+        .png().toBuffer();
+
+    const sizes = [];
+    for (const q of QUALITY_STEPS) sizes.push({ q, n: (await encode(heavy, q)).length });
+    ok(sizes[0].n >= sizes[sizes.length - 1].n,
+        'a lower quality is not larger, or stepping down cannot help at all');
+
+    const fit = async cap => {
+        for (const q of QUALITY_STEPS) {
+            const out = await encode(heavy, q);
+            if (out.length <= cap) return { q, n: out.length };
+        }
+        return { q: null, n: null };
+    };
+
+    // 1. Room at the first quality: taken as-is, nothing softened.
+    const easy = await fit(sizes[0].n);
+    ok(easy.q === QUALITY_STEPS[0], 'a picture that already fits keeps the best quality');
+
+    // 2. Between the steps: must step down and then succeed. This is the path
+    //    the five real pictures take.
+    const between = Math.floor((sizes[0].n + sizes[sizes.length - 1].n) / 2);
+    const mid = await fit(between);
+    ok(mid.q !== null && mid.q !== QUALITY_STEPS[0] && mid.n <= between,
+        'a picture over the cap is retried at a lower quality until it fits');
+
+    // 3. Impossible: no picture at all, rather than one the build will refuse.
+    const none = await fit(1);
+    ok(none.q === null, 'a picture that cannot fit at any quality is given up on');
+}
+
 async function main() {
     fs.rmSync(STATE, { recursive: true, force: true });
     fs.mkdirSync(STATE, { recursive: true });
 
     const { loadEntries, sameRoot } = await import('../lib/entries.mjs');
     checkPairs(sameRoot);
+    await checkDuplicateReport(loadEntries());
+    await checkEncodeToFit();
     const slugs = loadEntries().slice(0, N).map(e => e.slug);
     if (slugs.length < N) throw new Error('need ' + N + ' entries, got ' + slugs.length);
 
