@@ -160,11 +160,48 @@ function build06(extra = []) {
         { cwd: ROOT, env: { ...process.env, MERID_STATE: STATE }, encoding: 'utf8' });
 }
 
+/**
+ * Which shared pictures are a problem and which are not.
+ *
+ * These ten pairs are the ones a real run of 292 pictures actually produced.
+ * Five are different forms of one word, where a single photograph serves both
+ * and there is no better second picture to find. Five are different words,
+ * where one of the two is showing a picture of the other. Reporting all ten the
+ * same way is what buried `arable`/`morass` at the bottom of a list of ten.
+ */
+function checkPairs(sameRoot) {
+    console.log('\ntelling a shared picture from a wrong one');
+    const share = [
+        ['potentate', 'potentate'],      // one headword, two datasets
+        ['congregation', 'congregation'],
+        ['imprison', 'imprisonment'],    // verb and noun of one idea
+        ['injection', 'inject'],
+        ['agricultural', 'agriculture']
+    ];
+    const wrong = [
+        ['impinge', 'collision'],
+        ['craft', 'artisan'],
+        ['riot', 'insurrection'],
+        ['fierce', 'feral'],             // near synonyms are still two words
+        ['arable', 'morass']
+    ];
+    for (const [a, b] of share) {
+        ok(sameRoot(a, b), a + '/' + b + ' may share one picture');
+    }
+    for (const [a, b] of wrong) {
+        ok(!sameRoot(a, b), a + '/' + b + ' must be reported as a mistake');
+    }
+    // Order cannot matter: the pair arrives whichever way round the phash hit.
+    ok(sameRoot('imprisonment', 'imprison') && !sameRoot('morass', 'arable'),
+        'the answer is the same with the pair reversed');
+}
+
 async function main() {
     fs.rmSync(STATE, { recursive: true, force: true });
     fs.mkdirSync(STATE, { recursive: true });
 
-    const { loadEntries } = await import('../lib/entries.mjs');
+    const { loadEntries, sameRoot } = await import('../lib/entries.mjs');
+    checkPairs(sameRoot);
     const slugs = loadEntries().slice(0, N).map(e => e.slug);
     if (slugs.length < N) throw new Error('need ' + N + ' entries, got ' + slugs.length);
 

@@ -173,3 +173,32 @@ export function warnUncommittedDecisions(tag) {
     console.log('       git commit -m "Record which picture was chosen for each word"');
     console.log('');
 }
+
+/**
+ * Two words close enough that one photograph honestly serves both.
+ *
+ * The duplicate check used to say "at least one word in each pair is
+ * illustrated with the wrong thing", and on a real run most of what it caught
+ * was nothing of the kind: `imprison` and `imprisonment`, `inject` and
+ * `injection`, `agriculture` and `agricultural`. A picture of a cell fits the
+ * verb and the noun equally, and there is no second picture that would fit
+ * either of them better. Reporting those as errors buries the pairs that are
+ * errors - `arable` sharing a photograph with `morass` is a real problem and
+ * was tenth in a list of ten.
+ *
+ * A crude suffix strip is enough to tell them apart. It does not need to be a
+ * real stemmer: it only has to separate "different form of the same word" from
+ * "different word", and it is reported rather than acted on either way.
+ */
+export function sameRoot(a, b) {
+    const stem = w => String(w).toLowerCase()
+        .replace(/(ations?|ations|ments?|ions?|ings?|ness|ity|ies|ally|al|ed|es|e|s)$/, '');
+    const x = stem(a);
+    const y = stem(b);
+    if (!x || !y) return false;
+    if (x === y) return true;
+    // agricultur / agricultural-with-a-different-strip, and similar near misses.
+    const short = x.length < y.length ? x : y;
+    const long = x.length < y.length ? y : x;
+    return short.length >= 5 && long.startsWith(short);
+}
