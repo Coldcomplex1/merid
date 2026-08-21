@@ -42,7 +42,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
-import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress } from './lib/entries.mjs';
+import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
+    warnUncommittedDecisions } from './lib/entries.mjs';
 
 const require = createRequire(import.meta.url);
 let sharp;
@@ -584,6 +585,7 @@ async function main() {
         console.log('[06] WARNING: over the total budget - scripts/build.js will refuse this');
     }
     console.log(DRY ? '[06] dry run, nothing written' : '[06] wrote ' + INDEX_FILE + ' and ' + VIS_DIR);
+    warnUncommittedDecisions('06');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

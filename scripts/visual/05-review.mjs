@@ -29,7 +29,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { statePath, readJson, writeJson, loadEntries } from './lib/entries.mjs';
+import { statePath, readJson, writeJson, loadEntries, warnUncommittedDecisions } from './lib/entries.mjs';
 
 const args = process.argv.slice(2);
 const PORT = (() => {
@@ -437,6 +437,7 @@ function main() {
                   '     were unlikely to survive a look anyway.'));
         }
         console.log('[05] open http://127.0.0.1:' + PORT + '  (ctrl-c when you have had enough)');
+        warnUncommittedDecisions('05');
     });
 }
 

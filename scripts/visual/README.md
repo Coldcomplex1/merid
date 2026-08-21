@@ -160,7 +160,10 @@ Least confident first, because that is where looking decides something. The cost
 is that stopping early leaves the confident ones unreviewed - and unreviewed
 means a symbol - so `--order best` is there for when you know you will not
 finish. `state/decisions.json` is the one file here that is committed — it is
-the only thing in the pipeline that cannot be recomputed.
+the only thing in the pipeline that cannot be recomputed. **Commit it when you
+stop reviewing, not when the artwork is finished.** Stages 05 and 06 both say so
+if it is not in git yet; everything else in `state/` is a cache a machine can
+rebuild, and that file is an hour of somebody's attention.
 
 `--sample 50` changes the job rather than shortening it. Reviewing every entry
 means deciding every picture yourself. Reviewing fifty drawn evenly across the

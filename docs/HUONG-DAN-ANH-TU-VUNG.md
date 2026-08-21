@@ -259,6 +259,22 @@ Muốn hạ ngưỡng: `$env:MERID_CLIP_FLOOR='0.20'` rồi chạy lại bước
 
 Mỗi phím bấm là ghi xuống đĩa ngay. Đóng tab không mất gì.
 
+### Duyệt xong thì COMMIT NGAY
+
+```bash
+git add -f scripts/visual/state/decisions.json
+git commit -m "Record which picture was chosen for each word"
+git push
+```
+
+**Đừng để đến cuối.** `decisions.json` là file **duy nhất** trong pipeline không
+tính lại được. Mọi thứ khác trong `state/` chỉ là cache — máy làm lại được:
+phân loại, query, ảnh tải về, điểm CLIP. `decisions.json` là **một giờ của
+bạn**. Chưa commit thì cả giờ đó nằm trong một thư mục trên một máy, và xoá
+nhầm thư mục là xoá luôn cả giờ.
+
+Bước 05 và 06 giờ sẽ tự nhắc nếu file này chưa vào git.
+
 ### Duyệt 50 từ thay vì 290: `--sample 50`
 
 ```bash
