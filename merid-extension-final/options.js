@@ -1221,6 +1221,128 @@ function wireAiDiagnose() {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Where the pictures come from.
+//
+// vis/CREDITS.json is written by the dataset pipeline's last stage and is NOT
+// web-accessible: it is read here, from an extension page, and never reachable
+// from a web page. It does not exist at all in a checkout that has never built
+// artwork, which is the ordinary state of this repository - so a missing file
+// is not an error, it just means there is nothing to credit and the card stays
+// hidden.
+// ---------------------------------------------------------------------------
+
+/** Author strings come from three archives and are shown as-is; escape them. */
+function escHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/**
+ * The word a slug was built for.
+ *
+ * Slugs are the headword with the diacritics stripped and a 4-character hash of
+ * the definition on the end - the hash is what lets `delegate` the person and
+ * `delegate` the act hold different pictures. Dropping it gives the word back,
+ * which is all this list needs; loading three CSVs into the Settings page to
+ * recover the exact spelling would not be worth what it costs to open the page.
+ */
+function wordFromSlug(slug) {
+    return String(slug).replace(/-[0-9a-z]{4}$/, '').replace(/-/g, ' ');
+}
+
+async function renderCredits() {
+    const card = document.getElementById('creditsCard');
+    const summary = document.getElementById('creditsSummary');
+    const list = document.getElementById('creditsList');
+    const toggle = document.getElementById('creditsToggle');
+    if (!card) return;
+
+    // Ask the worker what artwork exists before going looking for its credits.
+    //
+    // Fetching CREDITS.json straight away works, and try/catch handles it being
+    // absent - but the browser still logs ERR_FILE_NOT_FOUND to the console
+    // every time Settings is opened in a checkout that has never built artwork,
+    // which is this repository's ordinary state. A console error nobody can fix
+    // is how real ones stop being noticed. The worker has already loaded the
+    // index for the content scripts, so this costs nothing.
+    const index = await new Promise(resolve => {
+        try {
+            chrome.runtime.sendMessage({ action: 'getVisualIndex' }, res => {
+                void chrome.runtime.lastError;
+                resolve((res && res.index) || null);
+            });
+        } catch (e) { resolve(null); }
+    });
+    if (!index || !(index.photo || []).length) return;
+
+    let data = null;
+    try {
+        const resp = await fetch(chrome.runtime.getURL('vis/CREDITS.json'));
+        if (resp.ok) data = await resp.json();
+    } catch (e) { /* index says there is artwork but the credits file is gone */ }
+
+    const credits = (data && data.credits) || {};
+    const slugs = Object.keys(credits).sort();
+    if (!slugs.length) return;              // stays hidden
+
+    // Grouped by archive, with the licences actually used under each. Both
+    // numbers matter and neither is the other: "120 from Openverse" says where
+    // to complain, "all CC0" says why we may ship them.
+    const bySource = new Map();
+    for (const slug of slugs) {
+        const c = credits[slug] || {};
+        const key = c.source || 'unknown';
+        if (!bySource.has(key)) bySource.set(key, { n: 0, licences: new Set() });
+        const g = bySource.get(key);
+        g.n++;
+        if (c.license) g.licences.add(c.license);
+    }
+    const parts = [...bySource.entries()]
+        .sort((a, b) => b[1].n - a[1].n)
+        .map(([src, g]) => escHtml(src) + ' ' + g.n +
+            (g.licences.size ? ' <span class="credits-lic">(' +
+                [...g.licences].sort().map(escHtml).join(', ') + ')</span>' : ''));
+    // substitute() in lib/i18n.js resolves $N$ from an ARRAY. An object here
+    // becomes args[0] and renders as [object Object]; and the fallback is
+    // returned verbatim, never substituted, so it has to read correctly on its
+    // own rather than carrying a placeholder of its own.
+    const count = t('optCreditsCount', slugs.length + ' pictures', [String(slugs.length)]);
+    summary.innerHTML = escHtml(count) + ' &middot; ' + parts.join(' &middot; ');
+
+    card.hidden = false;
+
+    // Built on first press, not on load. Three hundred rows is not free, and
+    // almost nobody opens this.
+    let built = false;
+    toggle.addEventListener('click', () => {
+        if (!built) {
+            list.innerHTML = '<table class="credits-table"><tbody>' + slugs.map(slug => {
+                const c = credits[slug] || {};
+                // The link goes on the archive, not on the author: an author is a
+                // name, an archive is a place you can go and look at the
+                // original. It also stops "author not stated" - which is a
+                // sentence, not a person - from being rendered as a link to
+                // somewhere.
+                const who = c.author || t('optCreditsUnknownAuthor', 'author not stated');
+                const source = escHtml(c.source || '');
+                const where = c.url && source
+                    ? '<a href="' + escHtml(c.url) + '" target="_blank" rel="noopener noreferrer">' +
+                      source + ' \u2197</a>'
+                    : source;
+                return '<tr><td>' + escHtml(wordFromSlug(slug)) + '</td><td>' +
+                    escHtml(who) + '</td><td>' + where + '</td><td>' +
+                    escHtml(c.license || '') + '</td></tr>';
+            }).join('') + '</tbody></table>';
+            built = true;
+        }
+        list.hidden = !list.hidden;
+        toggle.textContent = list.hidden
+            ? t('optCreditsShowAll', 'List every picture')
+            : t('optCreditsHideAll', 'Hide the list');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // The catalog first: everything below writes labels, and wireCustom() puts
     // the configured merid.site URLs back on links whose markup applyI18n may
@@ -1231,6 +1353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     load(); wire(); wireLanguage(); wireAccount(); wireCustom(); wireSites();
     renderProfilePanel(); wireProfilePanel();
     renderAiQuota(); wireAiDiagnose();
+    renderCredits();
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && (changes.vm_ai_quota || changes.geminiApiKey)) renderAiQuota();
         // A language picked here, or on merid.site in another tab.

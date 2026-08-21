@@ -339,7 +339,7 @@ Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguy
 
 ```bash
 cd merid-extension-final
-npm test          # 19 test, trong đó 3 test về ảnh giờ sẽ chạy thay vì skip
+npm test          # 172 test; 3 test về ảnh chuyển từ skip sang chạy khi có vis/
 npm run build     # sẽ BÁO LỖI nếu vis/ vượt ngân sách 6MB
 node e2e/visual.mjs
 du -sh vis        # nên khoảng 2MB
@@ -353,6 +353,12 @@ Rồi tự mắt kiểm:
 3. Thử riêng ba từ này ở **cả** chế độ SAT lẫn C1/C2 trong Settings —
    `delegate`, `buttress`, `yoke`. Mỗi nghĩa phải ra **ảnh khác nhau**. Đây là
    phần dễ sai nhất của toàn bộ thiết kế.
+4. Mở **Settings → "Ảnh lấy từ đâu"**. Mục này chỉ hiện khi đã có `vis/`. Nó
+   phải liệt kê đúng số ảnh bạn vừa build, và bấm "Xem danh sách từng ảnh" ra
+   được tên tác giả + giấy phép của từng tấm. Nếu mục này không hiện dù `vis/`
+   đã có, nghĩa là `vis/CREDITS.json` thiếu — chạy lại bước 06.
+5. Bật/tắt thử **nút "Ảnh trên thẻ" trong popup**. Tắt thì thẻ không còn ảnh,
+   nhưng chữ trên trang **không được nhảy** — nếu trang bị quét lại là có lỗi.
 
 ---
 

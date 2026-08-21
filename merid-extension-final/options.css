@@ -397,3 +397,62 @@ a.ext-link { color: var(--accent); }
 }
 
 .level-tip:hover { background: rgba(244, 190, 55, 0.14); }
+
+/* Picture credits. The list is long and dull on purpose - it is a record, not
+   something to read - so it is small, monospaced in the columns that are codes,
+   and scrolls inside itself rather than making the page enormous. */
+.credits-sum {
+    margin: 10px 0 12px;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.credits-lic {
+    opacity: 0.65;
+}
+
+.credits-list {
+    margin-top: 12px;
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--line, #dfe5f0);
+    border-radius: 10px;
+}
+
+.credits-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.credits-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line, #dfe5f0);
+    vertical-align: top;
+}
+
+.credits-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.credits-table td:first-child {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.credits-table td:nth-child(3),
+.credits-table td:nth-child(4) {
+    white-space: nowrap;
+    opacity: 0.7;
+}
+
+/* Without this the browser's own link colours land on a dark card: blue on
+   navy, and purple once visited. */
+.credits-table a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.credits-table a:hover {
+    text-decoration: underline;
+}

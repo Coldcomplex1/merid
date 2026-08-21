@@ -408,3 +408,49 @@ test('a picture beside the card is only chosen when it fits', () => {
     assert.match(js, /left \+ tRect\.width \+ padRight > window\.innerWidth/,
         'the clamp must include the panel width on the side it is on');
 });
+
+// ---------------------------------------------------------------------------
+// The credits card.
+//
+// THIRD-PARTY.md promises that "the Settings page shows it". None of the three
+// archives obliges us to credit anybody - CC0, Public Domain and the Pexels
+// Licence all waive attribution - which is exactly why this is easy to let rot:
+// nothing breaks and nobody complains. So the promise is checked here.
+// ---------------------------------------------------------------------------
+test('Settings can show where every shipped picture came from', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'options.html'), 'utf8');
+    const js = fs.readFileSync(path.join(ROOT, 'options.js'), 'utf8');
+
+    assert.match(html, /id="creditsCard"[^>]*\shidden/,
+        'the credits card must start hidden - a checkout with no artwork would ' +
+        'otherwise promise credits it does not have');
+    for (const id of ['creditsSummary', 'creditsToggle', 'creditsList']) {
+        assert.ok(html.includes('id="' + id + '"'), 'options.html is missing #' + id);
+    }
+
+    assert.match(js, /vis\/CREDITS\.json/, 'options.js must read vis/CREDITS.json');
+    // Asked of the worker first, so an ordinary checkout does not log a failed
+    // fetch to the console every time Settings is opened.
+    const ask = js.indexOf("action: 'getVisualIndex'");
+    const fetchAt = js.indexOf("'vis/CREDITS.json'");
+    assert.ok(ask > 0 && fetchAt > ask,
+        'the index must be consulted before the credits file is fetched');
+
+    // Author names come from three public archives and are shown as-is.
+    assert.match(js, /function escHtml/, 'options.js must escape credit strings');
+    assert.ok(!/\+ (c\.author|who) \+/.test(js.replace(/escHtml\([^)]*\)/g, 'ESC')),
+        'an author name must never reach innerHTML unescaped');
+});
+
+test('CREDITS.json is not reachable from a web page', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+    const exposed = (manifest.web_accessible_resources || [])
+        .flatMap(r => r.resources || []);
+    // The pictures have to be reachable - a content script points <img> at them.
+    assert.ok(exposed.some(r => /^vis\/\*\.(avif|webp)$/.test(r)),
+        'the pictures themselves must stay web-accessible');
+    // Their provenance does not, and a bare vis/* would expose it to every page.
+    assert.ok(!exposed.some(r => r === 'vis/*' || /CREDITS/.test(r)),
+        'CREDITS.json must not be exposed to web pages - Settings reads it as an ' +
+        'extension page, which needs no such grant');
+});
