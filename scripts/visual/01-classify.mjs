@@ -63,14 +63,23 @@ const OUT = statePath('classification.json');
  */
 async function loadNorms() {
     ensureState();
-    if (!fs.existsSync(NORMS_FILE)) {
+    // Read first and fetch only if the read fails, rather than asking
+    // existsSync and then acting on the answer. The gap between the two is a
+    // real one - try.mjs copies this very file into a trial state directory
+    // while a run may be starting - and the fix is also simpler: one syscall
+    // that either gives you the bytes or does not.
+    let raw = null;
+    try { raw = fs.readFileSync(NORMS_FILE, 'utf8'); } catch (e) { /* not there yet */ }
+    if (raw === null) {
         console.log('[01] fetching Brysbaert concreteness norms (once)...');
         const resp = await fetch(NORMS_URL);
         if (!resp.ok) throw new Error('could not fetch norms: ' + resp.status);
-        fs.writeFileSync(NORMS_FILE, Buffer.from(await resp.arrayBuffer()));
+        const buf = Buffer.from(await resp.arrayBuffer());
+        fs.writeFileSync(NORMS_FILE, buf);
+        raw = buf.toString('utf8');
     }
     const norms = new Map();
-    const lines = fs.readFileSync(NORMS_FILE, 'utf8').split(/\r?\n/);
+    const lines = raw.split(/\r?\n/);
     for (const line of lines.slice(1)) {
         const f = line.split('\t');
         if (f.length < 9) continue;

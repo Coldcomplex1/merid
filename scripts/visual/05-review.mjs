@@ -339,6 +339,7 @@ boot();
 
 function main() {
     const queue = buildQueue();
+    const inQueue = new Set(queue.map(q => q.slug));
     if (!queue.length) {
         // "did 03 and 04 run?" was the old message here, and it was wrong in
         // the case that actually happens: they had run, and produced nothing.
@@ -393,6 +394,20 @@ function main() {
             req.on('end', () => {
                 try {
                     const { slug, decision } = JSON.parse(body);
+                    // The slug names the property being written, and it arrives
+                    // over HTTP. "__proto__" would reach Object.prototype
+                    // rather than the decisions file - localhost or not, a key
+                    // from a request is not a key to write blind.
+                    //
+                    // Accepting only what is actually in the queue is the
+                    // narrower check and the more useful one: it also keeps a
+                    // stale tab from writing decisions for entries this run
+                    // never offered, which would then be counted by 06-build's
+                    // agreement figures as though somebody had looked at them.
+                    if (!inQueue.has(slug)) {
+                        res.writeHead(400); res.end('{"ok":false,"error":"unknown slug"}');
+                        return;
+                    }
                     const all = readJson(DECISIONS, {});
                     all[slug] = { ...decision, at: new Date().toISOString() };
                     writeJson(DECISIONS, all);
@@ -421,7 +436,6 @@ function main() {
     });
 
     server.listen(PORT, '127.0.0.1', () => {
-        const inQueue = new Set(queue.map(q => q.slug));
         const reviewed = Object.keys(readJson(DECISIONS, {})).filter(sl => inQueue.has(sl)).length;
         console.log('[05] ' + queue.length + ' entries to review, ' + reviewed + ' already done');
         if (SAMPLE) {

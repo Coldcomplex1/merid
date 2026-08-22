@@ -40,7 +40,6 @@
 //                                    [--accept-above 0.284]
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
     warnUncommittedDecisions, sameRoot } from './lib/entries.mjs';
@@ -94,7 +93,6 @@ const QUERIES = statePath('queries.json');
 const DECISIONS = statePath('decisions.json');
 const RANKED = statePath('ranked.json');
 const AUTO_FILE = statePath('auto-accepted.json');
-const CANDIDATES = statePath('candidates.json');
 const ICONMAP = statePath('iconmap.json');
 const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
@@ -348,7 +346,6 @@ function analyse(items, decisions) {
 async function main() {
     const decisions = readJson(DECISIONS, null);
     if (!decisions) { console.error('[06] no decisions.json - run 05-review.mjs first'); process.exit(1); }
-    const candidates = readJson(CANDIDATES, { entries: {} });
     const iconmap = readJson(ICONMAP, { entries: {} });
     const entries = new Map(loadEntries().map(e => [e.slug, e]));
 

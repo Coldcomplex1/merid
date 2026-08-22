@@ -68,6 +68,29 @@ class Throttle {
     }
 }
 
+/**
+ * Wikimedia's Artist field is HTML - usually a link round the photographer's
+ * name - and this is the only place that markup could reach a file we ship.
+ * The author string lands in vis/CREDITS.json and is rendered by the Settings
+ * page.
+ *
+ * One pass of /<[^>]*>/g is not enough and CodeQL is right to say so: strip the
+ * inner tag out of `<scr<span>ipt>` and the two halves close up into a real one.
+ * Repeating until the string stops changing is what makes it a sanitiser rather
+ * than a tidy-up. options.js escapes this again on the way to the DOM - two
+ * layers, because the first is a guess about someone else's HTML.
+ */
+function stripTags(html) {
+    let out = String(html);
+    for (let i = 0; i < 8; i++) {
+        const next = out.replace(/<[^>]*>/g, '');
+        if (next === out) break;
+        out = next;
+    }
+    // A lone unclosed "<script" leaves no tag for the loop to find.
+    return out.replace(/[<>]/g, '').trim();
+}
+
 async function getJson(url, headers = {}) {
     const resp = await fetch(url, { headers: { 'User-Agent': 'merid-visual-vocab/1.0', ...headers } });
     if (resp.status === 429) return { rateLimited: true };
@@ -137,7 +160,7 @@ const wikimedia = {
                 source: 'wikimedia',
                 id: String(page.pageid),
                 title: (page.title || '').replace(/^File:/, ''),
-                author: String((meta.Artist || {}).value || '').replace(/<[^>]*>/g, '').trim(),
+                author: stripTags(String((meta.Artist || {}).value || '')),
                 license: licence,
                 sourceUrl: info.descriptionurl || '',
                 thumbUrl: info.thumburl || info.url || ''

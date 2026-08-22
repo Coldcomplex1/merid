@@ -85,7 +85,10 @@ function build(slugs, { rising }) {
             // format comparison in stage 06 takes minutes and every file
             // trips the 9KB cap, neither of which says anything about the
             // code under test. Upscaled from 64x40 it is smooth and quick.
-            if (!fs.existsSync(abs)) fs.writeFileSync(abs, makePng(64, 40, i * 3 + n));
+            // 'wx' fails if the file is already there, which is the same
+            // intent as asking existsSync first without the gap in between.
+            try { fs.writeFileSync(abs, makePng(64, 40, i * 3 + n), { flag: 'wx' }); }
+            catch (e) { if (e.code !== 'EEXIST') throw e; }
             return {
                 source: ['openverse', 'wikimedia', 'pexels'][n], id: String(i * 3 + n),
                 title: slug + ' candidate ' + n, author: 'A. Photographer',

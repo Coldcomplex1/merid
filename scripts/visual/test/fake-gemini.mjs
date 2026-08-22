@@ -80,7 +80,12 @@ const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
 
 globalThis.fetch = async (url, init) => {
     const href = String(url);
-    if (!href.includes('generativelanguage.googleapis.com')) return realFetch(url, init);
+    // The HOST, not a substring of the URL. `includes` would also intercept
+    // https://evil.test/?x=generativelanguage.googleapis.com, and a stub that
+    // answers for the wrong host is a test that proves nothing.
+    let host = '';
+    try { host = new URL(href).host; } catch (e) { /* not a URL we handle */ }
+    if (host !== 'generativelanguage.googleapis.com') return realFetch(url, init);
 
     if (process.env.MERID_FAKE_KEY_BAD) {
         return json({ error: { message: 'API key not valid. Please pass a valid API key.' } }, 400);

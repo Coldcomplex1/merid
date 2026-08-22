@@ -75,8 +75,10 @@ async function makeFixtures() {
         !have.has(slug) || !fs.existsSync(path.join(VIS_DIR, slug + '.' + (index.fmt || 'webp'))));
     if (!missing.length) return { made: [], originalIndex: null, madeDir: false };
 
-    const madeDir = !fs.existsSync(VIS_DIR);
-    fs.mkdirSync(VIS_DIR, { recursive: true });
+    // mkdirSync with recursive returns the first directory it created, or
+    // undefined when there was nothing to create. One call, one answer - no
+    // window between asking and acting.
+    const madeDir = fs.mkdirSync(VIS_DIR, { recursive: true }) !== undefined;
     const fmt = index.fmt || 'webp';
 
     const browser = await chromium.launch({
@@ -98,8 +100,17 @@ async function makeFixtures() {
             return c.toDataURL(mime, 0.5);
         }, { hue: (i * 97) % 360, mime: fmt === 'avif' ? 'image/webp' : 'image/' + fmt });
         const file = path.join(VIS_DIR, slug + '.' + fmt);
-        fs.writeFileSync(file, Buffer.from(dataUrl.split(',')[1], 'base64'));
-        made.push(file);
+        // 'wx' rather than a plain write, and the file is recorded as ours only
+        // if this call created it. That is what actually keeps the promise in
+        // the comment above - real artwork is never touched - because a file
+        // that appeared between the check above and this line would otherwise
+        // be overwritten here and deleted by the cleanup on the way out.
+        try {
+            fs.writeFileSync(file, Buffer.from(dataUrl.split(',')[1], 'base64'), { flag: 'wx' });
+            made.push(file);
+        } catch (e) {
+            if (e.code !== 'EEXIST') throw e;
+        }
         if (!have.has(slug)) index.photo.push(slug);
     }
     await browser.close();
