@@ -988,5 +988,37 @@
   },
   "optDeleteAllConfirm": {
     "message": "Delete ALL stored data (settings + your deck)? This cannot be undone."
+  },
+  "popupVisualsLabel": {
+    "message": "Picture on the card"
+  },
+  "popupOn": {
+    "message": "On"
+  },
+  "popupOff": {
+    "message": "Off"
+  },
+  "optCreditsTitle": {
+    "message": "Where the pictures come from"
+  },
+  "optCreditsIntro": {
+    "message": "Every picture on a learning card is part of Merid rather than fetched while you read. Each one comes from a public archive under a licence that permits redistribution."
+  },
+  "optCreditsCount": {
+    "message": "$N$ pictures",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "optCreditsShowAll": {
+    "message": "List every picture"
+  },
+  "optCreditsHideAll": {
+    "message": "Hide the list"
+  },
+  "optCreditsUnknownAuthor": {
+    "message": "author not stated"
   }
 }

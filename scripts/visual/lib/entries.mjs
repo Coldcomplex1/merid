@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -120,4 +121,84 @@ export function progress(tag, i, total) {
     } else if (last || i % 10 === 0 || i === 1) {
         console.log('[' + tag + '] batch ' + i + '/' + total);
     }
+}
+
+/**
+ * Say so, loudly, when the reviewing is not in git yet.
+ *
+ * decisions.json is the one file in this pipeline that cannot be recomputed.
+ * Everything else in state/ is a cache of something a machine can make again:
+ * the classifications, the queries, the downloaded candidates, the CLIP scores.
+ * decisions.json is a person's hour, and .gitignore carries an explicit
+ * exception for it that says it "IS committed".
+ *
+ * Nothing enforced that. It was possible to review for an hour, build the
+ * artwork, and never commit the record - at which point the whole hour lives in
+ * one folder on one machine, and a deleted folder is a deleted hour. That is
+ * not hypothetical. It is why this function exists.
+ *
+ * Advisory only. A stage must never fail because of git: no repository, git not
+ * on PATH, a state directory outside the repo - each of those means this says
+ * nothing rather than stopping a build.
+ */
+export function warnUncommittedDecisions(tag) {
+    const file = statePath('decisions.json');
+    if (!fs.existsSync(file)) return;
+
+    let n = 0;
+    try { n = Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')) || {}).length; }
+    catch (e) { return; }                // unreadable is not this function's problem
+    if (!n) return;
+
+    const git = (...args) => {
+        try {
+            const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+            return r.status === 0 ? String(r.stdout || '') : null;
+        } catch (e) { return null; }
+    };
+    if (git('rev-parse', '--git-dir') === null) return;
+
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    if (rel.startsWith('..')) return;    // MERID_STATE points outside the repo
+    const status = git('status', '--porcelain', '--', rel);
+    if (status === null) return;
+    if (!status.trim()) return;          // tracked and unchanged: already safe
+
+    console.log('');
+    console.log('[' + tag + '] ' + n + ' review decisions are NOT in git.');
+    console.log('     This is the only file here that cannot be recomputed - everything else');
+    console.log('     in state/ is a cache. Losing it means doing the reviewing again.');
+    console.log('');
+    console.log('       git add -f ' + rel);
+    console.log('       git commit -m "Record which picture was chosen for each word"');
+    console.log('');
+}
+
+/**
+ * Two words close enough that one photograph honestly serves both.
+ *
+ * The duplicate check used to say "at least one word in each pair is
+ * illustrated with the wrong thing", and on a real run most of what it caught
+ * was nothing of the kind: `imprison` and `imprisonment`, `inject` and
+ * `injection`, `agriculture` and `agricultural`. A picture of a cell fits the
+ * verb and the noun equally, and there is no second picture that would fit
+ * either of them better. Reporting those as errors buries the pairs that are
+ * errors - `arable` sharing a photograph with `morass` is a real problem and
+ * was tenth in a list of ten.
+ *
+ * A crude suffix strip is enough to tell them apart. It does not need to be a
+ * real stemmer: it only has to separate "different form of the same word" from
+ * "different word", and it is reported rather than acted on either way.
+ */
+export function sameRoot(a, b) {
+    const stem = w => String(w).toLowerCase()
+        .replace(/(ations?|ations|ments?|ions?|ings?|ness|ity|ies|ally|al|ed|es|e|s)$/, '');
+    const x = stem(a);
+    const y = stem(b);
+    if (!x || !y) return false;
+    if (x === y) return true;
+    // agricultur / agricultural-with-a-different-strip, and similar near misses.
+    const short = x.length < y.length ? x : y;
+    const long = x.length < y.length ? y : x;
+    return short.length >= 5 && long.startsWith(short);
 }

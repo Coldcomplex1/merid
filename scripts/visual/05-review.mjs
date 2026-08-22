@@ -29,7 +29,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { statePath, readJson, writeJson, loadEntries } from './lib/entries.mjs';
+import { statePath, readJson, writeJson, loadEntries, warnUncommittedDecisions } from './lib/entries.mjs';
 
 const args = process.argv.slice(2);
 const PORT = (() => {
@@ -86,6 +86,27 @@ const SAMPLE = (() => {
     return Math.floor(n);
 })();
 
+// Review these words and nothing else, starting at the first card even though
+// they have already been decided.
+//
+// For going back to a handful by name - the pairs 06-build.mjs reports as
+// sharing one photograph, say, where at least one of the two is wrong. A flag
+// rather than MERID_ONLY, which does the same filtering but through the
+// environment: in a shell that keeps it set, the next 06-build.mjs would see
+// six entries, decide the other several hundred no longer exist, and write an
+// index with six pictures in it.
+const ONLY = (() => {
+    const i = args.indexOf('--only');
+    if (i < 0) return null;
+    const raw = String(args[i + 1] || '');
+    const words = raw.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
+    if (!words.length) {
+        console.error('[05] --only needs words, e.g. --only craft,artisan');
+        process.exit(1);
+    }
+    return new Set(words);
+})();
+
 // How many entries were eligible before sampling cut it down, so the review UI
 // can say what the sample is standing in for.
 let QUEUE_TOTAL = 0;
@@ -106,6 +127,7 @@ function buildQueue() {
     for (const [slug, r] of Object.entries(ranked.entries || {})) {
         const entry = entries.get(slug);
         if (!entry || !r.candidates || !r.candidates.length) continue;
+        if (ONLY && !ONLY.has(String(entry.word).toLowerCase())) continue;
         // Nothing cleared the floor, so every candidate is a picture of
         // something else. Showing these asks the reviewer to confirm a verdict
         // the pipeline has already reached, several hundred times. They take a
@@ -130,7 +152,11 @@ function buildQueue() {
     }
     if (refused) {
         console.log('[05] ' + refused + ' entries had no candidate clearing stage 04 - ' +
-            'they will use a symbol. Pass --all to review them anyway.');
+            'they get no picture. Pass --all to review them anyway.');
+        console.log('[05] NOTE: these are concrete words - stage 02 went looking for photographs of');
+        console.log('     them - so stage 02b never gave them a concept either. The 56 concepts are');
+        console.log('     abstractions and none of them is what "anchor" is about. Without a picture');
+        console.log('     they show their first letter on a gradient, not a symbol.');
     }
 
     items.sort((a, b) => a.best - b.best);
@@ -161,6 +187,15 @@ function buildQueue() {
     }
 
     if (ORDER === 'best') queue = queue.slice().reverse();
+
+    if (ONLY) {
+        const found = new Set(queue.map(q => q.word.toLowerCase()));
+        const missing = [...ONLY].filter(w => !found.has(w));
+        if (missing.length) {
+            console.log('[05] not in the queue: ' + missing.join(', ') +
+                '\n     (no candidate cleared stage 04 for them - add --all to see those too)');
+        }
+    }
     return queue;
 }
 
@@ -224,8 +259,10 @@ async function boot() {
   const data = await r.json();
   queue = data.queue; decisions = data.decisions; sample = data.sample;
   inQueue = new Set(queue.map(q => q.slug));
-  // Resume where the reviewing stopped rather than at the top.
-  i = queue.findIndex(q => !(q.slug in decisions));
+  // Resume where the reviewing stopped rather than at the top - unless the
+  // queue was named word by word, in which case every card in it was asked for
+  // deliberately and skipping the decided ones would show an empty tool.
+  i = data.redo ? 0 : queue.findIndex(q => !(q.slug in decisions));
   if (i < 0) i = queue.length;
   draw();
 }
@@ -325,7 +362,8 @@ function main() {
             // to loosen, the other is files to go and find.
             console.error('[05] nothing to review: none of the ' + scored +
                 ' scored entries had a candidate clearing stage 04.');
-            console.error('      They will all take a symbol, which may well be the right answer.');
+            console.error('      Being concrete words, they have no concept glyph to fall back on');
+            console.error('      either, so they would show only their first letter.');
             console.error('      To look at them anyway:  node scripts/visual/05-review.mjs --all');
             console.error('      To loosen the bar:       MERID_CLIP_FLOOR=0.20 python3 scripts/visual/04-rank.py');
         }
@@ -344,6 +382,7 @@ function main() {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({
                 queue, decisions: readJson(DECISIONS, {}),
+                redo: !!ONLY,
                 sample: SAMPLE ? { size: queue.length, remaining: QUEUE_TOTAL - queue.length } : null
             }));
         }
@@ -398,6 +437,7 @@ function main() {
                   '     were unlikely to survive a look anyway.'));
         }
         console.log('[05] open http://127.0.0.1:' + PORT + '  (ctrl-c when you have had enough)');
+        warnUncommittedDecisions('05');
     });
 }
 

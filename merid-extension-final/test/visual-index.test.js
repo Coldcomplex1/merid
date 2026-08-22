@@ -63,6 +63,19 @@ test('every concept bucket has a glyph and a hue', () => {
     }
 });
 
+test('the three kind glyphs are drawable but not offered to the mapper', () => {
+    for (const id of Visual.KIND_IDS) {
+        assert.ok(Visual.GLYPH[id], `${id} has no glyph`);
+        assert.ok(Visual.drawGlyph(id).includes('<path'), `${id} draws nothing`);
+        assert.strictEqual(typeof Visual.BUCKET_HUE[id], 'number', `${id} has no hue`);
+        // 02b-iconmap.mjs asks the model to choose from ICON_IDS. If these were
+        // in it, "kind-object" would start coming back for abstract words - a
+        // worse answer than any of the 56, and indistinguishable in the index
+        // from a concrete word that genuinely fell back to it.
+        assert.ok(!Visual.ICON_IDS.includes(id), `${id} must not be a concept the mapper can pick`);
+    }
+});
+
 test('drawGlyph refuses a bucket it does not know', () => {
     assert.strictEqual(Visual.drawGlyph('not-a-bucket'), '');
     assert.strictEqual(Visual.drawGlyph(undefined), '');
@@ -320,4 +333,124 @@ test('artwork stays inside its size budget', { skip: !fs.existsSync(VIS_DIR) }, 
         total += size;
     }
     assert.ok(total <= VIS_BUDGET_BYTES, `vis/ is ${total}B, over ${VIS_BUDGET_BYTES}B`);
+});
+
+// ---------------------------------------------------------------------------
+// The beside-the-card layout is described in two files, and it has to be the
+// same layout in both.
+//
+// content.js chooses between beside and above from window.innerWidth, before
+// the card is rendered - it cannot ask the stylesheet how wide the panel is
+// going to be, because nothing has been laid out yet. So the widths live in
+// both files, and the failure mode if they drift is quiet: JS decides there is
+// room for a 200px panel, CSS draws a 240px one, and the card hangs off the
+// side of the window on exactly the screens that were tight to begin with.
+// ---------------------------------------------------------------------------
+test('the aside panel is the same size in content.js and content.css', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
+    const css = fs.readFileSync(path.join(ROOT, 'content.css'), 'utf8');
+
+    const num = (src, re, what) => {
+        const m = src.match(re);
+        assert.ok(m, 'could not find ' + what);
+        return Number(m[1]);
+    };
+
+    const cardW = num(js, /const CARD_W = (\d+)/, 'CARD_W in content.js');
+    const asideW = num(js, /const ASIDE_W = (\d+)/, 'ASIDE_W in content.js');
+    const gap = num(js, /const ASIDE_GAP = (\d+)/, 'ASIDE_GAP in content.js');
+
+    // CARD_W is a copy of the tooltip's own width, and the aside layout must
+    // NOT change it: the card is drawn identically whether or not a picture is
+    // beside it. A .vm-tip--aside rule that sets a width would reflow it.
+    const tipW = num(css, /\.vocab-master-tooltip\b[^}]*?width:\s*min\((\d+)px/s,
+        '.vocab-master-tooltip width');
+    assert.strictEqual(cardW, tipW, 'CARD_W must be the width the card is drawn at');
+    assert.ok(!/\.vocab-master-tooltip\.vm-tip--aside\s*\{[^}]*width:/s.test(css),
+        '.vm-tip--aside must not set a width - the card has to be drawn the same ' +
+        'with a picture beside it as without one');
+
+    const asideBlock = css.match(/^\.vm-aside\s*\{[^}]*\}/ms);
+    assert.ok(asideBlock, 'no .vm-aside rule');
+    assert.strictEqual(num(asideBlock[0], /width:\s*(\d+)px/, '.vm-aside width'), asideW,
+        'ASIDE_W must be the panel width CSS draws');
+    assert.strictEqual(
+        num(asideBlock[0], /left:\s*calc\(100% \+ (\d+)px\)/, '.vm-aside offset'), gap,
+        'ASIDE_GAP must be the gap CSS leaves between the card and the panel');
+
+    // Out of flow, so getBoundingClientRect cannot see it and content.js has to
+    // add it back when clamping. If it ever became part of the card's box the
+    // clamp would double-count it.
+    assert.match(asideBlock[0], /position:\s*absolute/,
+        'the panel must stay out of flow, or it reflows the card');
+});
+
+test('a picture beside the card is only chosen when it fits', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
+    // The guard has to involve all three widths. A version that forgot the gap
+    // still worked on a wide screen and clipped the panel at exactly the
+    // window widths the guard exists for.
+    assert.match(js, /window\.innerWidth >= CARD_W \+ ASIDE_W \+ ASIDE_GAP/,
+        'the beside/above decision must be made against all three widths');
+    // And it must be settled before the card is measured for positioning.
+    const decide = js.indexOf('const asideFits');
+    const measure = js.indexOf('tooltipElement.getBoundingClientRect()');
+    assert.ok(decide > 0 && measure > decide,
+        'the layout must be chosen before the card is measured, or the card is ' +
+        'positioned using the size of a card that no longer exists');
+
+    // The clamp has to account for a panel it cannot measure, on whichever side
+    // the panel ended up. Clamping only the card lets the panel hang off the
+    // window - and the card hides 120ms after the pointer leaves the word, so
+    // there is no scrolling over to see what was cut off.
+    assert.match(js, /vm-tip--aside-left/,
+        'there must be a left-hand side to flip to when the right has no room');
+    assert.match(js, /left \+ tRect\.width \+ padRight > window\.innerWidth/,
+        'the clamp must include the panel width on the side it is on');
+});
+
+// ---------------------------------------------------------------------------
+// The credits card.
+//
+// THIRD-PARTY.md promises that "the Settings page shows it". None of the three
+// archives obliges us to credit anybody - CC0, Public Domain and the Pexels
+// Licence all waive attribution - which is exactly why this is easy to let rot:
+// nothing breaks and nobody complains. So the promise is checked here.
+// ---------------------------------------------------------------------------
+test('Settings can show where every shipped picture came from', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'options.html'), 'utf8');
+    const js = fs.readFileSync(path.join(ROOT, 'options.js'), 'utf8');
+
+    assert.match(html, /id="creditsCard"[^>]*\shidden/,
+        'the credits card must start hidden - a checkout with no artwork would ' +
+        'otherwise promise credits it does not have');
+    for (const id of ['creditsSummary', 'creditsToggle', 'creditsList']) {
+        assert.ok(html.includes('id="' + id + '"'), 'options.html is missing #' + id);
+    }
+
+    assert.match(js, /vis\/CREDITS\.json/, 'options.js must read vis/CREDITS.json');
+    // Asked of the worker first, so an ordinary checkout does not log a failed
+    // fetch to the console every time Settings is opened.
+    const ask = js.indexOf("action: 'getVisualIndex'");
+    const fetchAt = js.indexOf("'vis/CREDITS.json'");
+    assert.ok(ask > 0 && fetchAt > ask,
+        'the index must be consulted before the credits file is fetched');
+
+    // Author names come from three public archives and are shown as-is.
+    assert.match(js, /function escHtml/, 'options.js must escape credit strings');
+    assert.ok(!/\+ (c\.author|who) \+/.test(js.replace(/escHtml\([^)]*\)/g, 'ESC')),
+        'an author name must never reach innerHTML unescaped');
+});
+
+test('CREDITS.json is not reachable from a web page', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+    const exposed = (manifest.web_accessible_resources || [])
+        .flatMap(r => r.resources || []);
+    // The pictures have to be reachable - a content script points <img> at them.
+    assert.ok(exposed.some(r => /^vis\/\*\.(avif|webp)$/.test(r)),
+        'the pictures themselves must stay web-accessible');
+    // Their provenance does not, and a bare vis/* would expose it to every page.
+    assert.ok(!exposed.some(r => r === 'vis/*' || /CREDITS/.test(r)),
+        'CREDITS.json must not be exposed to web pages - Settings reads it as an ' +
+        'extension page, which needs no such grant');
 });

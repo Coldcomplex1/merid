@@ -374,6 +374,44 @@
    2:1 rather than 16:9 because max-height caps the visible strip at 150px
    anyway: a 16:9 source (173px) would ship ~13% of its pixels to be cropped off
    every time. */
+/* Picture beside the card rather than above the definition.
+ *
+ * Above the definition, a ~146px strip pushes every card down by that much and
+ * is the reason .vm-card had to learn to scroll. Beside it, the card is the
+ * height it was before the feature existed, and the picture and the meaning can
+ * be read at once instead of one above the other.
+ *
+ * Out of flow rather than a flex row, and the wrapper keeps its 296px. Making
+ * the wrapper a flex container and the card a flex item was the obvious way and
+ * it reflowed the card: .vm-card carries `zoom: 0.95`, so its layout width and
+ * its drawn width are different numbers, and a flex basis resolved in one of
+ * those spaces and rendered in the other narrowed the card by ~30px - a
+ * two-line definition became four. Absolute positioning asks the card for
+ * nothing at all, so it is drawn exactly as it was before this feature existed.
+ *
+ * The cost is that the panel is invisible to getBoundingClientRect, so the
+ * viewport clamp in content.js cannot see it. content.js adds ASIDE_W +
+ * ASIDE_GAP back by hand, and picks the side.
+ */
+.vm-aside {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 8px);
+    width: 200px;
+    border: 2px solid var(--vm-outline);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(15, 31, 61, 0.08);
+    background: var(--vm-cream);
+}
+
+/* No room on the right - near the right edge of the window, or a card the
+   clamp has already pushed over. */
+.vocab-master-tooltip.vm-tip--aside-left .vm-aside {
+    left: auto;
+    right: calc(100% + 8px);
+}
+
 .vm-visual {
     position: relative;
     aspect-ratio: 2 / 1;
@@ -456,6 +494,23 @@
     position: absolute;
     inset: 0;
 }
+
+/* Undoes the strip geometry: no negative margins to cancel .vm-body's padding
+   (there is no .vm-body here), and no cap on the height. */
+.vm-visual--aside {
+    margin: 0;
+    max-height: none;
+    border-radius: 0;
+}
+
+/* A photograph keeps its own 2:1 - the bundled files are 320x160, and any other
+   ratio here would crop them rather than show them. A drawn glyph has no native
+   shape and looks better with room around it. */
+.vm-visual--aside.vm-visual--icon,
+.vm-visual--aside.vm-visual--generic {
+    aspect-ratio: 1 / 1;
+}
+
 
 .vm-visual:not(.vm-visual--photo)[data-vm-pat="0"]::before {
     opacity: 0.16;

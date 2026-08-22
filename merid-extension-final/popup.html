@@ -87,6 +87,18 @@
                 </div>
             </div>
 
+            <!-- Same `visualsEnabled` key as Settings, deliberately: this is the
+                 one setting a reader turns off mid-page, when a picture is not
+                 what they want right now, and making them open Settings for it
+                 is the difference between turning it off and turning Merid off. -->
+            <div class="setting-item">
+                <label data-i18n="popupVisualsLabel">Picture on the card</label>
+                <div class="seg" id="visuals-seg">
+                    <button data-val="on" type="button" data-i18n="popupOn">On</button>
+                    <button data-val="off" type="button" data-i18n="popupOff">Off</button>
+                </div>
+            </div>
+
             <!-- "Languages to scan" is not here. With English → English
                  withdrawn (VMCore.ENG_ENG_AVAILABLE) the only direction left is
                  the one Merid is for, so the card was a choice with one answer;

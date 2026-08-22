@@ -2195,6 +2195,15 @@ function handleMouseOver(e) {
     }
 }
 
+// The card's rendered width, the picture panel's, and the space between them.
+// These three are the CSS in .vm-tip--aside written down twice, which is a
+// thing worth avoiding and unavoidable here: the layout has to be chosen before
+// the card is measured, so JS cannot ask the stylesheet. content.css names them
+// back, and test/visual-index.test.js fails if the two drift.
+const CARD_W = 296;
+const ASIDE_W = 200;
+const ASIDE_GAP = 8;
+
 function showTooltip(target, item) {
     const esc = C.escapeHtml;
     const rect = target.getBoundingClientRect();
@@ -2244,8 +2253,25 @@ function showTooltip(target, item) {
     const vis = settings.visualsEnabled === false ? null : Visual.visualFor(item, visualIndex, {
         warm: warmSet, missing: missingSet, photoFailures
     });
+    // Beside the card when the window is wide enough for it, above the
+    // definition when it is not.
+    //
+    // Beside is the better place: the picture stops pushing the definition
+    // down, so a long entry no longer needs the card to scroll, and the two
+    // can be read at once instead of one above the other. It costs horizontal
+    // room the card did not use to need, which is why the narrow case still
+    // exists rather than being squeezed - a 125px picture next to a 296px card
+    // on a phone would take the definition down to nothing.
+    //
+    // Decided from innerWidth BEFORE rendering, not measured after: the card is
+    // positioned from a getBoundingClientRect taken further down, and a layout
+    // that changed after that measurement would place the card using the size
+    // of a card that no longer exists.
+    const asideFits = window.innerWidth >= CARD_W + ASIDE_W + ASIDE_GAP + 20;
+    const aside = !!vis && asideFits;
     const visualHtml = vis ? `
-                <div class="vm-visual vm-visual--${vis.kind}" data-vm-pat="${vis.pattern}"
+                <div class="vm-visual vm-visual--${vis.kind}${aside ? ' vm-visual--aside' : ''}"
+                     data-vm-pat="${vis.pattern}"
                      style="--vm-vis-hue:${vis.hue};--vm-vis-angle:${vis.angle}deg">
                     ${vis.kind === 'photo'
             ? `<img class="vm-visual-img" alt="${esc(Visual.altFor(item))}" decoding="async" draggable="false"
@@ -2258,7 +2284,7 @@ function showTooltip(target, item) {
     tooltipElement.innerHTML = `
         <div class="vm-card">
             <button class="vm-close" type="button" aria-label="${esc(t('tooltipClose', 'Close'))}">&times;</button>
-            <div class="vm-body">${visualHtml}
+            <div class="vm-body">${aside ? '' : visualHtml}
                 <div class="vm-header">
                     <div class="vm-title vm-word" style="font-size:${titleFontSize.toFixed(1)}px">${esc((item.word || '').toUpperCase())}</div>
                     <div class="vm-meta">
@@ -2285,8 +2311,13 @@ function showTooltip(target, item) {
                     <button class="vm-down" type="button" aria-label="${esc(t('tooltipBad', 'Not a good fit here'))}" title="${esc(t('tooltipBad', 'Not a good fit here'))}">&#128078;</button>
                 </span>
             </div>
-        </div>`;
+        </div>${aside ? `<div class="vm-aside">${visualHtml}</div>` : ''}`;
 
+    tooltipElement.classList.toggle('vm-tip--aside', aside);
+    // Cleared here rather than only set below: a card that had the panel on its
+    // left, followed by one with no panel at all, would otherwise keep the
+    // class and hand it to the next card that does have one.
+    if (!aside) tooltipElement.classList.remove('vm-tip--aside-left');
     tooltipElement.style.display = 'block';
     if (vis) wireVisual(vis);
     const tRect = tooltipElement.getBoundingClientRect();
@@ -2310,8 +2341,23 @@ function showTooltip(target, item) {
     else top = minTop;   // taller than the window even so: start from the top
 
     let left = rect.left + window.scrollX - (tRect.width / 2) + (rect.width / 2);
-    if (left < 10) left = 10;
-    if (left + tRect.width > window.innerWidth - 10) left = window.innerWidth - tRect.width - 10;
+
+    // The picture panel is positioned out of flow, so tRect does not include it
+    // and the clamp below would happily push half of it off the window. Give it
+    // a side first - right unless the right is where the room is missing - then
+    // clamp the card and the panel as one object.
+    let padLeft = 0;
+    let padRight = 0;
+    if (aside) {
+        const wanted = ASIDE_GAP + ASIDE_W;
+        const onRight = left + tRect.width + wanted <= window.innerWidth - 10;
+        tooltipElement.classList.toggle('vm-tip--aside-left', !onRight);
+        if (onRight) padRight = wanted; else padLeft = wanted;
+    }
+    if (left - padLeft < 10) left = 10 + padLeft;
+    if (left + tRect.width + padRight > window.innerWidth - 10) {
+        left = window.innerWidth - 10 - tRect.width - padRight;
+    }
 
     // `top` and `left` are document coordinates, but the values written below
     // are resolved against the offset parent's padding box - <body> here, which

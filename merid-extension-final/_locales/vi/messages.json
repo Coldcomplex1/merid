@@ -988,5 +988,37 @@
   },
   "optDeleteAllConfirm": {
     "message": "Xóa TOÀN BỘ dữ liệu đã lưu (cài đặt + bộ thẻ của bạn)? Không thể hoàn tác."
+  },
+  "popupVisualsLabel": {
+    "message": "Ảnh trên thẻ"
+  },
+  "popupOn": {
+    "message": "Bật"
+  },
+  "popupOff": {
+    "message": "Tắt"
+  },
+  "optCreditsTitle": {
+    "message": "Ảnh lấy từ đâu"
+  },
+  "optCreditsIntro": {
+    "message": "Mọi ảnh trên thẻ từ vựng đều nằm sẵn trong Merid, không tải về lúc bạn đọc. Tất cả đến từ kho ảnh công khai, với giấy phép cho phép phân phối lại."
+  },
+  "optCreditsCount": {
+    "message": "$N$ ảnh",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "optCreditsShowAll": {
+    "message": "Xem danh sách từng ảnh"
+  },
+  "optCreditsHideAll": {
+    "message": "Ẩn danh sách"
+  },
+  "optCreditsUnknownAuthor": {
+    "message": "không ghi tác giả"
   }
 }

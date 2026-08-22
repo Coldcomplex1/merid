@@ -223,10 +223,24 @@ Chỉ những từ mà bước 04 tìm được **ít nhất một ứng viên v
 quyết định được điều gì; những từ chắc chắn chỉ cần bấm `Enter`.
 
 Đánh đổi: dừng giữa chừng thì phần **chưa duyệt là phần chắc chắn nhất**, và
-chưa duyệt nghĩa là dùng ký hiệu — tức là mất ảnh tốt. Nếu biết trước sẽ không
-duyệt hết, dùng `--order best` để phần bỏ lại là phần kém tin nhất.
+chưa duyệt nghĩa là **không có ảnh** — tức là mất ảnh tốt. Nếu biết trước sẽ
+không duyệt hết, dùng `--order best` để phần bỏ lại là phần kém tin nhất.
 
-Những từ không ứng viên nào đạt sẽ **tự dùng ký hiệu**, không đưa ra hỏi. Bắt
+> **"Không có ảnh" nghĩa là gì?**
+>
+> Bước 02b chỉ gán ký hiệu khái niệm cho từ **trừu tượng**. 56 ký hiệu đó đều
+> là khái niệm trừu tượng (`growth`, `doubt`, `restriction`…) — không cái nào
+> là thứ mà "anchor" nói về.
+>
+> Nên từ **cụ thể** không có ảnh sẽ nhận một trong **3 ký hiệu loại**: một khối
+> hộp (`object` — vật), một người đang bước (`action` — hành động), một hình
+> người (`role` — người/vai trò). Bước 02 đã ghi sẵn `kind` cho mọi từ nó đi
+> tìm ảnh, nên cái này không tốn thêm gì cả.
+>
+> Chỉ từ nào bước 02 **không ghi kind** mới hiện chữ cái đầu. Bước 06 in ra cả
+> hai con số — đọc trước khi chốt `--accept-above`.
+
+Những từ không ứng viên nào đạt **không được đưa ra hỏi**. Bắt
 bạn xác nhận một kết luận mà pipeline đã đưa ra rồi, vài trăm lần, chỉ tổ mệt
 và làm mất niềm tin vào công cụ.
 
@@ -244,6 +258,22 @@ Muốn hạ ngưỡng: `$env:MERID_CLIP_FLOOR='0.20'` rồi chạy lại bước
 | `←` | quay lại từ trước |
 
 Mỗi phím bấm là ghi xuống đĩa ngay. Đóng tab không mất gì.
+
+### Duyệt xong thì COMMIT NGAY
+
+```bash
+git add -f scripts/visual/state/decisions.json
+git commit -m "Record which picture was chosen for each word"
+git push
+```
+
+**Đừng để đến cuối.** `decisions.json` là file **duy nhất** trong pipeline không
+tính lại được. Mọi thứ khác trong `state/` chỉ là cache — máy làm lại được:
+phân loại, query, ảnh tải về, điểm CLIP. `decisions.json` là **một giờ của
+bạn**. Chưa commit thì cả giờ đó nằm trong một thư mục trên một máy, và xoá
+nhầm thư mục là xoá luôn cả giờ.
+
+Bước 05 và 06 giờ sẽ tự nhắc nếu file này chưa vào git.
 
 ### Duyệt 50 từ thay vì 290: `--sample 50`
 
@@ -310,9 +340,9 @@ sẵn là câu trả lời tốt hơn: một tấm ảnh sai trên thẻ từ v�
 
 Ba điều lệnh đó **không** làm:
 
-- Không đè lên quyết định của bạn. Từ nào bạn đã bấm `x` thì vẫn dùng ký hiệu,
+- Không đè lên quyết định của bạn. Từ nào bạn đã bấm `x` thì vẫn không ảnh,
   kể cả khi điểm rất cao.
-- Không đụng tới từ dưới ngưỡng — chúng dùng ký hiệu.
+- Không đụng tới từ dưới ngưỡng — chúng không có ảnh.
 - Không giấu chuyện gì. Danh sách từ được nhận ảnh nhờ thống kê chứ không nhờ
   mắt người nằm ở `scripts/visual/state/auto-accepted.json`, muốn duyệt lại lúc
   nào cũng được.
@@ -325,7 +355,7 @@ Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguy
 
 ```bash
 cd merid-extension-final
-npm test          # 19 test, trong đó 3 test về ảnh giờ sẽ chạy thay vì skip
+npm test          # 172 test; 3 test về ảnh chuyển từ skip sang chạy khi có vis/
 npm run build     # sẽ BÁO LỖI nếu vis/ vượt ngân sách 6MB
 node e2e/visual.mjs
 du -sh vis        # nên khoảng 2MB
@@ -339,6 +369,12 @@ Rồi tự mắt kiểm:
 3. Thử riêng ba từ này ở **cả** chế độ SAT lẫn C1/C2 trong Settings —
    `delegate`, `buttress`, `yoke`. Mỗi nghĩa phải ra **ảnh khác nhau**. Đây là
    phần dễ sai nhất của toàn bộ thiết kế.
+4. Mở **Settings → "Ảnh lấy từ đâu"**. Mục này chỉ hiện khi đã có `vis/`. Nó
+   phải liệt kê đúng số ảnh bạn vừa build, và bấm "Xem danh sách từng ảnh" ra
+   được tên tác giả + giấy phép của từng tấm. Nếu mục này không hiện dù `vis/`
+   đã có, nghĩa là `vis/CREDITS.json` thiếu — chạy lại bước 06.
+5. Bật/tắt thử **nút "Ảnh trên thẻ" trong popup**. Tắt thì thẻ không còn ảnh,
+   nhưng chữ trên trang **không được nhảy** — nếu trang bị quét lại là có lỗi.
 
 ---
 
@@ -369,7 +405,10 @@ gitignore vì tái tạo được.
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
 | Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |
-| `npm test` báo `vis/... is over the cap` | Có ảnh > 9KB. Chạy lại bước 06 với `--format webp` |
+| Bước 06 báo `N picture(s) would not fit` | Ảnh quá rối, nén hết cỡ vẫn > 9KB. Nó tự bỏ ảnh đó — không cần làm gì |
+| Bước 06 báo `pictures are used twice` | Hai từ gần nghĩa nhận cùng một ảnh, ít nhất một cái sai. Mở lại đúng cặp đó: `node scripts/visual/05-review.mjs --only craft,artisan` |
+| Nhiều từ chỉ hiện ký hiệu khối hộp / người bước | Từ cụ thể nhưng không được ảnh nào, nên nhận ký hiệu loại. Hạ `--accept-above` xuống, hoặc duyệt thêm, để chúng thành ảnh thật |
+| Từ hiện chữ cái đầu | Bước 02 không ghi `kind` cho từ đó — không có ảnh và cũng không có loại. Số này phải nhỏ; nếu lớn thì xem lại `state/queries.json` |
 | Ảnh sai nghĩa nhiều | Thường là bước **01** phân loại nhầm từ trừu tượng thành "chụp được", chứ không phải lỗi tìm ảnh. Xoá `state/classification.json` + `state/queries.json` + `state/llm-cache-*.json` rồi chạy lại từ 01 |
 | Ảnh là bản đồ, biểu đồ, sơ đồ | Query đang tả một phép ẩn dụ. Xem `state/queries.json` — nếu query tả cảnh vật lý cho một nghĩa trừu tượng thì gốc rễ ở bước 01 |
 

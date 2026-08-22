@@ -136,14 +136,34 @@ any sentence containing "spring", and is only obviously wrong once something
 notices it scores better against "metal coil".
 
 **05 — review.** You look at the top three for each entry and press a key. Only
-entries where stage 04 found something above the bar; the rest take a symbol
+entries where stage 04 found something above the bar; the rest are dropped
 without asking, and `--all` overrides that.
+
+Dropped does not mean "gets a concept". Stage 02b only assigns those to
+abstract entries, and everything in this queue is concrete by construction -
+stage 02 went looking for a photograph of it. The 56 concepts are abstractions
+and not one of them is what `anchor` is about.
+
+So a concrete word without a photograph gets one of three **kind** glyphs
+instead - a box, a stride, a figure - from the `object`/`action`/`role` stage 02
+already recorded in `queries.json`. It costs nothing and says far more than the
+letter A. Only an entry stage 02 recorded no kind for falls through to its own
+first letter. Stage 06 prints both counts; read them before settling on a
+cutoff, because a strict one turns photographs into boxes.
+
+The three are in `GLYPH` but deliberately not in `ICON_IDS`, so the concept
+mapper is never offered them - `kind-object` coming back for an abstract word
+would be worse than any of the 56 and indistinguishable in the index from a
+genuine fallback.
 
 Least confident first, because that is where looking decides something. The cost
 is that stopping early leaves the confident ones unreviewed - and unreviewed
 means a symbol - so `--order best` is there for when you know you will not
 finish. `state/decisions.json` is the one file here that is committed — it is
-the only thing in the pipeline that cannot be recomputed.
+the only thing in the pipeline that cannot be recomputed. **Commit it when you
+stop reviewing, not when the artwork is finished.** Stages 05 and 06 both say so
+if it is not in git yet; everything else in `state/` is a cache a machine can
+rebuild, and that file is an hour of somebody's attention.
 
 `--sample 50` changes the job rather than shortening it. Reviewing every entry
 means deciding every picture yourself. Reviewing fifty drawn evenly across the
@@ -154,8 +174,23 @@ either end can say how good that end is and nothing else.
 
 **06 — build.** Encodes to 320×160, 2:1 to match `.vm-visual` in `content.css`,
 smart-cropped. Reports any picture used for two different words, which means at
-least one of them is wrong. Measures AVIF against WebP on a sample of your
-actual pictures and says which is smaller before encoding the rest.
+least one of them is wrong — `05-review.mjs --only craft,artisan` reopens just
+that pair. Measures AVIF against WebP on a sample of your actual pictures and
+says which is smaller before encoding the rest.
+
+Each picture is encoded at the best quality that fits under the 9KB per-file
+cap `scripts/build.js` enforces, starting at 45 and stepping down only for the
+few busy photographs that need it. One that will not fit even at the bottom
+gets no picture rather than one the build refuses — and `vis/` is swept of
+files the new index no longer names, because `scripts/build.js` reads the
+directory rather than the index, so a picture dropped here but left on disk
+would fail the build it was dropped to save.
+
+It also counts the words that end with neither a photograph nor a concept
+symbol and fall back to their first letter. Those are always concrete words —
+stage 01 judged them photographable so stage 02b never gave them a concept, and
+the 56 concepts are abstractions with nothing that fits *anchor*. That count is
+the real price of a strict `--accept-above`, so it is printed next to it.
 
 It also reads the reviewing. Two tables: agreement per score band, which shows
 whether the score predicts correctness at all, and agreement cumulative from the

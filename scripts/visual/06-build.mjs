@@ -42,7 +42,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
-import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress } from './lib/entries.mjs';
+import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
+    warnUncommittedDecisions, sameRoot } from './lib/entries.mjs';
 
 const require = createRequire(import.meta.url);
 let sharp;
@@ -78,10 +79,18 @@ const FORMAT = (() => {
 
 const WIDTH = 320;
 const HEIGHT = 160;      // 2:1, matching .vm-visual's aspect-ratio in content.css
-const QUALITY = 45;
 const FILE_MAX = 9 * 1024;               // matches scripts/build.js
+
+// Quality 45 puts almost every picture well under the cap. The exceptions are
+// busy photographs - foliage, crowds, texture - and there is no single quality
+// that suits both those and the rest: raising the cap is not ours to do, and
+// lowering the quality for all 300 to rescue two is a bad trade. So each
+// picture is encoded at the best quality that fits, which is 45 for nearly all
+// of them.
+const QUALITY_STEPS = [45, 38, 32, 26, 20];
 const BUDGET = 6.0 * 1024 * 1024;
 
+const QUERIES = statePath('queries.json');
 const DECISIONS = statePath('decisions.json');
 const RANKED = statePath('ranked.json');
 const AUTO_FILE = statePath('auto-accepted.json');
@@ -91,10 +100,32 @@ const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
 const CREDITS_FILE = path.join(VIS_DIR, 'CREDITS.json');
 
-const encode = (buf, format) => sharp(buf)
+const encode = (buf, format, quality = QUALITY_STEPS[0]) => sharp(buf)
     .resize(WIDTH, HEIGHT, { fit: 'cover', position: 'attention' })
-    [format]({ quality: QUALITY, effort: format === 'avif' ? 9 : 6 })
+    [format]({ quality, effort: format === 'avif' ? 9 : 6 })
     .toBuffer();
+
+/**
+ * Encode at the best quality that fits under the per-file cap.
+ *
+ * scripts/build.js refuses any picture over FILE_MAX, so an oversized file is
+ * not a warning to read later - it is a build that will not run, discovered
+ * three commands further on. This used to print "lower --quality", which was
+ * doubly unhelpful: there is no such flag, and the answer to two fat pictures
+ * is not to soften the other three hundred.
+ *
+ * A picture that will not fit even at the bottom of the steps gets no picture
+ * at all, and falls back to whatever the index has for it. A word without a
+ * picture builds; a word with a 12KB picture does not.
+ */
+async function encodeToFit(buf, format) {
+    let out = null;
+    for (const quality of QUALITY_STEPS) {
+        out = await encode(buf, format, quality);
+        if (out.length <= FILE_MAX) return { out, quality };
+    }
+    return { out, quality: null };
+}
 
 /**
  * A cheap perceptual hash: 8x8 greyscale, each pixel against the mean.
@@ -291,8 +322,9 @@ function analyse(items, decisions) {
         console.log('');
         console.log('       node scripts/visual/06-build.mjs --accept-above ' + best.cutoff.toFixed(3));
         console.log('');
-        console.log('     Everything below it takes a drawn symbol, which is the honest answer for');
-        console.log('     a picture nobody checked.');
+        console.log('     Everything below it goes without. Read the last line of this run before');
+        console.log('     settling on a number: these are concrete words, so going without mostly');
+        console.log('     means showing a first letter rather than a drawn concept.');
     } else {
         console.log('[06] no cutoff is safe on what you reviewed: even at the top of the range the');
         console.log('     first candidate was wrong too often to ship unseen' +
@@ -403,21 +435,26 @@ async function main() {
     const seenHash = new Map();
     const duplicates = [];
     const oversized = [];
+    const softened = [];
     let total = 0;
     let failed = 0;
 
     for (const [i, [slug, d]] of picked.entries()) {
         const src = path.join(statePath(), d.candidate.file);
         if (!fs.existsSync(src)) { failed++; continue; }
-        let out;
-        try { out = await encode(fs.readFileSync(src), FORMAT); }
+        let out, quality;
+        try { ({ out, quality } = await encodeToFit(fs.readFileSync(src), FORMAT)); }
         catch (e) { failed++; continue; }
+
+        // Would not fit at any quality. Ship nothing rather than something the
+        // build refuses; the glyph half below picks it up.
+        if (quality === null) { oversized.push([slug, out.length]); continue; }
+        if (quality !== QUALITY_STEPS[0]) softened.push([slug, quality]);
 
         const h = await phash(out);
         if (seenHash.has(h)) duplicates.push([slug, seenHash.get(h)]);
         else seenHash.set(h, slug);
 
-        if (out.length > FILE_MAX) oversized.push([slug, out.length]);
         total += out.length;
         photo.push(slug);
 
@@ -444,6 +481,34 @@ async function main() {
         (icon[bucket] = icon[bucket] || []).push(slug);
         glyphs++;
     }
+
+    // Everything with neither a photograph nor a concept, which is always a
+    // concrete word: stage 01 judged it photographable and stage 02 went
+    // looking, so stage 02b never gave it a concept. The 56 concepts are
+    // abstractions and not one of them is what "anchor" is about.
+    //
+    // These used to fall to GENERIC - the word's own first letter on a
+    // gradient - which was designed for a word the index has never heard of,
+    // not for the several hundred we ship. Stage 02 already recorded whether it
+    // was searching for a thing, an action or a person, so that answer is free
+    // and it is worth far more than a letter.
+    const iconSet = new Set(Object.keys(icon).flatMap(b => icon[b]));
+    const queries = readJson(QUERIES, { entries: {} });
+    const KIND_BUCKET = { object: 'kind-object', action: 'kind-action', role: 'kind-role' };
+    const byKind = {};
+    let lettered = 0;
+    for (const slug of entries.keys()) {
+        if (photoSet.has(slug) || iconSet.has(slug)) continue;
+        const q = queries.entries[slug];
+        const bucket = KIND_BUCKET[q && q.kind];
+        // No kind recorded - stage 02 skipped it, or answered outside its own
+        // closed list. The letter is the honest answer there.
+        if (!bucket) { lettered++; continue; }
+        (icon[bucket] = icon[bucket] || []).push(slug);
+        (byKind[bucket] = byKind[bucket] || []).push(slug);
+        glyphs++;
+    }
+
     const iconOut = {};
     for (const [bucket, slugs] of Object.entries(icon)) iconOut[bucket] = slugs.sort().join(' ');
 
@@ -456,30 +521,94 @@ async function main() {
         icon: iconOut
     };
 
+    // Sweep pictures the index no longer names.
+    //
+    // vis/ is written into, never cleaned, so every earlier run's files are
+    // still sitting there: a word whose picture was dropped for being over the
+    // cap keeps the oversized file, and scripts/build.js reads the DIRECTORY,
+    // not the index. Fixing the encoder without this would leave the build
+    // failing on exactly the files the fix was for. Only the picture extensions
+    // are touched, and only ones this run did not write.
+    const orphans = [];
+    if (fs.existsSync(VIS_DIR)) {
+        const want = new Set(photo.map(sl => sl + '.' + FORMAT));
+        for (const name of fs.readdirSync(VIS_DIR)) {
+            if (!/\.(avif|webp)$/.test(name) || want.has(name)) continue;
+            orphans.push(name);
+            if (!DRY) fs.unlinkSync(path.join(VIS_DIR, name));
+        }
+    }
+
     if (!DRY) {
         writeJson(INDEX_FILE, index);
         writeJson(CREDITS_FILE, { v: 1, generated: index.generated, credits });
     }
 
-    console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' glyph assignments, ' +
+    console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' concept symbols, ' +
         Object.keys(iconOut).length + ' buckets in use' + (failed ? ', ' + failed + ' failed to encode' : ''));
+    const kindTotal = Object.values(byKind).reduce((a, v) => a + v.length, 0);
+    if (kindTotal) {
+        console.log('[06] ' + kindTotal + ' concrete words ended without a photograph and show what KIND of' +
+            '\n     thing they are instead: ' +
+            Object.entries(byKind).map(([b, v]) => v.length + ' ' + b.replace('kind-', '')).join(', ') + '.');
+        console.log('     A lower --accept-above turns more of these into photographs, at lower confidence.');
+    }
+    if (lettered) {
+        console.log('[06] ' + lettered + ' words show only their first letter - no photograph, no concept,' +
+            '\n     and stage 02 recorded no kind for them either.');
+    }
     console.log('[06] vis/ is ' + (total / 1024 / 1024).toFixed(2) + 'MB' +
         ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)');
 
     if (duplicates.length) {
-        console.log('[06] WARNING: ' + duplicates.length + ' pictures are used twice - at least ' +
-            'one word in each pair is illustrated with the wrong thing:');
-        for (const [a, b] of duplicates.slice(0, 10)) console.log('       ' + a + ' == ' + b);
+        const wordOf = sl => (entries.get(sl) || {}).word || sl.replace(/-[0-9a-z]{4}$/, '');
+        const defOf = sl => ((entries.get(sl) || {}).definition || '').slice(0, 52);
+        const shared = [];
+        const wrong = [];
+        for (const [a, b] of duplicates) {
+            (sameRoot(wordOf(a), wordOf(b)) ? shared : wrong).push([a, b]);
+        }
+
+        if (shared.length) {
+            console.log('[06] ' + shared.length + ' picture(s) shared by different forms of the same word, ' +
+                'which is fine:');
+            console.log('       ' + shared.slice(0, 6)
+                .map(([a, b]) => wordOf(a) + '/' + wordOf(b)).join(', ') +
+                (shared.length > 6 ? ', ...' : ''));
+        }
+        if (wrong.length) {
+            console.log('[06] WARNING: ' + wrong.length + ' picture(s) used for two different words. ' +
+                'One of each pair is wrong:');
+            for (const [a, b] of wrong.slice(0, 10)) {
+                console.log('       ' + wordOf(a) + ' - ' + defOf(a));
+                console.log('       ' + wordOf(b) + ' - ' + defOf(b));
+                console.log('         to look at both:  MERID_ONLY=' + wordOf(a) + ',' + wordOf(b) +
+                    ' node scripts/visual/05-review.mjs --all');
+                console.log('');
+            }
+        }
+    }
+    if (orphans.length) {
+        console.log('[06] ' + (DRY ? 'would remove ' : 'removed ') + orphans.length +
+            ' picture(s) from vis/ that the index no longer names' +
+            (orphans.length <= 6 ? ': ' + orphans.join(', ') : ''));
+    }
+    if (softened.length) {
+        console.log('[06] ' + softened.length + ' picture(s) needed a lower quality to fit the ' +
+            (FILE_MAX / 1024) + 'KB cap: ' +
+            softened.slice(0, 6).map(([s, q]) => s + ' Q' + q).join(', ') +
+            (softened.length > 6 ? ', ...' : ''));
     }
     if (oversized.length) {
-        console.log('[06] WARNING: ' + oversized.length + ' over the ' + FILE_MAX + 'B per-picture cap; ' +
-            'the build will refuse these. Lower --quality or re-crop:');
-        for (const [s, n] of oversized.slice(0, 10)) console.log('       ' + s + ' ' + n + 'B');
+        console.log('[06] ' + oversized.length + ' picture(s) would not fit under the cap even at Q' +
+            QUALITY_STEPS[QUALITY_STEPS.length - 1] + ', so they go without a picture:');
+        for (const [s, n] of oversized.slice(0, 10)) console.log('       ' + s + ' (' + n + 'B)');
     }
     if (total > BUDGET) {
         console.log('[06] WARNING: over the total budget - scripts/build.js will refuse this');
     }
     console.log(DRY ? '[06] dry run, nothing written' : '[06] wrote ' + INDEX_FILE + ' and ' + VIS_DIR);
+    warnUncommittedDecisions('06');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

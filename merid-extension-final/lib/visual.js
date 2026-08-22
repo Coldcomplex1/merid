@@ -117,8 +117,35 @@
         'difficulty':    'M2 19h20L14 5l-4 7-2-2z',
         'ease':          'M3 7c6 0 6 10 12 10 3 0 6-2 6-5M18 10l3 2-3 2',
         'uniqueness':    'M12 3l2.6 5.8 6.4.7-4.8 4.3 1.4 6.2L12 17l-5.6 3 1.4-6.2L3 9.5l6.4-.7z',
-        'formality':     'M8 3h8l-1 4 3 14H6l3-14zM10 7h4'
+        'formality':     'M8 3h8l-1 4 3 14H6l3-14zM10 7h4',
+
+        // -- what kind of thing, for concrete words with no photograph -----
+        //
+        // Not concepts, and deliberately not offered to the concept mapper.
+        // The 56 above are abstractions - growth, doubt, restriction - and not
+        // one of them is what "anchor" is ABOUT, so a concrete word that ended
+        // without a photograph used to fall through to its own first letter on
+        // a gradient. That state was meant for a word the index has never heard
+        // of, not for the several hundred we ship.
+        //
+        // These three cost nothing to assign: stage 02 already recorded whether
+        // it was searching for a thing, an action or a person, so the answer is
+        // sitting in queries.json. A box, a stride and a figure say much less
+        // than a photograph and much more than the letter A.
+        'kind-object':   'M12 3l7 4v10l-7 4-7-4V7zM12 12l7-4M12 12v9M12 12L5 8',
+        'kind-action':   'M13.5 3.2a2.1 2.1 0 0 1 0 4.2a2.1 2.1 0 0 1 0-4.2M13.2 8.4L10.6 13l3.6 2.2.6 5.4M10.6 13l-4.2 1.6L5 19M12.4 10l4.4 1.6M11.4 10.7L7.6 9.2',
+        'kind-role':     'M12 6a3 3 0 0 1 0 6a3 3 0 0 1 0-6M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5'
     };
+
+    /**
+     * The three above, kept out of the concept vocabulary.
+     *
+     * 02b-iconmap.mjs asks the model to choose from ICON_IDS and drops anything
+     * outside it. If these were in that list the model would start answering
+     * "kind-object" for abstract words - a worse answer than any of the 56, and
+     * indistinguishable in the index from a word that genuinely fell back to it.
+     */
+    const KIND_IDS = ['kind-object', 'kind-action', 'kind-role'];
 
     /** Base hue per bucket, so words in one family look related. */
     const BUCKET_HUE = {
@@ -136,7 +163,11 @@
         'order': 212, 'chaos': 320, 'law': 240, 'restriction': 256, 'freedom': 188,
         'power': 52, 'weakness': 300,
         'beauty': 330, 'ugliness': 88, 'purity': 192, 'corruption': 76,
-        'difficulty': 16, 'ease': 165, 'uniqueness': 282, 'formality': 218
+        'difficulty': 16, 'ease': 165, 'uniqueness': 282, 'formality': 218,
+        // Deliberately flat and cool. These three stand in for "we could not
+        // find you a photograph", and a word wearing one should not look like
+        // it was given a concept somebody chose for it.
+        'kind-object': 210, 'kind-action': 200, 'kind-role': 220
     };
 
     /** Hue for a word with no bucket at all (custom datasets). */
@@ -265,7 +296,10 @@
     }
 
     return {
-        GLYPH, BUCKET_HUE, GENERIC_HUE, ICON_IDS: Object.keys(GLYPH),
+        GLYPH, BUCKET_HUE, GENERIC_HUE, KIND_IDS,
+        // The concept vocabulary only - the three kind glyphs are a fallback
+        // the pipeline assigns, never something the model is asked to pick.
+        ICON_IDS: Object.keys(GLYPH).filter(id => KIND_IDS.indexOf(id) < 0),
         drawGlyph, slugFor, parseIndex, visualFor, altFor
     };
 });
