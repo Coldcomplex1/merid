@@ -22,3 +22,10 @@ ui-debug.log
 
 # Extension build artifact (rebuilt by merid-extension-final `npm run build`)
 dist.zip
+
+# Visual-vocabulary pipeline working files. Everything here is regenerable from
+# the CSVs plus the APIs, except decisions.json - the record of which candidate
+# a human picked for each word, which is the one thing in the pipeline that
+# cannot be recomputed and IS committed.
+scripts/visual/state/*
+!scripts/visual/state/decisions.json

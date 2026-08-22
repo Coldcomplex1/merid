@@ -79,6 +79,52 @@ async function loadVocabulary(datasetKey) {
     return vocabulary;
 }
 
+// =============================================================
+// Visual index (bundled JSON - local only)
+//
+// Which entries have a bundled picture, and which concept glyph the rest wear.
+// Read here rather than in every content script for the same reason the
+// vocabulary is: one parse serves every tab, and a woken worker rehydrates
+// from storage instead of re-reading the file.
+//
+// Only the index passes through here. The images themselves never do - a
+// content script builds `chrome.runtime.getURL('vis/<slug>.avif')` and lets the
+// browser fetch it off disk. Routing bytes through the worker would be slower
+// and, in MV3, impossible to finish: URL.createObjectURL does not exist in a
+// service worker, and a blob URL made anywhere else is locked to the origin
+// that made it.
+// =============================================================
+// Bumped when the index format changes, so a cached copy written by an older
+// build is re-read rather than trusted.
+const VISUAL_INDEX_VERSION = 1;
+const VISUAL_INDEX_KEY = 'vm_visual_index';
+let visualIndex = null;
+
+async function loadVisualIndex() {
+    if (visualIndex) return visualIndex;
+    try {
+        const cached = await chrome.storage.local.get([VISUAL_INDEX_KEY]);
+        const hit = cached[VISUAL_INDEX_KEY];
+        if (hit && typeof hit === 'object' && hit.v === VISUAL_INDEX_VERSION) {
+            visualIndex = hit;
+            return visualIndex;
+        }
+    } catch (e) { /* unreadable cache is a slow path, not a failure */ }
+
+    try {
+        const resp = await fetch(chrome.runtime.getURL('visual-index.json'));
+        visualIndex = await resp.json();
+    } catch (e) {
+        // No index shipped yet (it arrives with the artwork, on its own
+        // schedule) or the file is unreadable. An empty index is a valid
+        // answer: every entry falls through to a generated glyph.
+        visualIndex = { v: VISUAL_INDEX_VERSION, fmt: 'avif', photo: [], icon: {} };
+    }
+    try { await chrome.storage.local.set({ [VISUAL_INDEX_KEY]: visualIndex }); } catch (e) { /* quota */ }
+    return visualIndex;
+}
+
+
 function initVocabulary() {
     return new Promise(resolve => {
         chrome.storage.sync.get(['datasetKey'], async result => {
@@ -965,6 +1011,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return false;
         }
 
+        // The content script asks once per page, in parallel with getVocabulary.
+        case 'getVisualIndex': {
+            loadVisualIndex().then(index => sendResponse({ index }));
+            return true;
+        }
+
         case 'getSettings': {
             chrome.storage.sync.get(
                 // aiCheckEnabled matters to the content script now: it decides
@@ -973,7 +1025,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 // a reader who switched the check off still got the spares and
                 // nothing ever came back to remove them.
                 ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled',
-                    'datasetKey', 'disabledSites', 'allowedSites', 'aiCheckEnabled', 'cardTheme'],
+                    'datasetKey', 'disabledSites', 'allowedSites', 'aiCheckEnabled', 'cardTheme',
+                    // visualsEnabled is read by the content script when it draws
+                    // the card. Leaving a key out of this list is not a missing
+                    // feature, it is a setting that silently ignores the reader:
+                    // withDefaults fills the gap with the default, so the toggle
+                    // appears to work in the open tab (storage.onChanged updates
+                    // it live) and comes back on in the next one.
+                    'visualsEnabled'],
                 settings => sendResponse(C.withDefaults(settings)));
             return true;
         }

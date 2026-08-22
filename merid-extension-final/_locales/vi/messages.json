@@ -367,6 +367,12 @@
   "optDirectionHint": {
     "message": "Bật cả hai để quét tiếng Việt và tiếng Anh cùng lúc."
   },
+  "optVisualsLabel": {
+    "message": "Hình ảnh trên thẻ"
+  },
+  "optVisualsHint": {
+    "message": "Ảnh cho những từ có thể hình dung, ký hiệu cho những từ không. Mọi hình ảnh đều đi kèm sẵn trong Merid, nên không tải gì về và không gửi gì đi."
+  },
   "optMyDatasetsTitle": {
     "message": "Bộ từ của tôi"
   },
@@ -982,5 +988,37 @@
   },
   "optDeleteAllConfirm": {
     "message": "Xóa TOÀN BỘ dữ liệu đã lưu (cài đặt + bộ thẻ của bạn)? Không thể hoàn tác."
+  },
+  "popupVisualsLabel": {
+    "message": "Ảnh trên thẻ"
+  },
+  "popupOn": {
+    "message": "Bật"
+  },
+  "popupOff": {
+    "message": "Tắt"
+  },
+  "optCreditsTitle": {
+    "message": "Ảnh lấy từ đâu"
+  },
+  "optCreditsIntro": {
+    "message": "Mọi ảnh trên thẻ từ vựng đều nằm sẵn trong Merid, không tải về lúc bạn đọc. Tất cả đến từ kho ảnh công khai, với giấy phép cho phép phân phối lại."
+  },
+  "optCreditsCount": {
+    "message": "$N$ ảnh",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "optCreditsShowAll": {
+    "message": "Xem danh sách từng ảnh"
+  },
+  "optCreditsHideAll": {
+    "message": "Ẩn danh sách"
+  },
+  "optCreditsUnknownAuthor": {
+    "message": "không ghi tác giả"
   }
 }

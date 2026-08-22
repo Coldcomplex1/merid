@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.0 — 2026-08-22
+
+**A picture on the learning card, and a card that stays on the screen.**
+
+- Hovering a word now shows a picture beside its meaning. Words you can point a camera at get a photograph; the rest — the adjectives, the states, the words for ideas — get a symbol for what they are about, on a colour of their own. Every word gets one or the other, so the card never looks half-finished.
+- The pictures come with Merid rather than from the web. Nothing is downloaded while you read, nothing is requested from anyone, and the pictures work on sites that block outside images and on a plane with no signal. Merid still makes no network request of its own.
+- A word with two meanings gets two pictures. "Delegate" is a person in one dataset and an act in another, and each one is illustrated as what it actually means rather than sharing whichever picture came first.
+- Turn it off from the toolbar popup, or in Settings under Replacement. The words on the page do not move when you do — only the card changes.
+- Settings lists where every picture came from, under "Where the pictures come from": the archive, the photographer where one is named, and the licence. None of the licences require it. It is there because these pictures travel inside Merid rather than being fetched from someone else's server, and a picture whose origin cannot be stated is one that should not have shipped.
+- On a narrow window the picture goes back above the meaning, where there is room for it.
+- A long card no longer runs off the bottom of a short window. It now stops at the edge of the screen and scrolls inside itself, so the buttons stay where you can reach them. Before this, anything past the bottom of the window was unreachable: scrolling down to read it moved the pointer off the word and closed the card.
+
 ## 1.6.6 — 2026-08-20
 
 **Five fixes: a lost "I know this", lower-case words where a capital belongs, a badge in the way, and a badge that could stop words appearing at all.**

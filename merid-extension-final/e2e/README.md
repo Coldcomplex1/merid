@@ -26,12 +26,21 @@ node e2e/resilience.mjs       # model fallback on 429, review resurfacing, level
 node e2e/hosted.mjs           # Merid-hosted AI: identity, quota, personal-key priority
 node e2e/private-pages.mjs    # DMs on Facebook/Instagram: blocked by path, feed still scanned
 node e2e/onboarding.mjs       # first-run wizard: four steps, both ways in, and what it saves
+node e2e/visual.mjs           # card artwork: strict-CSP pages, hostile resets, the off switch
 ```
 
 Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.
 Each script prints a pass/fail list and exits non-zero on failure.
 
 ## Traps worth knowing before editing these
+
+- **`e2e/visual.mjs` draws its own pictures if `vis/` is empty, and deletes
+  them afterwards.** Real artwork is produced by the dataset pipeline and
+  committed; the placeholders this script generates are not, because a
+  checked-in gradient claiming to illustrate "abolish" is worse than no picture.
+  It encodes them with a throwaway Chromium (canvas -> `toDataURL('image/webp')`)
+  because nothing in this repo encodes images. If you interrupt the script
+  mid-run, delete any leftover `vis/` and `visual-index.json` by hand.
 
 - **Setting `datasetKey` in `chrome.storage.sync` does not switch the
   dataset.** The worker caches the parsed vocabulary and rebuilds it only via
@@ -53,6 +62,11 @@ Each script prints a pass/fail list and exits non-zero on failure.
   `chrome.runtime.getURL`. A blanket stub swallows those too, leaving an empty
   vocabulary, zero replacements, and assertions that pass vacuously because
   there is nothing on the page to be wrong about.
+
+  The same stub now also swallows `visual-index.json`, which the worker fetches
+  the same way. That failure is quieter: the index comes back empty, every word
+  falls through to a generated glyph, and a test asserting "the card has some
+  artwork" passes without a single bundled picture having been loaded.
 
 - **Feedback is batched, not immediate.** The content script queues interaction
   events and flushes after 4s (explicit ratings flush at once). A test that
