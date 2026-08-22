@@ -63,16 +63,26 @@ function slugForWord(word) {
  * WebP bytes, and nothing in this repo encodes images.
  */
 async function makeFixtures() {
-    const index = fs.existsSync(INDEX_FILE)
-        ? JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'))
+    // One read, used twice. This asked existsSync and then read, twice over the
+    // same file - so the index could be written between the question and the
+    // answer, and again between the two reads, leaving `originalIndex` holding
+    // something the cleanup would later restore over the top of a newer file.
+    let originalIndex = null;
+    try { originalIndex = fs.readFileSync(INDEX_FILE, 'utf8'); } catch (e) { /* none yet */ }
+    const index = originalIndex !== null
+        ? JSON.parse(originalIndex)
         : { v: 1, fmt: 'webp', dim: [320, 160], photo: [], icon: {} };
-    const originalIndex = fs.existsSync(INDEX_FILE)
-        ? fs.readFileSync(INDEX_FILE, 'utf8') : null;
 
     const have = new Set(index.photo || []);
     const wanted = NEEDS_PHOTO.map(slugForWord).filter(Boolean);
+    // Named by the index but absent from disk counts as missing too - the two
+    // can disagree. Opened rather than asked about: the answer to "can I read
+    // this" is the same syscall as the reason for asking.
+    const onDisk = f => {
+        try { fs.readFileSync(f); return true; } catch (e) { return false; }
+    };
     const missing = wanted.filter(slug =>
-        !have.has(slug) || !fs.existsSync(path.join(VIS_DIR, slug + '.' + (index.fmt || 'webp'))));
+        !have.has(slug) || !onDisk(path.join(VIS_DIR, slug + '.' + (index.fmt || 'webp'))));
     if (!missing.length) return { made: [], originalIndex: null, madeDir: false };
 
     // mkdirSync with recursive returns the first directory it created, or
@@ -130,10 +140,10 @@ function cleanUpFixtures() {
 }
 process.on('exit', cleanUpFixtures);
 
-const PHOTO_SLUGS = new Set(
-    fs.existsSync(INDEX_FILE)
-        ? (JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8')).photo || [])
-        : []);
+const PHOTO_SLUGS = new Set((() => {
+    try { return JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8')).photo || []; }
+    catch (e) { return []; }
+})());
 /** Does this headword have a bundled picture, according to the shipped index? */
 function hasPhoto(word) {
     const rows = C.parseCSV(fs.readFileSync(path.join(EXT, 'dataset-C1.csv'), 'utf8'))
