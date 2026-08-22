@@ -1,0 +1,26 @@
+{
+  "generated": "2026-08-19",
+  "datasets": [
+    {
+      "id": "c1",
+      "tag": "C1",
+      "label": "C1",
+      "file": "c1.json",
+      "count": 1379
+    },
+    {
+      "id": "c2",
+      "tag": "C2",
+      "label": "C2",
+      "file": "c2.json",
+      "count": 978
+    },
+    {
+      "id": "sat",
+      "tag": "SAT",
+      "label": "SAT",
+      "file": "sat.json",
+      "count": 989
+    }
+  ]
+}

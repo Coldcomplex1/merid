@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.0 — 2026-08-19
+## 1.7.0 — 2026-08-22
 
 **A picture on the learning card, and a card that stays on the screen.**
 
@@ -12,14 +12,16 @@
 - On a narrow window the picture goes back above the meaning, where there is room for it.
 - A long card no longer runs off the bottom of a short window. It now stops at the edge of the screen and scrolls inside itself, so the buttons stay where you can reach them. Before this, anything past the bottom of the window was unreachable: scrolling down to read it moved the pointer off the word and closed the card.
 
-## 1.6.6 — 2026-08-16
+## 1.6.6 — 2026-08-20
 
-**Three fixes: a lost "I know this", lower-case words in headlines, and a badge in the way.**
+**Five fixes: a lost "I know this", lower-case words where a capital belongs, a badge in the way, and a badge that could stop words appearing at all.**
 
 - Marking a word "Đã thuộc" in your deck sticks. Signing in on a device cleared that device's record of what it had already sent, after which the extension re-introduced every word it knew and stamped its own "still learning" over marks made on the site — so a deck marked up on merid.site came back untouched at the next sign-in. The extension now only sends a saved/known state when it is the thing that changed it.
 - A word standing where a capitalised one stood is capitalised too: "Khó" gives "Difficult" and a headline's "KHÓ KHĂN" gives "DIFFICULT", instead of a lower-case word announcing itself as a substitution. Vietnamese tone marks survive the change.
+- A word standing at the front of a sentence takes the sentence's capital, even where the writer left the Vietnamese without one — which is how most of a feed and nearly every comment is written. Reading the case off the Vietnamese only carries as far as the writer's own capital, so where there was none the swapped word opened the sentence on a small letter and gave itself away, which is the very thing the capital was added to stop. A word after a full stop, a question or exclamation mark, or at the start of a paragraph, heading or list item now takes it regardless. A word inside a sentence is untouched, and in "từ (word)" mode the Vietnamese still leads and still keeps its own case.
 - A card in the deck turns back to the word when you mark it known. The tick lives on the meaning side, so pressing it used to leave the card face-down on its own definition — a grid of them stopped reading as a deck of words.
 - The reading badge sits bottom-left instead of bottom-right, out from under Facebook's new-message button and the chat bubbles, back-to-top arrows and support widgets that live in that corner. You can drag it anywhere, and it stays where you drop it on every site.
+- Merid keeps working on a page where the reading badge cannot be set up. Most often that is a second copy of Merid installed alongside this one: both reach for the same badge, the second one fails to claim it, and because the badge is set up in the middle of the reading check it took the check down with it — no word was ever cleared to appear, and Merid looked switched off. The badge now shares the one already on the page, and nothing that goes wrong with it can stop a page being read.
 
 ## 1.6.5 — 2026-08-16
 

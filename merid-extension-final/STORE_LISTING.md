@@ -8,12 +8,14 @@ wish. Assets to upload are in [`store-assets/`](store-assets) and the icons are
 design pack in [`../brand/`](../brand).
 
 > **Accuracy note (important):** this copy matches what the extension actually
-> does in v1.6.2: matching/replacement is local, and there are exactly two
-> **optional, off-by-default** network features - deck sync after the user signs
-> in, and the AI context check using the user's own Gemini API key. If you change
-> either feature, update this file, `PRIVACY.md`, and the data-safety answers
-> together. Review compares your declarations against observed traffic;
-> a mismatch is a common takedown reason.
+> does in v1.6.6: matching/replacement is local; the **AI context check is ON by
+> default** and sends short sentence fragments to `merid.site/api/check`, which
+> calls Qwen (Alibaba Cloud Model Studio) first and Google Gemini as a fallback
+> on Merid's own keys; and deck sync stays **optional and off** until the user
+> signs in. If you change any of that, update this file, `PRIVACY.md`,
+> <https://merid.site/privacy-policy>, and the data-safety answers together.
+> Review compares your declarations against observed traffic; a mismatch is a
+> common takedown reason.
 
 ---
 
@@ -30,7 +32,7 @@ design pack in [`../brand/`](../brand).
 | **Marquee promo** | `store-assets/marquee-1400x560.png` (1400×560) |
 | **Homepage** | https://merid.site |
 | **Support** | add a support email + https://merid.site (required for a trustworthy listing) |
-| **Privacy policy** | public URL hosting [`PRIVACY.md`](PRIVACY.md) (see §6) |
+| **Privacy policy** | <https://merid.site/privacy-policy> (see §6) |
 
 ---
 
@@ -64,15 +66,19 @@ TÍNH NĂNG
 • Bật/tắt tức thì - toàn bộ, hoặc chỉ riêng một trang web ("Tắt trên trang này").
 • Khôi phục trang về nguyên bản chỉ với một nhấp.
 
+AI KIỂM TRA NGỮ CẢNH (bật sẵn - tắt được bất cứ lúc nào)
+• Trước khi hiện một từ đã thay, Merid hỏi một mô hình AI xem từ đó có hợp câu không; từ không hợp sẽ không được hiện ra.
+• Khi bật, mỗi từ được kiểm tra sẽ gửi đi: từ tiếng Anh, từ tiếng Việt bị thay, và tối đa 180 ký tự câu chứa nó. Không gửi địa chỉ trang, tiêu đề trang hay lịch sử duyệt web.
+• Bạn không cần API key: Merid tự lo khóa và hạn mức. Tắt trong Cài đặt là không còn gì được gửi đi.
+
 TÙY CHỌN (mặc định TẮT - không bắt buộc)
 • Đồng bộ bộ thẻ: đăng nhập (trên merid.site hoặc trong Cài đặt) để sao lưu các từ đã lưu vào tài khoản của riêng bạn và ôn tập tại merid.site/my-deck.
-• AI kiểm tra ngữ cảnh: dùng API key Gemini miễn phí CỦA BẠN để kiểm tra từng từ đã thay có hợp với câu không; từ không hợp tự đổi lại như cũ. Khi bật, chỉ một đoạn câu ngắn quanh từ đã thay được gửi tới Google Gemini.
 
 RIÊNG TƯ
-• Việc quét và thay từ diễn ra trong trình duyệt của bạn; Merid không có máy chủ riêng.
-• Không đăng nhập, không API key thì tiện ích không gửi bất cứ dữ liệu nào đi đâu.
-• Nội dung trang chỉ được gửi tới Google Gemini khi CHÍNH BẠN bật AI kiểm tra ngữ cảnh (và chỉ là đoạn câu ngắn quanh từ đã thay).
-• Chính sách đầy đủ: xem liên kết "Privacy policy" trong trang này.
+• Việc quét và thay từ diễn ra trong trình duyệt của bạn.
+• Merid không bao giờ đọc trang tin nhắn, email, ngân hàng, đăng nhập, y tế hay thi cử có giám sát.
+• Không quảng cáo, không theo dõi hành vi, không bán dữ liệu.
+• Chính sách đầy đủ: merid.site/privacy-policy, hoặc liên kết "Privacy policy" trong trang này.
 
 Bật tiện ích, chọn bộ từ, rồi mở một trang tiếng Việt bất kỳ (ví dụ vnexpress.net, tuoitre.vn) và bắt đầu học.
 ```
@@ -91,15 +97,19 @@ FEATURES
 • Instant on/off - globally, or per site ("Stop scanning this site").
 • Never touches private pages - messaging, email, banking, sign-in - and never touches direct messages on Facebook, Instagram, X, LinkedIn, TikTok or Reddit, while the feeds on those sites keep working.
 
+AI CONTEXT CHECK (ON by default - switch it off any time)
+• Before a replaced word appears, Merid asks an AI model whether it fits the sentence; a word that does not fit is never shown, so the text you are reading never changes under you.
+• While it is on, each checked word sends: the English word, the Vietnamese it replaced, and up to 180 characters of the sentence around it. No page address, no page title, no browsing history.
+• No API key needed - Merid supplies the keys and counts the allowance. Turn it off in Settings and nothing is sent at all.
+
 OPTIONAL (OFF by default - never required)
 • Deck sync: sign in (on merid.site or in Settings) to back up your saved words to your own account and study them at merid.site/my-deck.
-• AI context check: uses YOUR OWN free Gemini API key to verify each word fits its sentence BEFORE it appears - a word that does not fit is never shown, so the text you are reading never changes under you. When enabled, only a short snippet of the sentence around each candidate word is sent to Google Gemini.
 
 PRIVACY
-• Scanning and replacement happen in your browser; Merid runs no servers of its own.
-• With no sign-in and no API key, the extension sends nothing anywhere.
-• Page content only ever goes to Google Gemini when YOU enable the AI context check (and only short sentence snippets around the candidate words).
-• Full policy: see the Privacy policy link on this listing.
+• Scanning and replacement happen in your browser.
+• Merid never reads messaging, email, banking, sign-in, health or proctored-exam pages.
+• No ads, no behavioural tracking, no data sold.
+• Full policy: merid.site/privacy-policy, or the Privacy policy link on this listing.
 
 Turn it on, pick a dataset, then open any Vietnamese site (e.g. vnexpress.net, tuoitre.vn) and start learning.
 ```
@@ -109,7 +119,7 @@ Turn it on, pick a dataset, then open any Vietnamese site (e.g. vnexpress.net, t
 ## 4. Single purpose (required field)
 
 ```
-Merid replaces selected Vietnamese (or English) words on web pages with English vocabulary from the user's chosen dataset, so users learn English vocabulary while browsing. Matching and replacement run locally in the browser. Two optional, user-enabled features serve the same purpose: backing up the user's saved-word deck to their own account, and verifying candidate words with Google Gemini using the user's own API key.
+Merid replaces selected Vietnamese (or English) words on web pages with English vocabulary from the user's chosen dataset, so users learn English vocabulary while browsing. Matching and replacement run locally in the browser. Two further features serve the same single purpose: an AI context check, on by default, which sends the sentence fragment around each candidate word to Merid's own endpoint (and from there to a model provider) to confirm the word fits before it is shown; and an optional deck sync that backs up the user's saved words to their own account after they sign in.
 ```
 
 ---
@@ -120,7 +130,7 @@ Merid replaces selected Vietnamese (or English) words on web pages with English 
 |---|---|
 | `storage` | Saves the user's settings (dataset, display mode, intensity, scan direction, on/off, per-site pause list) and their word deck (saved/known words) on the device. If the user signs in to the optional deck sync, the session token is also kept in extension storage. |
 | `activeTab` | Powers the popup's current-tab actions: "Stop scanning this site" (reads the active tab's hostname to add/remove it from the user's pause list) and reloading that tab after the user changes the replacement intensity, so the new setting starts from a clean page. Used only when the user opens the popup, only for the active tab. |
-| Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. Page content leaves the browser only if the user enables the optional AI context check, which sends short sentence snippets around the candidate words to Google Gemini using the user's own API key. |
+| Host access (`content_scripts` on all sites) | The core feature is passive vocabulary replacement while the user browses, so the content script must run on the pages the user visits. Page text is matched locally against the bundled datasets. The only page content that leaves the browser is the AI context check's sentence fragments (up to 180 characters around each candidate word), sent to `merid.site/api/check` and on to a model provider so the replacement can be verified before it is shown; the check is on by default and can be switched off in Settings. Private categories (messaging, email, banking, sign-in, health, tax/identity, proctored exams) are never read at all. |
 
 There are **no** host permissions requested in `host_permissions`, no optional
 permissions, and no remote code (all scripts are bundled; MV3 CSP `script-src 'self'`).
@@ -142,48 +152,59 @@ Google sign-in later, and add a justification for it here when you do.
 
 ## 6. Privacy / data-use disclosures (Data safety form)
 
-Answer the dashboard's data-use questions as follows (accurate for v1.6.2):
+Answer the dashboard's data-use questions as follows (accurate for v1.6.6):
 
-- **Does this item collect or use user data?** Yes - but **only when the user opts
-  in**, and only the following:
+- **Does this item collect or use user data?** Yes - the following, and nothing
+  else:
+  - **Website content.** The AI context check is **on by default**. For each
+    checked word it transmits the English word, the Vietnamese it replaced, and
+    up to 180 characters of the surrounding sentence (max 20 words per request,
+    max 3 requests per page), plus a short aggregate summary of the user's own
+    ratings. These go to `merid.site/api/check`, which forwards them to a model
+    provider (Qwen / Alibaba Cloud Model Studio, with Google Gemini as fallback)
+    on Merid's keys. Fragments are not logged or stored by the extension or by
+    Merid's server, and are not used to train models. The user can switch the
+    check off in Settings, after which nothing is transmitted. Users with a
+    personal Gemini key saved send the same fragments straight to Google
+    instead.
+  - **Authentication information.** An anonymous Firebase account is created per
+    device so the daily allowance can be counted; its id and refresh token are
+    stored in extension storage. If the user signs in, that session replaces it.
+    A personal Gemini API key, if the user has one saved, is stored locally and -
+    only when signed in - backed up to the user's private Firestore document.
   - **Personally identifiable information - email address.** Collected only when
     the user signs in to the optional deck sync. Stored in the user's own
     Firebase Authentication/Firestore account. Used only to operate the user's
     account and show who is signed in.
-  - **Authentication information.** The sign-in session token, stored in
-    extension storage on the device; and, if the user provides one, their own
-    Gemini API key (stored locally, and - only when signed in - backed up to the
-    user's private Firestore document so the feature follows them across
-    devices).
-  - **Website content.** Only when the user enables the AI context check: short
-    text snippets (the sentence around each candidate word) are sent to Google's
-    Gemini API with the user's own key to verify the replacement fits. Snippets
-    are not stored by the extension.
-  - **User activity / browsing history / location / financial or health info:**
-    **not collected.** The extension never transmits URLs, history, or page
-    content beyond the opt-in snippets described above.
+  - **User activity.** Aggregate counts of how the user rated, saved or dismissed
+    vocabulary words, plus a coarse subject label derived from the page address
+    (for example `business`), kept on the device to personalize which words are
+    shown, and backed up to the user's own account when signed in. No page text,
+    titles or URLs are kept.
+  - **Browsing history / location / financial or health info:** **not
+    collected.** The extension never transmits URLs, page titles or history.
 - **Sold to third parties:** No.
 - **Transferred for purposes unrelated to the single purpose:** No.
 - **Used or transferred to determine creditworthiness / for lending:** No.
 - **Uses remote code:** No (all scripts are bundled; MV3 CSP `script-src 'self'`).
 - **Certify** the data-use practices comply with the Developer Program Policies.
 
-Privacy policy URL: host [`PRIVACY.md`](PRIVACY.md) at a public URL (e.g.
-https://merid.site/privacy or the repo's raw file) and paste that link into the
-listing's privacy field. The listing cannot be submitted without it.
+Privacy policy URL: <https://merid.site/privacy-policy> (the same policy, kept in
+step with [`PRIVACY.md`](PRIVACY.md)). Paste that link into the listing's privacy
+field; the listing cannot be submitted without it.
 
 ---
 
 ## 7. Notes for the reviewer (optional but helps)
 
 ```
-Merid's matching and replacement are fully local: page text is compared against vocabulary CSVs bundled in the package, and matched words are replaced in place. In its default state the extension makes no network requests - you can verify with DevTools → Network on any page.
+Merid's matching and replacement are fully local: page text is compared against vocabulary CSVs bundled in the package, and matched words are replaced in place.
 
-Exactly two OPTIONAL, off-by-default features use the network, both user-initiated:
-1) Deck sync - if the user signs in (email link/password in the options page, or on merid.site), their saved-word deck is backed up to their own Firebase account (identitytoolkit/securetoken/firestore.googleapis.com). Signing out stops it.
-2) AI context check - if the user pastes their OWN Google Gemini API key in the options page and turns the feature on, short sentence snippets around the candidate words are sent to generativelanguage.googleapis.com to verify each one fits the context. No key ships with the extension.
+Two features use the network:
+1) AI context check (ON by default, one toggle in Settings) - before a replaced word is shown, the extension POSTs to https://merid.site/api/check with the English word, the Vietnamese it replaced and up to 180 characters of the surrounding sentence (max 20 items per request, max 3 requests per page), authenticated with a Firebase ID token. That endpoint holds Merid's provider keys and counts a per-day request total per account id; it does not log or store the fragments. To have a token without forcing sign-up, the extension creates an anonymous Firebase account on first use. Answers are cached on the device for 30 days. A user who saves a personal Gemini key bypasses the endpoint entirely and calls generativelanguage.googleapis.com directly.
+2) Deck sync (OPTIONAL, off) - if the user signs in (email/password in the options page, or on merid.site), their saved-word deck and personalization profile are backed up to their own Firebase account (identitytoolkit/securetoken/firestore.googleapis.com). Signing out stops it.
 
-These four Google endpoints are the only hosts in the extension CSP. There is no Merid backend, no analytics, and no remote code. The content script runs on all sites because the product's single purpose is passive vocabulary replacement wherever the user browses; "Stop scanning this site" in the popup lets users exclude any site.
+merid.site plus those three Google endpoints are the only hosts in the extension CSP. There is no analytics and no remote code. The content script runs on all sites because the product's single purpose is passive vocabulary replacement wherever the user browses; private categories (messaging, email, banking, sign-in screens, password managers, health, tax/benefits/identity, proctored exams) are hard-excluded in lib/vocab-core.js and are never read, and "Turn off on this site" in the popup lets users exclude anything else.
 
 To test the core flow: load the extension, open the popup (choose e.g. the SAT dataset, mode "Replace"), then visit a Vietnamese news site such as vnexpress.net or tuoitre.vn. Highlighted English words appear in articles; hover one for the learning card.
 ```

@@ -135,8 +135,29 @@
             host.style.cssText = 'all:initial;position:static;';
             document.body.appendChild(host);
         }
-        if (!root) {
-            root = host.attachShadow({ mode: 'open' });
+        // The host may already be hosting a shadow tree this instance did not
+        // attach. A second copy of the extension in the same tab is what does
+        // it in the wild - content scripts share the page's DOM, so the second
+        // copy finds the first copy's host with its own `root` still null.
+        // attachShadow() throws on a host that already has a tree, and nothing
+        // caught it: the throw came out of set(), which is called from the
+        // middle of the scan and the middle of the AI check, and with the
+        // reveal deferred that left every held word hidden. Adopt the tree that
+        // is there instead.
+        //
+        // Reading the root off `host` rather than remembering it also settles a
+        // quieter one: a page that replaces document.body takes our host with
+        // it, and the badge was then driven through a shadow root belonging to
+        // an element no longer in the page.
+        try {
+            root = host.shadowRoot || host.attachShadow({ mode: 'open' });
+        } catch (e) {
+            // A tree that is there but closed: nothing to adopt and nothing to
+            // attach. No badge is a fair outcome; an exception is not.
+            console.warn('[Merid] status badge: no shadow root available', e);
+            return false;
+        }
+        if (!root.querySelector('.badge')) {
             const style = document.createElement('style');
             style.textContent = STYLE;
             root.appendChild(style);
@@ -237,8 +258,12 @@
         el.addEventListener('pointerup', onPointerUp);
         el.addEventListener('pointercancel', onPointerUp);
         el.addEventListener('lostpointercapture', onPointerUp);
-        window.addEventListener('resize', applyPlacement);
     }
+
+    // Once for the module, not once per badge. The badge can be built more than
+    // once over a page's life now - a page that replaces document.body gets a
+    // fresh one - and a listener added on each pass would accumulate.
+    window.addEventListener('resize', applyPlacement);
 
     function hide() {
         // Never out from under a finger. The badge is only up while a check is
@@ -288,5 +313,18 @@
         }
     }
 
-    global.MeridStatus = { set };
+    // set() is called from inside the scan and from inside the AI check, where
+    // an exception strands every word waiting on a verdict and the page reads
+    // as though the extension were switched off. content.js already promises a
+    // status indicator can never stop a page being read; that has to hold for a
+    // badge that fails as well as one that never loaded.
+    global.MeridStatus = {
+        set: function (next) {
+            try {
+                set(next);
+            } catch (e) {
+                console.warn('[Merid] status badge:', e);
+            }
+        }
+    };
 })(typeof window !== 'undefined' ? window : globalThis);

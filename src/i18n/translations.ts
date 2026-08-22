@@ -75,10 +75,44 @@ export interface Strings {
       needFour: string
       toggle: (word: string) => string
     }
+    /** The Explore tab: browsing the shipped word lists. */
+    explore: {
+      subtitle: string
+      allDatasets: string
+      /** Pill label, e.g. "C1 · 1379". */
+      datasetCount: (label: string, n: number) => string
+      search: string
+      loading: string
+      loadError: string
+      retry: string
+      noMatches: string
+      showing: (shown: number, total: number) => string
+      showMore: string
+      save: string
+      saving: string
+      add: (word: string) => string
+      inDeck: string
+      known: string
+      /** Four shipped headwords cannot be a Firestore doc id (`e.g.`, `façade`). */
+      cannotSave: string
+      limitReached: (limit: number) => string
+      saveFailed: string
+      /** Button on the empty-deck card that opens this tab. */
+      browseLists: string
+      example: string
+      synonyms: string
+      antonyms: string
+      /** Card faces. Not deck.library.flip - that one reads "see the meaning
+       *  of", and an Explore card already carries the meaning on its front. */
+      flip: (word: string) => string
+      flipBack: (word: string) => string
+      /** The A-Z rail beside the grid. */
+      letters: string
+      allLetters: string
+      jumpTo: (letter: string) => string
+    }
     /** The Library tab: the word grid and the controls above it. */
     library: {
-      soon: string
-      exploreSoon: string
       collections: string
       newCollection: string
       noCollections: string
@@ -413,7 +447,7 @@ const vi: Strings = {
     apiKeyGuideDescription:
       'Cách lấy API key Gemini miễn phí từ Google AI Studio và dán vào Merid để bật AI Context Check, tính năng tự đổi lại những từ không hợp với câu.',
     privacyPolicyDescription:
-      'Merid thay từ ngay trên máy bạn và không gửi nội dung trang web lên máy chủ. Trang này nói rõ dữ liệu nào được lưu, lưu ở đâu và bạn kiểm soát thế nào.',
+      'Merid tìm và thay từ ngay trên máy bạn; chỉ đoạn câu quanh từ đã thay được gửi đi để kiểm tra ngữ cảnh. Trang này nói rõ dữ liệu nào được lưu, lưu ở đâu và bạn kiểm soát thế nào.',
   },
   theme: {
     toDark: 'Chuyển sang chế độ tối',
@@ -466,9 +500,37 @@ const vi: Strings = {
       needFour: 'Cần ít nhất 4 từ để tạo một bộ puzzle.',
       toggle: (word: string) => `Chọn từ ${word}`,
     },
+    explore: {
+      subtitle: 'Duyệt toàn bộ kho từ vựng của Merid và thêm từ vào deck của bạn.',
+      allDatasets: 'Tất cả',
+      datasetCount: (label: string, n: number) => `${label} · ${n}`,
+      search: 'Tìm từ, nghĩa tiếng Việt…',
+      loading: 'Đang tải danh sách từ…',
+      loadError: 'Không tải được danh sách từ.',
+      retry: 'Thử lại',
+      noMatches: 'Không tìm thấy từ nào phù hợp.',
+      showing: (shown: number, total: number) => `Đang hiện ${shown} / ${total} từ`,
+      showMore: 'Xem thêm',
+      save: 'Lưu',
+      saving: 'Đang lưu…',
+      add: (word: string) => `Thêm “${word}” vào deck`,
+      inDeck: 'Đã có trong deck',
+      known: 'Đã thuộc',
+      cannotSave: 'Từ này chưa thể lưu vào deck.',
+      limitReached: (limit: number) =>
+        `Bạn đã đạt giới hạn ${limit} từ mỗi ngày. Hãy quay lại vào ngày mai.`,
+      saveFailed: 'Không lưu được từ này. Vui lòng thử lại.',
+      browseLists: 'Duyệt danh sách từ',
+      example: 'Ví dụ',
+      synonyms: 'Đồng nghĩa',
+      antonyms: 'Trái nghĩa',
+      flip: (word: string) => `Xem ví dụ của “${word}”`,
+      flipBack: (word: string) => `Quay lại mặt trước của “${word}”`,
+      letters: 'Lọc theo chữ cái',
+      allLetters: 'Tất cả chữ cái',
+      jumpTo: (letter: string) => `Các từ bắt đầu bằng ${letter}`,
+    },
     library: {
-      soon: 'Sắp có',
-      exploreSoon: 'Duyệt toàn bộ danh sách từ sẽ sớm ra mắt.',
       collections: 'Bộ sưu tập của tôi',
       newCollection: 'Tạo bộ mới',
       noCollections:
@@ -550,7 +612,8 @@ const vi: Strings = {
     sub: 'Học từ vựng tiếng Anh một cách tự nhiên ngay khi đọc những trang web tiếng Việt bạn vẫn dùng mỗi ngày.',
     ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
-    privacy: 'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn, không cần tài khoản và không gửi dữ liệu trang web lên máy chủ.',
+    privacy:
+      'Riêng tư từ trong thiết kế. Merid tìm và thay từ ngay trên máy bạn, không cần tài khoản; chỉ đoạn câu quanh từ đã thay được gửi đi để kiểm tra ngữ cảnh, và bạn tắt được bất cứ lúc nào.',
     tagNote: 'Học theo ngữ cảnh · Miễn phí',
     scrollCue: 'Cuộn xuống thử demo trực tiếp',
   },
@@ -703,7 +766,7 @@ const vi: Strings = {
     ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
     privacy:
-      'Riêng tư từ trong thiết kế. Merid chạy ngay trên máy bạn: không tài khoản, không dịch vụ AI, không gửi dữ liệu trang web lên máy chủ.',
+      'Riêng tư từ trong thiết kế: không cần tài khoản, không quảng cáo, không theo dõi. Merid thay từ ngay trên máy bạn, và không bao giờ đọc tin nhắn, email hay trang ngân hàng của bạn.',
   },
   footer: {
     tagline: 'Làm cho người Việt học tiếng Anh.',
@@ -1117,7 +1180,7 @@ const en: Strings = {
     apiKeyGuideDescription:
       'How to create a free Gemini API key in Google AI Studio and paste it into Merid to turn on AI Context Check, which reverts replaced words that do not fit the sentence.',
     privacyPolicyDescription:
-      'Merid replaces words on your own device and never sends webpage content to a server. This page sets out exactly what is stored, where it lives, and what you control.',
+      'Merid matches and replaces words on your own device; only the sentence around a replaced word leaves it, for the AI context check. This page sets out what is stored, where it lives, and what you control.',
   },
   theme: {
     toDark: 'Switch to dark mode',
@@ -1170,9 +1233,37 @@ const en: Strings = {
       needFour: 'Pick at least 4 words to make a puzzle set.',
       toggle: (word: string) => `Select ${word}`,
     },
+    explore: {
+      subtitle: 'Browse every word Merid teaches and add what you want to your deck.',
+      allDatasets: 'All',
+      datasetCount: (label: string, n: number) => `${label} · ${n}`,
+      search: 'Search words, meanings…',
+      loading: 'Loading the word list…',
+      loadError: 'Could not load the word list.',
+      retry: 'Try again',
+      noMatches: 'No words match your search.',
+      showing: (shown: number, total: number) => `Showing ${shown} of ${total} words`,
+      showMore: 'Show more',
+      save: 'Save',
+      saving: 'Saving…',
+      add: (word: string) => `Add “${word}” to your deck`,
+      inDeck: 'In your deck',
+      known: 'Known',
+      cannotSave: 'This word cannot be saved to a deck.',
+      limitReached: (limit: number) =>
+        `You have hit the limit of ${limit} words a day. Come back tomorrow.`,
+      saveFailed: 'Could not save that word. Please try again.',
+      browseLists: 'Browse the word lists',
+      example: 'Example',
+      synonyms: 'Synonyms',
+      antonyms: 'Antonyms',
+      flip: (word: string) => `See the example for “${word}”`,
+      flipBack: (word: string) => `Back to the front of “${word}”`,
+      letters: 'Filter by letter',
+      allLetters: 'All letters',
+      jumpTo: (letter: string) => `Words starting with ${letter}`,
+    },
     library: {
-      soon: 'Soon',
-      exploreSoon: 'Browsing the full word lists is coming soon.',
       collections: 'My collections',
       newCollection: 'New collection',
       noCollections:
@@ -1254,7 +1345,8 @@ const en: Strings = {
     sub: 'Learn English vocabulary naturally while reading the Vietnamese websites you already use.',
     ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
-    privacy: 'Private by design. It runs locally on your device, with no account and no webpage data sent to a server.',
+    privacy:
+      'Private by design. It matches and replaces words locally on your device, with no account needed; only the sentence around a replaced word is sent out for the context check, which you can switch off.',
     tagNote: 'Context-aware learning · Free',
     scrollCue: 'Scroll down to try the live demo',
   },
@@ -1407,7 +1499,7 @@ const en: Strings = {
     ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
     privacy:
-      'Private by design. Merid works locally on your device: no account, no AI service, and no webpage data sent to a server.',
+      'Private by design: no account needed, no ads, no tracking. Merid replaces words on your own device, and never reads your messages, your email or your banking pages.',
   },
   footer: {
     tagline: 'Made for Vietnamese learners.',

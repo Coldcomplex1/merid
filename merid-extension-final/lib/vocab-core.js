@@ -853,6 +853,32 @@
         return !!token && /[\wÀ-ỹ]/.test(token);
     }
 
+    // Quotes and brackets a writer may open a sentence with: they sit between
+    // the full stop and the word without being either of them.
+    const SENTENCE_LEAD_IN = /[\s"'“”‘’«»()\[\]]+$/u;
+
+    /**
+     * Does a word open a sentence, given the text running up to it?
+     *
+     * `before` is everything before the word inside its own block; empty means
+     * the word opens the block, which is a sentence start by definition.
+     *
+     * Only `. ! ? …` end a sentence here. A colon, a semicolon or a bare
+     * opening bracket must not, or "văn hóa (khó" comes back as "văn hóa
+     * (Difficult"; and a date like "Ngày 20.8 khó" is left alone because what
+     * precedes the space is a digit, not a stop.
+     *
+     * Deliberately not `isSentenceStart` below. That one answers a different
+     * question for `bareSyllableIsSafe` and counts ':', ';' and quotes as
+     * boundaries - right for "does this capital mean something", wrong for
+     * "does this word carry the sentence's capital".
+     */
+    function opensSentence(before) {
+        const lead = String(before || '').replace(SENTENCE_LEAD_IN, '');
+        if (!lead) return true;
+        return /[.!?…]$/.test(lead);
+    }
+
     // ---------------------------------------------------------------------
     // Vocabulary map + phrase matching
     // ---------------------------------------------------------------------
@@ -1401,6 +1427,20 @@ function matchCase(source, replacement) {
     return out;
 }
 
+/**
+ * Capitalise the first letter and leave the rest of the word alone.
+ *
+ * The positional half of the rule `matchCase` covers by copying: a word that
+ * stands at the front of a sentence is capitalised even where the writer left
+ * the Vietnamese it replaced in lower case, which is how much of an informal
+ * feed is written. A word already shouting comes back unchanged, and
+ * toUpperCase() keeps Vietnamese tone marks - "ở" -> "Ở", never "O".
+ */
+function capitalizeFirst(text) {
+    const out = String(text || '');
+    return out ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+}
+
     return {
         // datasets/settings
         DATASET_REGISTRY, DEFAULT_DATASET_KEY, getDatasetFiles, datasetTagFor,
@@ -1417,6 +1457,7 @@ function matchCase(source, replacement) {
         LONG_POST_WORDS_PER_EXTRA, LONG_POST_FROM,
         // text
         normalizeKey, stripDiacritics, escapeRegExp, escapeHtml, tokenize, isWordToken,
+        opensSentence,
         // matching
         buildVocabMap, findMatch,
         MAX_PHRASE_WORDS, SEED_COMPOUND_BIGRAMS, phraseWindowSizes, bareSyllableIsSafe,
@@ -1425,7 +1466,7 @@ function matchCase(source, replacement) {
         // csv
         splitCsvLine, parseCSV, validateEntry, normalizeEntry,
         // display
-        matchCase,
+        matchCase, capitalizeFirst,
         // custom datasets
         CUSTOM_KEY_PREFIX, CUSTOM_LIMITS, CUSTOM_REQUIRED_COLUMNS, CUSTOM_KNOWN_COLUMNS,
         isCustomKey, customIdFromKey, customKeyFor,
