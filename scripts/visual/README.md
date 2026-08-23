@@ -207,6 +207,14 @@ printed to run by reflex.
 `state/auto-accepted.json` lists what shipped on the strength of that statistic
 rather than a person, so a later pass can go straight to it.
 
+**ship.mjs** — the six commands between "the artwork is on my disk" and "the
+artwork is on GitHub", as one. Discards the `package.json` edit that `npm i -D
+sharp` leaves behind and that blocks every pull, pulls with `--no-edit` so no
+editor opens, asks stage 06 what cutoff the reviewing supports rather than
+making you copy the number out of the last run, builds at that cutoff, and
+pushes only if `npm test` and `npm run build` both pass. It stops at the first
+failure and says what to do about it.
+
 There is no stage 07. Verification lives in
 `merid-extension-final/test/visual-index.test.js`, which runs under `npm test`
 and therefore in CI — a check that has to be remembered is not a check.

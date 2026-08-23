@@ -380,6 +380,23 @@ Rồi tự mắt kiểm:
 
 ## 7. Đẩy kết quả lên
 
+### Một lệnh làm hết
+
+```bash
+node scripts/visual/ship.mjs
+```
+
+Nó làm đúng những việc dưới đây, theo thứ tự, và **dừng ngay ở chỗ đầu tiên
+hỏng** kèm hướng dẫn: bỏ thay đổi `package.json` do `npm i -D sharp` (thứ chặn
+mọi lần pull), `git pull --no-edit` (không mở editor nào), hỏi bước 06 xem mẫu
+duyệt cho phép ngưỡng bao nhiêu rồi build đúng ngưỡng đó, chạy `npm test` và
+`npm run build`, **chỉ push khi cả hai xanh**.
+
+`--dry-run` để xem nó sẽ làm gì mà không commit.
+
+Muốn tự làm từng bước thì đây:
+
+
 ```bash
 cd ..
 git add merid-extension-final/vis merid-extension-final/visual-index.json \
