@@ -383,8 +383,15 @@ Rồi tự mắt kiểm:
 ### Một lệnh làm hết
 
 ```bash
+git checkout -- package.json package-lock.json
+git pull --no-edit
 node scripts/visual/ship.mjs
 ```
+
+**Hai dòng đầu phải chạy tay, đúng thứ tự đó.** `ship.mjs` biết cách bỏ thay đổi
+`package.json` do `npm i -D sharp` để lại — nhưng nó chỉ đến máy bạn qua `git
+pull`, mà pull thì đang bị chính file đó chặn. Con gà và quả trứng. Sau lần đầu
+thì chỉ cần dòng thứ ba.
 
 Nó làm đúng những việc dưới đây, theo thứ tự, và **dừng ngay ở chỗ đầu tiên
 hỏng** kèm hướng dẫn: bỏ thay đổi `package.json` do `npm i -D sharp` (thứ chặn

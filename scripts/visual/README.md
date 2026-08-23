@@ -215,6 +215,11 @@ making you copy the number out of the last run, builds at that cutoff, and
 pushes only if `npm test` and `npm run build` both pass. It stops at the first
 failure and says what to do about it.
 
+It cannot fix the one thing that stops it arriving, though: if `npm i -D sharp`
+has edited `package.json` and you have not pulled since, the pull that would
+deliver this script is the pull that file blocks. Run
+`git checkout -- package.json package-lock.json` by hand first, once.
+
 There is no stage 07. Verification lives in
 `merid-extension-final/test/visual-index.test.js`, which runs under `npm test`
 and therefore in CI — a check that has to be remembered is not a check.
