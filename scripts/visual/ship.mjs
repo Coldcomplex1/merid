@@ -33,16 +33,34 @@ function stop(why, ...fix) {
     process.exit(1);
 }
 
+// npm on Windows is npm.cmd, and spawnSync will not run a .cmd without a
+// shell - recent Node refuses outright rather than guessing. Without this the
+// npm steps never ran at all: no output, no failing test, just a non-zero
+// status, which this script then reported as "the tests fail".
+//
+// Only npm gets the shell. git does not, because one of its arguments is a
+// commit message with spaces in it, and a shell would take that apart.
+const NPM = { shell: process.platform === 'win32' };
+
 /** Run a command, streaming its output. Returns false rather than throwing. */
 function run(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { cwd: opts.cwd || ROOT, stdio: 'inherit', shell: false });
+    const r = spawnSync(cmd, args, {
+        cwd: opts.cwd || ROOT, stdio: 'inherit', shell: !!opts.shell
+    });
+    if (r.error) say('  could not run ' + cmd + ': ' + r.error.message);
     return r.status === 0;
 }
 
 /** Run a command and capture its output (still printed). */
 function capture(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { cwd: opts.cwd || ROOT, encoding: 'utf8', shell: false });
-    const out = (r.stdout || '') + (r.stderr || '');
+    const r = spawnSync(cmd, args, {
+        cwd: opts.cwd || ROOT, encoding: 'utf8', shell: !!opts.shell
+    });
+    let out = (r.stdout || '') + (r.stderr || '');
+    // A command that could not be started produces no output at all, and
+    // reporting that as a test failure sent someone looking for a broken test
+    // that did not exist.
+    if (r.error) out += '\n' + cmd + ' could not be started: ' + r.error.message;
     process.stdout.write(out);
     return { ok: r.status === 0, out };
 }
@@ -129,7 +147,7 @@ head('Check it before pushing it');
 // node:test prints hundreds of lines and the four that matter scroll off; the
 // first version of this told the reader to "send me the failure" and left them
 // to go and find it.
-const t = capture('npm', ['test'], { cwd: EXT });
+const t = capture('npm', ['test'], { cwd: EXT, ...NPM });
 if (!t.ok) {
     // Indented too: when node:test runs several files, each file is the
     // top-level test and the tests inside it are indented subtests.
@@ -149,7 +167,7 @@ if (!t.ok) {
               lines.filter(l => l.trim()).slice(-25).join('\n')),
         'send me everything from "STOPPED" down and I will fix it');
 }
-const b = capture('npm', ['run', 'build'], { cwd: EXT });
+const b = capture('npm', ['run', 'build'], { cwd: EXT, ...NPM });
 if (!b.ok) {
     const why = b.out.split('\n').filter(l => /Error|over the|budget|cap/.test(l)).slice(0, 6);
     stop('the build refuses this artwork - not pushing' +
