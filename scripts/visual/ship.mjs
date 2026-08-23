@@ -131,11 +131,22 @@ head('Check it before pushing it');
 // to go and find it.
 const t = capture('npm', ['test'], { cwd: EXT });
 if (!t.ok) {
-    const bad = t.out.split('\n')
-        .map((l, i, all) => (/^not ok /.test(l) ? all.slice(i, i + 12).join('\n') : null))
+    // Indented too: when node:test runs several files, each file is the
+    // top-level test and the tests inside it are indented subtests.
+    const lines = t.out.split('\n');
+    const bad = lines
+        .map((l, i) => (/^\s*not ok /.test(l) ? lines.slice(i, i + 12).join('\n') : null))
         .filter(Boolean);
-    stop('the extension tests fail with this artwork - not pushing' +
-        (bad.length ? '\n\n' + bad.join('\n\n') : ''),
+    // And if there is no "not ok" anywhere, npm failed for some reason that is
+    // not a failing test - a missing module, a native build, npm itself. The
+    // first version printed nothing at all in that case, which is the one case
+    // where the reader most needs to see something.
+    stop('the extension tests fail with this artwork - not pushing\n\n' +
+        (bad.length
+            ? bad.slice(0, 4).join('\n\n')
+            : 'No "not ok" line in the output, so this is probably not a failing\n' +
+              'test at all. The last 25 lines were:\n\n' +
+              lines.filter(l => l.trim()).slice(-25).join('\n')),
         'send me everything from "STOPPED" down and I will fix it');
 }
 const b = capture('npm', ['run', 'build'], { cwd: EXT });
