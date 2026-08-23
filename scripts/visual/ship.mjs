@@ -125,13 +125,25 @@ if (!DRY && !pics) {
 say('\npictures in vis/: ' + pics);
 
 head('Check it before pushing it');
-if (!run('npm', ['test'], { cwd: EXT })) {
-    stop('the extension tests fail with this artwork - not pushing',
-        'send me the failure and I will fix it');
+// Captured rather than streamed, so a failure can be repeated at the bottom.
+// node:test prints hundreds of lines and the four that matter scroll off; the
+// first version of this told the reader to "send me the failure" and left them
+// to go and find it.
+const t = capture('npm', ['test'], { cwd: EXT });
+if (!t.ok) {
+    const bad = t.out.split('\n')
+        .map((l, i, all) => (/^not ok /.test(l) ? all.slice(i, i + 12).join('\n') : null))
+        .filter(Boolean);
+    stop('the extension tests fail with this artwork - not pushing' +
+        (bad.length ? '\n\n' + bad.join('\n\n') : ''),
+        'send me everything from "STOPPED" down and I will fix it');
 }
-if (!run('npm', ['run', 'build'], { cwd: EXT })) {
-    stop('the build refuses this artwork - not pushing',
-        'usually the 9KB per-picture cap or the 6MB budget; send me the message');
+const b = capture('npm', ['run', 'build'], { cwd: EXT });
+if (!b.ok) {
+    const why = b.out.split('\n').filter(l => /Error|over the|budget|cap/.test(l)).slice(0, 6);
+    stop('the build refuses this artwork - not pushing' +
+        (why.length ? '\n\n  ' + why.join('\n  ') : ''),
+        'usually the 9KB per-picture cap or the 6MB budget');
 }
 
 head('Commit and push');
