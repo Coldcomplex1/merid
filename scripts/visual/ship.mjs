@@ -14,7 +14,7 @@
 //
 //   node scripts/visual/ship.mjs             build, verify, commit, push
 //   node scripts/visual/ship.mjs --dry-run   do everything except commit/push
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
