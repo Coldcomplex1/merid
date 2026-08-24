@@ -73,6 +73,15 @@
                 </div>
                 <p class="hint" id="directionHint" data-i18n="optDirectionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
             </div>
+
+            <div class="field">
+                <label data-i18n="optVisualsLabel">Picture on the card</label>
+                <div class="seg" id="visualsSeg">
+                    <button data-val="on" type="button" data-i18n="optOn">On</button>
+                    <button data-val="off" type="button" data-i18n="optOff">Off</button>
+                </div>
+                <p class="hint" data-i18n="optVisualsHint">A photo for words you can picture, a symbol for the ones you cannot. Every image ships inside Merid, so nothing is downloaded and nothing is sent anywhere.</p>
+            </div>
         </section>
 
         <!-- DATASET -->
@@ -323,6 +332,28 @@
 
             <button class="btn danger" id="profileReset" type="button" data-i18n="optProfileForget">Forget what Merid learned</button>
             <p class="hint" id="profileStatus" hidden></p>
+        </section>
+
+        <!-- WHERE THE PICTURES COME FROM
+
+             Hidden until there is something to credit. A build with no vis/
+             folder - a checkout that has not run the dataset pipeline - would
+             otherwise show an empty card promising credits it does not have.
+
+             None of the three archives obliges us to name anybody: the licences
+             we accept are CC0, Public Domain and the Pexels Licence, all of
+             which waive attribution. It is here anyway. These files are inside
+             the package a reader installs rather than fetched from someone
+             else's server, and a picture whose provenance we cannot state is
+             one we should not have shipped. -->
+        <section class="card" id="creditsCard" hidden>
+            <h2 data-i18n="optCreditsTitle">Where the pictures come from</h2>
+            <p class="hint" data-i18n="optCreditsIntro">Every picture on a learning card is part of Merid rather than
+                fetched while you read. Each one comes from a public archive under a licence that permits
+                redistribution.</p>
+            <p class="credits-sum" id="creditsSummary"></p>
+            <button class="btn" id="creditsToggle" type="button" data-i18n="optCreditsShowAll">List every picture</button>
+            <div class="credits-list" id="creditsList" hidden></div>
         </section>
 
         <!-- DATA & PRIVACY -->

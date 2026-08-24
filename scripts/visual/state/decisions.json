@@ -1,0 +1,1330 @@
+{
+  "semaphore-f2tl": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\semaphore-f2tl-854b20b9b6.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "signal mirror",
+      "sourceUrl": "https://www.flickr.com/photos/53832127@N04/54053054440",
+      "score": 0.3715,
+      "margin": 0.0288,
+      "clear": true
+    },
+    "at": "2026-08-20T11:33:28.219Z"
+  },
+  "nest-n6iu": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\nest-n6iu-7109d38f1e.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "BioDivLibrary",
+      "sourceUrl": "https://www.flickr.com/photos/61021753@N02/6055542335",
+      "score": 0.3501,
+      "margin": 0.075,
+      "clear": true
+    },
+    "at": "2026-08-20T11:33:32.005Z"
+  },
+  "bench-iv0y": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\bench-iv0y-1a427e5ee7.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Jan van der Wolf",
+      "sourceUrl": "https://www.pexels.com/photo/wooden-bench-on-pavement-14943931/",
+      "score": 0.3476,
+      "margin": 0.0673,
+      "clear": true
+    },
+    "at": "2026-08-20T11:33:33.506Z"
+  },
+  "tobacco-1k5m": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\tobacco-1k5m-0dd5942053.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Afif Ramdhasuma",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-shot-of-a-person-holding-tobacco-leaves-8861736/",
+      "score": 0.2898,
+      "margin": 0.0622,
+      "clear": true
+    },
+    "at": "2026-08-20T11:33:42.438Z"
+  },
+  "morass-p8mo": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\morass-p8mo-31bafaa0dc.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Daria Ustenko",
+      "sourceUrl": "https://www.pexels.com/photo/swampy-area-covered-with-brown-grass-and-withered-trees-13673888/",
+      "score": 0.3239,
+      "margin": 0.1097,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:05.100Z"
+  },
+  "fleet-vin4": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\fleet-vin4-21158d3ffb.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Alexander Popadin",
+      "sourceUrl": "https://www.pexels.com/photo/row-of-military-ships-anchored-on-serene-water-35372365/",
+      "score": 0.3238,
+      "margin": 0.0488,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:11.210Z"
+  },
+  "thread-z2hm": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\thread-z2hm-bd46135aff.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "syamhari syamhari",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-photo-of-assorted-sewing-threads-in-spools-7116999/",
+      "score": 0.3234,
+      "margin": 0.0371,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:17.493Z"
+  },
+  "blade-c05z": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\blade-c05z-4947ae3a99.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Christopher Welsch Leveroni",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-of-a-tactical-folding-knife-blade-32175742/",
+      "score": 0.3226,
+      "margin": 0.0313,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:19.593Z"
+  },
+  "radar-geng": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\radar-geng-ecde50b443.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "NASA or National Aeronautics and Space Administration",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:C-band_Radar-dish_Antenna.jpg",
+      "score": 0.3181,
+      "margin": 0.0228,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:23.183Z"
+  },
+  "pit-5bz5": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\pit-5bz5-0e8ebf7791.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Sururi Ballıdağ Director",
+      "sourceUrl": "https://www.pexels.com/photo/birds-eye-view-of-borehole-16227439/",
+      "score": 0.3207,
+      "margin": 0.0678,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:26.560Z"
+  },
+  "warehouse-p4gs": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\warehouse-p4gs-72ad513350.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Ihsan Adityawarman",
+      "sourceUrl": "https://www.pexels.com/photo/stacked-boxes-in-a-warehouse-10834810/",
+      "score": 0.2942,
+      "margin": 0.0667,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:30.479Z"
+  },
+  "spectrum-967j": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\spectrum-967j-44cf0c7573.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Design Bits",
+      "sourceUrl": "https://www.pexels.com/photo/optical-glass-triangular-prism-3845162/",
+      "score": 0.3181,
+      "margin": 0.0494,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:32.965Z"
+  },
+  "crown-qwk6": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\crown-qwk6-ae322ed7a6.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Dmitry Sidorov",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-shot-of-king-s-crown-on-brown-box-7015157/",
+      "score": 0.318,
+      "margin": 0.0588,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:34.217Z"
+  },
+  "aluminium-8y7g": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\aluminium-8y7g-f63bd314eb.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "tom analogicus",
+      "sourceUrl": "https://www.pexels.com/photo/shiny-crumpled-aluminum-foil-texture-36272170/",
+      "score": 0.3178,
+      "margin": 0.0541,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:37.039Z"
+  },
+  "migration-4fdk": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\migration-4fdk-645580877d.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "U. S. Fish and Wildlife Service - Northeast Region",
+      "sourceUrl": "https://www.flickr.com/photos/43322816@N08/5280464816",
+      "score": 0.3169,
+      "margin": 0.05,
+      "clear": true
+    },
+    "at": "2026-08-20T14:05:01.330Z"
+  },
+  "knell-p87s": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\knell-p87s-560478a989.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Unknown authorUnknown author",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mission_Santa_Barbara_bell,_1904_(CHS-1562).jpg",
+      "score": 0.3168,
+      "margin": 0.018,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:44.985Z"
+  },
+  "artisan-r1uw": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\artisan-r1uw-ce1357da78.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "UMUT DAĞLI",
+      "sourceUrl": "https://www.pexels.com/photo/focused-carpenter-working-with-wood-12955994/",
+      "score": 0.3167,
+      "margin": 0.0696,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:46.661Z"
+  },
+  "spin-6g4j": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\spin-6g4j-26d5e43dd0.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Pixabay",
+      "sourceUrl": "https://www.pexels.com/photo/green-and-brown-spin-top-270949/",
+      "score": 0.3146,
+      "margin": 0.0651,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:47.735Z"
+  },
+  "processor-vgog": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\processor-vgog-562de90ca7.img",
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "author": "",
+      "sourceUrl": "https://www.rawpixel.com/image/5925851/photo-image-background-public-domain-tech",
+      "score": 0.3118,
+      "margin": 0.0816,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:57.277Z"
+  },
+  "artifact-kot7": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\artifact-kot7-9578037cab.img",
+      "source": "wikimedia",
+      "license": "CC0",
+      "author": "Gary Todd",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ancient_Greece_Neolithic_Pottery_%26_Stone_Artifacts.jpg",
+      "score": 0.3113,
+      "margin": 0.1014,
+      "clear": true
+    },
+    "at": "2026-08-20T11:34:58.707Z"
+  },
+  "anchor-dyl4": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\anchor-dyl4-f549566b41.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "wal_ 172619",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-of-weathered-ship-anchor-chain-38201429/",
+      "score": 0.3097,
+      "margin": 0.0875,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:05.269Z"
+  },
+  "leap-c73g": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\leap-c73g-1bc06baa1d.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Culture Arts and Sports  Association",
+      "sourceUrl": "https://www.pexels.com/photo/athlete-jumping-hurdle-in-outdoor-stadium-33996283/",
+      "score": 0.3093,
+      "margin": 0.1115,
+      "clear": true
+    },
+    "at": "2026-08-20T14:05:00.023Z"
+  },
+  "peasant-p3it": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\peasant-p3it-8a99a31672.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Daniel Delgado",
+      "sourceUrl": "https://www.pexels.com/photo/man-sitting-on-cropland-16957838/",
+      "score": 0.3093,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:10.383Z"
+  },
+  "cargo-t00n": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\cargo-t00n-5ab540f578.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Simon R. Minshall",
+      "sourceUrl": "https://www.pexels.com/photo/stacked-shipping-containers-on-the-high-seas-28438218/",
+      "score": 0.3087,
+      "margin": 0.0591,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:11.777Z"
+  },
+  "firearm-vjvb": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\firearm-vjvb-da4ac54cc6.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Africa and Asia",
+      "sourceUrl": "https://www.pexels.com/photo/pistol-and-bullets-on-a-white-background-26951393/",
+      "score": 0.3082,
+      "margin": 0.0292,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:14.087Z"
+  },
+  "collision-2ddt": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\collision-2ddt-7d2a1685dd.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Boost Media-Marketing",
+      "sourceUrl": "https://www.pexels.com/photo/crashed-car-into-lamp-post-on-london-street-38339706/",
+      "score": 0.307,
+      "margin": 0.0342,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:15.321Z"
+  },
+  "ward-zo87": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\ward-zo87-3e6a48eb45.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "supplier gorden  ready stok minimalis",
+      "sourceUrl": "https://www.pexels.com/photo/white-and-brown-hospital-beds-7335565/",
+      "score": 0.3066,
+      "margin": 0.0848,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:17.729Z"
+  },
+  "plug-23x5": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\plug-23x5-f044b2b61e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Castorly Stock",
+      "sourceUrl": "https://www.pexels.com/photo/black-plugs-3639030/",
+      "score": 0.3063,
+      "margin": 0.044,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:18.679Z"
+  },
+  "pond-bcbv": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\pond-bcbv-02952eb445.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Tangopaso",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fish_pond_of_the_exotic_garden_of_Monaco.jpg",
+      "score": 0.3062,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:19.510Z"
+  },
+  "banner-900h": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\banner-900h-183a4f16ea.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "女子 正真",
+      "sourceUrl": "https://www.pexels.com/photo/banners-with-chinese-calligraphy-in-urban-setting-38347141/",
+      "score": 0.3061,
+      "margin": 0.06,
+      "clear": true
+    },
+    "at": "2026-08-20T11:35:26.982Z"
+  },
+  "conduit-dmyy": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\conduit-dmyy-c71a9aee77.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Benjamin White",
+      "sourceUrl": "https://www.pexels.com/photo/pipelines-mounted-on-wall-5313208/",
+      "score": 0.3059,
+      "margin": 0.0271,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:59.030Z"
+  },
+  "tribunal-80g8": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\tribunal-80g8-db3d53a97e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Michael D Beckwith",
+      "sourceUrl": "https://www.pexels.com/photo/historic-courtroom-in-central-london-33939971/",
+      "score": 0.305,
+      "margin": 0.0248,
+      "clear": true
+    },
+    "at": "2026-08-20T11:37:36.289Z"
+  },
+  "summit-r5fo": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\summit-r5fo-afd605e4e8.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Judy Fierstein (Alaska Volcano Observatory / U.S. Geological Survey)",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Snowy_Mountain.jpg",
+      "score": 0.3036,
+      "margin": 0.0861,
+      "clear": true
+    },
+    "at": "2026-08-20T11:37:38.562Z"
+  },
+  "sword-pftm": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\sword-pftm-3333ee7902.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Reinis Brūzītis",
+      "sourceUrl": "https://www.pexels.com/photo/stone-statue-hand-raising-sword-skyward-33548606/",
+      "score": 0.28,
+      "margin": 0.0108,
+      "clear": false
+    },
+    "at": "2026-08-20T11:37:41.451Z"
+  },
+  "pinnacle-ue1x": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\pinnacle-ue1x-97c804db0e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Heinz Klier",
+      "sourceUrl": "https://www.pexels.com/photo/majestic-snow-capped-alps-in-randa-switzerland-31399346/",
+      "score": 0.303,
+      "margin": 0.0478,
+      "clear": true
+    },
+    "at": "2026-08-20T11:37:43.587Z"
+  },
+  "timber-spb1": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\timber-spb1-350318777d.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Sasa",
+      "sourceUrl": "https://www.pexels.com/photo/stacked-wooden-logs-outdoors-in-natural-light-31487257/",
+      "score": 0.3029,
+      "margin": 0.0639,
+      "clear": true
+    },
+    "at": "2026-08-20T11:37:46.214Z"
+  },
+  "impinge-326v": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\impinge-326v-7d2a1685dd.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Boost Media-Marketing",
+      "sourceUrl": "https://www.pexels.com/photo/crashed-car-into-lamp-post-on-london-street-38339706/",
+      "score": 0.2201,
+      "margin": 0.0212,
+      "clear": true
+    },
+    "at": "2026-08-20T11:45:03.981Z"
+  },
+  "divine-215s": {
+    "pick": "none",
+    "at": "2026-08-20T11:45:36.848Z"
+  },
+  "inspect-am56": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\inspect-am56-22db3e5083.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Artem Podrez",
+      "sourceUrl": "https://www.pexels.com/photo/mechanic-looking-at-the-engine-of-the-car-8985452/",
+      "score": 0.2201,
+      "margin": 0.0274,
+      "clear": true
+    },
+    "at": "2026-08-20T11:45:43.061Z"
+  },
+  "patch-vykv": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\patch-vykv-8a4fc758d6.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "https://kaboompics.com/",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-shot-of-a-denim-textile-6275959/",
+      "score": 0.2259,
+      "margin": 0.0005,
+      "clear": false
+    },
+    "at": "2026-08-20T11:45:53.547Z"
+  },
+  "machinery-swhj": {
+    "pick": "none",
+    "at": "2026-08-20T11:46:06.500Z"
+  },
+  "councillor-7zbo": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\councillor-7zbo-3446aaa5b2.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Mikhail Nilov",
+      "sourceUrl": "https://www.pexels.com/photo/professionals-holding-documents-8847157/",
+      "score": 0.2191,
+      "margin": -0.0168,
+      "clear": false
+    },
+    "at": "2026-08-20T11:46:13.257Z"
+  },
+  "inmate-vd8y": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\inmate-vd8y-1.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Alan Lomax",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Prisonlabor1.jpg",
+      "score": 0.2286,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T11:46:18.123Z"
+  },
+  "nod-7xqq": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\nod-7xqq-5c83d230ee.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "MART  PRODUCTION",
+      "sourceUrl": "https://www.pexels.com/photo/a-man-and-a-woman-shaking-hands-7644153/",
+      "score": 0.2287,
+      "margin": 0.016,
+      "clear": true
+    },
+    "at": "2026-08-20T11:46:20.800Z"
+  },
+  "harangue-n8ds": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\harangue-n8ds-c8b809b02d.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Matheus Lara",
+      "sourceUrl": "https://www.pexels.com/photo/intense-soccer-moments-captured-on-field-33327498/",
+      "score": 0.2288,
+      "margin": 0.0257,
+      "clear": true
+    },
+    "at": "2026-08-20T11:46:28.929Z"
+  },
+  "spearhead-u93y": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\spearhead-u93y-d9b4369e34.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Gustavo Fring",
+      "sourceUrl": "https://www.pexels.com/photo/man-presenting-graphs-in-business-meeting-6285074/",
+      "score": 0.2181,
+      "margin": 0.0152,
+      "clear": false
+    },
+    "at": "2026-08-20T13:06:38.212Z"
+  },
+  "cabinet-6t92": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\cabinet-6t92-7f794ce6bc.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Mikhail Nilov",
+      "sourceUrl": "https://www.pexels.com/photo/politicians-talking-on-a-conference-table-8847211/",
+      "score": 0.2298,
+      "margin": 0.024,
+      "clear": true
+    },
+    "at": "2026-08-20T13:06:41.555Z"
+  },
+  "eclectic-cd7r": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\eclectic-cd7r-165389fde6.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Artem Kulinych",
+      "sourceUrl": "https://www.pexels.com/photo/people-holding-flags-and-balloon-while-gathered-on-the-street-13158043/",
+      "score": 0.23,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T13:06:43.211Z"
+  },
+  "convene-kmqx": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\convene-kmqx-54bac4d347.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Jopwell",
+      "sourceUrl": "https://www.pexels.com/photo/shallow-focus-photography-of-man-facing-backward-1325762/",
+      "score": 0.2311,
+      "margin": 0.0185,
+      "clear": true
+    },
+    "at": "2026-08-20T13:06:49.351Z"
+  },
+  "yoke-rbvb": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\yoke-rbvb-60771df53f.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Beth Fitzpatrick",
+      "sourceUrl": "https://www.pexels.com/photo/oxen-pull-competition-in-richmond-rhode-island-33494859/",
+      "score": 0.2315,
+      "margin": 0.0683,
+      "clear": true
+    },
+    "at": "2026-08-20T13:06:57.921Z"
+  },
+  "retrieve-dqwr": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\retrieve-dqwr-24bdbc5d4c.img",
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "author": "U.S. Department of Agriculture",
+      "sourceUrl": "https://www.rawpixel.com/image/3262071/free-photo-image-bear-animal-bird",
+      "score": 0.2319,
+      "margin": 0.0206,
+      "clear": true
+    },
+    "at": "2026-08-20T13:52:08.946Z"
+  },
+  "widen-sw90": {
+    "pick": "none",
+    "at": "2026-08-20T13:53:13.477Z"
+  },
+  "peddle-bprj": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\peddle-bprj-3.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "HONG SON",
+      "sourceUrl": "https://www.pexels.com/photo/person-selling-souvenirs-by-a-river-25636840/",
+      "score": 0.2293,
+      "margin": 0.0189,
+      "clear": true
+    },
+    "at": "2026-08-20T13:53:27.925Z"
+  },
+  "cling-lm0c": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\cling-lm0c-72f4284446.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Brett Sayles",
+      "sourceUrl": "https://www.pexels.com/photo/man-doing-outdoor-rock-climbing-1574216/",
+      "score": 0.2247,
+      "margin": 0.0174,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:12.868Z"
+  },
+  "fragile-wx7i": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\fragile-wx7i-2ea807b6cf.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Polina ⠀",
+      "sourceUrl": "https://www.pexels.com/photo/drinking-glassware-on-white-surface-7282892/",
+      "score": 0.2388,
+      "margin": 0.0457,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:17.397Z"
+  },
+  "surrogate-9n20": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\surrogate-9n20-dbede1046e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "PARINDA SHAAN",
+      "sourceUrl": "https://www.pexels.com/photo/pregnant-woman-in-black-long-sleeve-shirt-and-red-pajamas-3988431/",
+      "score": 0.2405,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:22.951Z"
+  },
+  "mentor-n8n1": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\mentor-n8n1-ffe303b7c7.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "https://kaboompics.com/",
+      "sourceUrl": "https://www.pexels.com/photo/women-looking-at-statistics-in-an-office-8530086/",
+      "score": 0.242,
+      "margin": 0.0236,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:25.329Z"
+  },
+  "vociferous-mpz7": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\vociferous-mpz7-749a33e488.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Pressmaster",
+      "sourceUrl": "https://www.pexels.com/photo/young-woman-with-a-megaphone-3851253/",
+      "score": 0.2439,
+      "margin": 0.033,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:28.149Z"
+  },
+  "capacious-x9hv": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\capacious-x9hv-3f883e256f.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Pixabay",
+      "sourceUrl": "https://www.pexels.com/photo/empty-concrete-building-236705/",
+      "score": 0.2415,
+      "margin": 0.0172,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:32.042Z"
+  },
+  "malleable-s1nu": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\malleable-s1nu-923ff00d78.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "ROMAN ODINTSOV",
+      "sourceUrl": "https://www.pexels.com/photo/a-person-holding-brown-u-shaped-clays-8063814/",
+      "score": 0.2484,
+      "margin": 0.012,
+      "clear": false
+    },
+    "at": "2026-08-20T13:55:36.217Z"
+  },
+  "log-0zwa": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\log-0zwa-49d05ebc76.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "cottonbro studio",
+      "sourceUrl": "https://www.pexels.com/photo/person-writing-on-a-paper-5302813/",
+      "score": 0.2507,
+      "margin": 0.0421,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:42.742Z"
+  },
+  "acre-h0wm": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\acre-h0wm-336bfba60f.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Masood Aslami",
+      "sourceUrl": "https://www.pexels.com/photo/aerial-view-of-colorful-patchwork-fields-32047262/",
+      "score": 0.2468,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:48.529Z"
+  },
+  "landmark-fvgs": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\landmark-fvgs-4b1b9d07c4.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Pixabay",
+      "sourceUrl": "https://www.pexels.com/photo/petronas-tower-malaysia-433942/",
+      "score": 0.2547,
+      "margin": 0.0267,
+      "clear": true
+    },
+    "at": "2026-08-20T13:55:49.799Z"
+  },
+  "carve-w7dv": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\carve-w7dv-7984025f39.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Bryan Catota",
+      "sourceUrl": "https://www.pexels.com/photo/sculptor-at-work-3643507/",
+      "score": 0.2575,
+      "margin": 0.0068,
+      "clear": false
+    },
+    "at": "2026-08-20T13:55:51.919Z"
+  },
+  "trail-3jeq": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\trail-3jeq-5dd62068cb.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Orhan Pergel",
+      "sourceUrl": "https://www.pexels.com/photo/scenic-forest-trail-winding-through-lush-woods-29251986/",
+      "score": 0.2435,
+      "margin": -0.0089,
+      "clear": false
+    },
+    "at": "2026-08-20T13:55:54.241Z"
+  },
+  "parley-0jwy": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\parley-0jwy-eed91eb583.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Werner Pfennig",
+      "sourceUrl": "https://www.pexels.com/photo/men-in-business-suits-shaking-hands-beside-a-woman-in-black-blazer-6949994/",
+      "score": 0.2601,
+      "margin": 0.0271,
+      "clear": true
+    },
+    "at": "2026-08-20T14:01:36.131Z"
+  },
+  "atrophy-xz2o": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\atrophy-xz2o-ef8b8f15de.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Nathan J Hilton",
+      "sourceUrl": "https://www.pexels.com/photo/withered-allium-flower-in-close-up-photography-10331467/",
+      "score": 0.2614,
+      "margin": 0.0213,
+      "clear": true
+    },
+    "at": "2026-08-20T14:01:38.779Z"
+  },
+  "shard-o6h4": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\shard-o6h4-ceb920a9db.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Tima Miroshnichenko",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-photo-of-broken-mirror-6755134/",
+      "score": 0.2282,
+      "margin": 0.0292,
+      "clear": true
+    },
+    "at": "2026-08-20T14:01:43.174Z"
+  },
+  "pathway-vw6d": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\pathway-vw6d-46e153acbf.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Bảo Minh",
+      "sourceUrl": "https://www.pexels.com/photo/scenic-stone-pathway-through-vibrant-wildflowers-32959283/",
+      "score": 0.2538,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T14:01:46.228Z"
+  },
+  "fixture-4ftc": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\fixture-4ftc-84686e88ef.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Franco Monsalvo",
+      "sourceUrl": "https://www.pexels.com/photo/intense-football-match-at-night-stadium-32190700/",
+      "score": 0.2322,
+      "margin": 0.0639,
+      "clear": true
+    },
+    "at": "2026-08-20T14:01:51.877Z"
+  },
+  "refract-cgei": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\refract-cgei-56d493da3e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Design Bits",
+      "sourceUrl": "https://www.pexels.com/photo/optical-glass-triangular-prism-3845161/",
+      "score": 0.267,
+      "margin": 0.0105,
+      "clear": false
+    },
+    "at": "2026-08-20T14:01:57.722Z"
+  },
+  "pliable-rruz": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\pliable-rruz-7c65fb4162.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Gratisography",
+      "sourceUrl": "https://www.pexels.com/photo/garden-gardening-hosepipe-tube-556/",
+      "score": 0.2364,
+      "margin": 0.0102,
+      "clear": false
+    },
+    "at": "2026-08-20T14:02:02.854Z"
+  },
+  "fecund-6lmk": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\fecund-6lmk-b08591178b.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Chen Te",
+      "sourceUrl": "https://www.pexels.com/photo/branches-with-apples-16820558/",
+      "score": 0.2685,
+      "margin": 0.0613,
+      "clear": true
+    },
+    "at": "2026-08-20T14:02:08.409Z"
+  },
+  "threshold-hu68": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\threshold-hu68-ccace18971.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "K",
+      "sourceUrl": "https://www.pexels.com/photo/dog-lying-in-doorway-16664939/",
+      "score": 0.2346,
+      "margin": 0.0057,
+      "clear": false
+    },
+    "at": "2026-08-20T14:02:56.292Z"
+  },
+  "lissome-w1fy": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\lissome-w1fy-823ca853cf.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Konstantin Mishchenko",
+      "sourceUrl": "https://www.pexels.com/photo/unrecognizable-ballerina-sitting-in-splits-while-performing-side-bend-6160880/",
+      "score": 0.2708,
+      "margin": 0.0533,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:05.606Z"
+  },
+  "well-dw79": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\well-dw79-2c77bf12c9.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Boris Hamer",
+      "sourceUrl": "https://www.pexels.com/photo/rustic-stone-well-with-bucket-in-garden-setting-33130942/",
+      "score": 0.2719,
+      "margin": 0.022,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:09.249Z"
+  },
+  "applaud-c6h6": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\applaud-c6h6-9ea560358f.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "Bernard Spragg",
+      "sourceUrl": "https://www.flickr.com/photos/88123769@N02/42007553705",
+      "score": 0.2732,
+      "margin": 0.0422,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:10.985Z"
+  },
+  "trace-ll7f": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\trace-ll7f-998f64318b.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Víctor C.",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-of-dog-paw-prints-in-the-mud-26584993/",
+      "score": 0.2738,
+      "margin": 0.0557,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:13.321Z"
+  },
+  "breed-6pjx": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\breed-6pjx-39d94dcc35.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Anil  Sharma",
+      "sourceUrl": "https://www.pexels.com/photo/two-labrador-retrievers-resting-outdoors-in-black-and-white-32430036/",
+      "score": 0.2749,
+      "margin": 0.0101,
+      "clear": false
+    },
+    "at": "2026-08-20T14:03:23.160Z"
+  },
+  "obsolete-tyh0": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\obsolete-tyh0-0494a54cc0.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Steph Quernemoen",
+      "sourceUrl": "https://www.pexels.com/photo/vintage-cassette-tapes-on-a-retro-player-34435597/",
+      "score": 0.2758,
+      "margin": 0.061,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:26.025Z"
+  },
+  "transit-bdt7": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\transit-bdt7-6bda1eea38.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Wolfgang Weiser",
+      "sourceUrl": "https://www.pexels.com/photo/cranes-over-a-container-ship-20581299/",
+      "score": 0.2305,
+      "margin": 0.0058,
+      "clear": false
+    },
+    "at": "2026-08-20T14:03:30.767Z"
+  },
+  "insurrection-qlu2": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\insurrection-qlu2-cf43b69e5e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Oscar Chan",
+      "sourceUrl": "https://www.pexels.com/photo/rally-in-the-street-with-soldiers-wearing-black-helmets-2833363/",
+      "score": 0.2779,
+      "margin": 0.0208,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:34.475Z"
+  },
+  "analgesic-8g70": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\analgesic-8g70-0d6b855e6e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "SHVETS production",
+      "sourceUrl": "https://www.pexels.com/photo/white-plastic-container-beside-pills-9742888/",
+      "score": 0.2794,
+      "margin": 0.0478,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:37.174Z"
+  },
+  "strip-us0m": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\strip-us0m-fc0a49fbe4.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Алексей",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-photo-of-colorful-textile-9918111/",
+      "score": 0.2766,
+      "margin": 0.0338,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:43.656Z"
+  },
+  "steer-7wnf": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\steer-7wnf-dfc185e563.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Luke Miller",
+      "sourceUrl": "https://www.pexels.com/photo/hands-on-a-steering-wheel-13513968/",
+      "score": 0.2651,
+      "margin": 0.0475,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:50.274Z"
+  },
+  "craft-r7i6": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\craft-r7i6-ce1357da78.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "UMUT DAĞLI",
+      "sourceUrl": "https://www.pexels.com/photo/focused-carpenter-working-with-wood-12955994/",
+      "score": 0.2819,
+      "margin": 0.0693,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:52.329Z"
+  },
+  "coastal-yo0d": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\coastal-yo0d-2981c1c003.img",
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "author": "U.S. Geological Survey",
+      "sourceUrl": "https://www.flickr.com/photos/27784370@N05/14782401887",
+      "score": 0.2834,
+      "margin": 0.0406,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:54.939Z"
+  },
+  "pugilism-pfyh": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\pugilism-pfyh-8af34c6199.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Alari Tammsalu",
+      "sourceUrl": "https://www.pexels.com/photo/two-men-doing-boxing-8991301/",
+      "score": 0.285,
+      "margin": 0.0423,
+      "clear": true
+    },
+    "at": "2026-08-20T14:03:58.328Z"
+  },
+  "tackle-2v89": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\tackle-2v89-1e8131134f.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Franco Monsalvo",
+      "sourceUrl": "https://www.pexels.com/photo/intense-soccer-match-sliding-tackle-action-shot-38045351/",
+      "score": 0.2859,
+      "margin": 0.0996,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:10.594Z"
+  },
+  "preach-h4jh": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\preach-h4jh-1c98b8096c.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "MART  PRODUCTION",
+      "sourceUrl": "https://www.pexels.com/photo/a-priest-in-black-vestment-7219095/",
+      "score": 0.2703,
+      "margin": null,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:23.862Z"
+  },
+  "corpulence-i4qs": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\corpulence-i4qs-54e8aefcd4.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Towfiqu barbhuiya",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-photo-of-person-holding-his-belly-11773868/",
+      "score": 0.2663,
+      "margin": 0.0207,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:29.736Z"
+  },
+  "arena-prx2": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\arena-prx2-51785b74d3.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Adrien Olichon",
+      "sourceUrl": "https://www.pexels.com/photo/a-group-of-people-watching-a-hockey-game-on-a-screen-28128417/",
+      "score": 0.2925,
+      "margin": 0.0576,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:34.446Z"
+  },
+  "riot-9bdi": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\riot-9bdi-cf43b69e5e.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Oscar Chan",
+      "sourceUrl": "https://www.pexels.com/photo/rally-in-the-street-with-soldiers-wearing-black-helmets-2833363/",
+      "score": 0.2904,
+      "margin": 0.0248,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:40.352Z"
+  },
+  "alien-q5jd": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\alien-q5jd-954e7fb4e0.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Stephen Leonardi",
+      "sourceUrl": "https://www.pexels.com/photo/gray-alien-mask-with-big-black-eyes-18779589/",
+      "score": 0.2949,
+      "margin": 0.0792,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:42.227Z"
+  },
+  "indigenous-yrap": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\indigenous-yrap-243795871a.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Dominique BOULAY",
+      "sourceUrl": "https://www.pexels.com/photo/man-wearing-a-feathered-headdress-holding-a-medicine-stick-8036383/",
+      "score": 0.2683,
+      "margin": 0.0504,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:50.446Z"
+  },
+  "trophy-u0oh": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\trophy-u0oh-836b3c419a.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Anna Tarazevich",
+      "sourceUrl": "https://www.pexels.com/photo/a-person-holding-a-trophy-6412253/",
+      "score": 0.2993,
+      "margin": 0.0654,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:52.655Z"
+  },
+  "missile-aoud": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\missile-aoud-9a4d58782f.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Arrow_anti-ballistic_missile_launch4.jpg: United States Missile Defense Agency\nArrow_anti-ballistic_missile_launch3.jpg: US NAVY\nArrow_anti-ballistic_missile_launch2.jpg: US NAVY\nderivative work: NatanFlayer (talk)",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Arrow_missile_trinity.jpg",
+      "score": 0.3021,
+      "margin": 0.057,
+      "clear": true
+    },
+    "at": "2026-08-20T14:04:55.090Z"
+  }
+}

@@ -27,6 +27,7 @@ const FILES = [
     'options.html', 'options.js', 'options.css',
     'content-bridge.js',
     'lib/vocab-core.js',
+    'lib/visual.js',
     'lib/i18n.js',
     'lib/profile.js',
     'lib/custom-datasets.js',
@@ -61,6 +62,39 @@ if (fs.existsSync(onboardingDir)) {
         if (/^mode-.*\.(png|webp)$/.test(f)) FILES.push(path.join('onboarding', f));
     }
 }
+
+// The card artwork and the index that maps words onto it. Matched dynamically
+// for the same reason onboarding/mode-* is: these are pictures, added on their
+// own schedule, and a build must not fail because a word has not been given one
+// yet - a word with no picture wears a generated glyph instead.
+//
+// The size gate lives HERE rather than in the generator. The generator is run
+// by hand when the datasets change; the build runs every time something ships.
+// A limit you can ship without running is not a limit.
+const VIS_BUDGET_BYTES = 6.0 * 1024 * 1024;   // whole vis/ directory
+const VIS_FILE_MAX = 9 * 1024;                // one picture
+
+const visDir = path.join(root, 'vis');
+if (fs.existsSync(visDir)) {
+    let total = 0;
+    for (const f of fs.readdirSync(visDir)) {
+        // CREDITS.json rides along in the same directory but is not a picture:
+        // it is read once by the Settings page and is far over the per-file cap
+        // by design, so it is exempt from both limits.
+        if (f === 'CREDITS.json') { FILES.push(path.join('vis', f)); continue; }
+        if (!/\.(avif|webp)$/.test(f)) continue;
+        const size = fs.statSync(path.join(visDir, f)).size;
+        if (size > VIS_FILE_MAX) {
+            throw new Error(`vis/${f} is ${size}B, over the ${VIS_FILE_MAX}B per-picture cap`);
+        }
+        total += size;
+        FILES.push(path.join('vis', f));
+    }
+    if (total > VIS_BUDGET_BYTES) {
+        throw new Error(`vis/ is ${total}B, over the ${VIS_BUDGET_BYTES}B budget`);
+    }
+}
+if (fs.existsSync(path.join(root, 'visual-index.json'))) FILES.push('visual-index.json');
 
 function copyFile(rel) {
     const src = path.join(root, rel);

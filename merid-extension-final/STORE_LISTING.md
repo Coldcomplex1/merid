@@ -134,6 +134,16 @@ Merid replaces selected Vietnamese (or English) words on web pages with English 
 
 There are **no** host permissions requested in `host_permissions`, no optional
 permissions, and no remote code (all scripts are bundled; MV3 CSP `script-src 'self'`).
+
+The pictures on learning cards are **bundled files**, not fetched. They live in
+`vis/` and are addressed with `chrome.runtime.getURL`, so the extension still
+makes no network request of its own and the pictures work offline and on sites
+that block third-party images. Every one is from a public archive under a
+licence that permits redistribution — CC0, Public Domain Mark, or the Pexels
+Licence; see [`THIRD-PARTY.md`](THIRD-PARTY.md). Settings lists the source,
+photographer and licence of each one. This is worth stating in review notes:
+a package that ships several hundred photographs is a reasonable thing to be
+asked about.
 The `identity` permission was removed in v1.4 - re-add it only together with a
 configured `googleClientId` (see `lib/firebase-config.js`) if you ship in-extension
 Google sign-in later, and add a justification for it here when you do.

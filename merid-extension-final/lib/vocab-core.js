@@ -159,7 +159,17 @@
         // off while it required them to create their own API key, which made
         // opting in the only honest default. Turning it off in Settings stops
         // every request - nothing leaves the device with this false.
-        aiCheckEnabled: true
+        aiCheckEnabled: true,
+        // The picture on the learning card. ON by default: every image ships
+        // inside the extension, so this makes no network request and changes
+        // nothing about what leaves the device. A version that hotlinked to an
+        // image host would have had to default to off.
+        //
+        // Adding a setting here is only half of it - background.js asks
+        // storage.sync for an explicit list of keys, and a key missing from
+        // THAT list always reads back as this default no matter what the reader
+        // chose. See the note on 'getSettings'.
+        visualsEnabled: true
     };
 
     // ---------------------------------------------------------------------
