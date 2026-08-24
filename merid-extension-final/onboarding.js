@@ -408,7 +408,7 @@
         }
         .demo-text { margin: 0; font-size: 10px; line-height: 1.6; color: #2c3444; overflow: hidden; }
         /* The same marking content.css puts on a word in a real page. */
-        .w { border-bottom: 2px solid #f4be37; background-color: rgba(244, 190, 55, 0.16); padding: 0 1px; }
+        .w { border-bottom: 2px dotted #f4be37; padding: 0 1px; }
         .w.en { color: #0a3d91; font-weight: 600; }
 
         .mode .name {

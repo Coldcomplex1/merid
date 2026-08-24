@@ -1,20 +1,20 @@
-/* A word swapped into the page. The gold underline and faint wash carry the
-   signal on their own, so the weight is inherited rather than set: the word
-   reads as part of the sentence it landed in, whatever weight that sentence
-   is, instead of sitting heavier than the text around it. */
+/* A word swapped into the page. A dotted gold underline is the whole signal
+   now - no wash behind the word, and nothing that changes under the pointer.
+   A wash paints over the page's own background and a hover state makes the
+   word look selected; the dots mark it as Merid's and leave the sentence
+   otherwise as its writer set it. The weight is inherited rather than set for
+   the same reason: the word reads as part of the sentence it landed in,
+   whatever weight that sentence is, instead of sitting heavier than the text
+   around it.
+
+   cursor: pointer is what is left of the affordance - the card on hover is the
+   rest of it, and neither needs the word to change colour to be found. */
 .vocab-master-highlight {
-    border-bottom: 2px solid #f4be37;
+    border-bottom: 2px dotted #f4be37;
     cursor: pointer;
-    background-color: rgba(244, 190, 55, 0.08);
     padding: 0 1px;
     font-weight: inherit;
-    transition: all 0.3s ease;
     text-decoration: none;
-}
-
-.vocab-master-highlight:hover {
-    background-color: rgba(244, 190, 55, 0.2);
-    border-bottom: 3px solid #f4be37;
 }
 
 .vocab-master-tooltip {
