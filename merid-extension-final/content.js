@@ -2250,6 +2250,22 @@ const CARD_W = 296;
 const ASIDE_W = 200;
 const ASIDE_GAP = 8;
 
+// The Cambridge dictionary URL for a headword. A few dozen entries are not a
+// single clean token - "satiate/sate", "nevertheless or nonetheless",
+// "status quo" - so take the first alternative and hyphenate any spaces, the
+// way Cambridge's own paths read (.../english/status-quo). encodeURIComponent
+// keeps the rest (accents, "e.g.") link-safe; the caller still escapes it for
+// the attribute.
+function cambridgeUrl(word) {
+    const slug = (word || '')
+        .trim()
+        .toLowerCase()
+        .split(/\s+or\s+|\//)[0]
+        .trim()
+        .replace(/\s+/g, '-');
+    return 'https://dictionary.cambridge.org/dictionary/english/' + encodeURIComponent(slug);
+}
+
 function showTooltip(target, item) {
     const esc = C.escapeHtml;
     const rect = target.getBoundingClientRect();
@@ -2332,7 +2348,7 @@ function showTooltip(target, item) {
             <button class="vm-close" type="button" aria-label="${esc(t('tooltipClose', 'Close'))}">&times;</button>
             <div class="vm-body">${aside ? '' : visualHtml}
                 <div class="vm-header">
-                    <div class="vm-title vm-word" style="font-size:${titleFontSize.toFixed(1)}px">${esc((item.word || '').toUpperCase())}</div>
+                    <a class="vm-title vm-word" href="${esc(cambridgeUrl(item.word))}" target="_blank" rel="noopener noreferrer" style="font-size:${titleFontSize.toFixed(1)}px">${esc((item.word || '').toUpperCase())}</a>
                     <div class="vm-meta">
                         <span class="vm-type">(${esc(item.type || '')})</span>
                         <button class="vm-audio" type="button" aria-label="${esc(t('tooltipPlay', 'Play pronunciation'))}">${SPEAKER_SVG}</button>
