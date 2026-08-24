@@ -131,6 +131,24 @@
     text-transform: uppercase;
 }
 
+/* The headword links to its Cambridge entry. Keep it looking like the title
+   (navy, no default link colour/underline) with a hover underline as the only
+   affordance. display:block preserves the div's single-line clipping above. */
+a.vm-title {
+    display: block;
+    color: var(--vm-navy);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a.vm-title:visited {
+    color: var(--vm-navy);
+}
+
+a.vm-title:hover {
+    text-decoration: underline;
+}
+
 .vm-meta {
     display: flex;
     align-items: center;

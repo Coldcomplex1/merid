@@ -30,6 +30,18 @@ const CARD_ZOOM = 0.95
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
+/**
+ * The Cambridge dictionary URL for a headword, kept in step with
+ * `cambridgeUrl` in the extension's content.js. Takes the first alternative of
+ * an "a/b" or "a or b" entry and hyphenates spaces the way Cambridge's own
+ * paths read (.../english/status-quo).
+ */
+const cambridgeUrl = (word: string) =>
+  'https://dictionary.cambridge.org/dictionary/english/' +
+  encodeURIComponent(
+    word.trim().toLowerCase().split(/\s+or\s+|\//)[0].trim().replace(/\s+/g, '-'),
+  )
+
 /** The floating learning card, replicated 1:1 from the extension's tooltip. */
 export default function VocabPopupCard({
   entry,
@@ -76,7 +88,14 @@ export default function VocabPopupCard({
             className="overflow-hidden leading-none font-extrabold tracking-[0.01em] whitespace-nowrap text-[#19355d] uppercase"
             style={{ fontSize: `${titleSize.toFixed(1)}px` }}
           >
-            {entry.word}
+            <a
+              href={cambridgeUrl(entry.word)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-inherit no-underline hover:underline"
+            >
+              {entry.word}
+            </a>
           </h4>
           <div className="mt-[5px] flex items-center gap-[7px]">
             <span
