@@ -39,8 +39,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const extensionToggle = document.getElementById('extension-toggle');
     const datasetBtns = document.querySelectorAll('.dataset-btn');
     const modeSeg = document.getElementById('mode-seg');
+    const visualsItem = document.getElementById('visuals-item');
     const visualsSeg = document.getElementById('visuals-seg');
     const cardThemeBtn = document.getElementById('card-theme-btn');
+
+    // The picture on the card is withdrawn from this build
+    // (VMCore.VISUALS_AVAILABLE). The markup ships the toggle hidden so it
+    // never flashes up; this puts it back on the day the flag returns.
+    visualsItem.hidden = !C.VISUALS_AVAILABLE;
 
     // ---- Load settings ----
     chrome.storage.sync.get(

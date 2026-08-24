@@ -30,6 +30,7 @@ const els = {
     langSeg: document.getElementById('langSeg'),
     datasetSeg: document.getElementById('datasetSeg'),
     datasetInfo: document.getElementById('datasetInfo'),
+    visualsField: document.getElementById('visualsField'),
     visualsSeg: document.getElementById('visualsSeg'),
     aiSeg: document.getElementById('aiSeg'),
     aiKey: document.getElementById('aiKey'),
@@ -75,6 +76,9 @@ function load() {
     els.directionCards.querySelectorAll('.mode-card[data-mode="engEng"]')
         .forEach(card => { card.hidden = !C.ENG_ENG_AVAILABLE; });
     els.directionHint.hidden = !C.ENG_ENG_AVAILABLE;
+    // Same again for the picture on the card: markup ships it hidden, so this
+    // only has to put it back when the flag says the build offers it.
+    els.visualsField.hidden = !C.VISUALS_AVAILABLE;
 
     chrome.storage.sync.get(SYNC_KEYS, sync => {
         const s = C.withDefaults(sync);
@@ -1257,6 +1261,10 @@ async function renderCredits() {
     const list = document.getElementById('creditsList');
     const toggle = document.getElementById('creditsToggle');
     if (!card) return;
+    // No pictures on the card in this build (VMCore.VISUALS_AVAILABLE), so
+    // nothing to credit: a section naming the archive behind artwork the reader
+    // is never shown reads as a section about a feature that is missing.
+    if (!C.VISUALS_AVAILABLE) return;
 
     // Ask the worker what artwork exists before going looking for its credits.
     //
