@@ -132,6 +132,28 @@
     }
 
     // ---------------------------------------------------------------------
+    // The picture on the learning card is temporarily withdrawn.
+    //
+    // Same shape as ENG_ENG_AVAILABLE above, and for the same reason: the
+    // feature is finished and works - the index ships, visualFor answers, the
+    // card knows how to draw it - it is simply not something this build shows.
+    // One flag rather than deleted code and a deleted setting: the popup and
+    // the Settings page hide their toggle while this is false, and content.js
+    // draws no picture even for a reader whose stored visualsEnabled is true,
+    // so nobody is left with a picture they have no way to switch off.
+    //
+    // `visualsEnabled` keeps its default of true underneath. Flip this back and
+    // the card returns for everyone who never turned it off, which is the whole
+    // point of withdrawing it here instead of rewriting the default.
+    // ---------------------------------------------------------------------
+    const VISUALS_AVAILABLE = false;
+
+    /** Whether this build draws a picture on the card, from stored settings. */
+    function visualsActive(settings) {
+        return VISUALS_AVAILABLE && (settings || {}).visualsEnabled !== false;
+    }
+
+    // ---------------------------------------------------------------------
     // Settings model + defaults (single source of truth for both UIs).
     // Local-only: no context-check mode, no backend URL, no API keys.
     // ---------------------------------------------------------------------
@@ -1446,6 +1468,7 @@ function capitalizeFirst(text) {
         DATASET_REGISTRY, DEFAULT_DATASET_KEY, getDatasetFiles, datasetTagFor,
         DEFAULT_SETTINGS, REPLACEMENT_MODES, withDefaults,
         ENG_ENG_AVAILABLE, activeModes,
+        VISUALS_AVAILABLE, visualsActive,
         canonicalHost, isSiteDisabled, isHostBlocked, BUILTIN_BLOCKED_HOSTS,
         BLOCKED_PATHS, isUrlBlocked, CHAT_SURFACE_SELECTORS, chatSurfaceSelector,
         isHostDefaultOff, DEFAULT_OFF_HOSTS, BLOCKED_BY_CATEGORY,

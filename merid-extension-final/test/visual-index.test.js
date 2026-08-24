@@ -267,6 +267,45 @@ test('visualsEnabled is named everywhere it has to be named', () => {
         'default instead of the stored choice after a reload');
 });
 
+test('the picture is withdrawn from this build, in every place it has to be', () => {
+    // The flag is the whole feature switch. While it is false nothing draws a
+    // picture, and neither UI offers a toggle for one - a reader whose stored
+    // visualsEnabled is true from an earlier version must not be left with a
+    // picture and no way to turn it off.
+    assert.strictEqual(C.VISUALS_AVAILABLE, false);
+    assert.strictEqual(C.visualsActive({ visualsEnabled: true }), false);
+    assert.strictEqual(C.visualsActive({ visualsEnabled: false }), false);
+    assert.strictEqual(C.visualsActive({}), false);
+    assert.strictEqual(C.visualsActive(), false);
+
+    // The default stays true underneath, so flipping the flag back returns the
+    // card to everyone who never turned it off rather than to nobody.
+    assert.strictEqual(C.withDefaults({}).visualsEnabled, true);
+
+    const content = fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
+    assert.ok(/const vis = C\.visualsActive\(settings\)/.test(content),
+        'content.js reads settings.visualsEnabled directly, so the withdrawal ' +
+        'does not reach a reader who had the picture switched on');
+
+    // Both toggles ship hidden in the markup rather than being hidden by script
+    // on load: hiding them afterwards shows the control for a frame first.
+    const optionsHtml = fs.readFileSync(path.join(ROOT, 'options.html'), 'utf8');
+    assert.ok(/id="visualsField"[^>]*\shidden/.test(optionsHtml),
+        'the Settings picture control does not ship hidden, so it flashes up ' +
+        'before options.js can hide it');
+    const popupHtml = fs.readFileSync(path.join(ROOT, 'popup.html'), 'utf8');
+    assert.ok(/id="visuals-item"[^>]*\shidden/.test(popupHtml),
+        'the popup picture control does not ship hidden, so it flashes up ' +
+        'before popup.js can hide it');
+
+    // ...and both are put back by the flag, so this is a withdrawal and not a
+    // removal: nothing here needs editing to bring the feature back.
+    const options = fs.readFileSync(path.join(ROOT, 'options.js'), 'utf8');
+    assert.ok(options.includes('els.visualsField.hidden = !C.VISUALS_AVAILABLE'));
+    const popup = fs.readFileSync(path.join(ROOT, 'popup.js'), 'utf8');
+    assert.ok(popup.includes('visualsItem.hidden = !C.VISUALS_AVAILABLE'));
+});
+
 test('toggling the picture never rewrites the page', () => {
     // The scan picks words; this setting only changes how the card looks, and
     // the card is rebuilt on the next hover. Outside the COSMETIC set it would

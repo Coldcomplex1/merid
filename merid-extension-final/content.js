@@ -381,6 +381,9 @@ function init() {
  * failed reply costs the first hover its photo, not the page its start-up.
  */
 function loadVisualIndex() {
+    // Nothing draws it while the picture is withdrawn, so do not wake the
+    // worker to fetch and cache an index no card will read.
+    if (!C.VISUALS_AVAILABLE) return;
     if (visualIndex) return;
     try {
         chrome.runtime.sendMessage({ action: 'getVisualIndex' }, (resp) => {
@@ -2312,9 +2315,13 @@ function showTooltip(target, item) {
     // and a max-height, both resolvable at layout time, so the card's height is
     // final BEFORE it is measured below - an image arriving late cannot move a
     // card that has already been placed.
-    const vis = settings.visualsEnabled === false ? null : Visual.visualFor(item, visualIndex, {
+    // C.visualsActive rather than the stored flag alone: the picture is
+    // withdrawn from this build (VMCore.VISUALS_AVAILABLE), and a reader who
+    // had it on before the withdrawal still has visualsEnabled: true in sync
+    // with no toggle left to turn it off with.
+    const vis = C.visualsActive(settings) ? Visual.visualFor(item, visualIndex, {
         warm: warmSet, missing: missingSet, photoFailures
-    });
+    }) : null;
     // Beside the card when the window is wide enough for it, above the
     // definition when it is not.
     //

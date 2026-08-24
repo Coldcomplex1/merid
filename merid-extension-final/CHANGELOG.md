@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1 — 2026-08-24
+
+**The picture on the learning card is off for now.**
+
+- Hovering a word shows its meaning without a picture again. The card is the definition, the example and the buttons, as it was before 1.7.0.
+- The On/Off control for it is gone from the toolbar popup and from Settings, along with the "Where the pictures come from" list, rather than left there switching something that no longer appears.
+- Nothing else about the card changed: the display modes, the deck buttons, the theme and the long-card scrolling all work as they did.
+- Whatever you had it set to is remembered. Nobody has to set it again on the day the picture comes back.
+
 ## 1.7.0 — 2026-08-22
 
 **A picture on the learning card, and a card that stays on the screen.**

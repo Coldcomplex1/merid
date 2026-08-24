@@ -74,7 +74,11 @@
                 <p class="hint" id="directionHint" data-i18n="optDirectionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
             </div>
 
-            <div class="field">
+            <!-- Withdrawn for now, here and in the popup. Ships hidden so it
+                 never flashes up before options.js runs;
+                 VMCore.VISUALS_AVAILABLE is the switch that brings it back, and
+                 the card reads the same flag. -->
+            <div class="field" id="visualsField" hidden>
                 <label data-i18n="optVisualsLabel">Picture on the card</label>
                 <div class="seg" id="visualsSeg">
                     <button data-val="on" type="button" data-i18n="optOn">On</button>
