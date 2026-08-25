@@ -40,20 +40,6 @@ export default function Hero() {
               {t.hero.ctaDemo}
             </a>
           </div>
-
-          <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted">{t.hero.privacy}</p>
-
-          <div className="mt-7 flex flex-wrap items-center gap-2 text-xs font-bold">
-            {['SAT', 'B2', 'C1', 'C2'].map((tag) => (
-              <span
-                key={tag}
-                className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-body transition-colors hover:border-accent hover:text-accent"
-              >
-                {tag}
-              </span>
-            ))}
-            <span className="ml-1 text-muted">{t.hero.tagNote}</span>
-          </div>
         </div>
 
         <div className="animate-fade-up mx-auto w-full max-w-lg pb-16 lg:pb-8" style={{ animationDelay: '0.15s' }}>
