@@ -182,8 +182,6 @@ export interface Strings {
     sub: string
     ctaInstall: string
     ctaDemo: string
-    privacy: string
-    tagNote: string
     scrollCue: string
   }
   demo: {
@@ -612,9 +610,6 @@ const vi: Strings = {
     sub: 'Học từ vựng tiếng Anh một cách tự nhiên ngay khi đọc những trang web tiếng Việt bạn vẫn dùng mỗi ngày.',
     ctaInstall: 'Thêm Merid vào Chrome',
     ctaDemo: 'Thử demo ngay',
-    privacy:
-      'Riêng tư từ trong thiết kế. Merid tìm và thay từ ngay trên máy bạn, không cần tài khoản; chỉ đoạn câu quanh từ đã thay được gửi đi để kiểm tra ngữ cảnh, và bạn tắt được bất cứ lúc nào.',
-    tagNote: 'Học theo ngữ cảnh · Miễn phí',
     scrollCue: 'Cuộn xuống thử demo trực tiếp',
   },
   demo: {
@@ -1345,9 +1340,6 @@ const en: Strings = {
     sub: 'Learn English vocabulary naturally while reading the Vietnamese websites you already use.',
     ctaInstall: 'Add Merid to Chrome',
     ctaDemo: 'Try the Demo',
-    privacy:
-      'Private by design. It matches and replaces words locally on your device, with no account needed; only the sentence around a replaced word is sent out for the context check, which you can switch off.',
-    tagNote: 'Context-aware learning · Free',
     scrollCue: 'Scroll down to try the live demo',
   },
   demo: {
