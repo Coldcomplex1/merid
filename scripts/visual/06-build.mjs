@@ -45,10 +45,31 @@ import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
     warnUncommittedDecisions, sameRoot } from './lib/entries.mjs';
 
 const require = createRequire(import.meta.url);
-let sharp;
-try { sharp = require('sharp'); } catch (e) {
-    console.error('[06] sharp is not installed. Run:  npm i -D sharp');
-    process.exit(1);
+
+/**
+ * sharp, loaded the first time a picture actually has to be encoded.
+ *
+ * It used to load at import and exit the process when it was missing, which
+ * made every run of this stage depend on a 30MB native module - including the
+ * two that encode nothing. `--dry-run` is one of them, and ship.mjs calls it
+ * purely to read back the cutoff the reviewing supports; a glyphs-only build is
+ * the other. Both died on a dependency they never reached.
+ *
+ * Still fatal when a run does have pictures to encode: there is no half-build
+ * worth producing, and the index would then promise files that are not there.
+ */
+let sharp = null;
+function encoder() {
+    if (sharp) return sharp;
+    try { sharp = require('sharp'); } catch (e) {
+        console.error('[06] there are pictures to encode and sharp is not installed.');
+        console.error('     Run this in the REPOSITORY ROOT, not in merid-extension-final:');
+        console.error('');
+        console.error('       npm i -D sharp');
+        console.error('');
+        process.exit(1);
+    }
+    return sharp;
 }
 
 const args = process.argv.slice(2);
@@ -98,7 +119,7 @@ const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
 const CREDITS_FILE = path.join(VIS_DIR, 'CREDITS.json');
 
-const encode = (buf, format, quality = QUALITY_STEPS[0]) => sharp(buf)
+const encode = (buf, format, quality = QUALITY_STEPS[0]) => encoder()(buf)
     .resize(WIDTH, HEIGHT, { fit: 'cover', position: 'attention' })
     [format]({ quality, effort: format === 'avif' ? 9 : 6 })
     .toBuffer();
@@ -133,7 +154,7 @@ async function encodeToFit(buf, format) {
  * catches is the literal same file arriving twice from two archives.
  */
 async function phash(buf) {
-    const small = await sharp(buf).resize(8, 8, { fit: 'fill' }).greyscale().raw().toBuffer();
+    const small = await encoder()(buf).resize(8, 8, { fit: 'fill' }).greyscale().raw().toBuffer();
     const mean = small.reduce((a, b) => a + b, 0) / small.length;
     let bits = '';
     for (const v of small) bits += v >= mean ? '1' : '0';
@@ -493,14 +514,17 @@ async function main() {
     const queries = readJson(QUERIES, { entries: {} });
     const KIND_BUCKET = { object: 'kind-object', action: 'kind-action', role: 'kind-role' };
     const byKind = {};
-    let lettered = 0;
+    let uncovered = 0;
     for (const slug of entries.keys()) {
         if (photoSet.has(slug) || iconSet.has(slug)) continue;
         const q = queries.entries[slug];
         const bucket = KIND_BUCKET[q && q.kind];
         // No kind recorded - stage 02 skipped it, or answered outside its own
-        // closed list. The letter is the honest answer there.
-        if (!bucket) { lettered++; continue; }
+        // closed list. Nothing is the honest answer there: the card is drawn
+        // with no picture panel, because visualFor draws only what this index
+        // names. It used to draw the word's first letter, which is fine for one
+        // word and was a disaster the day the index was missing entirely.
+        if (!bucket) { uncovered++; continue; }
         (icon[bucket] = icon[bucket] || []).push(slug);
         (byKind[bucket] = byKind[bucket] || []).push(slug);
         glyphs++;
@@ -550,9 +574,22 @@ async function main() {
             Object.entries(byKind).map(([b, v]) => v.length + ' ' + b.replace('kind-', '')).join(', ') + '.');
         console.log('     A lower --accept-above turns more of these into photographs, at lower confidence.');
     }
-    if (lettered) {
-        console.log('[06] ' + lettered + ' words show only their first letter - no photograph, no concept,' +
-            '\n     and stage 02 recorded no kind for them either.');
+    // Coverage, said out loud, because it is the number that decides whether the
+    // feature looks finished. test/visual-index.test.js fails under 90%.
+    const corpus = entries.size;
+    const covered = corpus - uncovered;
+    const pct = corpus ? (100 * covered / corpus) : 0;
+    console.log('[06] coverage: ' + covered + '/' + corpus + ' entries (' + pct.toFixed(1) +
+        '%) have a picture or a symbol.');
+    if (uncovered) {
+        console.log('     The other ' + uncovered + ' get a card with no picture at all - no');
+        console.log('     photograph, no concept, and no kind recorded by stage 02.');
+    }
+    if (pct < 90) {
+        console.log('');
+        console.log('[06] WARNING: under 90% coverage, which npm test in merid-extension-final');
+        console.log('     refuses. Most often stage 02b has not run, or not finished:');
+        console.log('       node scripts/visual/02b-iconmap.mjs');
     }
     console.log('[06] vis/ is ' + (total / 1024 / 1024).toFixed(2) + 'MB' +
         ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)');

@@ -155,8 +155,9 @@ function buildQueue() {
             'they get no picture. Pass --all to review them anyway.');
         console.log('[05] NOTE: these are concrete words - stage 02 went looking for photographs of');
         console.log('     them - so stage 02b never gave them a concept either. The 56 concepts are');
-        console.log('     abstractions and none of them is what "anchor" is about. Without a picture');
-        console.log('     they show their first letter on a gradient, not a symbol.');
+        console.log('     abstractions and none of them is what "anchor" is about. Stage 06 gives');
+        console.log('     them the kind glyph stage 02 recorded - a thing, an action or a person -');
+        console.log('     and any it has no kind for get a card with no picture at all.');
     }
 
     items.sort((a, b) => a.best - b.best);
@@ -229,11 +230,16 @@ const PAGE = String.raw`<!doctype html><meta charset="utf-8">
   kbd { background:#eef1f7; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
         padding:1px 6px; font:inherit; font-size:12px }
   .done { padding:80px 20px; text-align:center }
+  .finish { background:var(--gold); color:var(--navy); border:none; border-radius:8px;
+            padding:6px 14px; font:inherit; font-weight:700; cursor:pointer }
+  .finish:hover { background:#ffd76a }
+  .done .finish { font-size:17px; padding:12px 26px; margin-top:14px }
 </style>
 <header>
   <b>Merid</b><span id="count"></span>
   <span class="bar"><i id="prog"></i></span>
   <span id="saved"></span>
+  <button class="finish" onclick="finish()" title="Stop reviewing and let the build carry on">Finish</button>
 </header>
 <main id="main"></main>
 <footer>
@@ -241,7 +247,8 @@ const PAGE = String.raw`<!doctype html><meta charset="utf-8">
   <kbd>Enter</kbd> take the first &nbsp;
   <kbd>x</kbd> none of these, use a symbol &nbsp;
   <kbd>&larr;</kbd> back &nbsp;
-  <kbd>&rarr;</kbd> skip for now
+  <kbd>&rarr;</kbd> skip for now &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+  <b>Finish</b> when you have had enough - the rest take a symbol
 </footer>
 <script>
 let queue = [], decisions = {}, i = 0, sample = null, inQueue = new Set();
@@ -275,11 +282,16 @@ function draw() {
 
   if (i >= queue.length) {
     main.innerHTML = '<div class="done"><h2>All done.</h2>' +
-      '<p>' + reviewed + ' reviewed. Run <code>node scripts/visual/06-build.mjs</code> next.</p>' +
+      '<p>' + reviewed + ' reviewed.</p>' +
       (sample
-        ? '<p>It will print how often the first candidate was the one you kept, at each ' +
-          'score, and what that means for the ' + sample.remaining + ' entries you did not see.</p>'
-        : '') + '</div>';
+        ? '<p>What happens next is a measurement: how often the first candidate was the ' +
+          'one you kept, at each score, and what that says about the ' + sample.remaining +
+          ' entries you did not see.</p>'
+        : '') +
+      '<button class="finish" onclick="finish()">Finish and build</button>' +
+      '<p style="margin-top:18px;color:var(--muted)">Or press ' +
+      '<kbd>&larr;</kbd> to go back over anything.</p>' +
+      '</div>';
     return;
   }
   const q = queue[i];
@@ -325,6 +337,19 @@ async function decide(pick) {
 
 window.pick = n => { if (queue[i] && queue[i].candidates[n]) decide(n); };
 
+// Stop reviewing, on purpose, from the page.
+//
+// Ctrl-C in the terminal has always ended this and still does. It is not enough
+// on its own: run.mjs drives this stage inside a longer chain and cannot watch
+// for a keystroke in a terminal the reviewer may not even be looking at. This
+// lets the tab say "I am finished" and the chain carry straight on to the
+// build. Every decision is already on disk before this is reachable.
+window.finish = async () => {
+  try { await fetch('/api/done', { method: 'POST' }); } catch (e) { /* server already going */ }
+  document.getElementById('main').innerHTML =
+    '<div class="done"><h2>Finished.</h2><p>You can close this tab.</p></div>';
+};
+
 addEventListener('keydown', e => {
   if (i >= queue.length && e.key !== 'ArrowLeft') return;
   if (e.key >= '1' && e.key <= '3') { window.pick(+e.key - 1); e.preventDefault(); }
@@ -364,7 +389,7 @@ function main() {
             console.error('[05] nothing to review: none of the ' + scored +
                 ' scored entries had a candidate clearing stage 04.');
             console.error('      Being concrete words, they have no concept glyph to fall back on');
-            console.error('      either, so they would show only their first letter.');
+            console.error('      either - just the kind glyph stage 02 recorded, or no picture.');
             console.error('      To look at them anyway:  node scripts/visual/05-review.mjs --all');
             console.error('      To loosen the bar:       MERID_CLIP_FLOOR=0.20 python3 scripts/visual/04-rank.py');
         }
@@ -420,6 +445,23 @@ function main() {
             return;
         }
 
+        // The page saying it is done. Answer first, then close: a response that
+        // never arrives leaves the tab looking like it failed.
+        if (url.pathname === '/api/done' && req.method === 'POST') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end('{"ok":true}');
+            const reviewed = Object.keys(readJson(DECISIONS, {})).filter(sl => inQueue.has(sl)).length;
+            console.log('\n[05] finished from the page - ' + reviewed + ' of ' +
+                queue.length + ' reviewed.');
+            warnUncommittedDecisions('05');
+            server.close(() => process.exit(0));
+            // A browser keeps its connection open, and server.close waits for
+            // every one of them. Without this the stage hangs on a tab nobody
+            // is going to close.
+            setTimeout(() => process.exit(0), 500).unref();
+            return;
+        }
+
         if (url.pathname.startsWith('/img/')) {
             const rel = decodeURIComponent(url.pathname.slice(5));
             const file = path.resolve(STATE_DIR, rel);
@@ -450,7 +492,9 @@ function main() {
                 : 'most confident first - stopping early only leaves behind entries that\n' +
                   '     were unlikely to survive a look anyway.'));
         }
-        console.log('[05] open http://127.0.0.1:' + PORT + '  (ctrl-c when you have had enough)');
+        console.log('[05] open http://127.0.0.1:' + PORT);
+        console.log('     Press "Finish" on the page when you have had enough - that lets a');
+        console.log('     run.mjs chain carry straight on to the build. Ctrl-C still works.');
         warnUncommittedDecisions('05');
     });
 }

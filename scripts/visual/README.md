@@ -13,9 +13,23 @@ Run by hand when the CSVs change, not on every build — the same policy as
 `scripts/gen-word-levels.mjs`, and for the same reason: the datasets are
 hand-maintained and have no build step of their own.
 
-**The extension works without any of this.** Every entry that has no picture
-wears a concept glyph, so an empty `vis/` is a complete product, not a broken
-one. This pipeline decides how much of it is photographs.
+**The extension builds and ships without any of this**, and shows no picture on
+any card while `visual-index.json` is absent - which is what 1.7.0 got wrong and
+1.7.1 had to withdraw the feature over. The card draws what this pipeline names
+and nothing where it names nothing, so a checkout with no `vis/` is the product
+minus a feature rather than a broken one. But the feature IS the pictures: run
+this at least once, even if only far enough for the symbols.
+
+```bash
+node scripts/visual/run.mjs               # all six stages, then build and push
+node scripts/visual/run.mjs --no-photos   # 01, 02, 02b, 06 - symbols only,
+                                          # GEMINI_API_KEY and nothing else
+```
+
+`run.mjs` checks every prerequisite before it runs anything, stops at the first
+failure with the command that fixes it, commits `decisions.json` the moment the
+reviewing ends, and hands off to `ship.mjs`. Each stage below still runs on its
+own, and each still resumes.
 
 A step-by-step walkthrough in Vietnamese, aimed at whoever is running this
 rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
@@ -147,9 +161,11 @@ and not one of them is what `anchor` is about.
 So a concrete word without a photograph gets one of three **kind** glyphs
 instead - a box, a stride, a figure - from the `object`/`action`/`role` stage 02
 already recorded in `queries.json`. It costs nothing and says far more than the
-letter A. Only an entry stage 02 recorded no kind for falls through to its own
-first letter. Stage 06 prints both counts; read them before settling on a
-cutoff, because a strict one turns photographs into boxes.
+letter A. Only an entry stage 02 recorded no kind for falls through to nothing
+at all - the card is drawn with no picture panel, because `visualFor` draws only
+what the index names. Stage 06 prints the coverage that results, and
+`test/visual-index.test.js` refuses a build under 90%; read the number before
+settling on a cutoff, because a strict one turns photographs into boxes.
 
 The three are in `GLYPH` but deliberately not in `ICON_IDS`, so the concept
 mapper is never offered them - `kind-object` coming back for an abstract word
@@ -187,10 +203,11 @@ directory rather than the index, so a picture dropped here but left on disk
 would fail the build it was dropped to save.
 
 It also counts the words that end with neither a photograph nor a concept
-symbol and fall back to their first letter. Those are always concrete words —
-stage 01 judged them photographable so stage 02b never gave them a concept, and
-the 56 concepts are abstractions with nothing that fits *anchor*. That count is
-the real price of a strict `--accept-above`, so it is printed next to it.
+symbol, whose cards are then drawn with no picture at all. Those are always
+concrete words — stage 01 judged them photographable so stage 02b never gave
+them a concept, and the 56 concepts are abstractions with nothing that fits
+*anchor*. That count is the real price of a strict `--accept-above`, so it is
+printed next to it, as the coverage percentage the extension's tests gate on.
 
 It also reads the reviewing. Two tables: agreement per score band, which shows
 whether the score predicts correctness at all, and agreement cumulative from the

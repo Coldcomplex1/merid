@@ -7,9 +7,11 @@ Pipeline này biến ba file CSV từ vựng thành ảnh minh hoạ mà extensi
 khi người đọc hover một từ. Mất khoảng 2 giờ, trong đó 1 giờ là bạn ngồi duyệt
 ảnh; phần còn lại là máy chạy.
 
-**Không chạy cũng được.** Từ nào không có ảnh sẽ hiện một ký hiệu khái niệm
-trên nền màu — extension vẫn hoàn chỉnh. Pipeline này quyết định bao nhiêu phần
-trong đó là ảnh chụp thật.
+**Phải chạy ít nhất một lần.** Không có `visual-index.json` thì thẻ học không
+có ảnh nào cả — extension vẫn chạy đúng, chỉ là không có phần hình. Chạy tối
+thiểu `node scripts/visual/run.mjs --no-photos` (chỉ cần key Gemini, ~25 phút)
+để mọi từ có một ký hiệu khái niệm trên nền màu; chạy đầy đủ để có thêm vài
+trăm ảnh chụp thật.
 
 Chi tiết kỹ thuật từng bước nằm ở `scripts/visual/README.md`. Tài liệu này là
 đường đi từ đầu đến cuối cho người chạy.
@@ -182,7 +184,39 @@ Xong thì `Ctrl-C` để tắt server.
 
 ---
 
-## 5. Chạy đầy đủ
+## 5. Chạy đầy đủ — **một lệnh**
+
+```bash
+node scripts/visual/run.mjs
+```
+
+Lệnh này chạy trọn 01 → 06 rồi tự build, tự chạy test, tự commit và push. Giữa
+chừng nó mở trang duyệt ảnh cho bạn bấm khoảng 10 phút, bạn bấm **"Finish"**
+trên trang là nó chạy tiếp.
+
+Hai điều nó làm mà chạy tay dễ quên:
+
+- **Kiểm tra mọi thứ TRƯỚC khi chạy.** Thiếu key, thiếu `sharp`, thiếu CLIP —
+  nó nói hết ngay từ giây đầu, kèm lệnh sửa, và không chạy gì cả. Trước đây
+  bạn chỉ biết thiếu `sharp` ở phút thứ 40.
+- **Commit `decisions.json` ngay sau khi bạn duyệt xong**, trước khi làm bất
+  cứ việc gì khác.
+
+Vài tuỳ chọn:
+
+```bash
+node scripts/visual/run.mjs --sample 80    # duyệt nhiều hơn 50 từ
+node scripts/visual/run.mjs --all          # duyệt hết mọi từ đủ điều kiện
+node scripts/visual/run.mjs --no-photos    # chỉ ký hiệu: không cần Pexels/CLIP
+node scripts/visual/run.mjs --dry-run      # làm hết, không commit/push
+```
+
+**Ngắt giữa chừng thoải mái.** `Ctrl-C` rồi chạy lại đúng lệnh đó, nó tiếp tục
+từ chỗ dừng. Câu trả lời của Gemini được cache theo nội dung câu hỏi nên chạy
+lại không tốn quota.
+
+<details>
+<summary>Muốn chạy từng bước bằng tay thì đây</summary>
 
 ```bash
 node scripts/visual/01-classify.mjs     # ~5 phút
@@ -202,17 +236,16 @@ node scripts/visual/06-build.mjs
 node scripts/visual/06-build.mjs --accept-above 0.284
 ```
 
+</details>
+
 Ước lượng thời gian sẽ chính xác hơn sau bước 01 — nó in ra bao nhiêu từ thật
 sự cần ảnh. (Ở lần đo không có LLM là 404 từ; có LLM chắc sẽ nhỉnh hơn.)
 
 Vài điều khi chạy:
 
-- **Ngắt giữa chừng thoải mái.** `Ctrl-C` rồi chạy lại đúng lệnh đó, nó tiếp tục
-  từ chỗ dừng. Câu trả lời của Gemini được cache theo nội dung câu hỏi nên chạy
-  lại không tốn quota.
 - **Bước 03 gặp 429** sẽ tự dừng 60 giây rồi thử lại. Không cần làm gì.
-- **Bước 05** xếp từ khó nhất lên đầu. Hết giờ cứ đóng — từ chưa duyệt tự dùng
-  icon, không nhận ảnh bừa.
+- **Bước 05** xếp từ khó nhất lên đầu. Hết giờ cứ bấm "Finish" — từ chưa duyệt
+  tự dùng icon, không nhận ảnh bừa.
 - **Không cần duyệt hết.** `--sample 50` đổi công việc chứ không phải rút ngắn
   nó — xem mục dưới.
 
@@ -237,8 +270,9 @@ không duyệt hết, dùng `--order best` để phần bỏ lại là phần k�
 > người (`role` — người/vai trò). Bước 02 đã ghi sẵn `kind` cho mọi từ nó đi
 > tìm ảnh, nên cái này không tốn thêm gì cả.
 >
-> Chỉ từ nào bước 02 **không ghi kind** mới hiện chữ cái đầu. Bước 06 in ra cả
-> hai con số — đọc trước khi chốt `--accept-above`.
+> Chỉ từ nào bước 02 **không ghi kind** mới không có gì cả — thẻ của nó không
+> có khung ảnh. Bước 06 in ra tỉ lệ phủ; dưới 90% là `npm test` đỏ. Đọc con số
+> đó trước khi chốt `--accept-above`.
 
 Những từ không ứng viên nào đạt **không được đưa ra hỏi**. Bắt
 bạn xác nhận một kết luận mà pipeline đã đưa ra rồi, vài trăm lần, chỉ tổ mệt
@@ -260,6 +294,8 @@ Muốn hạ ngưỡng: `$env:MERID_CLIP_FLOOR='0.20'` rồi chạy lại bước
 Mỗi phím bấm là ghi xuống đĩa ngay. Đóng tab không mất gì.
 
 ### Duyệt xong thì COMMIT NGAY
+
+`run.mjs` tự làm việc này ngay sau khi bạn bấm "Finish". Nếu bạn chạy tay:
 
 ```bash
 git add -f scripts/visual/state/decisions.json
@@ -353,13 +389,19 @@ Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguy
 
 ## 6. Kiểm tra kết quả
 
+`run.mjs` đã chạy `npm test` và `npm run build` giùm bạn và chỉ push khi cả hai
+xanh. Muốn tự kiểm lại:
+
 ```bash
 cd merid-extension-final
-npm test          # 172 test; 3 test về ảnh chuyển từ skip sang chạy khi có vis/
+npm test          # 4 test về ảnh chuyển từ skip sang chạy khi có vis/
 npm run build     # sẽ BÁO LỖI nếu vis/ vượt ngân sách 6MB
-node e2e/visual.mjs
+npm i --no-save playwright && node e2e/visual.mjs
 du -sh vis        # nên khoảng 2MB
 ```
+
+Một trong bốn test đó là **cổng độ phủ**: nếu dưới 90% số từ có ảnh hoặc ký
+hiệu, test đỏ và không push được. Đó là cách bắt trường hợp pipeline chạy dở.
 
 Rồi tự mắt kiểm:
 
@@ -380,7 +422,9 @@ Rồi tự mắt kiểm:
 
 ## 7. Đẩy kết quả lên
 
-### Một lệnh làm hết
+`node scripts/visual/run.mjs` ở phần 5 đã làm hết phần này rồi — nó gọi
+`ship.mjs` ở cuối. Mục này để khi bạn chỉ muốn build lại và đẩy lên mà không
+chạy lại cả pipeline:
 
 ```bash
 git checkout -- package.json package-lock.json
@@ -428,11 +472,11 @@ gitignore vì tái tạo được.
 | `no searchable queries were produced` | Bước 02 không nhận được câu trả lời nào — xem dòng `[llm]` ngay trên đó |
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |
 | `sharp is not installed` | Chạy `npm i -D sharp` ở **thư mục gốc** repo, không phải trong `merid-extension-final` |
-| Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN, hoặc bỏ qua bước 04 — bước 05 vẫn chạy được, chỉ mất thứ tự ưu tiên |
+| Bước 04 `Failed to download weights` | Mạng chặn HuggingFace. Thử VPN. **Không bỏ qua được**: bước 05 đọc `ranked.json` của bước 04 và không chạy nếu thiếu. Không có CLIP thì chỉ còn `run.mjs --no-photos` (chỉ ký hiệu, không ảnh chụp) |
 | Bước 06 báo `N picture(s) would not fit` | Ảnh quá rối, nén hết cỡ vẫn > 9KB. Nó tự bỏ ảnh đó — không cần làm gì |
 | Bước 06 báo `pictures are used twice` | Hai từ gần nghĩa nhận cùng một ảnh, ít nhất một cái sai. Mở lại đúng cặp đó: `node scripts/visual/05-review.mjs --only craft,artisan` |
 | Nhiều từ chỉ hiện ký hiệu khối hộp / người bước | Từ cụ thể nhưng không được ảnh nào, nên nhận ký hiệu loại. Hạ `--accept-above` xuống, hoặc duyệt thêm, để chúng thành ảnh thật |
-| Từ hiện chữ cái đầu | Bước 02 không ghi `kind` cho từ đó — không có ảnh và cũng không có loại. Số này phải nhỏ; nếu lớn thì xem lại `state/queries.json` |
+| Thẻ không có ảnh nào cả | Bước 02 không ghi `kind` cho từ đó — không ảnh, không khái niệm, không loại. Bước 06 in ra tỉ lệ phủ; dưới 90% thì `npm test` đỏ. Nếu số này lớn, xem lại `state/queries.json` |
 | Ảnh sai nghĩa nhiều | Thường là bước **01** phân loại nhầm từ trừu tượng thành "chụp được", chứ không phải lỗi tìm ảnh. Xoá `state/classification.json` + `state/queries.json` + `state/llm-cache-*.json` rồi chạy lại từ 01 |
 | Ảnh là bản đồ, biểu đồ, sơ đồ | Query đang tả một phép ẩn dụ. Xem `state/queries.json` — nếu query tả cảnh vật lý cho một nghĩa trừu tượng thì gốc rễ ở bước 01 |
 
