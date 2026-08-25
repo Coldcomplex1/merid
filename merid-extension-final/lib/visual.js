@@ -19,9 +19,22 @@
  *             two thirds of an academic word list is abstract, so this is the
  *             common case, not the fallback.
  *
- * and GENERIC, the first letter on a gradient, for a word the index has never
- * heard of (someone's own uploaded dataset). There is no fourth state: every
- * entry gets something.
+ * and NOTHING, for a word the index has never heard of - someone's own uploaded
+ * dataset, or a build whose artwork has not been generated yet. `visualFor`
+ * returns null there and the card is drawn without a picture panel at all.
+ *
+ * That last state used to be GENERIC: the word's first letter on a gradient.
+ * It is gone from this path because of what it did when the index was MISSING
+ * rather than merely incomplete - every entry fell through to it at once, and
+ * a card wearing a giant "A" reads as a broken feature, not as a considered
+ * fallback. 1.7.0 shipped in exactly that state and 1.7.1 had to withdraw the
+ * feature. Drawing only what the index actually names makes that impossible to
+ * repeat: no artwork, no panel, and the card is what it was before.
+ *
+ * The letter survives in one place only, and is still worth having there:
+ * content.js swaps it in when a photograph fails to decode on a word with no
+ * concept bucket. That is one card, in one session, in a box that is already
+ * on screen - not a page of them.
  */
 (function (root, factory) {
     const api = factory();
@@ -245,7 +258,12 @@
     }
 
     /**
-     * What to draw for one entry, or null if the reader has pictures off.
+     * What to draw for one entry, or null if there is nothing to draw.
+     *
+     * Null means one of three things and treats them alike, because the card
+     * wants the same answer for all three: the reader has pictures off, the
+     * index has not loaded yet, or the index knows nothing about this entry.
+     * In every case the card is drawn without a picture panel.
      *
      * Pure table lookups - no I/O, nothing async, nothing that can fail. It is
      * called from a mouseover handler, so it has to be free.
@@ -285,7 +303,12 @@
                 warm: !!(s.warm && s.warm.has(slug))
             }, decor);
         }
-        return Object.assign({ kind: iconId ? 'icon' : 'generic' }, decor);
+        // No photograph and no concept: the index does not know this entry, so
+        // there is nothing honest to draw for it. See the note at the top of
+        // this file - this is the branch that used to hand every word its own
+        // first letter the moment the index went missing.
+        if (!iconId) return null;
+        return Object.assign({ kind: 'icon' }, decor);
     }
 
     /** Alt text, from what the entry already carries. Costs no dataset bytes. */

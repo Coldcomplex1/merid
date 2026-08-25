@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 — 2026-08-25
+
+**The picture on the learning card comes back, with pictures behind it this time.**
+
+- Hovering a word shows a picture beside its meaning again. Words you can point a camera at get a photograph; the rest — the adjectives, the states, the words for ideas — get a symbol for what they are about, on a colour of their own.
+- A word Merid has nothing for now shows a card with no picture at all, rather than a coloured box with its first letter in it. That letter is what 1.7.0 gave every single word on the day it shipped, because the artwork had not been made yet, and it is why the picture was withdrawn a day later. It cannot happen again: the card draws what it has and nothing where it has nothing.
+- The On/Off control is back in the toolbar popup and in Settings, along with "Where the pictures come from" — the archive, the photographer where one is named, and the licence for every picture in the package.
+- A page whose first request for the artwork went astray no longer goes without pictures for as long as it stays open. It asks again.
+- The picture panel beside the card now takes the dark card's shadow on a dark page instead of the light one's.
+
 ## 1.7.1 — 2026-08-24
 
 **A quieter mark on the word, and the picture on the learning card is off for now.**

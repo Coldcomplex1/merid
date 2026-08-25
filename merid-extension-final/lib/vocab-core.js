@@ -132,21 +132,22 @@
     }
 
     // ---------------------------------------------------------------------
-    // The picture on the learning card is temporarily withdrawn.
+    // Whether this build draws a picture on the learning card at all.
     //
-    // Same shape as ENG_ENG_AVAILABLE above, and for the same reason: the
-    // feature is finished and works - the index ships, visualFor answers, the
-    // card knows how to draw it - it is simply not something this build shows.
-    // One flag rather than deleted code and a deleted setting: the popup and
-    // the Settings page hide their toggle while this is false, and content.js
-    // draws no picture even for a reader whose stored visualsEnabled is true,
-    // so nobody is left with a picture they have no way to switch off.
+    // Same shape as ENG_ENG_AVAILABLE above. It was false for 1.7.1, which
+    // withdrew the picture a day after 1.7.0 introduced it: the artwork had
+    // never been generated, so every card fell through to a coloured box with
+    // the word's first letter in it, and a page of those reads as a bug.
     //
-    // `visualsEnabled` keeps its default of true underneath. Flip this back and
-    // the card returns for everyone who never turned it off, which is the whole
-    // point of withdrawing it here instead of rewriting the default.
+    // True again now, and the reason it is safe to be true is no longer "the
+    // artwork is there" - it is that visualFor draws only what the index
+    // actually names (lib/visual.js) and returns null for everything else. A
+    // checkout with no vis/ at all therefore shows cards with no picture panel,
+    // which is what 1.7.1 shipped, rather than the letters that made it
+    // necessary. The flag stays because the toggle in two UIs and the fetch in
+    // the worker all read it, and one switch is still worth having.
     // ---------------------------------------------------------------------
-    const VISUALS_AVAILABLE = false;
+    const VISUALS_AVAILABLE = true;
 
     /** Whether this build draws a picture on the card, from stored settings. */
     function visualsActive(settings) {

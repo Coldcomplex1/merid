@@ -687,8 +687,12 @@ a.vm-title:hover {
 }
 
 /* The card's own shadow is tuned for a light page; on a dark one it is just a
-   dark smudge on dark, so it becomes a faint lift instead. */
-.vocab-master-tooltip[data-vm-scheme="dark"] .vm-card {
+   dark smudge on dark, so it becomes a faint lift instead. The picture panel is
+   a sibling of the card rather than part of it, so it needs saying twice - and
+   it was missed the first time, leaving the panel wearing the light card's
+   shadow next to a dark one. */
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-card,
+.vocab-master-tooltip[data-vm-scheme="dark"] .vm-aside {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 

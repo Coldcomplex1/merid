@@ -74,11 +74,12 @@
                 <p class="hint" id="directionHint" data-i18n="optDirectionHint" hidden>Turn on both to scan Vietnamese and English at the same time.</p>
             </div>
 
-            <!-- Withdrawn for now, here and in the popup. Ships hidden so it
-                 never flashes up before options.js runs;
-                 VMCore.VISUALS_AVAILABLE is the switch that brings it back, and
-                 the card reads the same flag. -->
-            <div class="field" id="visualsField" hidden>
+            <!-- Hidden by options.js when VMCore.VISUALS_AVAILABLE is false,
+                 the same way the English-English direction card is. It ships
+                 visible because the flag is on: a control that ships hidden and
+                 is unhidden by script flashes its absence for a frame, which is
+                 the more common state and the worse one to show. -->
+            <div class="field" id="visualsField">
                 <label data-i18n="optVisualsLabel">Picture on the card</label>
                 <div class="seg" id="visualsSeg">
                     <button data-val="on" type="button" data-i18n="optOn">On</button>

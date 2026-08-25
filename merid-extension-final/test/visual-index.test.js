@@ -140,37 +140,59 @@ test('slugs do not collide across the whole corpus', () => {
 // visualFor
 // ---------------------------------------------------------------------------
 
-test('every entry in every dataset mode gets something to draw', () => {
+test('whatever an entry is given is drawable', () => {
     const index = readIndex() || EMPTY_INDEX;
     for (const mode of MODES) {
         const entries = loadEntries(mode);
         assert.ok(entries.length > 0, `${mode} loaded nothing`);
         for (const entry of entries) {
             const vis = Visual.visualFor(entry, index, {});
-            assert.ok(vis, `${mode}: ${entry.word} got nothing`);
-            assert.ok(['photo', 'icon', 'generic'].includes(vis.kind),
+            // null is a legitimate answer: the index does not know this entry,
+            // and the card is drawn with no picture panel. What must not happen
+            // is a half-answer - a kind the card cannot draw, or an icon with
+            // no glyph behind it.
+            if (!vis) continue;
+            assert.ok(['photo', 'icon'].includes(vis.kind),
                 `${mode}: ${entry.word} got kind ${vis.kind}`);
             assert.ok(vis.hue >= 0 && vis.hue < 360, `${entry.word} hue ${vis.hue}`);
             assert.ok(vis.angle >= 0 && vis.angle < 180, `${entry.word} angle ${vis.angle}`);
             assert.ok([0, 1, 2].includes(vis.pattern), `${entry.word} pattern ${vis.pattern}`);
             if (vis.kind === 'icon') assert.ok(Visual.GLYPH[vis.iconId], `${entry.word} -> ${vis.iconId}`);
-            if (vis.kind === 'generic') assert.ok(vis.letter, `${entry.word} has no letter`);
         }
     }
 });
 
-test('a word the index has never heard of still gets a card', () => {
-    // Someone's own uploaded dataset. There is no fourth state.
-    const vis = Visual.visualFor({ word: 'zzunknown', definition: 'x' }, EMPTY_INDEX, {});
-    assert.strictEqual(vis.kind, 'generic');
-    assert.strictEqual(vis.letter, 'Z');
+test('nothing is drawn for a word the index has never heard of', () => {
+    // Someone's own uploaded dataset, or a checkout whose artwork has not been
+    // generated. Both get a card with no picture panel.
+    //
+    // This is the test that stands in for 1.7.0. Back then the third state was
+    // the word's own first letter on a gradient, which is a reasonable thing to
+    // show one word and a broken-looking feature when the index is missing and
+    // EVERY word falls into it. That is what happened, and 1.7.1 had to
+    // withdraw the picture. A build with no artwork now shows what it showed
+    // before the feature existed.
+    assert.strictEqual(
+        Visual.visualFor({ word: 'zzunknown', definition: 'x' }, EMPTY_INDEX, {}), null);
+    // ...including every real entry, when the index is the empty one a
+    // checkout without vis/ ends up with.
+    for (const entry of loadEntries('all').slice(0, 200)) {
+        assert.strictEqual(Visual.visualFor(entry, EMPTY_INDEX, {}), null,
+            `${entry.word} drew something from an empty index`);
+    }
+    // And when the index has not arrived at all.
+    assert.strictEqual(Visual.visualFor({ word: 'abate', definition: 'x' }, null, {}), null);
 });
 
 test('decoration is deterministic', () => {
     const entry = { word: 'abate', definition: 'Reduce, diminish' };
-    const a = Visual.visualFor(entry, EMPTY_INDEX, {});
-    const b = Visual.visualFor(entry, EMPTY_INDEX, {});
+    const index = Visual.parseIndex({
+        v: 1, fmt: 'avif', photo: [], icon: { 'decline': Visual.slugFor(entry) }
+    });
+    const a = Visual.visualFor(entry, index, {});
+    const b = Visual.visualFor(entry, index, {});
     assert.deepStrictEqual(a, b);
+    assert.strictEqual(a.kind, 'icon');
 });
 
 test('words in one bucket look related but not identical', () => {
@@ -204,24 +226,37 @@ test('words in one bucket look related but not identical', () => {
 });
 
 test('a picture that fails to load is not asked for again', () => {
-    const index = Visual.parseIndex({ v: 1, fmt: 'avif', photo: ['abate-x'], icon: {} });
     const entry = { word: 'abate', definition: 'Reduce, diminish' };
     const slug = Visual.slugFor(entry);
-    const live = Visual.parseIndex({ v: 1, fmt: 'avif', photo: [slug], icon: {} });
 
-    assert.strictEqual(Visual.visualFor(entry, live, {}).kind, 'photo');
+    // With a concept behind it, the word falls back to its glyph.
+    const both = Visual.parseIndex({
+        v: 1, fmt: 'avif', photo: [slug], icon: { 'decline': slug }
+    });
+    assert.strictEqual(Visual.visualFor(entry, both, {}).kind, 'photo');
     assert.strictEqual(
-        Visual.visualFor(entry, live, { missing: new Set([slug]) }).kind, 'generic');
-    void index;
+        Visual.visualFor(entry, both, { missing: new Set([slug]) }).kind, 'icon');
+
+    // Without one, there is nothing left to draw and the card takes no panel.
+    const photoOnly = Visual.parseIndex({ v: 1, fmt: 'avif', photo: [slug], icon: {} });
+    assert.strictEqual(Visual.visualFor(entry, photoOnly, {}).kind, 'photo');
+    assert.strictEqual(
+        Visual.visualFor(entry, photoOnly, { missing: new Set([slug]) }), null);
 });
 
 test('three failures in a row take photos off the table for the session', () => {
     const entry = { word: 'abate', definition: 'Reduce, diminish' };
+    const slug = Visual.slugFor(entry);
     const live = Visual.parseIndex({
-        v: 1, fmt: 'avif', photo: [Visual.slugFor(entry)], icon: {}
+        v: 1, fmt: 'avif', photo: [slug], icon: { 'decline': slug }
     });
     assert.strictEqual(Visual.visualFor(entry, live, { photoFailures: 2 }).kind, 'photo');
-    assert.strictEqual(Visual.visualFor(entry, live, { photoFailures: 3 }).kind, 'generic');
+    assert.strictEqual(Visual.visualFor(entry, live, { photoFailures: 3 }).kind, 'icon');
+
+    // A browser that cannot decode what we ship, on a word with no concept:
+    // no picture rather than a letter standing in for every photograph.
+    const photoOnly = Visual.parseIndex({ v: 1, fmt: 'avif', photo: [slug], icon: {} });
+    assert.strictEqual(Visual.visualFor(entry, photoOnly, { photoFailures: 3 }), null);
 });
 
 test('the index format decides the file extension, not the code', () => {
@@ -267,43 +302,47 @@ test('visualsEnabled is named everywhere it has to be named', () => {
         'default instead of the stored choice after a reload');
 });
 
-test('the picture is withdrawn from this build, in every place it has to be', () => {
-    // The flag is the whole feature switch. While it is false nothing draws a
-    // picture, and neither UI offers a toggle for one - a reader whose stored
-    // visualsEnabled is true from an earlier version must not be left with a
-    // picture and no way to turn it off.
-    assert.strictEqual(C.VISUALS_AVAILABLE, false);
-    assert.strictEqual(C.visualsActive({ visualsEnabled: true }), false);
+test('the picture is part of this build, in every place it has to be', () => {
+    // The flag is the whole feature switch, and it is on. 1.7.1 turned it off;
+    // this is the same test read the other way round, so that turning it back
+    // off some day is a deliberate edit here rather than a silent one.
+    assert.strictEqual(C.VISUALS_AVAILABLE, true);
+    assert.strictEqual(C.visualsActive({ visualsEnabled: true }), true);
+    assert.strictEqual(C.visualsActive({}), true);
+    assert.strictEqual(C.visualsActive(), true);
+    // The reader's own switch still wins over the build's.
     assert.strictEqual(C.visualsActive({ visualsEnabled: false }), false);
-    assert.strictEqual(C.visualsActive({}), false);
-    assert.strictEqual(C.visualsActive(), false);
-
-    // The default stays true underneath, so flipping the flag back returns the
-    // card to everyone who never turned it off rather than to nobody.
     assert.strictEqual(C.withDefaults({}).visualsEnabled, true);
 
     const content = fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
     assert.ok(/const vis = C\.visualsActive\(settings\)/.test(content),
-        'content.js reads settings.visualsEnabled directly, so the withdrawal ' +
-        'does not reach a reader who had the picture switched on');
+        'content.js must go through C.visualsActive, not settings.visualsEnabled ' +
+        'alone, or the build-level switch cannot reach a reader who had the ' +
+        'picture turned on');
 
-    // Both toggles ship hidden in the markup rather than being hidden by script
-    // on load: hiding them afterwards shows the control for a frame first.
+    // Both toggles ship visible, and the flag is what hides them. The reverse -
+    // shipping hidden and unhiding by script - shows their absence for a frame
+    // on every popup open, which is the common path now that the flag is on.
     const optionsHtml = fs.readFileSync(path.join(ROOT, 'options.html'), 'utf8');
-    assert.ok(/id="visualsField"[^>]*\shidden/.test(optionsHtml),
-        'the Settings picture control does not ship hidden, so it flashes up ' +
-        'before options.js can hide it');
+    assert.ok(!/id="visualsField"[^>]*\shidden/.test(optionsHtml),
+        'the Settings picture control ships hidden while the feature is on');
     const popupHtml = fs.readFileSync(path.join(ROOT, 'popup.html'), 'utf8');
-    assert.ok(/id="visuals-item"[^>]*\shidden/.test(popupHtml),
-        'the popup picture control does not ship hidden, so it flashes up ' +
-        'before popup.js can hide it');
+    assert.ok(!/id="visuals-item"[^>]*\shidden/.test(popupHtml),
+        'the popup picture control ships hidden while the feature is on');
 
-    // ...and both are put back by the flag, so this is a withdrawal and not a
-    // removal: nothing here needs editing to bring the feature back.
+    // ...and both still read the flag, so withdrawing the feature again stays a
+    // one-line change rather than a markup edit in two files.
     const options = fs.readFileSync(path.join(ROOT, 'options.js'), 'utf8');
     assert.ok(options.includes('els.visualsField.hidden = !C.VISUALS_AVAILABLE'));
     const popup = fs.readFileSync(path.join(ROOT, 'popup.js'), 'utf8');
     assert.ok(popup.includes('visualsItem.hidden = !C.VISUALS_AVAILABLE'));
+
+    // The worker is asked for the index more than once now. A tab whose first
+    // and only ask came back with a lastError used to show no picture for the
+    // rest of its life.
+    assert.ok(/visualIndexTries/.test(content),
+        'content.js asks for the artwork index exactly once per page, so one ' +
+        'failed message costs the tab every picture it would have shown');
 });
 
 test('toggling the picture never rewrites the page', () => {
@@ -345,6 +384,41 @@ test('shipped artwork matches the index', { skip: !fs.existsSync(VIS_DIR) }, () 
         assert.ok(Visual.GLYPH[iconId],
             `index maps a word to bucket "${iconId}", which has no glyph`);
     }
+});
+
+test('the shipped index covers the corpus', { skip: !fs.existsSync(INDEX_FILE) }, () => {
+    // The gate that turns "the artwork run stopped halfway" into a red test
+    // instead of a half-finished feature on the store.
+    //
+    // Since visualFor draws only what the index names, a thin index is no
+    // longer visibly broken - it is quietly threadbare, which is harder to
+    // notice and worse to ship: a reader hovers ten words and sees four
+    // pictures. The pipeline has no reason to leave many entries out. Stage 02b
+    // gives every abstract entry a concept, and stage 06 gives every concrete
+    // one that missed a photograph its kind glyph, so the only entries left are
+    // the ones stage 02 recorded no kind for. 06 prints that number; this is
+    // the same number, enforced.
+    //
+    // 90% rather than 100%: the remainder is a real and acceptable state, and a
+    // test that demands perfection from a pipeline whose inputs are three live
+    // archives would be red for reasons nobody can act on.
+    const MIN_COVERAGE = 0.90;
+
+    const index = readIndex();
+    const reachable = new Set();
+    for (const mode of MODES) {
+        for (const entry of loadEntries(mode)) reachable.add(Visual.slugFor(entry));
+    }
+
+    let covered = 0;
+    for (const slug of reachable) {
+        if (index.photo.has(slug) || index.icon.has(slug)) covered++;
+    }
+    const ratio = covered / reachable.size;
+    assert.ok(ratio >= MIN_COVERAGE,
+        `only ${covered} of ${reachable.size} entries (${(ratio * 100).toFixed(1)}%) have a ` +
+        `picture or a symbol; the rest would show a card with no picture at all. ` +
+        `Re-run the pipeline, or lower --accept-above so more entries take a photograph.`);
 });
 
 test('every shipped picture is reachable from some dataset mode',

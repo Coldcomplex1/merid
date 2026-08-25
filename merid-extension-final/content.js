@@ -53,9 +53,21 @@ let currentObserver = null;
 // nothing measured per frame. That is the whole design constraint.
 // -------------------------------------------------------------
 
-// Parsed once per page from the worker. Null until it lands, which just means
-// the first hover or two draw a generated glyph instead of a photo.
+// Parsed once per page from the worker. Null until it lands, and a hover in
+// that window draws a card with no picture panel - the same card a word the
+// index does not know gets. There is no half-drawn state to fall into: see the
+// note at the top of lib/visual.js.
 let visualIndex = null;
+// Asking for it is one message to the worker, and that message can fail: a
+// service worker still waking, an extension reloaded under an open tab, a
+// transient lastError. It used to be sent exactly once per page, so any one of
+// those cost the tab every picture it would ever have shown, silently and for
+// as long as the tab stayed open. Hover asks again instead - hover is the only
+// thing that reads the index - and stops after a few tries so a genuinely
+// broken worker is not asked on every mouse move.
+let visualIndexPending = false;
+let visualIndexTries = 0;
+const VISUAL_INDEX_MAX_TRIES = 3;
 // Slugs whose file has decoded at least once in this tab, so a second hover
 // skips the skeleton. Names only: holding the <img> elements would pin ~8MB of
 // decoded bitmaps per tab and stop the browser evicting them, which is the
@@ -69,9 +81,6 @@ const missingSet = new Set();
 // cannot decode what we ship. Photos come off the table for the session and
 // every word wears its glyph instead.
 let photoFailures = 0;
-// entry.id -> slug. Hashing a definition is cheap, but mouseover re-fires
-// whenever the pointer crosses back onto a span, and this is free.
-let slugCache = new Map();
 let replacedCount = 0;
 // Every candidate the scan has wrapped this page visit, shown or not. The
 // page-level runaway guard counts these rather than the words actually on
@@ -331,12 +340,9 @@ function init() {
     aiQueued = new Set();
     aiInFlight = false;
     aiDisabled = false;
-    // Keyed by entry.id, which carries the dataset tag - so a dataset change
-    // makes new keys rather than colliding. Cleared anyway: the old entries can
-    // never be asked for again, and keeping them would grow the map for the
-    // life of the tab. warmSet/missingSet/photoFailures are NOT cleared: they
-    // describe files on disk and this browser, not the chosen dataset.
-    slugCache = new Map();
+    // warmSet/missingSet/photoFailures are NOT cleared here: they describe files
+    // on disk and what this browser can decode, neither of which the chosen
+    // dataset changes.
     clearAiTimers();
     startSpanObserver();
     Status.set('idle');
@@ -374,23 +380,35 @@ function init() {
 }
 
 /**
- * Fetch the artwork index, once per page.
+ * Fetch the artwork index.
  *
  * Fired next to the vocabulary request rather than after it, and nothing waits
  * on the answer: the scan does not read the index, only hover does. A slow or
- * failed reply costs the first hover its photo, not the page its start-up.
+ * failed reply costs the first hover its picture, not the page its start-up.
+ *
+ * Called again from the first hovers that find no index, up to
+ * VISUAL_INDEX_MAX_TRIES. Cheap to call when there is nothing to do - the two
+ * guards below are the whole cost - and the alternative is a tab that quietly
+ * shows no picture for the rest of its life because one message came back with
+ * a lastError.
  */
 function loadVisualIndex() {
-    // Nothing draws it while the picture is withdrawn, so do not wake the
-    // worker to fetch and cache an index no card will read.
+    // A build that draws no picture should not wake the worker to fetch and
+    // cache an index no card will read.
     if (!C.VISUALS_AVAILABLE) return;
-    if (visualIndex) return;
+    if (visualIndex || visualIndexPending) return;
+    if (visualIndexTries >= VISUAL_INDEX_MAX_TRIES) return;
+    visualIndexTries++;
+    visualIndexPending = true;
     try {
         chrome.runtime.sendMessage({ action: 'getVisualIndex' }, (resp) => {
-            if (chrome.runtime.lastError) return;   // glyphs are a fine answer
+            visualIndexPending = false;
+            if (chrome.runtime.lastError) return;   // the next hover asks again
             if (resp && resp.index) visualIndex = Visual.parseIndex(resp.index);
         });
-    } catch (e) { /* worker asleep or gone; glyphs again */ }
+    } catch (e) {
+        visualIndexPending = false;                 // worker asleep or gone
+    }
 }
 
 function startScan() {
@@ -2315,10 +2333,14 @@ function showTooltip(target, item) {
     // and a max-height, both resolvable at layout time, so the card's height is
     // final BEFORE it is measured below - an image arriving late cannot move a
     // card that has already been placed.
-    // C.visualsActive rather than the stored flag alone: the picture is
-    // withdrawn from this build (VMCore.VISUALS_AVAILABLE), and a reader who
-    // had it on before the withdrawal still has visualsEnabled: true in sync
-    // with no toggle left to turn it off with.
+    // C.visualsActive rather than the stored flag alone: the build-level switch
+    // (VMCore.VISUALS_AVAILABLE) has to reach a reader whose stored
+    // visualsEnabled is true from an earlier version and who would otherwise
+    // keep a picture with no toggle left to turn it off with.
+    //
+    // The index is asked for again here when it never arrived, and here rather
+    // than on the scan path because this is the only code that reads it.
+    if (C.visualsActive(settings) && !visualIndex) loadVisualIndex();
     const vis = C.visualsActive(settings) ? Visual.visualFor(item, visualIndex, {
         warm: warmSet, missing: missingSet, photoFailures
     }) : null;

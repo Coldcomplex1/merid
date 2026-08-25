@@ -1261,9 +1261,9 @@ async function renderCredits() {
     const list = document.getElementById('creditsList');
     const toggle = document.getElementById('creditsToggle');
     if (!card) return;
-    // No pictures on the card in this build (VMCore.VISUALS_AVAILABLE), so
-    // nothing to credit: a section naming the archive behind artwork the reader
-    // is never shown reads as a section about a feature that is missing.
+    // A build that draws no picture has nothing to credit: a section naming the
+    // archive behind artwork the reader is never shown reads as a section about
+    // a feature that is missing.
     if (!C.VISUALS_AVAILABLE) return;
 
     // Ask the worker what artwork exists before going looking for its credits.

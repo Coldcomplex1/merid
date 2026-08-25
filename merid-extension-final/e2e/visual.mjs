@@ -30,10 +30,23 @@ const Visual = require(path.join(EXT, 'lib/visual.js'));
 const VIS_DIR = path.join(EXT, 'vis');
 const INDEX_FILE = path.join(EXT, 'visual-index.json');
 
-// The two headwords the fixture page below is written to surface. The test
-// guarantees these have a picture; everything else on the page is there to be
-// drawn as a glyph.
+// The headwords the fixture page below is written to surface, and what each is
+// there to prove. The test guarantees the first group has a picture and the
+// second a concept bucket.
+//
+// The second group is not decoration. visualFor draws only what the index
+// actually names and returns null for everything else, so a word with neither
+// a photograph nor a bucket now gets no picture box at all - which is the whole
+// point of the rule, and also means a fixture that only guarantees photographs
+// cannot test the glyph path. Which of these the scanner picks for a given run
+// is its own business; between them the page cannot surface a word the index
+// has never heard of.
 const NEEDS_PHOTO = ['abolish', 'absence'];
+const NEEDS_GLYPH = ['abuse', 'absurd', 'abundant', 'academy', 'accelerate',
+    'accessible', 'acceptance', 'achievement'];
+
+/** A concept bucket per glyph fixture word. Any drawable name will do here. */
+const GLYPH_BUCKET = 'knowledge';
 
 /** The slug for a C1 headword, computed the way the browser computes it. */
 function slugForWord(word) {
@@ -73,6 +86,19 @@ async function makeFixtures() {
         ? JSON.parse(originalIndex)
         : { v: 1, fmt: 'webp', dim: [320, 160], photo: [], icon: {} };
 
+    // The buckets first: they cost nothing to add, need no browser, and are
+    // what stops a word on this page drawing no box at all.
+    index.icon = index.icon || {};
+    const named = new Set(Object.values(index.icon).flatMap(v => String(v).split(/\s+/)));
+    const addBuckets = NEEDS_GLYPH.map(slugForWord)
+        .filter(sl => sl && !named.has(sl) && !(index.photo || []).includes(sl));
+    let wroteIndex = false;
+    if (addBuckets.length) {
+        index.icon[GLYPH_BUCKET] = [index.icon[GLYPH_BUCKET], ...addBuckets]
+            .filter(Boolean).join(' ');
+        wroteIndex = true;
+    }
+
     const have = new Set(index.photo || []);
     const wanted = NEEDS_PHOTO.map(slugForWord).filter(Boolean);
     // Named by the index but absent from disk counts as missing too - the two
@@ -83,7 +109,15 @@ async function makeFixtures() {
     };
     const missing = wanted.filter(slug =>
         !have.has(slug) || !onDisk(path.join(VIS_DIR, slug + '.' + (index.fmt || 'webp'))));
-    if (!missing.length) return { made: [], originalIndex: null, madeDir: false };
+    if (!missing.length) {
+        // Nothing to encode, but the buckets above may still be new. Report the
+        // original index so the cleanup puts the reader's own file back.
+        if (wroteIndex) {
+            fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2) + '\n');
+            return { made: [], originalIndex, madeDir: false };
+        }
+        return { made: [], originalIndex: null, madeDir: false };
+    }
 
     // mkdirSync with recursive returns the first directory it created, or
     // undefined when there was nothing to create. One call, one answer - no
@@ -140,16 +174,34 @@ function cleanUpFixtures() {
 }
 process.on('exit', cleanUpFixtures);
 
-const PHOTO_SLUGS = new Set((() => {
-    try { return JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8')).photo || []; }
-    catch (e) { return []; }
-})());
+// Read after makeFixtures, so this is the index the browser will actually load.
+const SHIPPED_INDEX = (() => {
+    try { return JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8')); }
+    catch (e) { return { photo: [], icon: {} }; }
+})();
+const PHOTO_SLUGS = new Set(SHIPPED_INDEX.photo || []);
+/** Every slug the index names at all - a picture or a concept, either way. */
+const NAMED_SLUGS = new Set([
+    ...PHOTO_SLUGS,
+    ...Object.values(SHIPPED_INDEX.icon || {}).flatMap(v => String(v).split(/\s+/))
+].filter(Boolean));
+
 /** Does this headword have a bundled picture, according to the shipped index? */
 function hasPhoto(word) {
-    const rows = C.parseCSV(fs.readFileSync(path.join(EXT, 'dataset-C1.csv'), 'utf8'))
-        .filter(C.validateEntry);
-    const row = rows.find(r => r.word === word);
-    return !!row && PHOTO_SLUGS.has(Visual.slugFor(C.normalizeEntry(row, 'c1')));
+    const slug = slugForWord(word);
+    return !!slug && PHOTO_SLUGS.has(slug);
+}
+
+/**
+ * Does the index know this headword at all?
+ *
+ * The card draws a picture box if and only if this is true - see the note at
+ * the top of lib/visual.js. A word the index has never heard of gets no box,
+ * which is deliberate and is what section 4 checks against.
+ */
+function indexKnows(word) {
+    const slug = slugForWord(word);
+    return !!slug && NAMED_SLUGS.has(slug);
 }
 
 // Vietnamese meanings lifted from dataset-C1.csv so the matching is real.
@@ -333,7 +385,14 @@ async function settled(p) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. An abstract word gets a glyph, not an empty box.
+// 4. An abstract word gets a glyph - and a word the index does not know gets
+//    no box at all, rather than its own first letter.
+//
+//    That second half is the rule 1.7.1 was withdrawn for the want of. With no
+//    artwork generated, every entry fell through to a coloured box with a
+//    letter in it; the card now simply has no picture panel. The check below is
+//    written as an equivalence rather than two hard-coded word lists, so it
+//    holds whichever words the scanner happens to surface on a given run.
 // ---------------------------------------------------------------------------
 {
     const p = await openHighlighted(base + '/plain');
@@ -345,7 +404,12 @@ async function settled(p) {
         await hover(p, word);
         const kind = await p.$eval('.vocab-master-tooltip .vm-visual',
             el => el.className).catch(() => null);
-        check(!!kind, `card for "${word}" has an artwork box`, String(kind));
+        const known = indexKnows(word);
+        check(!!kind === known,
+            known
+                ? `card for "${word}" has an artwork box`
+                : `card for "${word}" has no artwork box, because the index does not name it`,
+            String(kind));
         if (kind && /vm-visual--(icon|generic)/.test(kind)) { sawGlyph = word; break; }
     }
     check(!!sawGlyph, 'at least one word drew a glyph rather than a photo', words.join(','));
