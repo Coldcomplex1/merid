@@ -8,6 +8,11 @@ npm-debug.log*
 # scripts/prerender.mjs and never deployed. Rebuilt by `npm run blog:ssr`.
 .blog-ssr
 
+# Python virtualenv for the visual pipeline's stage 04 (CLIP). Made by
+# `python3 -m venv .venv` at the repository root, ~2GB, and regenerable from
+# the one pip install line in docs/HUONG-DAN-ANH-TU-VUNG.md.
+.venv/
+
 # Environment files — never commit real Firebase config/secrets (.env.local is
 # already covered by *.local; this catches every other .env variant).
 .env

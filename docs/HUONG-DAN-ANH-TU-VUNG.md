@@ -194,6 +194,47 @@ Lệnh này chạy trọn 01 → 06 rồi tự build, tự chạy test, tự com
 chừng nó mở trang duyệt ảnh cho bạn bấm khoảng 10 phút, bạn bấm **"Finish"**
 trên trang là nó chạy tiếp.
 
+### Đứng ở đâu mà gõ
+
+**Thư mục gốc của repo** — chỗ có `package.json`, `merid-extension-final/` và
+`scripts/`. Kiểm nhanh: `dir` (Windows) hoặc `ls` phải thấy đủ ba cái đó.
+
+**Không bao giờ `cd` vào `merid-extension-final` để chạy pipeline.** `ship.mjs`
+tự chạy `npm test` và `npm run build` trong đó giùm bạn.
+
+Các script tự tính thư mục gốc từ vị trí file của chúng, nên *chúng* không quan
+tâm bạn đứng đâu — nhưng `scripts/visual/run.mjs` là đường dẫn tương đối do
+shell phân giải. Đứng chỗ khác thì gõ đường dẫn đầy đủ:
+
+```powershell
+node C:\duong\dan\toi\merid\scripts\visual\run.mjs
+```
+
+Trọn bộ từ đầu, trên Windows:
+
+```powershell
+cd C:\noi\ban\muon\de\repo
+git clone https://github.com/Coldcomplex1/merid.git
+cd merid
+
+dir      # phải thấy: merid-extension-final, scripts, package.json
+
+npm install
+npm i -D sharp                    # ĐÚNG chỗ này - thư mục gốc, không phải extension
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install open_clip_torch pillow torch
+
+$env:GEMINI_API_KEY='AIzaSy...'   # chỉ sống trong cửa sổ PowerShell NÀY
+$env:PEXELS_API_KEY='...'
+
+node scripts/visual/try.mjs --review
+node scripts/visual/run.mjs
+```
+
+macOS / Linux giống hệt, đổi ba dòng: `python3 -m venv .venv`,
+`source .venv/bin/activate`, và `export GEMINI_API_KEY='...'`.
+
 Hai điều nó làm mà chạy tay dễ quên:
 
 - **Kiểm tra mọi thứ TRƯỚC khi chạy.** Thiếu key, thiếu `sharp`, thiếu CLIP —
