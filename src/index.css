@@ -893,33 +893,24 @@ body {
     text-decoration: underline;
   }
 
-  /* Vietnamese word highlighted (not yet replaced) */
-  .hl-vi {
-    font-weight: 700;
-    color: var(--color-ink);
-    padding: 0 2px;
-    border-radius: 3px;
-    background-image: linear-gradient(0deg, var(--color-gold-300) 0 0.3em, rgb(255 231 163 / 0.55) 0.3em 100%);
-    cursor: pointer;
-    transition: background-color 150ms ease, filter 150ms ease;
-  }
-  .hl-vi:hover {
-    filter: brightness(0.97);
-  }
-
-  /* English word inserted into the page, using the extension's exact
-     .vocab-master-highlight look (content.css), gold underline + faint wash.
-     Weight is inherited, like the extension's: the underline is the signal, so
-     the word reads as part of its sentence rather than heavier than it. */
+  /* A word Merid marked in the page - English standing in for a Vietnamese one
+     (.hl-en), or the Vietnamese word marked where it stands (.hl-vi). The
+     extension draws both with the one .vocab-master-highlight rule, so they get
+     one rule here too, and it mirrors that one exactly: a dotted gold underline
+     at rest, leaving the page its own background, and the wash plus a solid
+     line only under the pointer, arriving with the card. Weight and colour are
+     inherited, like the extension's: the word reads as part of its sentence
+     rather than heavier than it. */
+  .hl-vi,
   .hl-en {
     font-weight: inherit;
     color: inherit;
     padding: 0 1px;
-    border-bottom: 2px solid #f4be37;
-    background-color: rgb(244 190 55 / 0.08);
+    border-bottom: 2px dotted #f4be37;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
   }
+  .hl-vi:hover,
   .hl-en:hover {
     background-color: rgb(244 190 55 / 0.2);
     border-bottom: 3px solid #f4be37;
