@@ -216,6 +216,12 @@ const ctx = await chromium.launchPersistentContext(
 // The worker starts on its own, but not always before the first page does.
 if (!ctx.serviceWorkers().length) await ctx.waitForEvent('serviceworker', { timeout: 20000 });
 
+// Pin the focus list off. This file seeds specific headwords and asserts they
+// land on the page; with a focus list in play they would land only if the
+// random draw happened to include them, which is not what this is testing.
+await ctx.serviceWorkers()[0].evaluate(
+    () => new Promise(r => chrome.storage.sync.set({ focusSize: 0 }, r)));
+
 const fail = [];
 const ok = [];
 const check = (cond, label, extra = '') => (cond ? ok : fail).push(label + (extra ? ` -> ${extra}` : ''));

@@ -148,7 +148,7 @@ await sw.evaluate(async () => {
 // over-replacement shows up rather than being masked by a tight cap.
 await sw.evaluate(async (rejectWord) => {
     await chrome.storage.sync.set({
-        datasetKey: 'c1', frequency: 80, replacementMode: 'replace',
+        datasetKey: 'c1', focusSize: 0, frequency: 80, replacementMode: 'replace',
         extensionEnabled: true, aiCheckEnabled: true
     });
     await chrome.storage.local.set({ geminiApiKey: 'fake-key-for-test', vm_ai_model: 'gemini-flash-lite-latest' });

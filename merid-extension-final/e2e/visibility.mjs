@@ -64,7 +64,7 @@ await sw.evaluate(async () => {
 // have it reject "abolish" with a suggestion that really is in dataset-C1.
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
-        datasetKey: 'c1', frequency: 100, replacementMode: 'replace',
+        datasetKey: 'c1', focusSize: 0, frequency: 100, replacementMode: 'replace',
         extensionEnabled: true, aiCheckEnabled: true
     });
     await chrome.storage.local.set({ geminiApiKey: 'fake-key', vm_ai_model: 'gemini-flash-lite-latest' });

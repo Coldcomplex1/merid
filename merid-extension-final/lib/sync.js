@@ -29,6 +29,13 @@
     const DAILY_LIMIT = 200;               // must match firestore.rules dailyLimit()
     const MAX_BACKOFF_MS = 5 * 60 * 1000;
 
+    // How often the deck may be read back down. Listing the collection costs a
+    // read per word, and runSync is kicked on every change to the local deck -
+    // without a floor, saving five words in a row would list the whole thing
+    // five times. Five minutes is well inside the patience of someone who has
+    // just marked a word learned on the website and switched back to a tab.
+    const PULL_INTERVAL_MS = 5 * 60 * 1000;
+
     // Matches the word regex in firestore.rules; anything else is skipped.
     const WORD_RE = /^[a-z](?:[a-z '-]*[a-z])?$/;
 
@@ -38,6 +45,7 @@
     let dirty = false;                     // a change arrived while syncing
     let backoffMs = 0;
     let retryTimer = null;
+    let lastPullAt = 0;                    // per service-worker life; see pullKnown
 
     // ---------------------------------------------------------
     // Small storage helpers
@@ -67,8 +75,11 @@
             token = { idToken: r.idToken, uid: r.uid, expiresAt: Date.now() + (r.expiresIn - 60) * 1000 };
             await storeSet({ [AUTH_KEY]: { uid: r.uid, email, refreshToken: r.refreshToken } });
             // Fresh session: forget the snapshot so the whole local deck is
-            // pushed (merged) into this account.
+            // pushed (merged) into this account, and drop the read-back
+            // throttle so this account's "learned" marks arrive at once rather
+            // than up to five minutes later.
             await storeRemove([SNAPSHOT_KEY]);
+            lastPullAt = 0;
             await setStatus({ state: 'idle', errorCode: null });
             kick();
             reconcileAiKey();  // fire-and-forget: restore/back up the Gemini key
@@ -81,6 +92,7 @@
 
     async function signOut() {
         token = null;
+        lastPullAt = 0;
         await storeRemove([AUTH_KEY, SNAPSHOT_KEY]);
         await setStatus({ state: 'signed-out', pending: 0, errorCode: null });
         return { ok: true };
@@ -96,8 +108,12 @@
             const cur = (await storeGet([AUTH_KEY]))[AUTH_KEY];
             token = { idToken: r.idToken, uid: r.uid, expiresAt: Date.now() + (r.expiresIn - 60) * 1000 };
             await storeSet({ [AUTH_KEY]: { uid: r.uid, email, refreshToken: r.refreshToken || refreshToken } });
-            // New/different account: push the whole local deck up (merge).
-            if (!cur || cur.uid !== r.uid) await storeRemove([SNAPSHOT_KEY]);
+            // New/different account: push the whole local deck up (merge), and
+            // read its "learned" marks back down without waiting on the throttle.
+            if (!cur || cur.uid !== r.uid) {
+                await storeRemove([SNAPSHOT_KEY]);
+                lastPullAt = 0;
+            }
             await setStatus({ state: 'idle', errorCode: null });
             kick();
             reconcileAiKey();  // fire-and-forget: restore/back up the Gemini key
@@ -387,13 +403,84 @@
         retryTimer = setTimeout(kick, backoffMs);
     }
 
+    /**
+     * Bring "learned" back down from the account.
+     *
+     * This deck has always synced one way. That was defensible while the deck
+     * was only ever a record - but the focus list (lib/focus.js) makes marking
+     * a word learned the way a reader frees a slot in it, and /my-deck is one
+     * of the two places they can do that. Without a download, marking a word
+     * learned on the website changed nothing in the browser they read in: the
+     * word kept appearing and the list stayed full.
+     *
+     * Deliberately narrow, in three ways, because a two-way sync built on a
+     * one-way history is where data goes missing:
+     *
+     *   - Only `known`, never `saved`. Pulling saved words down would import
+     *     the reader's whole website deck into the extension's savedWords,
+     *     changing what the card shows and what the review schedule resurfaces.
+     *     That is a different feature and nobody asked for it.
+     *   - Only additive. A local known word is never un-known because the cloud
+     *     calls it saved. Monotone means this can never fight the upload, which
+     *     is the failure mode that would be worst and hardest to see.
+     *   - Only when it changes something. A no-op write would fire
+     *     storage.onChanged -> kick() -> runSync() -> pullKnown() forever.
+     *
+     * Never throws out of the sync run: a deck that could not be read back is
+     * a slot freed a few minutes later, not a failed sync.
+     */
+    async function pullKnown(auth, force) {
+        const now = Date.now();
+        if (!force && now - lastPullAt < PULL_INTERVAL_MS) return;
+        if (typeof FB.listDocs !== 'function') return;   // older rest client
+        lastPullAt = now;
+        try {
+            // The token is fetched in here, not by the caller. A run with
+            // nothing to push used to make no network request at all; if that
+            // refresh failed offline and threw out of runSync, the account
+            // panel would show an error for a read nothing was waiting on.
+            const idToken = await getIdToken(auth);
+            const uid = auth.uid;
+            const cloudKnown = [];
+            let pageToken = '';
+            do {
+                const page = await FB.listDocs(idToken, 'users/' + uid + '/words', {
+                    pageSize: 300, pageToken, mask: ['word', 'status']
+                });
+                for (const doc of page.documents) {
+                    if (doc.fields.status !== 'known') continue;
+                    const w = normalizeWord(doc.fields.word || doc.id);
+                    if (w) cloudKnown.push(w);
+                }
+                pageToken = page.nextPageToken;
+            } while (pageToken);
+
+            if (!cloudKnown.length) return;
+            const local = (await storeGet(['knownWords']))['knownWords'];
+            const have = new Set((Array.isArray(local) ? local : []).map(normalizeWord));
+            const added = cloudKnown.filter(w => !have.has(w));
+            if (!added.length) return;      // the loop guard: no change, no write
+            await storeSet({ knownWords: Array.from(have).concat(added) });
+        } catch (e) {
+            console.warn('[VM] deck read-back deferred: ' + (e.code || e.name || 'UNKNOWN'));
+        }
+    }
+
     async function runSync() {
-        const stored = await storeGet([AUTH_KEY, SNAPSHOT_KEY, 'savedWords', 'knownWords']);
+        const stored = await storeGet([AUTH_KEY, SNAPSHOT_KEY, 'savedWords']);
         const auth = stored[AUTH_KEY];
         if (!auth) return;
 
+        // Read the account's "learned" marks back down first, so a word the
+        // reader learned on the website is already in knownWords by the time
+        // the upload delta below is worked out. Doing it after would push the
+        // stale local status back up and undo their edit.
+        await pullKnown(auth, false);
+        // Re-read: the pull may have just added to it.
+        const fresh = await storeGet(['knownWords']);
+
         const snapshot = stored[SNAPSHOT_KEY] || {};
-        const desired = desiredState(stored.savedWords, stored.knownWords);
+        const desired = desiredState(stored.savedWords, fresh.knownWords);
 
         // Work out the delta.
         const upserts = [];

@@ -19,6 +19,7 @@ node e2e/badge-host.mjs       # a host the badge did not create: no throw, words
 node e2e/main-content.mjs     # a news page: the article is scanned, the rail and promos are not
 node e2e/ui-language.mjs      # panel language: site choice, Settings override, English card
 node e2e/ai-check.mjs         # verdict cache + per-sentence verdicts
+node e2e/focus-list.mjs       # words in play: the filter, rotation, ceiling, badge, Settings
 node e2e/personalization.mjs  # ranker effect, word upgrades, persona
 node e2e/visibility.mjs       # badge, popup panels, card marker, learned-about-you
 node e2e/dark-mode.mjs        # the card's palette on dark pages and under forced dark
@@ -33,6 +34,20 @@ Set `CHROMIUM_PATH` if your Chromium is not at `/opt/pw-browsers/chromium`.
 Each script prints a pass/fail list and exits non-zero on failure.
 
 ## Traps worth knowing before editing these
+
+- **Most of these pin `focusSize: 0`.** They seed specific headwords and assert
+  those words land on the page; with the focus list on (100 words by default)
+  they would land only when the random draw happened to include them. Any new
+  test that asserts on particular words needs the same pin.
+- **A service worker's `chrome.runtime.sendMessage` never reaches its own
+  `onMessage` listener.** Chrome excludes the sender, so a send from inside
+  `sw.evaluate` silently does nothing and the assertion that follows fails for
+  a reason that has nothing to do with the code. Call the worker's own function
+  instead - `self.loadVocabulary`, `self.ensureFocus`, `self.focusMarkLearned` -
+  which is what the listener does anyway.
+- **`page.close()` does not run the page lifecycle.** content.js flushes its
+  queued profile events on `pagehide`, so a test that closes the tab loses every
+  impression it was about to count. Navigate to `about:blank` first.
 
 - **`e2e/visual.mjs` draws its own pictures if `vis/` is empty, and deletes
   them afterwards.** Real artwork is produced by the dataset pipeline and

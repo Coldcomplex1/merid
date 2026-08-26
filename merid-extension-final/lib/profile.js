@@ -69,6 +69,17 @@
     const EVENT_WEIGHTS = {
         shown: 0,      // exposure only - tracked, but not evidence by itself
         hover: 0.3,   // mild interest
+        // The card actually READ: a click inside it, or a hover held long
+        // enough to be reading rather than passing over (content.js decides
+        // which). Weighted 0 on purpose - it is tracked, not evidence.
+        //
+        // `hover` above already carries "showed interest" at 0.3, and it has
+        // been training every shipped profile since 1.6. Giving this one a
+        // weight would start moving weight vectors that were fitted without it,
+        // for a signal nobody asked to change the ranker. What it IS for is the
+        // focus list (lib/focus.js), which needs an interaction signal a mouse
+        // crossing the word on its way elsewhere cannot forge.
+        open: 0,
         up: 1.0,
         saved: 1.0,
         aiOk: 0.4,
@@ -106,7 +117,7 @@
 
     function emptyWordStat() {
         return {
-            shown: 0, hover: 0, up: 0, down: 0, saved: 0, known: 0, aiOk: 0, aiBad: 0,
+            shown: 0, hover: 0, open: 0, up: 0, down: 0, saved: 0, known: 0, aiOk: 0, aiBad: 0,
             lastSeen: 0,
             stage: 0   // spaced-repetition step, only advanced for saved words
         };

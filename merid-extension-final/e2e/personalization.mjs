@@ -71,7 +71,7 @@ await sw.evaluate(async () => {
 
 const reset = (extra = {}) => sw.evaluate(async (e) => {
     await chrome.storage.sync.set(Object.assign({
-        datasetKey: 'c1', frequency: 60, replacementMode: 'replace',
+        datasetKey: 'c1', focusSize: 0, frequency: 60, replacementMode: 'replace',
         extensionEnabled: true, aiCheckEnabled: false
     }, e));
     await chrome.storage.local.remove(['vm_profile', 'vm_ai_cache', 'knownWords', 'savedWords']);

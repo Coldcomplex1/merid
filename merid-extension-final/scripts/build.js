@@ -30,6 +30,7 @@ const FILES = [
     'lib/visual.js',
     'lib/i18n.js',
     'lib/profile.js',
+    'lib/focus.js',
     'lib/custom-datasets.js',
     'lib/firebase-config.js',
     'lib/firebase-rest.js',

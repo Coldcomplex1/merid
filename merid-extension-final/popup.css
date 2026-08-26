@@ -518,6 +518,41 @@ footer {
 
 .btn-signin:hover { filter: brightness(1.08); }
 
+/* Words in play is full. Gold rather than red: nothing is broken and nothing
+   was lost - the set has simply stopped growing until the reader clears some
+   of it - so it reads as a nudge, in the same family as the sign-in button
+   above rather than as the error colour. */
+.focus-full {
+    margin-bottom: 14px;
+    padding: 11px 12px;
+    border: 1px solid rgba(244, 190, 55, 0.45);
+    border-radius: 6px;
+    background: rgba(244, 190, 55, 0.08);
+}
+
+.focus-full-text {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin-bottom: 9px;
+}
+
+.btn-focus-full {
+    background-color: transparent;
+    color: var(--accent-yellow);
+    border: 1px solid var(--accent-yellow);
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: background-color 0.2s;
+}
+
+.btn-focus-full:hover { background-color: rgba(244, 190, 55, 0.12); }
+
 /* Current-tab action: "Turn off on this site". One per row, matching
    .btn-view-deck below, so the footer reads as one stack of equal buttons
    under the main toggle rather than a row of odd widths. */

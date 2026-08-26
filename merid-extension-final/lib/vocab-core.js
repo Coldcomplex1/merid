@@ -191,7 +191,18 @@
         // storage.sync for an explicit list of keys, and a key missing from
         // THAT list always reads back as this default no matter what the reader
         // chose. See the note on 'getSettings'.
-        visualsEnabled: true
+        visualsEnabled: true,
+        // How many words Merid is working on with this reader at a time - the
+        // focus list (lib/focus.js). 0 means "All": the whole dataset is in
+        // play, which is how Merid behaved before the list existed.
+        //
+        // A hundred rather than All, for everyone. Scanning the full dataset
+        // means the reader meets a word once and, statistically, never again;
+        // a working set is what makes a word repeat often enough to stick. The
+        // per-post allowance (POST_WORD_CAPS) already throws away far more
+        // candidates than it uses, so on ordinary prose this changes WHICH
+        // words appear far more than how many.
+        focusSize: 100
     };
 
     // ---------------------------------------------------------------------

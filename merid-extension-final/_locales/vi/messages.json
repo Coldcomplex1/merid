@@ -1020,5 +1020,118 @@
   },
   "optCreditsUnknownAuthor": {
     "message": "không ghi tác giả"
+  },
+  "optFocusTitle": {
+    "message": "Từ đang học"
+  },
+  "optFocusHint": {
+    "message": "Merid học từng nhóm từ nhỏ thay vì cả bộ dữ liệu, để một từ quay lại đủ nhiều lần mà nhớ được. Từ nào bạn không bao giờ tương tác sẽ được lặng lẽ thay bằng từ mới. Lưu một từ vào deck thì nhóm rộng ra; đánh dấu đã thuộc thì có thêm chỗ trống."
+  },
+  "optFocusSizeLabel": {
+    "message": "Mỗi lần học bao nhiêu từ"
+  },
+  "optFocusAll": {
+    "message": "Tất cả"
+  },
+  "optFocusCustom": {
+    "message": "Tuỳ chọn"
+  },
+  "optFocusApply": {
+    "message": "Áp dụng"
+  },
+  "optFocusInfo": {
+    "message": "Đang học $COUNT$ từ, tối đa $MAX$. Lấy từ bộ $LABEL$.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "100"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      },
+      "LABEL": {
+        "content": "$3",
+        "example": "C1"
+      }
+    }
+  },
+  "optFocusFullInfo": {
+    "message": "Đã đầy: $COUNT$ trên $MAX$ từ. Đánh dấu vài từ đã thuộc ở dưới để có chỗ, hoặc tăng số từ ở trên.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "200"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      }
+    }
+  },
+  "optFocusAllInfo": {
+    "message": "Cả $COUNT$ từ trong bộ $LABEL$ đều đang được dùng.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "1379"
+      },
+      "LABEL": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
+  },
+  "optFocusListTitle": {
+    "message": "Những từ Merid đang hiện cho bạn"
+  },
+  "optFocusFilterPlaceholder": {
+    "message": "Tìm trong danh sách này…"
+  },
+  "optFocusReshuffle": {
+    "message": "Bốc nhóm từ mới"
+  },
+  "optFocusEmpty": {
+    "message": "Chưa có từ nào."
+  },
+  "optFocusNoMatch": {
+    "message": "Không có từ nào khớp."
+  },
+  "optFocusLearned": {
+    "message": "Đã thuộc từ này"
+  },
+  "optFocusSwap": {
+    "message": "Đổi từ khác"
+  },
+  "optFocusAddLabel": {
+    "message": "Thêm một từ từ bộ dữ liệu này"
+  },
+  "optFocusAdd": {
+    "message": "Thêm"
+  },
+  "optFocusAddFull": {
+    "message": "Danh sách đã đầy. Hãy đánh dấu một từ đã thuộc, hoặc tăng số từ ở trên."
+  },
+  "optFocusAddMissing": {
+    "message": "Từ này không có trong bộ dữ liệu, hoặc đã nằm trong danh sách."
+  },
+  "optPrivacy11": {
+    "message": "Danh sách <strong>từ đang học</strong> - những từ Merid đang học cùng bạn, và số lần mỗi từ đã hiện ra cũng như được tương tác - chỉ lưu <strong>trên máy này</strong>. Nó chỉ chứa từ tiếng Anh trong bộ dữ liệu và các con số đếm, không có nội dung trang web. Số từ bạn chọn được lưu cùng các cài đặt khác."
+  },
+  "popupFocusFull": {
+    "message": "Danh sách từ đang học đã đầy ($COUNT$/$MAX$). Hãy đánh dấu vài từ đã thuộc để có chỗ cho từ mới, hoặc tăng số từ trong Cài đặt.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "200"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      }
+    }
+  },
+  "popupFocusFullAction": {
+    "message": "Ôn lại các từ của bạn"
   }
 }

@@ -54,7 +54,7 @@ await sw.evaluate(async () => {
 // Stub Gemini: record every request, answer "ok" for every item the prompt
 // asked about, except any word listed in __rejectWords.
 await sw.evaluate(async () => {
-    await chrome.storage.sync.set({ datasetKey: 'c1', frequency: 100, replacementMode: 'replace', extensionEnabled: true, aiCheckEnabled: true });
+    await chrome.storage.sync.set({ datasetKey: 'c1', focusSize: 0, frequency: 100, replacementMode: 'replace', extensionEnabled: true, aiCheckEnabled: true });
     await chrome.storage.local.set({ geminiApiKey: 'fake-key-for-test', vm_ai_model: 'gemini-flash-lite-latest' });
     await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile']);
     await self.loadVocabulary('c1');

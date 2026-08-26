@@ -1020,5 +1020,118 @@
   },
   "optCreditsUnknownAuthor": {
     "message": "author not stated"
+  },
+  "optFocusTitle": {
+    "message": "Words in play"
+  },
+  "optFocusHint": {
+    "message": "Merid works on a small set of words at a time instead of the whole dataset, so the same word comes back often enough to stick. Words you never react to are quietly swapped for new ones. Save one to your deck and the set grows; mark one learned and it makes room."
+  },
+  "optFocusSizeLabel": {
+    "message": "How many words at a time"
+  },
+  "optFocusAll": {
+    "message": "All"
+  },
+  "optFocusCustom": {
+    "message": "Custom"
+  },
+  "optFocusApply": {
+    "message": "Apply"
+  },
+  "optFocusInfo": {
+    "message": "$COUNT$ words in play, up to $MAX$. Drawn from $LABEL$.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "100"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      },
+      "LABEL": {
+        "content": "$3",
+        "example": "C1"
+      }
+    }
+  },
+  "optFocusFullInfo": {
+    "message": "Full: $COUNT$ of a possible $MAX$. Mark some words learned below to make room, or raise the number above.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "200"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      }
+    }
+  },
+  "optFocusAllInfo": {
+    "message": "All $COUNT$ words in $LABEL$ are in play.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "1379"
+      },
+      "LABEL": {
+        "content": "$2",
+        "example": "C1"
+      }
+    }
+  },
+  "optFocusListTitle": {
+    "message": "The words Merid is showing you"
+  },
+  "optFocusFilterPlaceholder": {
+    "message": "Search these words…"
+  },
+  "optFocusReshuffle": {
+    "message": "Draw a new set"
+  },
+  "optFocusEmpty": {
+    "message": "No words in play yet."
+  },
+  "optFocusNoMatch": {
+    "message": "No word here matches that."
+  },
+  "optFocusLearned": {
+    "message": "I know this"
+  },
+  "optFocusSwap": {
+    "message": "Swap out"
+  },
+  "optFocusAddLabel": {
+    "message": "Add a word from this dataset"
+  },
+  "optFocusAdd": {
+    "message": "Add"
+  },
+  "optFocusAddFull": {
+    "message": "The list is full. Mark a word learned first, or raise the number above."
+  },
+  "optFocusAddMissing": {
+    "message": "That word is not in this dataset, or is already in play."
+  },
+  "optPrivacy11": {
+    "message": "The <strong>words in play</strong> list - which words Merid is currently working on with you, and how often each has been shown and reacted to - is kept <strong>only on this device</strong>. It holds headwords from the dataset and counters, no page text. Your chosen number of words is stored with your other settings."
+  },
+  "popupFocusFull": {
+    "message": "Words in play is full ($COUNT$/$MAX$). Mark some words as known to make room for new ones, or raise the number in Settings.",
+    "placeholders": {
+      "COUNT": {
+        "content": "$1",
+        "example": "200"
+      },
+      "MAX": {
+        "content": "$2",
+        "example": "200"
+      }
+    }
+  },
+  "popupFocusFullAction": {
+    "message": "Review your words"
   }
 }

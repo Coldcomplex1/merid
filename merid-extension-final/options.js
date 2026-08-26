@@ -3,6 +3,7 @@
 // check uses the user's own Gemini API key, stored in chrome.storage.local
 // only (never synced).
 const C = window.VMCore;
+const C_FOCUS = window.VMFocus;
 const I18n = window.VMI18n;
 
 // UI strings in the language the READER chose, not the one Chrome is in - see
@@ -20,7 +21,7 @@ const applyI18n = () => I18n.applyI18n();
 // renders the default however the reader actually set it. Add the key here
 // whenever you add a control below.
 const SYNC_KEYS = ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'datasetKey',
-    'uiLang', 'visualsEnabled'];
+    'uiLang', 'visualsEnabled', 'focusSize'];
 
 const els = {
     modeSeg: document.getElementById('modeSeg'),
@@ -88,7 +89,9 @@ function load() {
         setCard('engEng', !!s.engEngMode);
         setActive(els.datasetSeg, s.datasetKey);
         setActive(els.visualsSeg, s.visualsEnabled ? 'on' : 'off');
+        renderFocusSeg(s.focusSize);
         refreshDatasetInfo();
+        refreshFocusUI();
     });
     // AI context check: toggle lives in sync, the key stays local-only.
     chrome.storage.sync.get(['aiCheckEnabled'], raw => {
@@ -719,6 +722,251 @@ function wireCustom() {
     });
 
     refreshCustomUI();
+}
+
+// =============================================================
+// Words in play (the focus list - see lib/focus.js)
+//
+// The list itself lives in the service worker, which is its only writer: it
+// rotates on events arriving from every open tab, and an options page editing
+// it directly would race them. Everything here asks, and redraws what comes
+// back.
+// =============================================================
+const focus = {
+    card: document.getElementById('focusCard'),
+    seg: document.getElementById('focusSeg'),
+    customRow: document.getElementById('focusCustomRow'),
+    customInput: document.getElementById('focusCustomInput'),
+    customApply: document.getElementById('focusCustomApply'),
+    info: document.getElementById('focusInfo'),
+    listSection: document.getElementById('focusListSection'),
+    list: document.getElementById('focusList'),
+    empty: document.getElementById('focusEmpty'),
+    filter: document.getElementById('focusFilter'),
+    reshuffle: document.getElementById('focusReshuffle'),
+    addInput: document.getElementById('focusAddInput'),
+    addOptions: document.getElementById('focusAddOptions'),
+    addBtn: document.getElementById('focusAddBtn'),
+    addError: document.getElementById('focusAddError')
+};
+
+// The last answer from the worker, so filtering can redraw without asking again.
+let focusWords = [];
+let focusPoolWords = [];
+let focusPoolCount = 0;
+
+/** Light the button that matches the stored size; anything unlisted is Custom. */
+function renderFocusSeg(size) {
+    const n = Math.max(0, Math.floor(Number(size) || 0));
+    const preset = n === 0 ? 'all'
+        : (C_FOCUS.FOCUS_PRESETS.indexOf(n) !== -1 ? String(n) : 'custom');
+    setActive(focus.seg, preset);
+    focus.customRow.hidden = preset !== 'custom';
+    if (n > 0) focus.customInput.value = String(n);
+}
+
+function refreshFocusUI() {
+    chrome.runtime.sendMessage({ action: 'getFocusDetail' }, res => {
+        if (chrome.runtime.lastError || !res || !res.ok) { focus.info.textContent = ''; return; }
+        focusWords = res.words || [];
+        focusPoolWords = res.poolWords || [];
+        focusPoolCount = res.poolCount || 0;
+        focus.customInput.max = String(Math.max(10, focusPoolCount));
+
+        if (res.size <= 0) {
+            // "All": there is no list to show, and an empty one would read as a
+            // bug rather than as the setting the reader just chose.
+            focus.info.classList.remove('is-full');
+            focus.info.textContent = t('optFocusAllInfo',
+                `All ${res.poolCount} words in ${res.datasetLabel} are in play.`,
+                [String(res.poolCount), res.datasetLabel || '']);
+            focus.listSection.hidden = true;
+            return;
+        }
+
+        focus.listSection.hidden = false;
+        focus.info.classList.toggle('is-full', !!res.full);
+        focus.info.textContent = res.full
+            ? t('optFocusFullInfo',
+                `Full: ${res.count} of a possible ${res.max}. Mark some words learned below to make room, or raise the number above.`,
+                [String(res.count), String(res.max)])
+            : t('optFocusInfo',
+                `${res.count} words in play, up to ${res.max}. Drawn from ${res.datasetLabel}.`,
+                [String(res.count), String(res.max), res.datasetLabel || '']);
+        renderFocusList();
+        renderFocusOptions();
+    });
+}
+
+function renderFocusList() {
+    const q = (focus.filter.value || '').trim().toLowerCase();
+    const shown = q
+        ? focusWords.filter(w => w.word.toLowerCase().includes(q) || w.vietnamese.toLowerCase().includes(q))
+        : focusWords;
+    focus.list.textContent = '';
+    focus.empty.hidden = shown.length > 0;
+    if (!shown.length && q) {
+        focus.empty.textContent = t('optFocusNoMatch', 'No word here matches that.');
+    } else if (!shown.length) {
+        focus.empty.textContent = t('optFocusEmpty', 'No words in play yet.');
+    }
+    for (const w of shown) focus.list.appendChild(focusRowEl(w));
+}
+
+function focusRowEl(w) {
+    const li = document.createElement('li');
+    li.className = 'custom-row-item';
+
+    const info = document.createElement('div');
+    info.className = 'custom-info';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'custom-name';
+    nameEl.textContent = w.word;
+    const viEl = document.createElement('span');
+    viEl.className = 'focus-vi';
+    // Everything here comes from the dataset, but textContent is the house
+    // rule for anything not written into the markup by hand.
+    viEl.textContent = w.vietnamese || '';
+    viEl.title = w.vietnamese || '';
+    info.append(nameEl, viEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+
+    // Two different things, deliberately named apart: one says "I have learned
+    // this", which frees a slot for good and stops Merid offering the word
+    // anywhere; the other just swaps this word for another.
+    const learnedBtn = miniBtn(t('optFocusLearned', 'I know this'));
+    learnedBtn.addEventListener('click', () => {
+        learnedBtn.disabled = true;
+        chrome.runtime.sendMessage({ action: 'focusMarkLearned', word: w.word }, () => {
+            void chrome.runtime.lastError;
+            flashSaved();
+            refreshFocusUI();
+        });
+    });
+
+    const swapBtn = miniBtn(t('optFocusSwap', 'Swap out'));
+    swapBtn.addEventListener('click', () => {
+        swapBtn.disabled = true;
+        chrome.runtime.sendMessage({ action: 'focusRemoveWord', word: w.word }, () => {
+            void chrome.runtime.lastError;
+            refreshFocusUI();
+        });
+    });
+
+    actions.append(learnedBtn, swapBtn);
+    li.append(info, actions);
+    return li;
+}
+
+/**
+ * Suggestions for the "add a word" box: everything in the dataset that is not
+ * already in play, so the list only ever offers words the worker will accept.
+ *
+ * Rebuilt in one fragment rather than appended one at a time - "All" is around
+ * three thousand words, and three thousand separate appends to a live <datalist>
+ * is a visible pause on the page.
+ */
+function renderFocusOptions() {
+    const inPlay = new Set(focusWords.map(w => w.word.toLowerCase()));
+    const frag = document.createDocumentFragment();
+    for (const word of focusPoolWords) {
+        if (inPlay.has(String(word).toLowerCase())) continue;
+        const opt = document.createElement('option');
+        opt.value = word;
+        frag.appendChild(opt);
+    }
+    focus.addOptions.textContent = '';
+    focus.addOptions.appendChild(frag);
+}
+
+function focusAddError(msg) {
+    focus.addError.textContent = msg;
+    focus.addError.hidden = !msg;
+}
+
+function wireFocus() {
+    focus.seg.addEventListener('click', e => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        const val = btn.dataset.val;
+        setActive(focus.seg, val);
+        if (val === 'custom') {
+            focus.customRow.hidden = false;
+            focus.customInput.focus();
+            return;   // nothing is saved until they apply a number
+        }
+        focus.customRow.hidden = true;
+        saveSync({ focusSize: val === 'all' ? 0 : Number(val) });
+    });
+
+    const applyCustom = () => {
+        // The worker clamps this too - it is the only side that knows how big
+        // the dataset is - but answering here means the reader sees the number
+        // that was actually stored rather than the one they typed.
+        const n = C_FOCUS.clampSize(focus.customInput.value, focusPoolCount);
+        renderFocusSeg(n);
+        saveSync({ focusSize: n });
+    };
+    focus.customApply.addEventListener('click', applyCustom);
+    focus.customInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyCustom(); });
+
+    focus.filter.addEventListener('input', renderFocusList);
+
+    focus.reshuffle.addEventListener('click', () => {
+        focus.reshuffle.disabled = true;
+        chrome.runtime.sendMessage({ action: 'focusReshuffle' }, () => {
+            void chrome.runtime.lastError;
+            focus.reshuffle.disabled = false;
+            flashSaved();
+            refreshFocusUI();
+        });
+    });
+
+    focus.addInput.addEventListener('input', () => {
+        focus.addBtn.disabled = !focus.addInput.value.trim();
+        focusAddError('');
+    });
+    const addWord = () => {
+        const word = focus.addInput.value.trim();
+        if (!word) return;
+        focus.addBtn.disabled = true;
+        const before = focusWords.length;
+        chrome.runtime.sendMessage({ action: 'focusAddWord', word }, () => {
+            void chrome.runtime.lastError;
+            chrome.runtime.sendMessage({ action: 'getFocusDetail' }, res => {
+                void chrome.runtime.lastError;
+                const after = (res && res.words) ? res.words.length : before;
+                if (after > before) {
+                    focus.addInput.value = '';
+                    focusAddError('');
+                    flashSaved();
+                } else {
+                    // The worker refuses three things silently: a word that is
+                    // not in this dataset, one already in play, and one that
+                    // would go over the ceiling. Say which is most likely.
+                    focusAddError(res && res.full
+                        ? t('optFocusAddFull', 'The list is full. Mark a word learned first, or raise the number above.')
+                        : t('optFocusAddMissing', 'That word is not in this dataset, or is already in play.'));
+                }
+                refreshFocusUI();
+            });
+        });
+    };
+    focus.addBtn.addEventListener('click', addWord);
+    focus.addInput.addEventListener('keydown', e => { if (e.key === 'Enter') addWord(); });
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+        // The list rotated while this page was open (a tab is being read), or
+        // the size was changed from another options tab.
+        if (area === 'local' && changes.vm_focus) refreshFocusUI();
+        if (area === 'sync' && changes.focusSize) {
+            renderFocusSeg(changes.focusSize.newValue);
+            refreshFocusUI();
+        }
+        // A different dataset means a different draw.
+        if (area === 'sync' && changes.datasetKey) refreshFocusUI();
+    });
 }
 
 // ---- Wire up ----
@@ -1358,7 +1606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await I18n.init();
     applyI18n();
 
-    load(); wire(); wireLanguage(); wireAccount(); wireCustom(); wireSites();
+    load(); wire(); wireLanguage(); wireAccount(); wireCustom(); wireSites(); wireFocus();
     renderProfilePanel(); wireProfilePanel();
     renderAiQuota(); wireAiDiagnose();
     renderCredits();

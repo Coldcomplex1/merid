@@ -338,6 +338,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // and a red warning at the bottom - the same news twice, the second time as
     // a telling-off for a choice they are allowed to make. Merid works fully
     // without an account; the deck simply stays on this device.
+    // ---- Words in play is full ----
+    //
+    // Read straight from storage rather than through the worker: the popup has
+    // to draw immediately, and waking a sleeping service worker to ask a
+    // question the answer to which is already on disk would put a visible pause
+    // in front of every other control on this panel.
+    chrome.storage.local.get(['vm_focus'], (l) => {
+        const list = l && l.vm_focus;
+        if (!list || !(Number(list.size) > 0) || !Array.isArray(list.words)) return;
+        const max = Number(list.size) * 2;
+        if (list.words.length < max) return;
+        const section = document.getElementById('focus-full');
+        document.getElementById('focus-full-text').textContent = t('popupFocusFull',
+            `Words in play is full (${list.words.length}/${max}). Mark some words as known to make room for new ones, or raise the number in Settings.`,
+            [String(list.words.length), String(max)]);
+        document.getElementById('focus-full-btn').addEventListener('click', openOptions);
+        section.hidden = false;
+    });
+
     const openLoginPage = () => chrome.tabs.create({ url: window.VMFirebaseConfig.webLoginUrl });
     const accountSection = document.getElementById('account-section');
     document.getElementById('signin-btn').addEventListener('click', openLoginPage);

@@ -456,3 +456,60 @@ a.ext-link { color: var(--accent); }
 .credits-table a:hover {
     text-decoration: underline;
 }
+
+/* ---- Words in play (focus list) ---- */
+
+/* The custom-size row and the two tool rows share a shape: one control that
+   takes the space, one button that does not. */
+.focus-custom,
+.focus-tools {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.focus-custom input[type="number"] {
+    width: 110px;
+    flex: none;
+}
+
+.focus-tools input[type="text"] {
+    flex: 1;
+    min-width: 160px;
+}
+
+.focus-custom input,
+.focus-tools input {
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.focus-custom input:focus,
+.focus-tools input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* The Vietnamese sits under the headword the way a dataset row's meta does,
+   and must not stretch the row when a word has six meanings. */
+.focus-vi {
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The count line earns emphasis only when the list is actually full, which is
+   the one state the reader has to do something about. */
+#focusInfo.is-full {
+    color: var(--accent);
+    font-weight: 600;
+}

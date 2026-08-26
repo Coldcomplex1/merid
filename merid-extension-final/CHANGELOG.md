@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.8.0 — 2026-08-26
+
+**Merid now works on a small set of words at a time, instead of the whole dataset.**
+
+- **Words in play.** Merid draws a set of words from your dataset and shows you only those, so a word comes back often enough to actually stick. Before this, which words you met was decided by whatever happened to be on the page — you could meet a word once and never see it again. **Everyone starts at 100 words.** You will notice fewer different words than before; you will notice the same ones more often, which is the point.
+- **The set looks after itself.** A word shown more than five times that you never once react to is quietly dropped and replaced — it clearly is not landing. Save a word to your deck and the set grows by one. Mark a word as known and it leaves, making room.
+- **Choose your own number** in Settings → Words in play: 25, 50, 100, 200, All, or type any number you like. "All" is how Merid behaved before this release, if you prefer it that way.
+- **The set can fill up.** Saving words grows it to twice the number you chose (100 becomes 200). When it is full, the toolbar icon shows a mark and the popup says so. Mark some words as known to free up room, or just raise the number.
+- **See and edit the set** in Settings. Every word is listed with its meaning, and you can mark one as known, swap one out, add a specific word, or draw a whole new set.
+- **Marking a word learned on merid.site now reaches the extension.** The deck only ever synced upwards, so a word you marked as known on the website kept appearing while you browsed. If you are signed in, those marks now come back down to your browser.
+- Opening a learning card only counts as interest if you actually read it — a click inside it, or leaving it open for a moment. The mouse passing over a word on its way somewhere else no longer speaks for you.
+- The list of words Merid is working on with you stays on this device. It holds words from the dataset and counters, and no page text.
+
 ## 1.7.1 — 2026-08-24
 
 **A quieter mark on the word, and the picture on the learning card is off for now.**
