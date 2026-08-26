@@ -58,8 +58,18 @@ async function discoverModels(key) {
   const hit = modelCache.get(id);
   if (hit && Date.now() - hit.at < MODELS_TTL_MS) return hit.models;
 
+  // x-goog-api-key, the same way callModel below authenticates.
+  //
+  // These two disagreed: generation sent the header and discovery put the key
+  // in the query string. That was invisible while every key was an old-style
+  // AIza one, which both paths accept. Google has since moved new keys to an
+  // "auth key" format beginning AQ., and a key type that one path accepts and
+  // the other does not fails HERE - discovery returns nothing, the pool decides
+  // the key can call no model, and the caller is told the key works but has no
+  // models rather than that it was refused.
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`
+    'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+    { headers: { 'x-goog-api-key': key } }
   );
   if (!resp.ok) {
     // A key that cannot even list models is broken (or fully blocked); cache an

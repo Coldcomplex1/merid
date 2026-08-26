@@ -66,12 +66,18 @@ function normaliseKeyEnv() {
     return loadKeys();
 }
 
-/** Which models this key can actually call - asked once, to report, not to choose. */
+/**
+ * Which models this key can actually call - asked once, to report, not to choose.
+ *
+ * x-goog-api-key rather than ?key=, matching api/_lib/gemini.js. The two used to
+ * differ, and the difference only shows up on the newer "AQ." auth keys Google
+ * has moved to: a key one path accepts and the other refuses fails here, at the
+ * listing, and reads as "the key works but can call no model".
+ */
 async function listModels(key) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' +
-        encodeURIComponent(key);
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
     let resp;
-    try { resp = await fetch(url); } catch (e) {
+    try { resp = await fetch(url, { headers: { 'x-goog-api-key': key } }); } catch (e) {
         throw new LlmUnusable('could not reach the Gemini API: ' + e.message);
     }
     if (!resp.ok) {
@@ -82,8 +88,9 @@ async function listModels(key) {
         } catch (e) { /* non-JSON error body */ }
         throw new LlmUnusable(
             'the key was rejected (HTTP ' + resp.status + ')' + (detail ? ': ' + detail : '') +
-            '\n  An AI Studio key starts with "AIzaSy". A key starting with "AQ." is an' +
-            '\n  ephemeral Live-API token and cannot be used here.' +
+            '\n  Keys come in two shapes and BOTH are real: the older "AIzaSy..." and' +
+            '\n  the newer "AQ.Ab..." auth key Google now issues. Neither prefix is the' +
+            '\n  problem by itself - this is what the API said about yours.' +
             '\n  Make one at https://aistudio.google.com/apikey');
     }
     const body = await resp.json();

@@ -94,9 +94,14 @@ Token Openverse lấy ở <https://api.openverse.org/v1/auth_tokens/register/>,
 mất một phút. Đáng lấy: bước 03 gọi vài trăm request, và hạn mức ẩn danh thấp
 hơn nhiều so với khi có token.
 
-> **Key Gemini phải bắt đầu bằng `AIzaSy`.** Lấy ở
-> <https://aistudio.google.com/apikey>. Key bắt đầu bằng `AQ.` là ephemeral
-> token của Live API, không gọi được API này.
+> **Key Gemini có hai dạng và CẢ HAI đều dùng được:** dạng cũ `AIzaSy...` và
+> dạng mới `AQ.Ab...` mà Google đang chuyển sang. Lấy ở
+> <https://aistudio.google.com/apikey>. Đừng nhìn tiền tố mà kết luận — cứ chạy
+> `run.mjs`, nó hỏi thẳng Google xem key gọi được không rồi in lại nguyên văn
+> câu trả lời.
+>
+> *(Tài liệu này trước đây nói `AQ.` là ephemeral token của Live API. Đúng ở
+> thời điểm viết, sai từ khi Google đổi định dạng key.)*
 
 **macOS / Linux** — trong cùng terminal bạn sẽ chạy pipeline:
 ```bash
@@ -107,7 +112,7 @@ export OPENVERSE_TOKEN='token-openverse'      # tuỳ chọn
 
 **Windows (PowerShell)**
 ```powershell
-$env:GEMINI_API_KEY='key-gemini-moi-cua-ban'
+$env:GEMINI_API_KEY='key-gemini-moi-cua-ban'   # AIzaSy... hoặc AQ.Ab...
 $env:PEXELS_API_KEY='key-pexels-moi-cua-ban'
 $env:OPENVERSE_TOKEN='token-openverse'        # tuỳ chọn
 ```
@@ -242,7 +247,7 @@ py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install open_clip_torch pillow torch
 
-$env:GEMINI_API_KEY='AIzaSy...'   # chỉ sống trong cửa sổ PowerShell NÀY
+$env:GEMINI_API_KEY='AIzaSy... hoặc AQ.Ab...'   # chỉ sống trong cửa sổ PowerShell NÀY
 $env:PEXELS_API_KEY='...'
 $env:OPENVERSE_TOKEN='...'        # tuỳ chọn, miễn phí, nâng hạn mức
 
@@ -529,7 +534,8 @@ gitignore vì tái tạo được.
 | Hiện tượng | Nguyên nhân |
 |---|---|
 | `no GEMINI_API_KEY set - offline` | Chưa `export`, hoặc đang ở terminal khác |
-| `the key was rejected (HTTP 400)` | Sai loại key. Phải là key `AIzaSy…` từ aistudio.google.com/apikey |
+| `the key was rejected (HTTP 400)` | Key hỏng dạng — copy thiếu, dính dấu nháy hoặc khoảng trắng |
+| `the key was rejected (HTTP 401)` | Key đúng dạng nhưng bị từ chối: đã xoá/tạo lại, hoặc project chưa bật Generative Language API |
 | `the key works but can call no text model` | Project chưa bật Generative Language API |
 | `no searchable queries were produced` | Bước 02 không nhận được câu trả lời nào — xem dòng `[llm]` ngay trên đó |
 | `[llm] 429` lặp mãi | Hết quota free tier trong ngày — chờ mai, tiến độ đã lưu |

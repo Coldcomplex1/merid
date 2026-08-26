@@ -38,7 +38,7 @@ rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
 
 | | Where | Used by |
 |---|---|---|
-| `GEMINI_API_KEY` | aistudio.google.com/apikey — must start `AIzaSy` | 01, 02, 02b |
+| `GEMINI_API_KEY` | aistudio.google.com/apikey — `AIzaSy...` or the newer `AQ.Ab...`, both work | 01, 02, 02b |
 | `PEXELS_API_KEY` | pexels.com/api — free, 200 req/hour | 03 |
 | `OPENVERSE_TOKEN` | api.openverse.org/v1/auth_tokens/register — optional, raises the rate limit | 03 |
 

@@ -99,10 +99,11 @@ const git = (...args) => {
  * and costs nothing against the quota.
  */
 async function checkGeminiKey(key) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' +
-        encodeURIComponent(key);
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
     try {
-        const resp = await fetch(url);
+        // x-goog-api-key, the way every other call in this repository
+        // authenticates. See the note in scripts/visual/lib/llm.mjs.
+        const resp = await fetch(url, { headers: { 'x-goog-api-key': key } });
         const json = await resp.json().catch(() => null);
         if (resp.ok) {
             const models = ((json && json.models) || []).length;
@@ -160,22 +161,30 @@ if (!gem) {
             '      Carrying on - stage 01 will say within seconds if the key is no good.');
     } else {
         const fix = [
-            'Google says: ' + check.msg,
+            'Google says: ' + check.msg + ' (HTTP ' + check.status + ')',
             ''
         ];
-        // The trap that has cost the most time: an ephemeral Live API token
-        // looks like a key, is accepted by the shell, and is rejected by every
-        // call. Named here rather than tested for, because the test above is
-        // the one that actually decides.
-        if (!gem.startsWith('AIzaSy')) {
-            fix.push('This key does not start with "AIzaSy". One beginning "AQ." is an',
-                'ephemeral Live API token and cannot call this API.');
+        // Both prefixes are real keys. The older "AIzaSy..." and the newer
+        // "AQ.Ab..." auth key Google has moved to are equally valid, and an
+        // earlier version of this check refused the second on sight - which is
+        // how a working key got turned away. The status says more than the
+        // prefix does: 400 is a malformed key, 401 is a credential Google
+        // recognises and will not accept.
+        if (check.status === 401) {
+            fix.push('401 means the credential was recognised and refused, not that it is the',
+                'wrong shape. Usually: the key was deleted or regenerated, or it belongs to a',
+                'project the Generative Language API is not enabled on.');
+        } else if (check.status === 400) {
+            fix.push('400 usually means the key is malformed - a truncated copy-paste, or quotes',
+                'or a trailing space that came along with it.');
         }
         if (/PERMISSION_DENIED|SERVICE_DISABLED/i.test(check.msg)) {
-            fix.push('That reads as the Generative Language API being off for the project',
+            fix.push('', 'That reads as the Generative Language API being off for the project',
                 'behind this key, rather than the key itself being wrong.');
         }
-        fix.push('', 'Make one at https://aistudio.google.com/apikey');
+        fix.push('',
+            'Make one at https://aistudio.google.com/apikey - a key beginning "AQ.Ab" is',
+            'fine, that is the format Google issues now.');
         problems.push(['GEMINI_API_KEY was rejected by Google', ...fix]);
     }
 }
