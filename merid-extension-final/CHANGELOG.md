@@ -17,7 +17,7 @@
 
 **A quieter mark on the word, and the picture on the learning card is off for now.**
 
-- A word Merid put on the page now wears a dotted gold underline and nothing else. The pale yellow wash behind it is gone, and so is the way it darkened under the pointer — the page keeps its own background, and the word is marked rather than lit up. Hovering still opens the card.
+- A word Merid put on the page now sits under a dotted gold underline and nothing else. The pale yellow wash behind it is gone — the page keeps its own background, and the word is marked rather than lit up. Point at one and the wash comes back and the dots turn into a solid line, so a word you are actually reading stands out while the rest of them stay quiet. Hovering still opens the card.
 - Hovering a word shows its meaning without a picture again. The card is the definition, the example and the buttons, as it was before 1.7.0.
 - The On/Off control for it is gone from the toolbar popup and from Settings, along with the "Where the pictures come from" list, rather than left there switching something that no longer appears.
 - Nothing else about the card changed: the display modes, the deck buttons, the theme and the long-card scrolling all work as they did.

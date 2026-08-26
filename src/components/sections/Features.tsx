@@ -25,7 +25,9 @@ function ModesMicroDemo() {
       <p className="font-wiki text-[14px] leading-relaxed text-ink" lang="vi">
         …nhằm{' '}
         {mode === 0 && <span className="hl-en animate-word-swap inline-block font-semibold">preserve</span>}
-        {mode === 1 && <span className="hl-vi animate-word-swap inline-block">bảo tồn</span>}
+        {mode === 1 && (
+          <span className="hl-vi animate-word-swap inline-block font-semibold">bảo tồn</span>
+        )}
         {mode === 2 && (
           <span className="hl-en animate-word-swap inline-block font-semibold">bảo tồn (preserve)</span>
         )}{' '}
