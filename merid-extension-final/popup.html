@@ -36,6 +36,15 @@
             <button class="btn-signin" id="signin-btn" type="button" data-i18n="popupSignIn">Sign in / Sign up ↗</button>
         </section>
 
+        <!-- Words in play is full: "Save to Deck" has stopped adding new words
+             to the set, and there is no other place the reader would find that
+             out. Shown only in that one state. -->
+        <section class="focus-full" id="focus-full" hidden>
+            <p class="focus-full-text" id="focus-full-text"></p>
+            <button class="btn-focus-full" id="focus-full-btn" type="button"
+                data-i18n="popupFocusFullAction">Review your words</button>
+        </section>
+
         <section class="dataset-section">
             <h3 class="section-title" data-i18n="popupDatasetTitle">Vocabulary dataset</h3>
             <div class="dataset-btns" id="dataset-btns">

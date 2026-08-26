@@ -76,7 +76,7 @@ async function openOptions() {
 // --- 1. Nothing chosen anywhere: the browser's language decides (English here) ---
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
-        uiLang: 'auto', siteLang: '', datasetKey: 'c1', aiCheckEnabled: false,
+        uiLang: 'auto', siteLang: '', datasetKey: 'c1', focusSize: 0, aiCheckEnabled: false,
         // A fresh install arms the setup wizard, and the popup hands itself over
         // to it the first time it is opened: this page would close under the test.
         onboardingPending: false, onboardingDone: true
@@ -131,7 +131,7 @@ await popup.close();
 // --- 4. The learning card is English whatever the panel is set to ---
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
-        uiLang: 'vi', siteLang: 'vi', datasetKey: 'c1', frequency: 100,
+        uiLang: 'vi', siteLang: 'vi', datasetKey: 'c1', focusSize: 0, frequency: 100,
         replacementMode: 'highlight', extensionEnabled: true, aiCheckEnabled: false
     });
     await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile', 'knownWords', 'savedWords']);

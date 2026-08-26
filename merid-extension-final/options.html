@@ -128,6 +128,54 @@
             </div>
         </section>
 
+        <!-- FOCUS LIST (the words in play right now - see lib/focus.js) -->
+        <section class="card" id="focusCard">
+            <h2 data-i18n="optFocusTitle">Words in play</h2>
+            <p class="hint" data-i18n="optFocusHint">Merid works on a small set of words at a time instead of the whole
+                dataset, so the same word comes back often enough to stick. Words you never react to are quietly
+                swapped for new ones. Save one to your deck and the set grows; mark one learned and it makes room.</p>
+
+            <div class="field">
+                <label data-i18n="optFocusSizeLabel">How many words at a time</label>
+                <div class="seg" id="focusSeg">
+                    <button data-val="25" type="button">25</button>
+                    <button data-val="50" type="button">50</button>
+                    <button data-val="100" type="button">100</button>
+                    <button data-val="200" type="button">200</button>
+                    <button data-val="all" type="button" data-i18n="optFocusAll">All</button>
+                    <button data-val="custom" type="button" data-i18n="optFocusCustom">Custom</button>
+                </div>
+                <div class="focus-custom" id="focusCustomRow" hidden>
+                    <input type="number" id="focusCustomInput" min="10" step="1" inputmode="numeric"
+                        aria-label="Number of words" autocomplete="off">
+                    <button class="btn mini" id="focusCustomApply" type="button" data-i18n="optFocusApply">Apply</button>
+                </div>
+                <p class="hint" id="focusInfo">…</p>
+            </div>
+
+            <div class="subsection" id="focusListSection">
+                <h3 class="subhead" data-i18n="optFocusListTitle">The words Merid is showing you</h3>
+                <div class="focus-tools">
+                    <input type="text" id="focusFilter" placeholder="Search these words…"
+                        data-i18n-placeholder="optFocusFilterPlaceholder" autocomplete="off" spellcheck="false">
+                    <button class="btn mini ghost" id="focusReshuffle" type="button" data-i18n="optFocusReshuffle">Draw a new set</button>
+                </div>
+                <p class="hint" id="focusEmpty" data-i18n="optFocusEmpty" hidden>No words in play yet.</p>
+                <ul class="custom-list" id="focusList"></ul>
+
+                <div class="field">
+                    <label for="focusAddInput" data-i18n="optFocusAddLabel">Add a word from this dataset</label>
+                    <div class="focus-tools">
+                        <input type="text" id="focusAddInput" list="focusAddOptions" maxlength="64"
+                            placeholder="e.g. candid" autocomplete="off" spellcheck="false">
+                        <button class="btn mini" id="focusAddBtn" type="button" data-i18n="optFocusAdd" disabled>Add</button>
+                    </div>
+                    <datalist id="focusAddOptions"></datalist>
+                    <p class="hint" id="focusAddError" role="status" hidden></p>
+                </div>
+            </div>
+        </section>
+
         <!-- SITES (where Merid runs) -->
         <section class="card">
             <h2 data-i18n="optSitesTitle">Sites</h2>
@@ -372,7 +420,8 @@
                 <li data-i18n-html="optPrivacy6">Merid keeps a <strong>personalization profile</strong> on this device: counts of how often each word was shown, opened, rated, saved or skipped, plus the word's level and a coarse subject area from the page address. It holds <strong>no page text, no titles, no full URLs and no browsing history</strong>. If you sign in it is backed up to your own account so your preferences follow you. Read it back - and erase it on its own - under <strong>What Merid has learned about you</strong> above.</li>
                 <li data-i18n-html="optPrivacy7">Merid <strong>never runs at all</strong> on private pages - email, messaging, banking, sign-in, health and official services - so nothing from them is ever scanned or sent, whatever the AI check is set to. See <strong>Sites</strong> above for the full list.</li>
                 <li data-i18n-html="optPrivacy8">Your settings (selected dataset, display mode, intensity, on/off, the sites you turned off and the default-off sites you turned back on) are stored on your device via <code>chrome.storage</code>.</li>
-                <li data-i18n-html="optPrivacy9">Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
+                <li data-i18n-html="optPrivacy11">The <strong>words in play</strong> list - which words Merid is currently working on with you, and how often each has been shown and reacted to - is kept <strong>only on this device</strong>. It holds headwords from the dataset and counters, no page text. Your chosen number of words is stored with your other settings.</li>
+            <li data-i18n-html="optPrivacy9">Custom vocabulary datasets you upload are validated and stored <strong>only on this device</strong> - they are never uploaded to Merid, Firebase, or any AI service, and are not part of deck sync.</li>
                 <li data-i18n-html="optPrivacy10">Turn the extension off any time from the popup - globally, or just for one site.</li>
             </ul>
             <button class="btn danger" id="clearAll" type="button" data-i18n="optDeleteAll">Delete all stored data</button>
@@ -386,6 +435,7 @@
     <script src="lib/vocab-core.js"></script>
     <script src="lib/i18n.js"></script>
     <script src="lib/profile.js"></script>
+    <script src="lib/focus.js"></script>
     <script src="lib/firebase-config.js"></script>
     <script src="options.js"></script>
 </body>

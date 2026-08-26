@@ -83,6 +83,15 @@ let candidateCount = 0;
 let knownSet = new Set();
 let savedSet = new Set();
 
+// The focus list: the small rotating set of words Merid is working on with this
+// reader (lib/focus.js, kept by the service worker). Null means "All" - the
+// whole dataset is in play, which is how Merid behaved before the list existed.
+//
+// This filters the MATCH MAP only, never `vocabulary` itself: the learning card
+// resolves entries by headword, and a reader hovering a word that has since
+// rotated out must still get a card rather than nothing.
+let focusWords = null;
+
 // Learned personalization profile, snapshotted once per scan (null = none yet).
 let profile = null;
 // One timestamp per scan, so a long page cannot have its top and bottom
@@ -359,6 +368,8 @@ function init() {
     flushProfileEvents();
     shownThisPage = new Set();
     hoveredThisPage = new Set();
+    openedThisPage = new Set();
+    clearOpenTimer();
     pageTopic = P ? P.topicFromUrl(location.href) : 'general';
 
 
@@ -436,18 +447,40 @@ function startScan() {
 
             const start = () => {
                 scanStartedAt = Date.now();
-                const vocabMap = C.buildVocabMap(vocabulary, modes);
+                // Only the words currently in play may be matched. Filtering
+                // here rather than inside the scan means every downstream rule -
+                // the per-post cap, the cool-down, the context check - is
+                // untouched and simply sees a smaller dataset.
+                const active = focusWords
+                    ? vocabulary.filter(v => focusWords.has(String(v.word || '').toLowerCase()))
+                    : vocabulary;
+                const vocabMap = C.buildVocabMap(active, modes);
                 processPage(vocabMap);
                 observeChanges(vocabMap);
             };
 
-            if (vocabulary.length > 0) {
-                start();
-            } else {
+            // The focus list and the vocabulary are independent, and the scan
+            // needs both. Asking in parallel costs one worker wake instead of
+            // two, which on a cold service worker is most of the delay before
+            // the first word appears.
+            const needVocab = vocabulary.length === 0;
+            let waiting = needVocab ? 2 : 1;
+            const ready = () => { if (--waiting === 0) start(); };
+
+            chrome.runtime.sendMessage({ action: 'getFocusList' }, (resp) => {
+                // An unreachable list is not a reason to withhold the page:
+                // fall back to the whole dataset, exactly as "All" does.
+                focusWords = (!chrome.runtime.lastError && resp && Array.isArray(resp.words))
+                    ? new Set(resp.words)
+                    : null;
+                ready();
+            });
+
+            if (needVocab) {
                 chrome.runtime.sendMessage({ action: 'getVocabulary' }, (resp) => {
                     if (chrome.runtime.lastError) { console.warn('[VM] getVocabulary failed:', chrome.runtime.lastError.message); return; }
                     setVocabulary((resp && resp.vocabulary) || []);
-                    if (vocabulary.length > 0) start();
+                    if (vocabulary.length > 0) ready();
                 });
             }
         });
@@ -1379,6 +1412,46 @@ let pageTopic = 'general';
 let shownThisPage = new Set();
 let hoveredThisPage = new Set();
 
+// -------------------------------------------------------------
+// Reading the card, as opposed to brushing past it
+//
+// The learning card opens on hover, so "hover" fires whenever the pointer
+// crosses a word on its way somewhere else. That is fine for the ranker, which
+// only wants a weak interest signal - but the focus list uses interaction to
+// decide whether a word stays in play, and a mouse travelling across a
+// paragraph must not be able to vouch for every word it passes over.
+//
+// So there are two signals. `hover` keeps its old meaning. `open` means the
+// reader actually engaged: a click anywhere inside the card - the Cambridge
+// link, the audio button, any of the action buttons - or the card left open
+// long enough that they were reading it.
+// -------------------------------------------------------------
+const OPEN_DWELL_MS = 600;
+let openedThisPage = new Set();
+let openTimer = null;
+
+function clearOpenTimer() {
+    if (openTimer) { clearTimeout(openTimer); openTimer = null; }
+}
+
+/** Record that this card was genuinely read. Once per headword per page. */
+function noteCardOpen(word, level) {
+    clearOpenTimer();
+    const key = String(word || '').toLowerCase();
+    if (!key || openedThisPage.has(key)) return;
+    openedThisPage.add(key);
+    queueProfileEvent(word, 'open', level);
+    // The focus list acts on this, and a reader who hovers a word and then
+    // navigates away should not lose the one signal that keeps it in play.
+    flushProfileEvents();
+}
+
+/** Start the dwell clock for a card that has just opened. */
+function armOpenTimer(word, level) {
+    clearOpenTimer();
+    openTimer = setTimeout(() => { openTimer = null; noteCardOpen(word, level); }, OPEN_DWELL_MS);
+}
+
 // A word has to fall this far below the reader's own setting before we skip
 // it. Well above the noise floor: the profile has to have real evidence that
 // this reader keeps turning this word down, not just a mild preference.
@@ -1916,6 +1989,10 @@ function findVocabEntry(word, container) {
     if (!w) return null;
     // Never suggest a word the user has already dismissed or told us they know.
     if (knownSet.has(w)) return null;
+    // Nor one outside the focus list. The check is free to propose any word it
+    // likes; the list is what the reader is working on, and a better-fitting
+    // word they are not learning is not an improvement.
+    if (focusWords && !focusWords.has(w)) return null;
     // Nor one already in this post, or shown a moment ago somewhere else.
     if (container && !wordAvailable(container, w, w)) return null;
     return vocabEntry(w);
@@ -2152,6 +2229,12 @@ function createTooltip() {
 }
 
 function onTooltipClick(e) {
+    // Any click inside the card is the reader engaging with this word - the
+    // dictionary link and the audio button included, neither of which has a
+    // branch below. Recorded before the dispatch so it lands even for the
+    // branches that close the card.
+    noteCardOpen(tooltipElement.dataset.currentWord, tooltipElement.dataset.currentLevel);
+
     if (e.target.closest('.vm-audio')) {
         const word = tooltipElement.querySelector('.vm-word')?.textContent || '';
         try {
@@ -2294,6 +2377,10 @@ function showTooltip(target, item) {
         hoveredThisPage.add(hoverKey);
         queueProfileEvent(item.word, 'hover', item.dataset);
     }
+    // Whether they are reading it or just passing over it is a question only
+    // time can answer. Re-armed on every show, so moving between words starts
+    // the clock over rather than crediting the word the pointer landed on last.
+    armOpenTimer(item.word, item.dataset);
 
     const synonyms = (item.synonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
     const antonyms = (item.antonyms || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
@@ -2490,6 +2577,7 @@ function wireVisual(vis) {
 }
 
 function hideTooltip() {
+    clearOpenTimer();
     if (tooltipElement) tooltipElement.style.display = 'none';
 }
 
@@ -2507,6 +2595,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
         }
         if (changes.savedWords) {
             savedSet = new Set((changes.savedWords.newValue || []).map(e => String(e && e.word ? e.word : e).toLowerCase()));
+        }
+        // The focus list rotated. Adopt it silently: the words it dropped are
+        // not on this page any more than the ones it drew are, and reverting
+        // and re-scanning would rewrite the paragraph under the reader for a
+        // change they cannot see. It takes effect on the next scan - the same
+        // deal a removal from the known list already gets.
+        if (changes.vm_focus) {
+            const nv = changes.vm_focus.newValue;
+            focusWords = (nv && Number(nv.size) > 0 && Array.isArray(nv.words))
+                ? new Set(nv.words.map(e => e && e.w).filter(Boolean))
+                : null;
         }
         return;
     }

@@ -97,7 +97,7 @@ await sw.evaluate(async () => {
 // verdicts. Same hostname-matching shape as e2e/ai-check.mjs.
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
-        datasetKey: 'c1', frequency: 100, replacementMode: 'replace',
+        datasetKey: 'c1', focusSize: 0, frequency: 100, replacementMode: 'replace',
         extensionEnabled: true, aiCheckEnabled: true
     });
     await chrome.storage.local.set({ geminiApiKey: 'fake-key-for-test', vm_ai_model: 'gemini-flash-lite-latest' });

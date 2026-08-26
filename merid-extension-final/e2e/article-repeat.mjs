@@ -97,7 +97,7 @@ async function readPage(replacementMode) {
         await chrome.storage.sync.set({
             // Locked-in: the most words Merid will ever put on a page. If the
             // duplicate rules hold here they hold everywhere.
-            datasetKey: 'c2', frequency: 80, replacementMode: mode,
+            datasetKey: 'c2', focusSize: 0, frequency: 80, replacementMode: mode,
             extensionEnabled: true, aiCheckEnabled: false
         });
         await chrome.storage.local.remove(['vm_ai_cache', 'vm_profile', 'knownWords', 'savedWords']);

@@ -185,6 +185,40 @@
         }
     }
 
+    /**
+     * List a collection, one page at a time.
+     *
+     * `mask` is not an optimization here so much as the difference between a
+     * usable call and a bad one: a deck holds the definition and example of
+     * every word, and the only thing the caller needs back is the headword and
+     * its status. Without a mask each page would carry kilobytes per word for
+     * two fields.
+     *
+     * Returns { documents, nextPageToken } with each document's fields already
+     * decoded. A collection that does not exist yet answers with no documents,
+     * which is the right answer for an account that has never saved anything.
+     */
+    async function listDocs(idToken, collectionPath, opts) {
+        const o = opts || {};
+        const encodedPath = collectionPath.split('/').map(encodeURIComponent).join('/');
+        const params = ['pageSize=' + (Number(o.pageSize) || 300)];
+        if (o.pageToken) params.push('pageToken=' + encodeURIComponent(o.pageToken));
+        for (const f of (Array.isArray(o.mask) ? o.mask : [])) {
+            params.push('mask.fieldPaths=' + encodeURIComponent(f));
+        }
+        const r = await call(FS_BASE + '/' + dbRoot() + '/' + encodedPath + '?' + params.join('&'), {
+            headers: { Authorization: 'Bearer ' + idToken }
+        });
+        return {
+            documents: (r.documents || []).map(d => ({
+                // The document id is the last path segment, percent-decoded.
+                id: decodeURIComponent(String(d.name || '').split('/').pop() || ''),
+                fields: decodeFields(d.fields || {})
+            })),
+            nextPageToken: r.nextPageToken || ''
+        };
+    }
+
     function decodeFields(fields) {
         const out = {};
         for (const k of Object.keys(fields)) {
@@ -252,7 +286,7 @@
         configured,
         signUp, signUpAnonymous, signIn, refresh,
         sendSignInLink, signInWithEmailLink, signInWithGoogleIdToken,
-        getDoc, commit,
+        getDoc, listDocs, commit,
         createWrite, updateWrite, setWrite, deleteWrite
     };
 });

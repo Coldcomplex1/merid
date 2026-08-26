@@ -15,7 +15,7 @@
 // their browser to Google. Page content goes nowhere else.
 // =============================================================
 
-importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/ai-proxy.js', 'lib/sync.js');
+importScripts('lib/vocab-core.js', 'lib/profile.js', 'lib/focus.js', 'lib/custom-datasets.js', 'lib/firebase-config.js', 'lib/firebase-rest.js', 'lib/ai-proxy.js', 'lib/sync.js');
 
 // Release builds keep the console quiet; flip DEBUG on while developing.
 // console.warn/error still fire (failures only), routine logs go through log().
@@ -24,6 +24,7 @@ const log = DEBUG ? console.log.bind(console) : () => { };
 
 const C = self.VMCore;
 const Prof = self.VMProfile;
+const Focus = self.VMFocus;
 const Custom = self.VMCustom;
 const Sync = self.VMSync;
 const FB = self.VMFirebase;
@@ -729,6 +730,12 @@ function applyProfileEvents(events) {
             profile = Prof.recordEvent(profile, ev);
         }
         await chrome.storage.local.set({ [PROFILE_KEY]: profile });
+        // The focus list rotates on exactly these events, in exactly this
+        // serialized step. Anywhere else and the two could disagree: the list
+        // decides which words may be shown, the profile records what happened
+        // to them, and a rotation that read a stale profile would retire a word
+        // the reader had just engaged with.
+        await rotateFocus(batch, profile);
         log('[VM] profile: applied', batch.length, 'events;', Object.keys(profile.words).length, 'words tracked');
         return { ok: true, applied: batch.length };
     }).catch(e => {
@@ -760,6 +767,221 @@ function resetProfile() {
         return { ok: false };
     });
     return profileWriteChain;
+}
+
+// =============================================================
+// Focus list (local, private) - see lib/focus.js for the policy.
+//
+// The small rotating set of words Merid is working on with this reader. The
+// worker is its only writer, for the same reason it is the profile's: the list
+// is read-modify-written on events that arrive from every open tab at once, and
+// two tabs flushing together would otherwise both read the same list and the
+// later write would silently discard the other's rotation.
+//
+// Every mutator here runs on `profileWriteChain`, the same queue the profile
+// uses, so a rotation can never interleave with the profile update it was
+// derived from.
+// =============================================================
+const FOCUS_KEY = 'vm_focus';
+
+/** Every headword in the loaded dataset, lower case - what the list draws from. */
+async function focusPool() {
+    if (!vocabulary.length) await initVocabulary();
+    return vocabulary.map(v => String(v.word || '').toLowerCase()).filter(Boolean);
+}
+
+/**
+ * The toolbar badge. A full list is the one thing about the focus list a
+ * reader has to act on - it means "Save to Deck" has stopped adding words -
+ * and it is not something they would ever think to open Settings to discover.
+ *
+ * Global rather than per-tab on purpose: this is account state, not page state,
+ * and a badge that appeared on one tab and not the next would read as a bug.
+ */
+async function refreshFocusBadge(list) {
+    try {
+        const full = !!(Focus && Focus.isFull(list));
+        await chrome.action.setBadgeText({ text: full ? '!' : '' });
+        if (full) await chrome.action.setBadgeBackgroundColor({ color: '#f4be37' });
+    } catch (e) { /* no action surface (or the worker is going down): not worth failing over */ }
+}
+
+async function writeFocus(list) {
+    await chrome.storage.local.set({ [FOCUS_KEY]: list });
+    await refreshFocusBadge(list);
+    return list;
+}
+
+/** The options that let lib/focus.js draw sensibly: what the reader already
+ *  knows, and which saved words the schedule says are worth meeting again. */
+async function focusOpts(profile) {
+    const local = await chrome.storage.local.get(['knownWords']);
+    const known = new Set((local.knownWords || []).map(w => String(w).toLowerCase()));
+    let due = [];
+    try {
+        const p = profile || Prof.withDefaults((await chrome.storage.local.get([PROFILE_KEY]))[PROFILE_KEY]);
+        due = Prof.dueForReview(p);
+    } catch (e) { /* no schedule advice is a fine answer */ }
+    return { known, due, now: Date.now() };
+}
+
+/**
+ * Reconcile the stored list against what the settings now ask for, and return
+ * it. This is the only place a list is built, and it is lazy on purpose: a
+ * reader who changes dataset or size gets a correct list on the next scan
+ * without anything having to watch for the change and act on it.
+ *
+ * Four things can be out of date:
+ *   - nothing stored, or a record from an older format
+ *   - a different dataset (a C2 list means nothing against C1)
+ *   - a different size (a resize, which KEEPS the words already in play)
+ *   - words that are no longer in the dataset, which is what a custom dataset
+ *     replaced in place leaves behind
+ */
+async function ensureFocus(profile) {
+    const sync = C.withDefaults(await chrome.storage.sync.get(['focusSize', 'datasetKey']));
+    const datasetKey = sync.datasetKey || C.DEFAULT_DATASET_KEY;
+    const stored = await chrome.storage.local.get([FOCUS_KEY]);
+    let list = Focus.withDefaults(stored[FOCUS_KEY]);
+
+    // "All": no list at all, and nothing to keep. Clearing rather than leaving
+    // a stale one behind means switching back to a size rebuilds from scratch,
+    // which is what a reader who turned the feature off and on again expects.
+    const size = Math.max(0, Math.floor(Number(sync.focusSize) || 0));
+    if (size <= 0) {
+        if (list.size !== 0 || list.words.length) {
+            list = Focus.withDefaults({ datasetKey, size: 0 });
+            await writeFocus(list);
+        } else {
+            await refreshFocusBadge(list);
+        }
+        return list;
+    }
+
+    const pool = await focusPool();
+    const opts = await focusOpts(profile);
+    const before = JSON.stringify(list);
+
+    if (Focus.needsRebuild(list, size, datasetKey)) {
+        list = Focus.createList(size, datasetKey, pool, opts);
+    } else {
+        // A custom dataset replaced in place keeps its key, so the words can
+        // change underneath a list that still looks current. Drop whatever is
+        // no longer in the dataset; the refill below makes the numbers up.
+        const inPool = new Set(pool);
+        const kept = list.words.filter(e => inPool.has(e.w));
+        if (kept.length !== list.words.length) list.words = kept;
+        if (list.size !== size) list = Focus.resize(list, size, pool, opts);
+        // Short of the base - a refill that ran dry once, or a list restored
+        // from a device with a smaller dataset.
+        else if (list.words.length < size) Focus.refill(list, pool, size, opts);
+    }
+
+    if (JSON.stringify(list) !== before) return writeFocus(list);
+    await refreshFocusBadge(list);
+    return list;
+}
+
+/**
+ * Fold one batch of interaction events into the list. Called from inside
+ * applyProfileEvents' chain step, so it must never throw out of it: a rotation
+ * that failed is a list that rotates next time, not a profile update lost.
+ */
+async function rotateFocus(events, profile) {
+    try {
+        const list = await ensureFocus(profile);
+        if (list.size <= 0) return;
+        const pool = await focusPool();
+        const opts = await focusOpts(profile);
+        const next = Focus.applyEvents(list, events, pool, opts);
+        // Compared by content, not by `updatedAt`: that is a millisecond clock,
+        // and two batches landing inside the same millisecond would look
+        // identical and lose the second rotation.
+        if (JSON.stringify(next) !== JSON.stringify(list)) await writeFocus(next);
+    } catch (e) {
+        console.warn('[VM] focus rotation failed:', e && e.message);
+    }
+}
+
+/** Run one edit from the Settings page on the shared write chain. */
+function focusEdit(fn) {
+    profileWriteChain = profileWriteChain.then(async () => {
+        const list = await ensureFocus();
+        if (list.size <= 0) return { ok: false, code: 'FOCUS_OFF' };
+        const pool = await focusPool();
+        const opts = await focusOpts();
+        const next = await fn(list, pool, opts);
+        if (next && JSON.stringify(next) !== JSON.stringify(list)) await writeFocus(next);
+        return { ok: true };
+    }).catch(e => {
+        console.warn('[VM] focus edit failed:', e && e.message);
+        return { ok: false, code: 'UNKNOWN' };
+    });
+    return profileWriteChain;
+}
+
+/**
+ * The reader says they have learned this word.
+ *
+ * Two writes, and both are the point: the word joins `knownWords`, which is
+ * what stops the scan offering it and what carries the decision up to their
+ * account, AND it leaves the focus list, freeing the slot. Doing only the first
+ * would leave a full list full; doing only the second would hand the same word
+ * straight back on the next page.
+ */
+function focusMarkLearned(word) {
+    return focusEdit(async (list, pool, opts) => {
+        const w = String(word || '').toLowerCase().trim();
+        if (!w) return null;
+        const local = await chrome.storage.local.get(['knownWords']);
+        const known = (local.knownWords || []).map(k => String(k).toLowerCase());
+        if (known.indexOf(w) === -1) {
+            known.push(w);
+            await chrome.storage.local.set({ knownWords: known });
+        }
+        return Focus.markLearned(list, w, pool, Object.assign({}, opts, { known: new Set(known) }));
+    });
+}
+
+/** Everything the Settings page needs to draw the list, in one answer. */
+async function focusDetail() {
+    // On the shared chain: ensureFocus can rebuild and write, and off the chain
+    // that could land on top of a rotation running for an open tab.
+    profileWriteChain = profileWriteChain.then(() => ensureFocus()).catch(() => null);
+    const list = (await profileWriteChain) || Focus.withDefaults(null);
+    const sync = C.withDefaults(await chrome.storage.sync.get(['datasetKey']));
+    const key = sync.datasetKey || C.DEFAULT_DATASET_KEY;
+    if (!vocabulary.length) await initVocabulary();
+    const byWord = new Map();
+    for (const v of vocabulary) {
+        const k = String(v.word || '').toLowerCase();
+        if (k && !byWord.has(k)) byWord.set(k, v);
+    }
+    // Newest first: a word that has just rotated in is the one a reader
+    // scanning this list is most likely to be looking for.
+    const words = list.words.slice().sort((a, b) => b.addedAt - a.addedAt).map(e => {
+        const entry = byWord.get(e.w) || {};
+        return {
+            word: entry.word || e.w,
+            vietnamese: entry.vietnamese || '',
+            type: entry.type || ''
+        };
+    });
+    return {
+        ok: true,
+        words,
+        // Every headword in the dataset, for the Settings page's "add a word"
+        // suggestions. A reader cannot be expected to guess English headwords
+        // out of a dataset they have never seen, and a few thousand short
+        // strings is a cheaper message than a search endpoint.
+        poolWords: vocabulary.map(v => v.word).filter(Boolean),
+        size: list.size,
+        max: Focus.maxSizeFor(list.size),
+        count: list.words.length,
+        full: Focus.isFull(list),
+        poolCount: vocabulary.length,
+        datasetLabel: await resolveDatasetLabel(key)
+    };
 }
 
 
@@ -1026,6 +1248,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 // nothing ever came back to remove them.
                 ['frequency', 'replacementMode', 'vieEngMode', 'engEngMode', 'extensionEnabled',
                     'datasetKey', 'disabledSites', 'allowedSites', 'aiCheckEnabled', 'cardTheme',
+                    // How many words are in play (lib/focus.js). Not read by the
+                    // scan directly - it asks for the list itself - but the
+                    // content script watches it to know when to re-scan.
+                    'focusSize',
                     // visualsEnabled is read by the content script when it draws
                     // the card. Leaving a key out of this list is not a missing
                     // feature, it is a setting that silently ignores the reader:
@@ -1034,6 +1260,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     // it live) and comes back on in the next one.
                     'visualsEnabled'],
                 settings => sendResponse(C.withDefaults(settings)));
+            return true;
+        }
+
+        // ---- Focus list (content script + options page) ----
+        // The scan's filter, asked for once per page. `words: null` means the
+        // reader chose "All" and the whole dataset is in play.
+        case 'getFocusList': {
+            profileWriteChain = profileWriteChain
+                .then(() => ensureFocus())
+                .then(list => ({ words: list.size > 0 ? list.words.map(e => e.w) : null }))
+                .catch(() => ({ words: null }));   // never withhold the page over this
+            profileWriteChain.then(sendResponse);
+            return true;
+        }
+
+        case 'getFocusDetail': {
+            focusDetail().then(sendResponse).catch(() => sendResponse({ ok: false }));
+            return true;
+        }
+
+        case 'focusMarkLearned': {
+            focusMarkLearned(request.word).then(sendResponse).catch(() => sendResponse({ ok: false }));
+            return true;
+        }
+
+        case 'focusRemoveWord': {
+            focusEdit((list, pool, opts) => Focus.removeWord(list, request.word, pool, opts))
+                .then(sendResponse).catch(() => sendResponse({ ok: false }));
+            return true;
+        }
+
+        case 'focusAddWord': {
+            focusEdit((list, pool, opts) => Focus.addWord(list, request.word, pool, opts))
+                .then(sendResponse).catch(() => sendResponse({ ok: false }));
+            return true;
+        }
+
+        case 'focusReshuffle': {
+            focusEdit((list, pool, opts) => Focus.reshuffle(list, pool, opts))
+                .then(sendResponse).catch(() => sendResponse({ ok: false }));
             return true;
         }
 

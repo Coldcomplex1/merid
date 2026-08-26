@@ -88,7 +88,7 @@ const extId = new URL(sw.url()).host;
 // at the end is a change the wizard made rather than a default it agreed with.
 await sw.evaluate(async () => {
     await chrome.storage.sync.set({
-        datasetKey: 'c1', replacementMode: 'highlight',
+        datasetKey: 'c1', focusSize: 0, replacementMode: 'highlight',
         extensionEnabled: true, aiCheckEnabled: false
     });
     await chrome.storage.sync.remove('onboardingDone');
