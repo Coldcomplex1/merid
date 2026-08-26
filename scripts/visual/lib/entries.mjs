@@ -175,6 +175,48 @@ export function warnUncommittedDecisions(tag) {
 }
 
 /**
+ * The Python that stage 04 should run under.
+ *
+ * Here rather than in each caller because run.mjs and try.mjs both need it and
+ * a second copy would drift - which is the same reason this module refuses to
+ * re-implement parseCSV. Returns { cmd, pre } so a launcher that needs an
+ * argument ("py -3") is spawnable the same way a plain name is, or null.
+ *
+ * An activated virtualenv comes first, and that is the point. On Windows
+ * `py -3` is the obvious choice and is WRONG here: the launcher deliberately
+ * ignores an activated venv and picks a system interpreter, so a reader who had
+ * just followed the setup to the letter - venv on, open_clip installed into
+ * it - was told open_clip was missing. It was, from the interpreter that asked.
+ *
+ * VIRTUAL_ENV is set by both activate scripts, so honouring it is exact rather
+ * than a guess about PATH. `python` next, which resolves to whichever venv or
+ * conda environment is actually active; the Windows launcher last, for a
+ * machine with no environment on at all.
+ */
+export function findPython() {
+    const tries = [];
+    if (process.env.VIRTUAL_ENV) {
+        tries.push([path.join(process.env.VIRTUAL_ENV,
+            process.platform === 'win32' ? 'Scripts' : 'bin',
+            process.platform === 'win32' ? 'python.exe' : 'python'), []]);
+    }
+    if (process.platform === 'win32') {
+        // python3.exe on Windows is often the Store stub, which "succeeds" by
+        // opening a shop. python is the name an environment actually provides.
+        tries.push(['python', []], ['py', ['-3']]);
+    } else {
+        tries.push(['python3', []], ['python', []]);
+    }
+    for (const [cmd, pre] of tries) {
+        try {
+            const r = spawnSync(cmd, [...pre, '--version'], { encoding: 'utf8' });
+            if (r.status === 0) return { cmd, pre };
+        } catch (e) { /* not this one */ }
+    }
+    return null;
+}
+
+/**
  * Two words close enough that one photograph honestly serves both.
  *
  * The duplicate check used to say "at least one word in each pair is

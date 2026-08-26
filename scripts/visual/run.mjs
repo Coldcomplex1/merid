@@ -28,6 +28,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findPython } from './lib/entries.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -88,16 +89,35 @@ const git = (...args) => {
     return r.status === 0 ? String(r.stdout || '').trim() : null;
 };
 
-/** The first of these interpreters that exists, or null. */
-function findPython() {
-    const tries = process.platform === 'win32'
-        ? [['py', ['-3']], ['python', []]]
-        : [['python3', []], ['python', []]];
-    for (const [cmd, pre] of tries) {
-        const r = spawnSync(cmd, [...pre, '--version'], { encoding: 'utf8' });
-        if (r.status === 0) return { cmd, pre };
+/**
+ * Whether the key can actually call the API, asked of Google rather than of its
+ * first six characters.
+ *
+ * A prefix test is a guess, and it guessed wrong both ways: it blocked a key it
+ * could not really judge, and it would have passed a well-shaped key on a
+ * project with the API switched off. One request answers the question properly
+ * and costs nothing against the quota.
+ */
+async function checkGeminiKey(key) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' +
+        encodeURIComponent(key);
+    try {
+        const resp = await fetch(url);
+        const json = await resp.json().catch(() => null);
+        if (resp.ok) {
+            const models = ((json && json.models) || []).length;
+            return { ok: true, models };
+        }
+        return {
+            ok: false,
+            status: resp.status,
+            msg: (json && json.error && json.error.message) || ('HTTP ' + resp.status)
+        };
+    } catch (e) {
+        // No network, a proxy, a firewall. Not a reason to refuse to start: the
+        // first stage will find out within seconds and say so itself.
+        return { unreachable: true, msg: e.message };
     }
-    return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,16 +151,33 @@ if (!gem) {
             : "export GEMINI_API_KEY='your-key'",
         'get one at https://aistudio.google.com/apikey'
     ]);
-} else if (!gem.startsWith('AIzaSy')) {
-    // The trap that has cost the most time: an ephemeral Live API token looks
-    // like a key, is accepted by the shell, and is rejected by every call.
-    problems.push([
-        'GEMINI_API_KEY does not start with AIzaSy, so it is not an API key',
-        'a key beginning "AQ." is an ephemeral Live API token and cannot call this API',
-        'make a real one at https://aistudio.google.com/apikey'
-    ]);
 } else {
-    say('gemini key: present');
+    const check = await checkGeminiKey(gem);
+    if (check.ok) {
+        say('gemini key: works, ' + check.models + ' models available');
+    } else if (check.unreachable) {
+        warnings.push('could not reach Google to check GEMINI_API_KEY (' + check.msg + ').\n' +
+            '      Carrying on - stage 01 will say within seconds if the key is no good.');
+    } else {
+        const fix = [
+            'Google says: ' + check.msg,
+            ''
+        ];
+        // The trap that has cost the most time: an ephemeral Live API token
+        // looks like a key, is accepted by the shell, and is rejected by every
+        // call. Named here rather than tested for, because the test above is
+        // the one that actually decides.
+        if (!gem.startsWith('AIzaSy')) {
+            fix.push('This key does not start with "AIzaSy". One beginning "AQ." is an',
+                'ephemeral Live API token and cannot call this API.');
+        }
+        if (/PERMISSION_DENIED|SERVICE_DISABLED/i.test(check.msg)) {
+            fix.push('That reads as the Generative Language API being off for the project',
+                'behind this key, rather than the key itself being wrong.');
+        }
+        fix.push('', 'Make one at https://aistudio.google.com/apikey');
+        problems.push(['GEMINI_API_KEY was rejected by Google', ...fix]);
+    }
 }
 
 if (NO_PHOTOS) {
@@ -184,9 +221,11 @@ if (NO_PHOTOS) {
     const py = findPython();
     if (!py) {
         problems.push([
-            'no python3 on PATH, and stage 04 scores the candidates with it',
+            'no Python 3 found, and stage 04 scores the candidates with it',
             'install Python 3, then:',
-            '  python3 -m venv .venv && source .venv/bin/activate',
+            process.platform === 'win32'
+                ? '  py -3 -m venv .venv && .\\.venv\\Scripts\\Activate.ps1'
+                : '  python3 -m venv .venv && source .venv/bin/activate',
             '  pip install open_clip_torch pillow torch',
             'or run without photographs at all:  node ' + HERE + '/run.mjs --no-photos'
         ]);
@@ -195,14 +234,27 @@ if (NO_PHOTOS) {
             { encoding: 'utf8' });
         if (probe.status !== 0) {
             problems.push([
-                'python is here but open_clip/torch/pillow are not, and stage 04 needs all three',
-                '  pip install open_clip_torch pillow torch',
+                'open_clip/torch/pillow are missing, and stage 04 needs all three',
+                '',
+                // Named, because the interpreter is the thing that is usually
+                // wrong rather than the packages. A reader with an activated
+                // venv and open_clip installed into it was being told open_clip
+                // was missing, and had no way to see that the question had gone
+                // to a different Python entirely.
+                'asked: ' + [py.cmd, ...py.pre].join(' '),
+                process.env.VIRTUAL_ENV
+                    ? '(that is the venv in VIRTUAL_ENV, so this really is the active one)'
+                    : '(no virtualenv is active - if you meant to use one, activate it first)',
+                '',
+                'Install into THAT interpreter:',
+                '  ' + [py.cmd, ...py.pre].join(' ') + ' -m pip install open_clip_torch pillow torch',
+                '',
                 'stage 05 reads stage 04\'s output and will not run without it, so this is not',
                 'a stage that can simply be skipped - the alternative is symbols only:',
                 '  node ' + HERE + '/run.mjs --no-photos'
             ]);
         } else {
-            say('python + CLIP: ready (' + py.cmd + ')');
+            say('python + CLIP: ready (' + [py.cmd, ...py.pre].join(' ') + ')');
         }
     }
 }

@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { findPython } from './lib/entries.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -50,7 +51,10 @@ const DEFAULT_WORDS = [
 ];
 
 const chosen = words.length ? words : DEFAULT_WORDS;
-const PY = process.platform === 'win32' ? 'python' : 'python3';
+// Resolved rather than named: an activated venv is the interpreter the reader
+// meant, and on Windows the obvious `py -3` ignores it. Shared with run.mjs so
+// the trial and the real run cannot disagree about which Python they are using.
+const PY = findPython();
 
 function run(cmd, argv, extraEnv) {
     return new Promise(resolve => {
@@ -85,11 +89,19 @@ async function main() {
     console.log('Working files: ' + path.relative(ROOT, TRIAL_STATE) + '  (the real run is untouched)');
     line();
 
+    // No Python at all is worth saying here rather than throwing on PY.cmd four
+    // stages later, after the trial has already spent its model requests.
+    if (!PY) {
+        console.error('No Python 3 found, and stage 04 scores the candidates with it.');
+        console.error('If you have a virtualenv, activate it first; otherwise install Python 3.');
+        process.exit(1);
+    }
+
     const stages = [
         ['node', ['scripts/visual/01-classify.mjs']],
         ['node', ['scripts/visual/02-query.mjs']],
         ['node', ['scripts/visual/03-fetch.mjs']],
-        [PY, ['scripts/visual/04-rank.py']]
+        [PY.cmd, [...PY.pre, 'scripts/visual/04-rank.py']]
     ];
     for (const [cmd, argv] of stages) {
         console.log('\n$ ' + cmd + ' ' + argv.join(' '));
