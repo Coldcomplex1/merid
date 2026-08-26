@@ -79,6 +79,21 @@ CLIP từ HuggingFace.
 
 ## 3. Đặt API key
 
+Pipeline lấy ảnh từ **ba kho**, và chỉ một trong ba bắt buộc phải có key:
+
+| Kho | Cần gì | Không có thì sao |
+|---|---|---|
+| **Wikimedia Commons** | **không gì cả** | — |
+| **Openverse** | `OPENVERSE_TOKEN` — **tuỳ chọn**, miễn phí | vẫn chạy ẩn danh, hạn mức thấp hơn |
+| **Pexels** | `PEXELS_API_KEY` | tắt hẳn kho đó, hai kho kia vẫn chạy |
+
+Còn `GEMINI_API_KEY` là cho bước 01/02/02b (phân loại, câu tìm kiếm, ký hiệu) —
+**không có nó thì không chạy được gì cả**.
+
+Token Openverse lấy ở <https://api.openverse.org/v1/auth_tokens/register/>,
+mất một phút. Đáng lấy: bước 03 gọi vài trăm request, và hạn mức ẩn danh thấp
+hơn nhiều so với khi có token.
+
 > **Key Gemini phải bắt đầu bằng `AIzaSy`.** Lấy ở
 > <https://aistudio.google.com/apikey>. Key bắt đầu bằng `AQ.` là ephemeral
 > token của Live API, không gọi được API này.
@@ -87,12 +102,14 @@ CLIP từ HuggingFace.
 ```bash
 export GEMINI_API_KEY='key-gemini-moi-cua-ban'
 export PEXELS_API_KEY='key-pexels-moi-cua-ban'
+export OPENVERSE_TOKEN='token-openverse'      # tuỳ chọn
 ```
 
 **Windows (PowerShell)**
 ```powershell
 $env:GEMINI_API_KEY='key-gemini-moi-cua-ban'
 $env:PEXELS_API_KEY='key-pexels-moi-cua-ban'
+$env:OPENVERSE_TOKEN='token-openverse'        # tuỳ chọn
 ```
 
 Key chỉ sống trong phiên terminal đó. Đóng terminal là mất, phải set lại.
@@ -227,6 +244,7 @@ pip install open_clip_torch pillow torch
 
 $env:GEMINI_API_KEY='AIzaSy...'   # chỉ sống trong cửa sổ PowerShell NÀY
 $env:PEXELS_API_KEY='...'
+$env:OPENVERSE_TOKEN='...'        # tuỳ chọn, miễn phí, nâng hạn mức
 
 node scripts/visual/try.mjs --review
 node scripts/visual/run.mjs
@@ -284,7 +302,10 @@ sự cần ảnh. (Ở lần đo không có LLM là 404 từ; có LLM chắc s�
 
 Vài điều khi chạy:
 
-- **Bước 03 gặp 429** sẽ tự dừng 60 giây rồi thử lại. Không cần làm gì.
+- **Bước 03 gặp 429** sẽ cho *riêng kho đó* nghỉ 60 giây, hai kho kia chạy
+  tiếp, rồi nó tự quay lại. Không cần làm gì, và không mất thời gian: một kho
+  bị giới hạn không làm chậm cả lần chạy. Cuối bước 03 in ra mỗi kho phủ được
+  bao nhiêu entry — đọc dòng đó để biết Pexels có bị vắng mặt phần lớn không.
 - **Bước 05** xếp từ khó nhất lên đầu. Hết giờ cứ bấm "Finish" — từ chưa duyệt
   tự dùng icon, không nhận ảnh bừa.
 - **Không cần duyệt hết.** `--sample 50` đổi công việc chứ không phải rút ngắn

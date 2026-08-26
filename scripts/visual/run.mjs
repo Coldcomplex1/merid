@@ -146,14 +146,28 @@ if (!gem) {
 if (NO_PHOTOS) {
     say('--no-photos: stages 03, 04 and 05 are skipped. Every entry takes a symbol.');
 } else {
-    // Not fatal. Openverse and Wikimedia need no key at all, and between them
-    // they carry most of a run; Pexels only widens the pool.
+    // Neither of these is fatal, and it is worth saying why rather than leaving
+    // the reader to guess which of the three sources they have actually got.
+    //
+    //   Wikimedia needs nothing at all - no key, no account.
+    //   Openverse works anonymously; a token is free and raises the limit.
+    //   Pexels is the only one that is off without a key.
     if (!process.env.PEXELS_API_KEY) {
         warnings.push('PEXELS_API_KEY is not set - Openverse and Wikimedia still run, ' +
             'but with a smaller pool to choose from');
     } else {
         say('pexels key: present');
     }
+
+    if (!process.env.OPENVERSE_TOKEN) {
+        warnings.push('OPENVERSE_TOKEN is not set - Openverse still answers anonymously, at a\n' +
+            '      lower rate. It is free and takes a minute:\n' +
+            '      https://api.openverse.org/v1/auth_tokens/register/');
+    } else {
+        say('openverse token: present');
+    }
+
+    say('wikimedia: no key needed');
 
     try {
         require.resolve('sharp');
@@ -193,6 +207,13 @@ if (NO_PHOTOS) {
     }
 }
 
+// Warnings first, and before the exit below rather than after it: someone about
+// to go and install sharp should learn on the same screen that a free Openverse
+// token would be worth picking up while they are at it. Printing these only on
+// the clean path meant they were shown last, to a reader who had already
+// finished setting up.
+for (const w of warnings) say('NOTE: ' + w);
+
 if (problems.length) {
     say('\n' + '='.repeat(62));
     say(problems.length + ' thing(s) to fix before this can run:');
@@ -204,8 +225,6 @@ if (problems.length) {
     say('='.repeat(62));
     process.exit(1);
 }
-
-for (const w of warnings) say('NOTE: ' + w);
 
 // ---------------------------------------------------------------------------
 // The stages.

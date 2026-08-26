@@ -44,6 +44,16 @@ rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
 
 Wikimedia needs no key. All three sources are free; nothing here costs money.
 
+Those limits are budgets stage 03 keeps to, not trivia: Pexels' 200 an hour is
+the reason `PEXELS_PER_MIN` is three and not a hundred and eighty. A source that
+runs out is rested on its own and the run carries on without it — see `Budget`
+in `03-fetch.mjs`, and `test/fetch-limits.mjs` for what that costs. Both rates
+are overridable:
+
+```bash
+MERID_PEXELS_PER_HOUR=200 MERID_OPENVERSE_PER_MIN=60 node scripts/visual/03-fetch.mjs
+```
+
 `GEMINI_API_KEYS` (plural, comma-separated) also works and is what
 `api/_lib/gemini.js` reads natively — use it if you have several keys to spread
 the daily allowance across.
@@ -251,6 +261,7 @@ the rate-limit handling and the resume logic all run for real:
 node --import ./scripts/visual/test/fake-gemini.mjs scripts/visual/02-query.mjs
 python3 scripts/visual/04-rank.py --pretrained none   # architecture, random weights
 node scripts/visual/test/agreement.mjs                # the sample → measure → accept loop
+node scripts/visual/test/fetch-limits.mjs            # what stage 03 does when a source says 429
 ```
 
 The answers are invented; the plumbing is not.

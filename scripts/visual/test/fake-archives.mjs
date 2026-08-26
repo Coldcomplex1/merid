@@ -12,8 +12,21 @@
 import http from 'node:http';
 import { makePng } from './png.mjs';
 
-export async function startFakeArchives({ rateLimitFirstCall = false } = {}) {
+/**
+ * @param {object}  [opts]
+ * @param {boolean} [opts.rateLimitFirstCall] 429 the first Pexels call only.
+ * @param {boolean} [opts.rateLimitPexels]    429 EVERY Pexels call, for as long
+ *   as the server is up. This is the case that used to cost a minute an entry:
+ *   stage 03 slept RATE_WAIT_MS, retried, was refused again, and did it all
+ *   over on the next word. A test for it has to be able to keep saying no.
+ */
+export async function startFakeArchives({
+    rateLimitFirstCall = false,
+    rateLimitPexels = false
+} = {}) {
     let pexelsCalls = 0;
+    let openverseCalls = 0;
+    let wikimediaCalls = 0;
 
     const server = http.createServer((req, res) => {
         const url = new URL(req.url, 'http://127.0.0.1');
@@ -23,6 +36,7 @@ export async function startFakeArchives({ rateLimitFirstCall = false } = {}) {
         };
 
         if (url.pathname === '/v1/images/') {
+            openverseCalls++;
             const q = url.searchParams.get('q') || '';
             const n = Number(url.searchParams.get('page_size') || 6);
             // The stage must be asking for redistributable work only.
@@ -41,6 +55,7 @@ export async function startFakeArchives({ rateLimitFirstCall = false } = {}) {
         }
 
         if (url.pathname === '/w/api.php') {
+            wikimediaCalls++;
             const search = url.searchParams.get('gsrsearch') || '';
             const port = server.address().port;
             // Two keepable, two that must be filtered out.
@@ -66,6 +81,7 @@ export async function startFakeArchives({ rateLimitFirstCall = false } = {}) {
         if (url.pathname === '/v1/search') {
             pexelsCalls++;
             if (!req.headers.authorization) return json({ error: 'no key' }, 401);
+            if (rateLimitPexels) return json({ error: 'slow down' }, 429);
             if (rateLimitFirstCall && pexelsCalls === 1) return json({ error: 'slow down' }, 429);
             const q = url.searchParams.get('query') || '';
             const port = server.address().port;
@@ -91,5 +107,9 @@ export async function startFakeArchives({ rateLimitFirstCall = false } = {}) {
 
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const base = 'http://127.0.0.1:' + server.address().port;
-    return { base, server, stop: () => server.close(), calls: () => ({ pexelsCalls }) };
+    return {
+        base, server,
+        stop: () => server.close(),
+        calls: () => ({ pexelsCalls, openverseCalls, wikimediaCalls })
+    };
 }

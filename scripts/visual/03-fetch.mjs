@@ -54,17 +54,97 @@ const WIKIMEDIA = process.env.MERID_WIKIMEDIA_URL || 'https://commons.wikimedia.
 const PEXELS = process.env.MERID_PEXELS_URL || 'https://api.pexels.com';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-// How long to stand down when a source says 429. Overridable so the test can
+// How long to stand a source down when it says 429. Overridable so the test can
 // cover that path without sleeping for a real minute.
 const RATE_WAIT_MS = Number(process.env.MERID_RATE_WAIT_MS || 60000);
 
+const rate = (name, dflt) => {
+    const v = Number(process.env[name]);
+    return Number.isFinite(v) && v > 0 ? v : dflt;
+};
+
+// How fast each source may be asked, per minute.
+//
+// These are budgets, not guesses at how fast the network is. Pexels' free tier
+// is 200 requests an HOUR - the number this repository's own README has always
+// carried - and this file used to ask at 180 a MINUTE, which is fifty-four
+// times over. On a run of four to six hundred concrete words that spends the
+// hour's allowance in about two minutes and then meets 429 on everything after
+// it.
+//
+// 180 an hour rather than 200 leaves room for whatever else shares the key.
+const PEXELS_PER_MIN = rate('MERID_PEXELS_PER_HOUR', 180) / 60;
+// Unchanged, deliberately. Openverse publishes different limits for anonymous
+// and registered clients and I could not measure the anonymous one; lowering a
+// working number on a guess would cost coverage for nothing. What changes is
+// what happens when it IS refused - see Budget.rest below. Raise it when you
+// have a token: MERID_OPENVERSE_PER_MIN=60.
+const OPENVERSE_PER_MIN = rate('MERID_OPENVERSE_PER_MIN', 30);
+// No key, no account, and a documented tolerance for a single well-behaved
+// client. The one source that can afford to be waited for.
+const WIKIMEDIA_PER_MIN = rate('MERID_WIKIMEDIA_PER_MIN', 60);
+
 /** One request at a time per provider, no faster than its stated ceiling. */
-class Throttle {
-    constructor(perMinute) { this.gap = 60000 / perMinute; this.last = 0; }
-    async wait() {
-        const due = this.last + this.gap - Date.now();
-        if (due > 0) await sleep(due);
+/**
+ * One source's request budget, and whether it may be asked right now.
+ *
+ * The predecessor of this class only knew how to wait, and the fetch loop only
+ * knew how to sleep - so a source that ran out of allowance cost SIXTY SECONDS
+ * PER ENTRY for the rest of the run, and a stage budgeted at an hour became
+ * four. That is the whole reason this is not a throttle any more.
+ *
+ * Two ideas, and the second is the one that matters:
+ *
+ *   A source can be optional. `blocking` sources are waited for; the rest are
+ *   simply SKIPPED when their next turn is not due yet. Pexels then spreads its
+ *   allowance evenly across the whole run instead of sprinting into a wall, and
+ *   the entries it cannot reach cost nothing rather than a minute each.
+ *
+ *   Being refused rests the SOURCE, not the run. A 429 stands that one source
+ *   down for a while; the other two carry on answering, and it rejoins when its
+ *   window reopens. Stage 03 has always treated a source that did not answer as
+ *   ordinary - `if (!Array.isArray(batch)) continue` - so this is not a new
+ *   state for anything downstream, only a cheaper way of reaching it.
+ */
+class Budget {
+    constructor(perMinute, { blocking = false } = {}) {
+        this.gap = 60000 / perMinute;
+        this.last = 0;
+        this.blocking = blocking;
+        this.restingUntil = 0;
+        // For the summary at the end, which is how you find out that a source
+        // was barely present without reading four hundred lines of progress.
+        this.asked = 0;
+        this.skipped = 0;
+        this.refused = 0;
+    }
+
+    /** ms until this source may be asked again; <= 0 means now. */
+    dueIn(now = Date.now()) {
+        return Math.max(this.last + this.gap, this.restingUntil) - now;
+    }
+
+    /** Take a turn if there is one. Blocking sources wait for it; others decline. */
+    async take() {
+        const due = this.dueIn();
+        if (due > 0) {
+            // Never wait out a stand-down, even for a blocking source: that is
+            // the minute-per-entry this class exists to stop.
+            if (!this.blocking || this.restingUntil > Date.now()) {
+                this.skipped++;
+                return false;
+            }
+            await sleep(due);
+        }
         this.last = Date.now();
+        this.asked++;
+        return true;
+    }
+
+    /** Told to slow down. Stand this source down without stopping the run. */
+    rest(ms) {
+        this.restingUntil = Date.now() + ms;
+        this.refused++;
     }
 }
 
@@ -104,7 +184,8 @@ async function getJson(url, headers = {}) {
 
 const openverse = {
     name: 'openverse',
-    throttle: new Throttle(30),
+    budget: new Budget(OPENVERSE_PER_MIN),
+    enabled: () => true,
     async search(query, want) {
         const url = OPENVERSE + '/v1/images/?' + new URLSearchParams({
             q: query,
@@ -130,7 +211,11 @@ const openverse = {
 
 const wikimedia = {
     name: 'wikimedia',
-    throttle: new Throttle(60),
+    // The only source worth waiting for: it needs no key, it takes the most
+    // careful view of licensing, and it is the most precise of the three on
+    // plain concrete nouns.
+    budget: new Budget(WIKIMEDIA_PER_MIN, { blocking: true }),
+    enabled: () => true,
     async search(query, want) {
         // generator=search over the File: namespace, asking for each result's
         // licence metadata in the same round trip.
@@ -172,9 +257,12 @@ const wikimedia = {
 
 const pexels = {
     name: 'pexels',
-    throttle: new Throttle(180),
+    budget: new Budget(PEXELS_PER_MIN),
+    // Checked before a turn is taken rather than inside search(): spending
+    // budget to return an empty list would make the source look rate-limited
+    // in the summary when it was never configured.
+    enabled: () => !!process.env.PEXELS_API_KEY,
     async search(query, want) {
-        if (!process.env.PEXELS_API_KEY) return [];
         const url = PEXELS + '/v1/search?' + new URLSearchParams({
             query, per_page: String(want), orientation: 'landscape'
         });
@@ -260,7 +348,23 @@ async function main() {
     const work = todo.slice(0, LIMIT === Infinity ? todo.length : LIMIT);
     console.log('[03] ' + searchable.length + ' searchable, ' +
         (searchable.length - todo.length) + ' already fetched, doing ' + work.length);
-    if (!process.env.PEXELS_API_KEY) console.log('[03] no PEXELS_API_KEY - skipping that source');
+    // Said up front, because the budgets are the thing that decides how much of
+    // this run each source actually reaches, and finding that out afterwards is
+    // finding it out too late.
+    for (const provider of PROVIDERS) {
+        if (!provider.enabled()) {
+            console.log('[03] ' + provider.name + ': off (no key) - the other sources carry on');
+            continue;
+        }
+        const perMin = 60000 / provider.budget.gap;
+        console.log('[03] ' + provider.name + ': ' +
+            (perMin >= 1 ? perMin.toFixed(0) + '/min' : Math.round(perMin * 60) + '/hour') +
+            (provider.budget.blocking ? ', waited for' : ', skipped when not due'));
+    }
+    if (!process.env.OPENVERSE_TOKEN) {
+        console.log('[03] no OPENVERSE_TOKEN - anonymous limits apply. It is free and raises');
+        console.log('     them: https://api.openverse.org/v1/auth_tokens/register/');
+    }
 
     let downloaded = 0;
     let empty = 0;
@@ -278,15 +382,20 @@ async function main() {
         const perSource = Math.max(3, Math.ceil(PER_ENTRY / 2));
         const pool = [];
         for (const provider of PROVIDERS) {
-            await provider.throttle.wait();
+            if (!provider.enabled()) continue;
+            // Not due yet, or standing down: skip this source for this entry
+            // rather than holding the whole run up for it.
+            if (!await provider.budget.take()) continue;
             let batch;
             try { batch = await provider.search(item.query, perSource); } catch (e) { batch = null; }
             if (batch && batch.rateLimited) {
-                // Being told to slow down is not a reason to lose the run.
-                console.log('[03] ' + provider.name + ' rate-limited, standing down for ' +
-                    Math.round(RATE_WAIT_MS / 1000) + 's');
-                await sleep(RATE_WAIT_MS);
-                try { batch = await provider.search(item.query, perSource); } catch (e) { batch = null; }
+                // Being told to slow down is not a reason to lose the run, and
+                // not a reason to sleep through it either. Rest this source and
+                // carry on with the other two; it rejoins by itself.
+                console.log('[03] ' + provider.name + ' rate-limited, resting it for ' +
+                    Math.round(RATE_WAIT_MS / 1000) + 's - the other sources carry on');
+                provider.budget.rest(RATE_WAIT_MS);
+                continue;
             }
             if (!Array.isArray(batch)) continue;
             for (const c of batch) {
@@ -375,6 +484,38 @@ async function main() {
     console.log('[03] ' + downloaded + ' new files, ' + total + ' candidates over ' +
         Object.keys(result.entries).length + ' entries' +
         (empty ? ', ' + empty + ' entries found nothing' : ''));
+
+    // Which source actually reached which entries.
+    //
+    // A budget that turns out to be too small does not fail, it just quietly
+    // contributes to fewer words - and "Pexels covered 40 of 500 entries" is
+    // the only place that shows up. Counted over the whole corpus on disk, not
+    // just this run's slice, because that is the number stage 04 will score.
+    const reach = new Map();
+    for (const e of Object.values(result.entries)) {
+        const seen = new Set(e.candidates.map(c => c.source));
+        for (const src of seen) reach.set(src, (reach.get(src) || 0) + 1);
+    }
+    const corpus = Object.keys(result.entries).length || 1;
+    console.log('[03] reach, over ' + corpus + ' entries:');
+    for (const provider of PROVIDERS) {
+        const n = reach.get(provider.name) || 0;
+        const b = provider.budget;
+        console.log('     ' + provider.name.padEnd(10) + String(n).padStart(5) + ' entries (' +
+            Math.round(100 * n / corpus) + '%)' +
+            (provider.enabled()
+                ? '  asked ' + b.asked + ', skipped ' + b.skipped +
+                  (b.refused ? ', refused ' + b.refused : '')
+                : '  off (no key)'));
+    }
+    const starved = PROVIDERS.filter(p => p.enabled() && p.budget.refused > 0);
+    if (starved.length) {
+        console.log('[03] ' + starved.map(p => p.name).join(' and ') +
+            ' hit a rate limit during this run. Re-running 03 later picks up only');
+        console.log('     entries with no candidates at all, so to widen an entry that already');
+        console.log('     has some, change its query in stage 02 or raise the budget:');
+        console.log('       MERID_PEXELS_PER_HOUR=... MERID_OPENVERSE_PER_MIN=...');
+    }
     console.log('[03] wrote ' + OUT);
 }
 

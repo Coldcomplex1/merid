@@ -423,17 +423,29 @@ async function main() {
     console.log('\nwhat a concrete word shows when it has no photograph');
     const kindLine = accepted.match(/(\d+) concrete words ended without a photograph/);
     ok(!!kindLine, 'stage 06 says how many words fell back to a kind');
-    const letterLine = accepted.match(/(\d+) words show only their first letter/);
-    ok(!!letterLine, 'and how many are left with just a letter');
+
+    // Not "how many show their first letter" any more. That state is gone from
+    // the card: visualFor draws only what the index names and returns null for
+    // everything else, so an entry with no photograph and no concept simply has
+    // no picture panel. Stage 06 reports the same fact as coverage, which is
+    // also what merid-extension-final/test/visual-index.test.js gates on.
+    const coverLine = accepted.match(/coverage: (\d+)\/(\d+) entries \(([\d.]+)%\)/);
+    ok(!!coverLine, 'and reports coverage over the whole corpus');
+    const uncovered = accepted.match(/The other (\d+) get a card with no picture at all/);
+    ok(!!uncovered, 'naming how many get no picture at all');
 
     // Every unphotographed entry is accounted for as one or the other. A word
     // silently getting neither is the bug this whole section exists to catch.
     const shippedPics = Number((accepted.match(/\[06\] (\d+) pictures,/) || [])[1]);
     const totalEntries = (await import('../lib/entries.mjs')).loadEntries().length;
-    ok(Number(kindLine[1]) + Number(letterLine[1]) + shippedPics <= totalEntries,
-        'kinds + letters + pictures does not exceed the vocabulary');
-    ok(Number(kindLine[1]) > 0 && Number(letterLine[1]) > 0,
-        'both paths are exercised (' + kindLine[1] + ' kinds, ' + letterLine[1] + ' letters)');
+    ok(Number(coverLine[2]) === totalEntries,
+        'coverage is measured over the whole vocabulary (' + coverLine[2] + ' vs ' + totalEntries + ')');
+    ok(Number(coverLine[1]) + Number(uncovered[1]) === totalEntries,
+        'covered + uncovered accounts for every entry, with none unexplained');
+    ok(Number(kindLine[1]) > 0 && Number(uncovered[1]) > 0,
+        'both paths are exercised (' + kindLine[1] + ' kinds, ' + uncovered[1] + ' with no picture)');
+    ok(shippedPics <= Number(coverLine[1]),
+        'the pictures are part of what coverage counts');
 
     // Named individually, so a run that quietly used one bucket for everything
     // would show up. Read from the console rather than from visual-index.json:
