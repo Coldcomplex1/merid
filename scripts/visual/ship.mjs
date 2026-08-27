@@ -12,8 +12,11 @@
 // extension's own tests and its build both pass, because a push that breaks the
 // build is worse than no push.
 //
-//   node scripts/visual/ship.mjs             build, verify, commit, push
-//   node scripts/visual/ship.mjs --dry-run   do everything except commit/push
+//   node scripts/visual/ship.mjs                      build, verify, commit, push
+//   node scripts/visual/ship.mjs --dry-run            everything except commit/push
+//   node scripts/visual/ship.mjs --accept-above 0.24  take the top candidate for
+//                                                     every unreviewed entry at
+//                                                     or above that score
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +25,32 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const EXT = path.join(ROOT, 'merid-extension-final');
 const DRY = process.argv.includes('--dry-run');
+
+/**
+ * A cutoff chosen by the person running this, overriding the measured one.
+ *
+ * Stage 06 will only RECOMMEND a cutoff when the reviewing supports one at
+ * 70% or better, and that is the right default: below it, a drawn symbol beats
+ * a photograph of the wrong thing. But it left no way to say "I know, take
+ * them anyway" - so a thin sample meant no entry was ever accepted unseen, and
+ * the build shipped exactly as many pictures as had been looked at by hand.
+ * Fourteen, on a corpus of six hundred and forty-two that could have had one.
+ *
+ * Given here, it replaces the measurement rather than competing with it, and
+ * stage 06 still says out loud what the sample does or does not support.
+ */
+const ACCEPT_ABOVE = (() => {
+    const i = process.argv.indexOf('--accept-above');
+    if (i < 0) return null;
+    const n = Number(process.argv[i + 1]);
+    if (!Number.isFinite(n) || n <= 0 || n >= 1) {
+        console.error('[ship] --accept-above needs a score between 0 and 1, e.g. --accept-above 0.24');
+        console.error('       Run this first to see what each cutoff would ship:');
+        console.error('         node scripts/visual/06-build.mjs --dry-run');
+        process.exit(1);
+    }
+    return String(n);
+})();
 
 let step = 0;
 const say = m => console.log(m);
@@ -151,36 +180,59 @@ if (!run('git', ['pull', '--no-edit'])) {
         'if it mentions conflicts: fix the files, git add them, git commit --no-edit');
 }
 
-head('Ask stage 06 what cutoff the reviewing supports');
-const probe = capture('node', ['scripts/visual/06-build.mjs', '--dry-run']);
-if (!probe.ok) stop('stage 06 could not run - read the message above');
-const rec = probe.out.match(/--accept-above (0\.\d+)/);
-const cutoff = rec ? rec[1] : null;
-if (cutoff) {
-    say('\ncutoff the sample supports: ' + cutoff);
+head(ACCEPT_ABOVE
+    ? 'Cutoff given on the command line'
+    : 'Ask stage 06 what cutoff the reviewing supports');
+
+let cutoff;
+if (ACCEPT_ABOVE) {
+    // No probe. Asking for a recommendation and then ignoring it would print a
+    // number nobody is going to use, next to the number that is being used.
+    cutoff = ACCEPT_ABOVE;
+    say('\nusing --accept-above ' + cutoff + ' - your choice, not a measurement.');
+    say('Stage 06 will say how many entries this ships unseen, and what the');
+    say('reviewing does or does not say about them. Read that before pushing.');
 } else {
-    // The quiet path to a build with almost no photographs in it, and the one
-    // that actually happened: eleven entries reviewed, no cutoff measurable,
-    // nothing accepted unseen, twelve pictures shipped out of six hundred
-    // candidates. It used to be one line in the middle of a long run.
-    say('');
-    say('  ' + '!'.repeat(58));
-    say('  No cutoff is safe on this reviewing, so NOTHING will be accepted');
-    say('  unseen - only the entries you looked at yourself become pictures.');
-    say('');
-    say('  Stage 06 needs a spread of about fifty decisions before it can say');
-    say('  what an unreviewed entry at a given score is worth. Review more and');
-    say('  run this again - the pictures already chosen are kept:');
-    say('');
-    say('    node scripts/visual/05-review.mjs --sample 80');
-    say('    node scripts/visual/ship.mjs');
-    say('  ' + '!'.repeat(58));
+    const probe = capture('node', ['scripts/visual/06-build.mjs', '--dry-run']);
+    if (!probe.ok) stop('stage 06 could not run - read the message above');
+    const rec = probe.out.match(/--accept-above (0\.\d+)/);
+    cutoff = rec ? rec[1] : null;
+    if (cutoff) {
+        say('\ncutoff the sample supports: ' + cutoff);
+    } else {
+        // The quiet path to a build with almost no photographs in it, and the
+        // one that actually happened: thirteen entries reviewed, no cutoff
+        // measurable, nothing accepted unseen, fourteen pictures shipped out
+        // of six hundred and forty-two that could have had one. It used to be
+        // one line in the middle of a long run.
+        say('');
+        say('  ' + '!'.repeat(58));
+        say('  No cutoff is safe on this reviewing, so NOTHING will be accepted');
+        say('  unseen - only the entries you looked at yourself become pictures.');
+        say('');
+        say('  Stage 06 needs a spread of about fifty decisions before it can say');
+        say('  what an unreviewed entry at a given score is worth. Review more and');
+        say('  run this again - the pictures already chosen are kept:');
+        say('');
+        say('    node scripts/visual/05-review.mjs --sample 80');
+        say('    node scripts/visual/ship.mjs');
+        say('');
+        say('  Or take them unmeasured, knowing that is what you are doing:');
+        say('');
+        say('    node scripts/visual/06-build.mjs --dry-run    # what each cutoff ships');
+        say('    node scripts/visual/ship.mjs --accept-above 0.24');
+        say('  ' + '!'.repeat(58));
+    }
 }
 
 head('Build the artwork');
 const args = ['scripts/visual/06-build.mjs'];
 if (cutoff) args.push('--accept-above', cutoff);
 if (DRY) args.push('--dry-run');
+// Printed, so the cutoff that is actually in force is visible next to the
+// output it produced - and so "the flag was parsed but never passed on" is a
+// thing anyone can see rather than infer from a picture count.
+say('$ node ' + args.join(' ') + '\n');
 if (!run('node', args)) stop('stage 06 failed - read the message above');
 
 const visDir = path.join(EXT, 'vis');
