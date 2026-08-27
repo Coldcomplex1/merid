@@ -18,6 +18,7 @@
 //   carry on with a stage's output missing, because the stage after it will
 //   produce a smaller, quieter, wronger version of the same result.
 //
+//   node scripts/visual/run.mjs --target 800   end with 800 pictures, or say why not
 //   node scripts/visual/run.mjs                trial-free full run, review 50
 //   node scripts/visual/run.mjs --sample 80    look at more of them
 //   node scripts/visual/run.mjs --all          review every eligible entry
@@ -37,6 +38,35 @@ const HERE = 'scripts/visual';
 const argv = process.argv.slice(2);
 const DRY = argv.includes('--dry-run');
 const NO_PHOTOS = argv.includes('--no-photos');
+
+/**
+ * How many photographs this run should end with.
+ *
+ * The alternative was a sequence: pick a threshold off a table, export it, run
+ * stage 01 with --reclassify, run 02, run 03, export a CLIP floor, run 04, read
+ * a second table, run ship with a cutoff copied across. Nine steps, two
+ * environment variables that have to live in the same shell, and one flag whose
+ * absence makes the whole thing report the old numbers without complaining.
+ *
+ * It produced fifteen pictures out of a target of eight hundred, three runs in
+ * a row, and every one of them finished by printing "Done." A target says the
+ * outcome once, and the run checks itself against it at each point where it
+ * could still be salvaged - and fails, loudly, if it ends up short.
+ */
+const TARGET = (() => {
+    const i = argv.indexOf('--target');
+    if (i < 0) return null;
+    const n = Number(argv[i + 1]);
+    if (!Number.isInteger(n) || n < 1) {
+        console.error('[run] --target needs a whole number of pictures, e.g. --target 800');
+        process.exit(1);
+    }
+    return n;
+})();
+if (TARGET !== null && NO_PHOTOS) {
+    console.error('[run] --target asks for photographs and --no-photos refuses them. Pass one.');
+    process.exit(1);
+}
 const REVIEW_ALL = argv.includes('--all');
 const SAMPLE = (() => {
     const i = argv.indexOf('--sample');
@@ -70,6 +100,23 @@ function stop(why, ...fix) {
 /** Run a command, streaming its output. Returns the raw result. */
 function run(cmd, args, opts = {}) {
     return spawnSync(cmd, args, { cwd: opts.cwd || ROOT, stdio: 'inherit', shell: !!opts.shell });
+}
+
+/**
+ * Run a stage, keep its output, and show it.
+ *
+ * Not live: the output appears when the stage ends. Only used for stage 01,
+ * which takes about a minute and whose last line has to be read before an hour
+ * is spent on the strength of it.
+ */
+function captureStage(label, cmd, args) {
+    head(label);
+    const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' });
+    const out = (r.stdout || '') + (r.stderr || '');
+    process.stdout.write(out);
+    if (r.error) stop('could not run ' + cmd + ': ' + r.error.message);
+    if (r.status !== 0) stop(label + ' failed - read the message above.');
+    return out;
 }
 
 /** Run a stage and stop the chain if it fails. */
@@ -291,8 +338,35 @@ if (problems.length) {
 // The stages.
 // ---------------------------------------------------------------------------
 
-stage('Classify: what can a photograph honestly mean? (~5 min)',
-    'node', [HERE + '/01-classify.mjs']);
+if (TARGET === null) {
+    stage('Classify: what can a photograph honestly mean? (~5 min)',
+        'node', [HERE + '/01-classify.mjs']);
+} else {
+    const out = captureStage(
+        'Classify: widen until ' + TARGET + ' entries could carry a photograph (~2 min)',
+        'node', [HERE + '/01-classify.mjs', '--for-target', String(TARGET)]);
+
+    // The first place this run can still be saved cheaply. Stage 01 picks its
+    // threshold from an ESTIMATE of what the model will add; if the model then
+    // adds less, everything downstream quietly works on too small a pool and an
+    // hour of fetching produces the old answer. Checked here, against what
+    // stage 01 actually ended up with.
+    const m = out.match(/=> concrete (\d+)/);
+    const pool = m ? Number(m[1]) : 0;
+    if (!m) {
+        stop('stage 01 did not report how many entries it made concrete',
+            'send me its output - the chain cannot check itself without that line');
+    }
+    say('\npool that may carry a photograph: ' + pool + '  (target ' + TARGET + ')');
+    if (pool < TARGET) {
+        stop('the pool is ' + pool + ', short of the ' + TARGET + ' asked for.\n' +
+            '  Fetching and scoring on this would take an hour and could not reach it.',
+            'lower the bar further and try again:',
+            '  MERID_CONCRETE_AT=2.4 node ' + HERE + '/01-classify.mjs --reclassify',
+            'or ask for a target this vocabulary can carry - stage 01 above prints',
+            'what each threshold gives.');
+    }
+}
 
 stage('Query: what to go looking for (~5 min)',
     'node', [HERE + '/02-query.mjs']);
@@ -303,14 +377,41 @@ stage('Concepts: a symbol for every abstract entry (~15 min)',
     'node', [HERE + '/02b-iconmap.mjs']);
 
 if (!NO_PHOTOS) {
+    // More candidates an entry, and a lower bar for one of them to count as a
+    // match. Both only under a target: they trade certainty for reach, which is
+    // the trade a target is asking for and not one to make by default.
+    const fetchArgs = [HERE + '/03-fetch.mjs'];
+    if (TARGET !== null) fetchArgs.push('--per-entry', '10');
     stage('Fetch: candidate photographs from three archives (~40-60 min)',
-        'node', [HERE + '/03-fetch.mjs']);
+        'node', fetchArgs);
 
     const py = findPython();
+    if (TARGET !== null && !process.env.MERID_CLIP_FLOOR) {
+        // Set here rather than asked of the reader: an environment variable in
+        // the wrong shell is one of the ways the old sequence failed silently.
+        process.env.MERID_CLIP_FLOOR = '0.20';
+        say('\nMERID_CLIP_FLOOR=0.20 for this run, so more entries have a candidate that counts.');
+    }
     stage('Score: CLIP, every candidate against its own query (~15-25 min)',
         py.cmd, [...py.pre, HERE + '/04-rank.py']);
 
     // ---- the part with a person in it -------------------------------------
+    //
+    // Skipped under a target unless one was asked for. A target is a request to
+    // fill the corpus without sitting through a queue, and stopping to wait for
+    // a browser tab is the opposite of that - stage 06 will take the top
+    // candidate on the strength of its score and say plainly that nobody
+    // checked. Reviewing is still worth doing; it is just a separate errand,
+    // and `--sample N` alongside `--target` asks for both.
+    const wantsReview = TARGET === null || REVIEW_ALL || argv.includes('--sample');
+    if (!wantsReview) {
+        head('Review: skipped');
+        say('--target fills the corpus from the scores rather than from a queue.');
+        say('Nothing below was looked at by a person, and stage 06 will say so.');
+        say('');
+        say('To review as well, either now or later:');
+        say('  node ' + HERE + '/05-review.mjs --sample 80');
+    } else {
     head('Review: ' + (REVIEW_ALL ? 'every eligible entry' : SAMPLE + ' entries, ~10 min'));
     say('A browser tab opens on a queue of words with three candidate pictures each.');
     say('Press 1/2/3 to pick, Enter for the first, x for none of them.');
@@ -324,6 +425,7 @@ if (!NO_PHOTOS) {
     const interrupted = rv.signal === 'SIGINT' || rv.status === 130 || rv.status === null;
     if (!interrupted && rv.status !== 0) {
         stop('the review stage failed - read the message above');
+    }
     }
 
     // ---- and the part that protects it ------------------------------------
@@ -371,9 +473,43 @@ if (!NO_PHOTOS) {
 
 head('Build the artwork, check it, and push it');
 const shipArgs = [HERE + '/ship.mjs'];
+if (TARGET !== null) shipArgs.push('--target', String(TARGET));
 if (DRY) shipArgs.push('--dry-run');
 const ship = run('node', shipArgs);
 if (ship.status !== 0) process.exit(ship.status || 1);
+
+// ---------------------------------------------------------------------------
+// Did it do what it was asked?
+//
+// Every run before this one ended by printing "Done." - including the three
+// that shipped fifteen pictures against a target of eight hundred. A run that
+// misses what it was asked for has not finished; it has stopped, and it should
+// say so and exit like it.
+// ---------------------------------------------------------------------------
+if (TARGET !== null) {
+    const visDir = path.join(ROOT, 'merid-extension-final', 'vis');
+    const got = fs.existsSync(visDir)
+        ? fs.readdirSync(visDir).filter(f => /\.(avif|webp)$/.test(f)).length : 0;
+    say('');
+    say('='.repeat(62));
+    if (got >= TARGET) {
+        say('Target met: ' + got + ' pictures (asked for ' + TARGET + ').');
+    } else {
+        say('SHORT: ' + got + ' pictures, asked for ' + TARGET + '.');
+        say('');
+        say('Read the "[06] where the photographs went" block above - it says which');
+        say('of the three it was:');
+        say('');
+        say('  too few words eligible   -> node ' + HERE + '/01-classify.mjs --for-target ' +
+            (TARGET + 200));
+        say('  too few scored candidates -> MERID_CLIP_FLOOR=0.18 python3 ' + HERE + '/04-rank.py');
+        say('                            -> node ' + HERE + '/03-fetch.mjs --per-entry 12');
+        say('  candidates that would not encode -> that count is on the same block');
+        say('='.repeat(62));
+        process.exit(1);
+    }
+    say('='.repeat(62));
+}
 
 say('\n' + '='.repeat(62));
 say('Done.');

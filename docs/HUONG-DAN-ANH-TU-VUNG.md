@@ -454,7 +454,38 @@ Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguy
 
 ---
 
-## 5c. Muốn NHIỀU ảnh hơn nữa
+## 5b. Muốn N ảnh — **một lệnh**
+
+```powershell
+node scripts/visual/run.mjs --target 800
+```
+
+Nói số ảnh bạn muốn, nó tự lo phần còn lại: tự chọn ngưỡng phân loại đủ rộng,
+tự đặt sàn CLIP, tự tải thêm ứng viên mỗi từ, tự chọn cutoff. **Không biến môi
+trường, không thứ tự lệnh phải nhớ.**
+
+Khác biệt quan trọng nhất so với chạy tay: nó **dừng ngay tại bước không đạt**
+thay vì đi tiếp rồi ship thiếu. Và nếu cuối cùng vẫn thiếu, nó nói thẳng và
+**thoát với mã lỗi**:
+
+```
+SHORT: 512 pictures, asked for 800.
+
+Read the "[06] where the photographs went" block above - it says which
+of the three it was:
+  too few words eligible    -> ... --for-target 1000
+  too few scored candidates -> MERID_CLIP_FLOOR=0.18 ...
+```
+
+`--target` bỏ qua bước duyệt tay (nó lấp corpus bằng điểm số, không bằng hàng
+đợi). Muốn duyệt nữa thì thêm `--sample 80`, hoặc chạy riêng sau.
+
+Trần của bộ từ này là ~1.560 ảnh; xin quá số đó nó từ chối và nói trần là bao
+nhiêu, chứ không im lặng hạ ngưỡng xuống đáy.
+
+---
+
+## 5c. Chỉnh tay từng nút (nếu muốn)
 
 Số ảnh bị chặn bởi một hằng số ở `scripts/visual/01-classify.mjs`: chỉ từ có
 điểm cụ-thể (Brysbaert) từ `3.5` trở lên mới được đi tìm ảnh. Hạ nó xuống là

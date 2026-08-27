@@ -135,6 +135,34 @@ function main() {
         count(read(), c => c.source === 'llm') + '/' + llmSlugs.length);
     ok(/kept 40 from the model/.test(report2), 'and it says so');
 
+    // ---- naming the outcome instead of the threshold -----------------------
+    console.log('\n--for-target');
+    fresh();
+    const t800 = classify(['--for-target', '800']);
+    ok(/picked CONCRETE_AT=3\.0/.test(t800),
+        'a target of 800 settles on 3.0',
+        (t800.match(/picked CONCRETE_AT=[\d.]+/) || [''])[0]);
+    ok(count(read(), c => c.kind === 'concrete') === 545,
+        'which admits 545 by the norms', String(count(read(), c => c.kind === 'concrete')));
+
+    fresh();
+    const t100 = classify(['--for-target', '100']);
+    ok(/picked CONCRETE_AT=3\.5/.test(t100),
+        'a target the default already covers does not widen anything',
+        (t100.match(/picked CONCRETE_AT=[\d.]+/) || [''])[0]);
+    ok(count(read(), c => c.kind === 'concrete') === AT_DEFAULT,
+        'and leaves the default pool alone', String(count(read(), c => c.kind === 'concrete')));
+
+    fresh();
+    const huge = spawnSync(process.execPath,
+        ['scripts/visual/01-classify.mjs', '--offline', '--for-target', '5000'],
+        { cwd: ROOT, encoding: 'utf8', env: { ...process.env, MERID_STATE: STATE } });
+    ok(huge.status === 1,
+        'a target the vocabulary cannot carry stops the run', 'exit ' + huge.status);
+    ok(/cannot reach 5000/.test((huge.stdout || '') + (huge.stderr || '')),
+        'and says what the ceiling actually is',
+        (((huge.stdout || '') + (huge.stderr || '')).match(/Pick a target at or under \d+/) || [''])[0]);
+
     // ---- a threshold that makes no sense is refused ------------------------
     console.log('\nnonsense thresholds');
     const bad = classify(['--reclassify'], { MERID_CONCRETE_AT: '2.0' });

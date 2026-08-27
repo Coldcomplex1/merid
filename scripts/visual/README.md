@@ -21,6 +21,7 @@ minus a feature rather than a broken one. But the feature IS the pictures: run
 this at least once, even if only far enough for the symbols.
 
 ```bash
+node scripts/visual/run.mjs --target 800  # end with 800 pictures, or say why not
 node scripts/visual/run.mjs               # all six stages, then build and push
 node scripts/visual/run.mjs --no-photos   # 01, 02, 02b, 06 - symbols only,
                                           # GEMINI_API_KEY and nothing else

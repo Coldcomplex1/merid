@@ -17,6 +17,7 @@
 //   node scripts/visual/ship.mjs --accept-above 0.24  take the top candidate for
 //                                                     every unreviewed entry at
 //                                                     or above that score
+//   node scripts/visual/ship.mjs --target 800         a count; the cutoff follows
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,6 +40,18 @@ const DRY = process.argv.includes('--dry-run');
  * Given here, it replaces the measurement rather than competing with it, and
  * stage 06 still says out loud what the sample does or does not support.
  */
+/** A count to reach, forwarded to stage 06, which turns it into a cutoff. */
+const TARGET = (() => {
+    const i = process.argv.indexOf('--target');
+    if (i < 0) return null;
+    const n = Number(process.argv[i + 1]);
+    if (!Number.isInteger(n) || n < 1) {
+        console.error('[ship] --target needs a whole number of pictures, e.g. --target 800');
+        process.exit(1);
+    }
+    return String(n);
+})();
+
 const ACCEPT_ABOVE = (() => {
     const i = process.argv.indexOf('--accept-above');
     if (i < 0) return null;
@@ -180,12 +193,21 @@ if (!run('git', ['pull', '--no-edit'])) {
         'if it mentions conflicts: fix the files, git add them, git commit --no-edit');
 }
 
-head(ACCEPT_ABOVE
-    ? 'Cutoff given on the command line'
-    : 'Ask stage 06 what cutoff the reviewing supports');
+head(TARGET
+    ? 'Target given on the command line'
+    : ACCEPT_ABOVE
+        ? 'Cutoff given on the command line'
+        : 'Ask stage 06 what cutoff the reviewing supports');
 
 let cutoff;
-if (ACCEPT_ABOVE) {
+if (TARGET) {
+    // Stage 06 owns this decision: it has the queue and the scores, so it can
+    // pick the highest cutoff that still reaches the count. Probing first would
+    // print a recommendation nobody is going to use.
+    cutoff = null;
+    say('\nasking stage 06 for ' + TARGET + ' pictures - it picks the cutoff that reaches them,');
+    say('and says what the reviewing does or does not support at that point.');
+} else if (ACCEPT_ABOVE) {
     // No probe. Asking for a recommendation and then ignoring it would print a
     // number nobody is going to use, next to the number that is being used.
     cutoff = ACCEPT_ABOVE;
@@ -227,7 +249,8 @@ if (ACCEPT_ABOVE) {
 
 head('Build the artwork');
 const args = ['scripts/visual/06-build.mjs'];
-if (cutoff) args.push('--accept-above', cutoff);
+if (TARGET) args.push('--target', TARGET);
+else if (cutoff) args.push('--accept-above', cutoff);
 if (DRY) args.push('--dry-run');
 // Printed, so the cutoff that is actually in force is visible next to the
 // output it produced - and so "the flag was parsed but never passed on" is a

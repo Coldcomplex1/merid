@@ -29,6 +29,10 @@
 // Usage:
 //   node scripts/visual/01-classify.mjs [--offline] [--limit N] [--reclassify]
 //
+//   node scripts/visual/01-classify.mjs --for-target 800
+//     name how many entries should be able to have a photograph and let this
+//     stage find the threshold. Implies --reclassify.
+//
 //   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
 //     widen the pool of entries eligible for a photograph. --reclassify is not
 //     optional there: without it the cached answers are kept and nothing moves.
@@ -57,7 +61,49 @@ const LIMIT = (() => {
  * running again reads the cache and reports the old numbers - a change that
  * looks applied and is not.
  */
-const RECLASSIFY = args.includes('--reclassify');
+const RECLASSIFY = args.includes('--reclassify') || args.includes('--for-target');
+
+/**
+ * How many entries this run should leave eligible for a photograph.
+ *
+ * The threshold below decides that, and asking someone to read a table and
+ * then set an environment variable is three chances to get nothing: pick the
+ * wrong number, set it in a different shell, or forget --reclassify and have
+ * the whole thing quietly report the old figures. All three happened.
+ *
+ * So: name the outcome, and let this stage find the threshold. Trying a
+ * threshold is a table lookup over the norms - no request, no network - so
+ * trying six of them costs nothing.
+ *
+ * Implies --reclassify, because a target that leaves the cache in place is a
+ * target that does nothing.
+ */
+const FOR_TARGET = (() => {
+    const i = args.indexOf('--for-target');
+    if (i < 0) return null;
+    const n = Number(args[i + 1]);
+    if (!Number.isInteger(n) || n < 1) {
+        console.error('[01] --for-target needs a whole number of entries, e.g. --for-target 800');
+        process.exit(1);
+    }
+    return n;
+})();
+
+// Tried in this order, stopping at the first that reaches the target. Coarse on
+// purpose: the difference between 2.9 and 2.8 is a handful of words, and a
+// finer sweep would suggest a precision the underlying ratings do not have.
+const TARGET_STEPS = [3.5, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0];
+
+/**
+ * What the model is likely to add on top of the local answers.
+ *
+ * Measured, not assumed: on the first full run 642 entries came out concrete
+ * and 333 of those were local, so the model contributed about 309 of the 1,873
+ * it was asked about - a sixth. Used only to choose a threshold, and the
+ * choice is reported with both halves shown so a bad estimate is visible
+ * rather than load-bearing.
+ */
+const MODEL_SHARE = 1 / 6;
 
 // Brysbaert's own thresholds are not prescribed; these come from where the
 // distribution actually separates for this vocabulary. 3.5 keeps "anchor" and
@@ -72,7 +118,7 @@ const RECLASSIFY = args.includes('--reclassify');
 // why the default stays where it is.
 //
 //   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
-const CONCRETE_AT = Number(process.env.MERID_CONCRETE_AT || 3.5);
+let CONCRETE_AT = Number(process.env.MERID_CONCRETE_AT || 3.5);
 const ABSTRACT_AT = Number(process.env.MERID_ABSTRACT_AT || 2.6);
 if (!Number.isFinite(CONCRETE_AT) || !Number.isFinite(ABSTRACT_AT) ||
     ABSTRACT_AT >= CONCRETE_AT) {
@@ -144,6 +190,37 @@ function posAgrees(entryType, normPos) {
     const theirs = String(normPos || '').trim().toLowerCase();
     if (!ours || !theirs || theirs === '#n/a') return false;
     return ours === theirs;
+}
+
+/**
+ * The highest threshold that still leaves `target` entries able to have a
+ * photograph, or null if even the lowest one cannot get there.
+ *
+ * Highest rather than lowest: every step down admits words whose "photograph"
+ * is more of a staged scene, so the right answer is the least widening that
+ * does the job. Counts local answers only and adds the model's expected share,
+ * because the model has not been asked yet at this point - both halves are
+ * printed so the estimate can be judged rather than trusted.
+ */
+function thresholdFor(target, entries, norms, senses) {
+    const tried = [];
+    const was = CONCRETE_AT;
+    let picked = null;
+    for (const step of TARGET_STEPS) {
+        CONCRETE_AT = step;               // classifyLocally reads it
+        let local = 0;
+        let unanswered = 0;
+        for (const entry of entries) {
+            const c = classifyLocally(entry, norms, senses);
+            if (!c) unanswered++;
+            else if (c.kind === 'concrete') local++;
+        }
+        const estimate = Math.round(local + unanswered * MODEL_SHARE);
+        tried.push({ step, local, estimate });
+        if (estimate >= target) { picked = step; break; }
+    }
+    CONCRETE_AT = was;
+    return { picked, tried };
 }
 
 /** Which bucket an entry lands in, and why - the "why" is what makes a re-run reviewable. */
@@ -248,6 +325,29 @@ async function main() {
     const senses = sensesPerWord(entries);
     const norms = await loadNorms();
     console.log('[01] ' + entries.length + ' entries, ' + norms.size + ' words of norms');
+
+    if (FOR_TARGET) {
+        const { picked, tried } = thresholdFor(FOR_TARGET, entries, norms, senses);
+        console.log('[01] --for-target ' + FOR_TARGET + ': ' +
+            tried.map(t => t.step.toFixed(1) + ' gives ~' + t.estimate).join(', '));
+        if (picked === null) {
+            const best = tried[tried.length - 1];
+            console.error('');
+            console.error('[01] cannot reach ' + FOR_TARGET + ' entries. The lowest threshold this');
+            console.error('     will go to is ' + best.step.toFixed(1) + ', and even there only about ' +
+                best.estimate + ' entries');
+            console.error('     could carry a photograph (' + best.local + ' from the norms).');
+            console.error('');
+            console.error('     Below that the words are ones no photograph can mean - the whole');
+            console.error('     corpus is ' + entries.length + ' senses and most of them are abstract.');
+            console.error('     Pick a target at or under ' + best.estimate + '.');
+            process.exit(1);
+        }
+        CONCRETE_AT = picked;
+        const at = tried[tried.length - 1];
+        console.log('[01] picked CONCRETE_AT=' + picked.toFixed(1) + ' (' + at.local +
+            ' from the norms, plus about ' + (at.estimate - at.local) + ' the model is expected to add)');
+    }
 
     const result = readJson(OUT, { v: 1, entries: {} });
     result.v = 1;

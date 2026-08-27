@@ -8,6 +8,11 @@
 //                                           concept the rest are drawn as
 //   merid-extension-final/vis/CREDITS.json  where each picture came from
 //
+// Usage:
+//   node scripts/visual/06-build.mjs [--dry-run] [--format avif|webp]
+//   node scripts/visual/06-build.mjs --accept-above 0.284   a cutoff you chose
+//   node scripts/visual/06-build.mjs --target 800           a count; the cutoff follows
+//
 // Two things worth knowing about the encoding:
 //
 //   position: 'attention' rather than a centre crop. The target is 2:1, which
@@ -90,6 +95,35 @@ const ACCEPT_ABOVE = (() => {
     }
     return n;
 })();
+/**
+ * How many pictures this build should end up with, letting the cutoff follow.
+ *
+ * --accept-above asks for a score, and a score is not a thing anyone has an
+ * opinion about - it has to be read out of the table this stage prints, which
+ * means running the stage, reading it, and running it again with a number
+ * copied across. Every step there is a chance to end up with the old result.
+ *
+ * A target is the thing people actually want. The table already holds what is
+ * needed to satisfy one: `at(cutoff)` knows how many entries each cutoff would
+ * ship. This walks it and takes the HIGHEST cutoff that still reaches the
+ * target - the least widening that does the job, since every step down admits
+ * a less certain picture.
+ */
+const TARGET = (() => {
+    const i = args.indexOf('--target');
+    if (i < 0) return null;
+    const n = Number(args[i + 1]);
+    if (!Number.isInteger(n) || n < 1) {
+        console.error('[06] --target needs a whole number of pictures, e.g. --target 800');
+        process.exit(1);
+    }
+    return n;
+})();
+if (TARGET !== null && ACCEPT_ABOVE !== null) {
+    console.error('[06] --target and --accept-above both name the cutoff. Pass one.');
+    process.exit(1);
+}
+
 const FORMAT = (() => {
     const i = args.indexOf('--format');
     const v = i >= 0 ? String(args[i + 1]).toLowerCase() : 'avif';
@@ -314,6 +348,8 @@ function analyse(items, decisions) {
     // a boundary of 0.3352 would print as 0.335 and quietly accept entries below
     // the point the sample actually measured; and rounding only for display
     // would make the table's counts describe a cutoff nobody can type.
+    // Highest cutoff first, which is also least-widening first - the order
+    // cutoffFor below wants to walk.
     const cuts = rows.map(r => at(Math.ceil(r.lo * 1000) / 1000)).reverse();
     for (const c of cuts) {
         console.log(cutRow('>= ' + c.cutoff.toFixed(3),
@@ -361,6 +397,29 @@ function analyse(items, decisions) {
         boundFor: cutoff => {
             const a = at(cutoff);
             return a.seen ? a.low : null;
+        },
+
+        /**
+         * The highest cutoff that would still ship `want` entries unseen, with
+         * what the reviewing says about it. Null when even taking everything in
+         * the queue falls short - which is a shortage of scored candidates, not
+         * of nerve, and wants a different fix.
+         *
+         * Walks the same rounded boundaries the table prints, so the number
+         * chosen here is one a reader can find in that table and type by hand.
+         */
+        cutoffFor: want => {
+            for (const c of cuts) {
+                if (c.unreviewed >= want) return c;
+            }
+            const lowest = cuts[cuts.length - 1];
+            return lowest && lowest.unreviewed >= want ? lowest : null;
+        },
+
+        /** Everything the queue could yield, for the message when a target is out of reach. */
+        ceiling: () => {
+            const lowest = cuts[cuts.length - 1];
+            return lowest ? lowest.unreviewed : 0;
         }
     };
 }
@@ -442,14 +501,57 @@ async function main() {
     const items = eligible(ranked, entries);
     const measured = analyse(items, decisions);
 
-    if (ACCEPT_ABOVE !== null) {
+    // A target becomes a cutoff here, once the queue has been measured. Doing it
+    // at this point rather than at the flag means the number reported is the one
+    // the accept step below actually uses.
+    let acceptAbove = ACCEPT_ABOVE;
+    if (TARGET !== null) {
+        const have = picked.length;
+        const want = Math.max(0, TARGET - have);
+        if (!want) {
+            console.log('');
+            console.log('[06] --target ' + TARGET + ': already there from ' + have +
+                ' reviewed entries. Nothing taken unseen.');
+        } else if (!measured.cutoffFor) {
+            console.error('');
+            console.error('[06] --target ' + TARGET + ' needs a scored queue and there is none.');
+            console.error('     Run stage 04:  python3 scripts/visual/04-rank.py');
+            process.exit(1);
+        } else {
+            const c = measured.cutoffFor(want);
+            if (!c) {
+                const ceiling = measured.ceiling() + have;
+                console.error('');
+                console.error('[06] --target ' + TARGET + ' cannot be reached from this queue.');
+                console.error('     Even taking every scored entry gives ' + ceiling + ' pictures (' +
+                    have + ' reviewed + ' + measured.ceiling() + ' unseen).');
+                console.error('');
+                console.error('     That is a shortage of candidates, not of cutoff. Either:');
+                console.error('       MERID_CLIP_FLOOR=0.18 python3 scripts/visual/04-rank.py');
+                console.error('       node scripts/visual/03-fetch.mjs --per-entry 12');
+                console.error('     or widen what may have a photograph at all:');
+                console.error('       node scripts/visual/01-classify.mjs --for-target ' + TARGET);
+                process.exit(1);
+            }
+            acceptAbove = c.cutoff;
+            console.log('');
+            console.log('[06] --target ' + TARGET + ': cutoff ' + c.cutoff.toFixed(3) +
+                ' ships ' + c.unreviewed + ' unseen, on top of ' + have + ' reviewed.');
+            console.log('     ' + (c.seen
+                ? 'Of the ' + c.seen + ' you looked at above it, ' + c.first +
+                  ' kept the first candidate - so at least ' + Math.round(c.low * 100) + '% right.'
+                : 'You looked at none above it, so nothing here says how right they are.'));
+        }
+    }
+
+    if (acceptAbove !== null) {
         const taken = [];
         for (const it of items) {
             // A decision of any kind wins, including a refusal. Overriding an
             // `x` with the candidate the person just rejected would be the
             // worst thing this script could do.
             if (decisions[it.slug]) continue;
-            if (!(it.best >= ACCEPT_ABOVE) || !it.candidates[0]) continue;
+            if (!(it.best >= acceptAbove) || !it.candidates[0]) continue;
             picked.push([it.slug, { pick: 0, candidate: it.candidates[0] }]);
             taken.push({
                 slug: it.slug,
@@ -457,9 +559,9 @@ async function main() {
                 best: it.best
             });
         }
-        const bound = measured.boundFor ? measured.boundFor(ACCEPT_ABOVE) : null;
+        const bound = measured.boundFor ? measured.boundFor(acceptAbove) : null;
         console.log('');
-        console.log('[06] --accept-above ' + ACCEPT_ABOVE.toFixed(3) + ': took the first candidate for ' +
+        console.log('[06] --accept-above ' + acceptAbove.toFixed(3) + ': took the first candidate for ' +
             taken.length + ' entries nobody looked at.');
         if (bound === null) {
             console.log('     WARNING: nothing was reviewed at or above that score, so this cutoff is');
@@ -476,7 +578,7 @@ async function main() {
         // a person, so a later pass can go straight to them.
         if (!DRY) {
             writeJson(AUTO_FILE, {
-                v: 1, cutoff: ACCEPT_ABOVE, at: new Date().toISOString(), entries: taken
+                v: 1, cutoff: acceptAbove, at: new Date().toISOString(), entries: taken
             });
         }
     }
@@ -639,7 +741,7 @@ async function main() {
     const searchable = Object.values(queries.entries || {}).filter(q => q && q.depictable).length;
     const cleared = items.length;
     const seen = Object.keys(decisions).length;
-    const auto = ACCEPT_ABOVE !== null
+    const auto = acceptAbove !== null
         ? picked.length - Object.entries(decisions).filter(([, d]) => d && d.pick !== 'none').length
         : 0;
     const rec = files.stats();
@@ -653,7 +755,7 @@ async function main() {
             : ''));
     console.log('     ' + String(seen).padStart(5) + '  you decided on by hand');
     console.log('     ' + String(Math.max(0, auto)).padStart(5) + '  taken on the sample\'s word, unseen' +
-        (ACCEPT_ABOVE === null
+        (acceptAbove === null
             ? '  <- no --accept-above given; review ~50 so a cutoff can be measured'
             : ''));
     console.log('     ' + String(photo.length).padStart(5) + '  became pictures');
