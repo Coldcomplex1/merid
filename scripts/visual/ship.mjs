@@ -131,7 +131,12 @@ if (git('status', '--porcelain', '--', DECISIONS_REL)) {
 }
 
 const stillDirty = (git('status', '--porcelain') || '')
-    .split('\n').filter(l => l.trim() && !l.startsWith('??'));
+    .split('\n')
+    .filter(l => l.trim() && !l.startsWith('??'))
+    // A dry run says it would commit the reviewing and then does not, so it
+    // must not go on to complain about the file it just accounted for -
+    // otherwise --dry-run reports a blockage the real run does not have.
+    .filter(l => !(DRY && l.includes(DECISIONS_REL)));
 if (stillDirty.length) {
     stop('there are other uncommitted changes, and a pull would fight them:\n  ' +
         stillDirty.join('\n  '),
