@@ -1339,7 +1339,7 @@
       "margin": 0.0671,
       "clear": true
     },
-    "at": "2026-08-27T00:54:45.028Z"
+    "at": "2026-08-27T01:43:44.316Z"
   },
   "colossus-0lfs": {
     "pick": 2,
@@ -1353,7 +1353,7 @@
       "margin": 0.0186,
       "clear": false
     },
-    "at": "2026-08-27T00:54:51.683Z"
+    "at": "2026-08-27T01:43:47.655Z"
   },
   "artifact-mqcj": {
     "pick": 0,
@@ -1367,7 +1367,7 @@
       "margin": 0.034,
       "clear": true
     },
-    "at": "2026-08-27T00:55:00.147Z"
+    "at": "2026-08-27T01:43:49.088Z"
   },
   "anarchist-fwli": {
     "pick": 0,
@@ -1381,7 +1381,7 @@
       "margin": 0.0351,
       "clear": true
     },
-    "at": "2026-08-27T00:55:05.777Z"
+    "at": "2026-08-27T01:43:50.718Z"
   },
   "abduct-gvez": {
     "pick": 0,
@@ -1480,5 +1480,33 @@
       "clear": true
     },
     "at": "2026-08-27T00:55:42.679Z"
+  },
+  "coronation-b8vr": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\coronation-b8vr-8bb9e6763d.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Mattia Preti",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preti,_Mattia_-_Queen_Tomyris_Receiving_the_Head_of_Cyrus,_King_of_Persia_-_1670-72.jpg",
+      "score": 0.2283,
+      "margin": 0.0354,
+      "clear": true
+    },
+    "at": "2026-08-27T01:43:32.706Z"
+  },
+  "amenity-offi": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\amenity-offi-651e0c9c68.img",
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "author": "pixellaphoto",
+      "sourceUrl": "https://www.flickr.com/photos/137643065@N06/23958235129",
+      "score": 0.2019,
+      "margin": 0.0191,
+      "clear": false
+    },
+    "at": "2026-08-27T01:43:40.765Z"
   }
 }
