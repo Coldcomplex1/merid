@@ -95,6 +95,16 @@ const FOR_TARGET = (() => {
 const TARGET_STEPS = [3.5, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0];
 
 /**
+ * How far above the target to aim.
+ *
+ * Being eligible for a photograph is not having one: some words turn up no
+ * candidate that scores, and some candidates will not encode small enough. A
+ * pool the exact size of the target can only miss it, so the pool is asked to
+ * be bigger than the target by this much.
+ */
+const TARGET_MARGIN = 1.15;
+
+/**
  * What the model is likely to add on top of the local answers.
  *
  * Measured, not assumed: on the first full run 642 entries came out concrete
@@ -198,29 +208,60 @@ function posAgrees(entryType, normPos) {
  *
  * Highest rather than lowest: every step down admits words whose "photograph"
  * is more of a staged scene, so the right answer is the least widening that
- * does the job. Counts local answers only and adds the model's expected share,
- * because the model has not been asked yet at this point - both halves are
- * printed so the estimate can be judged rather than trusted.
+ * does the job.
+ *
+ * The model's share is COUNTED, not estimated, wherever it can be. An earlier
+ * version guessed it at a sixth of everything the model would be asked about,
+ * which on a re-run is guessing at a number already sitting in
+ * classification.json: the model has answered, its answers are kept, and how
+ * many of them are concrete is simply known. The guess said 822 and the truth
+ * was 771, which is the difference between clearing a target of 800 and being
+ * stopped by it. Only entries the model has never been asked about are
+ * estimated - on a re-run there are none, and the arithmetic is exact.
  */
-function thresholdFor(target, entries, norms, senses) {
+function thresholdFor(target, entries, norms, senses, cached) {
     const tried = [];
     const was = CONCRETE_AT;
     let picked = null;
     for (const step of TARGET_STEPS) {
         CONCRETE_AT = step;               // classifyLocally reads it
         let local = 0;
-        let unanswered = 0;
+        let fromModel = 0;
+        let unasked = 0;
         for (const entry of entries) {
             const c = classifyLocally(entry, norms, senses);
-            if (!c) unanswered++;
-            else if (c.kind === 'concrete') local++;
+            if (c) { if (c.kind === 'concrete') local++; continue; }
+            // No local answer at this threshold, so the model decides it. If it
+            // already has, that answer stands and is counted here; if it has not
+            // been asked, its answer has to be estimated.
+            const had = cached.bySlug.get(entry.slug);
+            if (had) { if (had === 'concrete') fromModel++; }
+            else unasked++;
         }
-        const estimate = Math.round(local + unanswered * MODEL_SHARE);
-        tried.push({ step, local, estimate });
-        if (estimate >= target) { picked = step; break; }
+        const total = Math.round(local + fromModel + unasked * MODEL_SHARE);
+        tried.push({ step, local, fromModel, total, exact: unasked === 0 });
+        if (total >= target) { picked = step; break; }
     }
     CONCRETE_AT = was;
     return { picked, tried };
+}
+
+/**
+ * What the model has already said, which --reclassify keeps.
+ *
+ * `answered` is every entry it has ruled on; `concrete` is how many of those
+ * can carry a photograph. Both are facts about the file on disk, and both are
+ * what makes thresholdFor exact on any run after the first.
+ */
+function cachedFromModel(existing) {
+    const bySlug = new Map();
+    let concrete = 0;
+    for (const [slug, c] of Object.entries(existing || {})) {
+        if (!c || (c.source !== 'llm' && c.source !== 'default')) continue;
+        bySlug.set(slug, c.kind);
+        if (c.kind === 'concrete') concrete++;
+    }
+    return { bySlug, concrete };
 }
 
 /** Which bucket an entry lands in, and why - the "why" is what makes a re-run reviewable. */
@@ -326,32 +367,51 @@ async function main() {
     const norms = await loadNorms();
     console.log('[01] ' + entries.length + ' entries, ' + norms.size + ' words of norms');
 
+    const result = readJson(OUT, { v: 1, entries: {} });
+    result.v = 1;
+    result.entries = result.entries || {};
+
+    // What the whole corpus looked like before this run touched it, for the
+    // one comparison anybody wants: did the pool get bigger, and by how much.
+    const totalConcreteBefore = Object.values(result.entries)
+        .filter(c => c && c.kind === 'concrete').length;
+
     if (FOR_TARGET) {
-        const { picked, tried } = thresholdFor(FOR_TARGET, entries, norms, senses);
-        console.log('[01] --for-target ' + FOR_TARGET + ': ' +
-            tried.map(t => t.step.toFixed(1) + ' gives ~' + t.estimate).join(', '));
+        const cached = cachedFromModel(result.entries);
+
+        // Aimed above the target on purpose. Being ELIGIBLE for a photograph is
+        // not having one: some of these words will turn up no candidate that
+        // scores, and some of those candidates will not encode. A pool the exact
+        // size of the target can only miss it.
+        const aim = Math.ceil(FOR_TARGET * TARGET_MARGIN);
+        const { picked, tried } = thresholdFor(aim, entries, norms, senses, cached);
+
+        console.log('[01] --for-target ' + FOR_TARGET + ': aiming at ' + aim +
+            ' eligible, since not every eligible word finds a usable picture');
+        console.log('[01] ' + tried.map(t => t.step.toFixed(1) + ' -> ' + t.total).join(', ') +
+            (tried[0] && tried[0].exact
+                ? '   (counted, not estimated - the model has already answered)'
+                : '   (part estimated - the model has not been asked yet)'));
+
         if (picked === null) {
             const best = tried[tried.length - 1];
             console.error('');
-            console.error('[01] cannot reach ' + FOR_TARGET + ' entries. The lowest threshold this');
-            console.error('     will go to is ' + best.step.toFixed(1) + ', and even there only about ' +
-                best.estimate + ' entries');
-            console.error('     could carry a photograph (' + best.local + ' from the norms).');
+            console.error('[01] cannot reach ' + FOR_TARGET + ' pictures from this vocabulary.');
+            console.error('     The lowest threshold this will go to is ' + best.step.toFixed(1) +
+                ', and even there only ' + best.total);
+            console.error('     entries could carry a photograph (' + best.local +
+                ' from the norms, ' + cached.concrete + ' from the model).');
             console.error('');
             console.error('     Below that the words are ones no photograph can mean - the whole');
             console.error('     corpus is ' + entries.length + ' senses and most of them are abstract.');
-            console.error('     Pick a target at or under ' + best.estimate + '.');
+            console.error('     Pick a target at or under ' + Math.floor(best.total / TARGET_MARGIN) + '.');
             process.exit(1);
         }
         CONCRETE_AT = picked;
         const at = tried[tried.length - 1];
-        console.log('[01] picked CONCRETE_AT=' + picked.toFixed(1) + ' (' + at.local +
-            ' from the norms, plus about ' + (at.estimate - at.local) + ' the model is expected to add)');
+        console.log('[01] picked CONCRETE_AT=' + picked.toFixed(1) + ' -> ' + at.total +
+            ' eligible (' + at.local + ' by the norms, ' + cached.concrete + ' from the model)');
     }
-
-    const result = readJson(OUT, { v: 1, entries: {} });
-    result.v = 1;
-    result.entries = result.entries || {};
 
     // What the thresholds decided last time, dropped so this run's thresholds
     // decide it instead. Counted before and after so the summary can say what
@@ -360,18 +420,43 @@ async function main() {
     let dropped = 0;
     let keptLlm = 0;
     if (RECLASSIFY) {
+        // A model answer is dropped too, but only where the norms can now settle
+        // the entry themselves.
+        //
+        // The model was asked about it because the OLD threshold left it
+        // borderline. Under a lower one it is not borderline any more - the
+        // norms decide it - so keeping the old answer is keeping a verdict on a
+        // question that is no longer being asked. And keeping it is fatal to the
+        // whole exercise: an entry once answered by the model could never be
+        // reached again, so lowering the threshold moved nothing and every
+        // widening run produced the same pool it started with.
+        //
+        // Entries the norms still cannot settle - polysemous, absent from the
+        // norms, rated as a different part of speech - keep their answers. Those
+        // cost quota and no threshold here can replace them.
+        const byLocal = new Map();
+        for (const entry of entries) byLocal.set(entry.slug, classifyLocally(entry, norms, senses));
+
+        let reclaimed = 0;
         for (const [slug, c] of Object.entries(result.entries)) {
-            if (c && (c.source === 'norms' || c.source === 'pos')) {
+            if (!c) continue;
+            const local = byLocal.get(slug);
+            if (c.source === 'norms' || c.source === 'pos') {
                 before[c.kind] = (before[c.kind] || 0) + 1;
                 delete result.entries[slug];
                 dropped++;
-            } else if (c && c.source === 'llm') {
-                keptLlm++;
+            } else if (c.source === 'llm' || c.source === 'default') {
+                if (local) { delete result.entries[slug]; reclaimed++; }
+                else keptLlm++;
             }
         }
         console.log('[01] --reclassify: dropped ' + dropped +
             ' local answers (' + before.concrete + ' concrete, ' + before.abstract + ' abstract), ' +
             'kept ' + keptLlm + ' from the model');
+        if (reclaimed) {
+            console.log('[01] and took back ' + reclaimed +
+                ' the model had answered that the norms can now settle themselves');
+        }
         console.log('[01] thresholds: concrete >= ' + CONCRETE_AT + ', abstract <= ' + ABSTRACT_AT);
     }
 
@@ -403,16 +488,18 @@ async function main() {
         ' (' + counts.pos + ' by part of speech, ' + counts.norms + ' by norms)' +
         (counts.cached ? ', ' + counts.cached + ' already done' : ''));
     if (RECLASSIFY) {
-        // The number worth reading before spending an hour on stage 03: how many
-        // entries this threshold just made eligible for a photograph, and how
-        // that compares with what the last threshold allowed.
-        let nowConcrete = 0;
-        for (const c of Object.values(result.entries)) if (c && c.kind === 'concrete') nowConcrete++;
-        const delta = nowConcrete - before.concrete;
-        console.log('[01] concrete by norms/pos: ' + nowConcrete +
-            ' (was ' + before.concrete + ', ' + (delta >= 0 ? '+' : '') + delta + ')');
-        console.log('[01] plus whatever the model calls concrete among the ' + ask.length +
-            ' below - that is the pool stage 02 will write queries for.');
+        // Totals, compared with totals. An earlier version printed the whole
+        // corpus's concrete count under the label "concrete by norms/pos" and
+        // compared it with the local half only, so the same figure was both
+        // mislabelled and measured against the wrong baseline.
+        const nowConcrete = Object.values(result.entries)
+            .filter(c => c && c.kind === 'concrete').length;
+        const delta = nowConcrete - totalConcreteBefore;
+        console.log('[01] eligible for a photograph: ' + nowConcrete +
+            ' (was ' + totalConcreteBefore + ', ' + (delta >= 0 ? '+' : '') + delta + ')');
+        if (ask.length) {
+            console.log('[01] and ' + ask.length + ' more the model has yet to rule on.');
+        }
     }
     console.log('[01] need the model: ' + ask.length +
         ' (' + counts.polysemous + ' polysemous, ' + counts.unknown + ' not in norms, ' +
@@ -466,10 +553,46 @@ async function main() {
     writeJson(OUT, result);
     llm.report('01-classify');
 
-    const totals = { concrete: 0, abstract: 0 };
+    let totals = { concrete: 0, abstract: 0 };
     for (const v of Object.values(result.entries)) totals[v.kind]++;
     console.log('[01] unanswered by the model: ' + unanswered +
         (defaulted ? ', ' + defaulted + ' defaulted to abstract' : ''));
+
+    // Still short? Go down a step and try again, rather than stopping to tell
+    // somebody to set an environment variable and start over.
+    //
+    // This can only happen on a first run, where the threshold had to be chosen
+    // partly from an estimate of what the model would say. Once the model has
+    // answered, thresholdFor counts rather than guesses and lands first time.
+    // Widening is a table lookup over the norms - no request, no network - so
+    // several attempts cost milliseconds.
+    if (FOR_TARGET && !held) {
+        const aim = Math.ceil(FOR_TARGET * TARGET_MARGIN);
+        const lower = TARGET_STEPS.filter(t => t < CONCRETE_AT);
+        for (const step of lower) {
+            if (totals.concrete >= aim) break;
+            CONCRETE_AT = step;
+            for (const entry of entries) {
+                const c = result.entries[entry.slug];
+                // The model's answers are its own; only the local ones move.
+                if (c && c.source !== 'norms' && c.source !== 'pos') continue;
+                const local = classifyLocally(entry, norms, senses);
+                if (local) result.entries[entry.slug] = local;
+            }
+            totals = { concrete: 0, abstract: 0 };
+            for (const v of Object.values(result.entries)) totals[v.kind]++;
+            console.log('[01] still under ' + aim + ' - widened to ' + step.toFixed(1) +
+                ', now ' + totals.concrete + ' eligible');
+        }
+        writeJson(OUT, result);
+        if (totals.concrete < FOR_TARGET) {
+            console.error('');
+            console.error('[01] ran out of thresholds at ' + totals.concrete +
+                ' eligible, short of the ' + FOR_TARGET + ' asked for.');
+            console.error('     This vocabulary cannot carry that many photographs.');
+            process.exit(1);
+        }
+    }
 
     if (held) {
         // Say what this run was, so the totals below are not read as a result.

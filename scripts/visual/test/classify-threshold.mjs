@@ -10,9 +10,10 @@
 //   classification.json. That is what --reclassify is for, and a run without
 //   it reports the OLD numbers while looking like it applied the new setting.
 //
-//   --reclassify throws away the model's answers along with the local ones.
-//   They cost quota and no threshold here has any bearing on them; losing them
-//   silently would turn a free re-run into a paid one.
+//   --reclassify keeps a model answer for an entry the norms can now settle.
+//   The model was asked because the old threshold left it borderline; pinning
+//   it there means lowering the threshold reaches nothing, which is exactly how
+//   three widening runs in a row produced the pool they started with.
 //
 // Runs the real stage against the real corpus, offline, in a state directory
 // of its own.
@@ -90,7 +91,7 @@ function main() {
     ok(widened === AT_2_8, '2.8 admits ' + AT_2_8, String(widened));
     ok(new RegExp('\\(was ' + base + ', \\+' + (widened - base) + '\\)').test(out),
         'and it says how many moved',
-        (out.match(/concrete by norms\/pos: .*/) || [''])[0].trim());
+        (out.match(/eligible for a photograph: .*/) || [''])[0].trim());
 
     // ---- the same threshold twice is a no-op ------------------------------
     const again = count(read(), c => c.kind === 'concrete');
@@ -116,34 +117,88 @@ function main() {
     ok(moved.length === 0,
         'not one cached answer moves, however low the threshold goes',
         moved.length + ' of ' + Object.keys(localBefore).length + ' changed');
-    ok(!/concrete by norms/.test(quiet),
+    ok(!/eligible for a photograph/.test(quiet),
         'and it does not report a reclassification it did not do');
 
-    // ---- the model's answers are not collateral ---------------------------
-    console.log('\nwhat --reclassify throws away');
+    // ---- what --reclassify keeps, and what it takes back -------------------
+    //
+    // The rule that makes widening work at all: a model answer stands only
+    // while the norms still cannot settle the entry themselves. The model was
+    // asked because the OLD threshold left it borderline; under a lower one it
+    // is not borderline, and keeping the old verdict pins the entry there for
+    // good. That is exactly what went wrong - lowering the threshold moved
+    // nothing, run after run, because every borderline word had been answered
+    // once and could never be reached again.
+    console.log('\nwhat --reclassify keeps');
     fresh();
     classify();
     const entries = read();
-    // Stand-ins for what a real run leaves behind: answers that cost quota.
-    const llmSlugs = Object.keys(entries).filter(s => entries[s].source === 'default').slice(0, 40);
-    for (const s of llmSlugs) entries[s] = { kind: 'concrete', source: 'llm' };
+    const llm = Object.keys(entries).filter(s => entries[s].source === 'default');
+    for (const s of llm) entries[s] = { kind: 'abstract', source: 'llm' };
     fs.writeFileSync(OUT, JSON.stringify({ v: 1, entries }, null, 2));
+    const poolBefore = count(read(), c => c.kind === 'concrete');
 
-    const report2 = classify(['--reclassify'], { MERID_CONCRETE_AT: '2.8' });
-    ok(count(read(), c => c.source === 'llm') === llmSlugs.length,
-        'the model\'s answers survive - they cost quota and no threshold here bears on them',
-        count(read(), c => c.source === 'llm') + '/' + llmSlugs.length);
-    ok(/kept 40 from the model/.test(report2), 'and it says so');
+    const out2 = classify(['--reclassify'], { MERID_CONCRETE_AT: '2.8' });
+    const reclassified = read();
+    const kept = llm.filter(s => reclassified[s] && reclassified[s].source === 'llm');
+    const taken = llm.filter(s => reclassified[s] && reclassified[s].source !== 'llm');
+
+    ok(kept.length + taken.length === llm.length,
+        'every model answer is either kept or taken back, none lost',
+        kept.length + ' + ' + taken.length + ' of ' + llm.length);
+    ok(kept.length > 0 && taken.length > 0,
+        'both happen: some the norms can now settle, some they still cannot',
+        kept.length + ' kept, ' + taken.length + ' taken back');
+    ok(new RegExp('took back ' + taken.length + ' ').test(out2),
+        'and it says how many it took back',
+        (out2.match(/took back \d+/) || [''])[0]);
+    ok(count(reclassified, c => c.kind === 'concrete') > poolBefore,
+        'which is what lets a lower threshold actually widen the pool',
+        poolBefore + ' -> ' + count(reclassified, c => c.kind === 'concrete'));
+
 
     // ---- naming the outcome instead of the threshold -----------------------
     console.log('\n--for-target');
     fresh();
     const t800 = classify(['--for-target', '800']);
-    ok(/picked CONCRETE_AT=3\.0/.test(t800),
-        'a target of 800 settles on 3.0',
-        (t800.match(/picked CONCRETE_AT=[\d.]+/) || [''])[0]);
-    ok(count(read(), c => c.kind === 'concrete') === 545,
-        'which admits 545 by the norms', String(count(read(), c => c.kind === 'concrete')));
+    // What it promised against what it produced. These were 977 and 563 once,
+    // and every stage after it worked on a pool a third smaller than the run
+    // had announced.
+    const promised = Number((t800.match(/picked CONCRETE_AT=[\d.]+ -> (\d+)/) || [])[1]);
+    const produced = count(read(), c => c.kind === 'concrete');
+    // On a state the model has never seen, its share can only be estimated, so
+    // the promise is a floor rather than an equality. What must never happen is
+    // promising MORE than it delivers - that was 977 against 563, and every
+    // stage after it worked on a pool a third smaller than announced.
+    ok(produced >= promised,
+        'it never promises a bigger pool than it produces',
+        promised + ' promised, ' + produced + ' produced');
+    ok(produced >= 800, 'and it clears the target', String(produced));
+
+    // Once the model has answered, there is nothing left to estimate and the
+    // promise has to be exact. This is the path every re-run takes.
+    const seeded = read();
+    for (const [slug, c] of Object.entries(seeded)) {
+        if (c.source === 'default') seeded[slug] = { kind: c.kind, source: 'llm' };
+    }
+    fs.writeFileSync(OUT, JSON.stringify({ v: 1, entries: seeded }, null, 2));
+    const exact = classify(['--for-target', '900']);
+    const exactPromised = Number((exact.match(/picked CONCRETE_AT=[\d.]+ -> (\d+)/) || [])[1]);
+    const exactProduced = count(read(), c => c.kind === 'concrete');
+    ok(exactProduced >= 900,
+        'a re-run against the model\'s own answers still clears the target',
+        String(exactProduced));
+    // Not equality, and the reason is worth writing down: at a low threshold
+    // some entries stop being "abstract by the norms" and become "rated as a
+    // different part of speech", which is a question only the model can settle.
+    // They have never been asked, so their share is still estimated - a small
+    // one, and it has to stay on the safe side of the truth.
+    ok(exactPromised <= exactProduced + Math.ceil(exactProduced * 0.02),
+        'and its estimate stays within 2% of what it delivers',
+        exactPromised + ' promised, ' + exactProduced + ' produced');
+    ok(/aiming at 920/.test(t800),
+        'aiming above the target, since not every eligible word finds a picture',
+        (t800.match(/aiming at \d+/) || [''])[0]);
 
     fresh();
     const t100 = classify(['--for-target', '100']);
@@ -162,6 +217,7 @@ function main() {
     ok(/cannot reach 5000/.test((huge.stdout || '') + (huge.stderr || '')),
         'and says what the ceiling actually is',
         (((huge.stdout || '') + (huge.stderr || '')).match(/Pick a target at or under \d+/) || [''])[0]);
+
 
     // ---- a threshold that makes no sense is refused ------------------------
     console.log('\nnonsense thresholds');
