@@ -111,6 +111,7 @@ const QUALITY_STEPS = [45, 38, 32, 26, 20];
 const BUDGET = 6.0 * 1024 * 1024;
 
 const QUERIES = statePath('queries.json');
+const CANDIDATES = statePath('candidates.json');
 const DECISIONS = statePath('decisions.json');
 const RANKED = statePath('ranked.json');
 const AUTO_FILE = statePath('auto-accepted.json');
@@ -364,11 +365,70 @@ function analyse(items, decisions) {
     };
 }
 
+/**
+ * Where a decision's chosen picture actually is now.
+ *
+ * A decision records the candidate's filename, and that filename is
+ * `slug-<sha1 of the thumbnail URL>.img` - so it changes whenever the archive
+ * hands back a different thumbnail URL for the same photograph. Stage 03
+ * re-fetches whenever a query changes, and state/ is not committed, so the
+ * files a decision points at are routinely not the files on this disk.
+ *
+ * That is not a small loss. It cost 96 of 97 reviewed entries on the first real
+ * run: an hour of somebody choosing pictures, and one picture shipped. The
+ * decision was still perfectly good - it names the source, the licence, the
+ * author and the ORIGINAL URL of the picture that was chosen. Only the local
+ * cache filename had moved.
+ *
+ * So: try the recorded path, then find the same picture among the candidates
+ * this machine actually has, by the one identifier that does not change.
+ *
+ * Separators are normalised on the way through. decisions.json is written by
+ * whichever machine did the reviewing, and one written on Windows carries
+ * "candidates\name.img", which does not resolve anywhere else.
+ */
+function makeResolver() {
+    const fetched = readJson(CANDIDATES, { entries: {} });
+    let recovered = 0;
+    let lost = 0;
+
+    const onDisk = rel => {
+        if (!rel) return null;
+        const p = path.join(statePath(), ...String(rel).split(/[\\/]/));
+        return fs.existsSync(p) ? p : null;
+    };
+
+    return {
+        /**
+         * @param {boolean} [opts.count] false for the format-comparison pass,
+         *   which looks at entries the encode loop is about to look at again -
+         *   counting both would report every recovery twice.
+         */
+        resolve(slug, candidate, opts = {}) {
+            const count = opts.count !== false;
+            const direct = onDisk(candidate && candidate.file);
+            if (direct) return direct;
+
+            const url = candidate && candidate.sourceUrl;
+            if (url) {
+                const now = (fetched.entries[slug] || {}).candidates || [];
+                const same = now.find(c => c.sourceUrl === url);
+                const moved = same && onDisk(same.file);
+                if (moved) { if (count) recovered++; return moved; }
+            }
+            if (count) lost++;
+            return null;
+        },
+        stats: () => ({ recovered, lost })
+    };
+}
+
 async function main() {
     const decisions = readJson(DECISIONS, null);
     if (!decisions) { console.error('[06] no decisions.json - run 05-review.mjs first'); process.exit(1); }
     const iconmap = readJson(ICONMAP, { entries: {} });
     const entries = new Map(loadEntries().map(e => [e.slug, e]));
+    const files = makeResolver();
 
     const picked = Object.entries(decisions)
         .filter(([slug, d]) => d && d.pick !== 'none' && d.candidate && entries.has(slug));
@@ -430,9 +490,9 @@ async function main() {
     if (picked.length >= 8) {
         const sample = picked.slice(0, Math.min(24, picked.length));
         const totals = { avif: 0, webp: 0 };
-        for (const [, d] of sample) {
-            const src = path.join(statePath(), d.candidate.file);
-            if (!fs.existsSync(src)) continue;
+        for (const [slug, d] of sample) {
+            const src = files.resolve(slug, d.candidate, { count: false });
+            if (!src) continue;
             const buf = fs.readFileSync(src);
             for (const f of ['avif', 'webp']) {
                 try { totals[f] += (await encode(buf, f)).length; } catch (e) { /* skip */ }
@@ -458,8 +518,8 @@ async function main() {
     let failed = 0;
 
     for (const [i, [slug, d]] of picked.entries()) {
-        const src = path.join(statePath(), d.candidate.file);
-        if (!fs.existsSync(src)) { failed++; continue; }
+        const src = files.resolve(slug, d.candidate);
+        if (!src) { failed++; continue; }
         let out, quality;
         try { ({ out, quality } = await encodeToFit(fs.readFileSync(src), FORMAT)); }
         catch (e) { failed++; continue; }
@@ -567,6 +627,46 @@ async function main() {
 
     console.log('[06] ' + photo.length + ' pictures, ' + glyphs + ' concept symbols, ' +
         Object.keys(iconOut).length + ' buckets in use' + (failed ? ', ' + failed + ' failed to encode' : ''));
+
+    // Where the photographs went, and did not go.
+    //
+    // "12 pictures" on its own is a number with no handle on it: nothing says
+    // whether the shortfall is words that were never searched, candidates that
+    // never cleared the scoring, or a queue nobody finished reviewing - and
+    // those have three different answers. This is that breakdown, and it is
+    // printed every run because the first thing anyone asks about this stage is
+    // why there are so few.
+    const searchable = Object.values(queries.entries || {}).filter(q => q && q.depictable).length;
+    const cleared = items.length;
+    const seen = Object.keys(decisions).length;
+    const auto = ACCEPT_ABOVE !== null
+        ? picked.length - Object.entries(decisions).filter(([, d]) => d && d.pick !== 'none').length
+        : 0;
+    const rec = files.stats();
+
+    console.log('');
+    console.log('[06] where the photographs went:');
+    console.log('     ' + String(searchable).padStart(5) + '  words a photograph could show (stage 02)');
+    console.log('     ' + String(cleared).padStart(5) + '  had a candidate clear the scoring (stage 04)' +
+        (searchable > cleared
+            ? '  <- ' + (searchable - cleared) + ' did not; lower MERID_CLIP_FLOOR and re-run 04'
+            : ''));
+    console.log('     ' + String(seen).padStart(5) + '  you decided on by hand');
+    console.log('     ' + String(Math.max(0, auto)).padStart(5) + '  taken on the sample\'s word, unseen' +
+        (ACCEPT_ABOVE === null
+            ? '  <- no --accept-above given; review ~50 so a cutoff can be measured'
+            : ''));
+    console.log('     ' + String(photo.length).padStart(5) + '  became pictures');
+    if (rec.recovered) {
+        console.log('     ' + String(rec.recovered).padStart(5) + '  of those were decisions whose cached file had ' +
+            'moved, matched again by source URL');
+    }
+    if (rec.lost) {
+        console.log('     ' + String(rec.lost).padStart(5) + '  decisions could not be matched to any candidate on ' +
+            'this disk at all -');
+        console.log('            stage 03 has not fetched them here, or their query changed. Re-run');
+        console.log('            03-fetch.mjs, then this stage again.');
+    }
     const kindTotal = Object.values(byKind).reduce((a, v) => a + v.length, 0);
     if (kindTotal) {
         console.log('[06] ' + kindTotal + ' concrete words ended without a photograph and show what KIND of' +

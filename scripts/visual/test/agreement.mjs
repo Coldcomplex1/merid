@@ -34,8 +34,8 @@ const SAMPLE = 50;          // how many a person looks at
 const LO = 0.19, HI = 0.37; // the score range a real run produced
 
 let failures = 0;
-function ok(cond, what) {
-    console.log((cond ? '  ok   ' : '  FAIL ') + what);
+function ok(cond, what, detail) {
+    console.log((cond ? '  ok   ' : '  FAIL ') + what + (detail ? ' -> ' + detail : ''));
     if (!cond) failures++;
 }
 
@@ -479,11 +479,18 @@ async function main() {
     const visExisted = fs.existsSync(visDir);
     const stray = path.join(visDir, 'not-a-real-slug-zzzz.webp');
     fs.mkdirSync(visDir, { recursive: true });
+    // Whatever real artwork is already here is an orphan to THIS run too - its
+    // state directory is a fixture and names none of it. So the expected count
+    // is "one more than what was here", not one. Hardcoding one passed for as
+    // long as the repository shipped no pictures, and failed the day it did.
+    const before = fs.readdirSync(visDir).filter(f => /\.(avif|webp)$/.test(f)).length;
     fs.writeFileSync(stray, makePng(8, 8, 1));
     try {
         const swept = build06();
-        ok(/would remove 1 picture\(s\) from vis\//.test(swept),
-            'a picture the index no longer names is reported for removal');
+        const reported = Number((swept.match(/would remove (\d+) picture\(s\) from vis\//) || [])[1]);
+        ok(reported === before + 1,
+            'a picture the index no longer names is reported for removal',
+            'reported ' + reported + ', expected ' + (before + 1));
         ok(fs.existsSync(stray), '--dry-run reports the sweep without performing it');
     } finally {
         fs.rmSync(stray, { force: true });

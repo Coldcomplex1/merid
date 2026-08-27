@@ -123,9 +123,26 @@ const probe = capture('node', ['scripts/visual/06-build.mjs', '--dry-run']);
 if (!probe.ok) stop('stage 06 could not run - read the message above');
 const rec = probe.out.match(/--accept-above (0\.\d+)/);
 const cutoff = rec ? rec[1] : null;
-say(cutoff
-    ? '\ncutoff the sample supports: ' + cutoff
-    : '\nno cutoff is safe on this reviewing - unreviewed entries will take a symbol');
+if (cutoff) {
+    say('\ncutoff the sample supports: ' + cutoff);
+} else {
+    // The quiet path to a build with almost no photographs in it, and the one
+    // that actually happened: eleven entries reviewed, no cutoff measurable,
+    // nothing accepted unseen, twelve pictures shipped out of six hundred
+    // candidates. It used to be one line in the middle of a long run.
+    say('');
+    say('  ' + '!'.repeat(58));
+    say('  No cutoff is safe on this reviewing, so NOTHING will be accepted');
+    say('  unseen - only the entries you looked at yourself become pictures.');
+    say('');
+    say('  Stage 06 needs a spread of about fifty decisions before it can say');
+    say('  what an unreviewed entry at a given score is worth. Review more and');
+    say('  run this again - the pictures already chosen are kept:');
+    say('');
+    say('    node scripts/visual/05-review.mjs --sample 80');
+    say('    node scripts/visual/ship.mjs');
+    say('  ' + '!'.repeat(58));
+}
 
 head('Build the artwork');
 const args = ['scripts/visual/06-build.mjs'];
