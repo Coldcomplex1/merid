@@ -102,13 +102,41 @@ for (const f of ['package.json', 'package-lock.json']) {
         if (!DRY) git('checkout', '--', f);
     }
 }
+
+// The reviewing, committed rather than complained about.
+//
+// This script exists to be run straight after 05-review.mjs, and 05-review.mjs
+// writes exactly one file. Refusing to go on until the reader commits it by
+// hand meant the documented sequence - review, then ship - stopped dead every
+// single time, on the one file in this pipeline that must never be discarded.
+// The advice it printed was even worse than the stop: "git checkout -- <file>"
+// on decisions.json throws the reviewing away.
+const DECISIONS_REL = 'scripts/visual/state/decisions.json';
+if (git('status', '--porcelain', '--', DECISIONS_REL)) {
+    let n = 0;
+    try {
+        n = Object.keys(JSON.parse(
+            fs.readFileSync(path.join(ROOT, DECISIONS_REL), 'utf8')) || {}).length;
+    } catch (e) { /* counted for the message only */ }
+    say('committing the reviewing (' + n + ' decisions) - it cannot be recomputed');
+    if (!DRY) {
+        // -f: state/ is gitignored with an explicit exception for this file, and
+        // -f makes the exception hold whatever the ignore rules do.
+        git('add', '-f', DECISIONS_REL);
+        if (!run('git', ['commit', '-m', 'Record which picture was chosen for each word'])) {
+            stop('could not commit the reviewing - read the message above',
+                'check `git status`, then run this again');
+        }
+    }
+}
+
 const stillDirty = (git('status', '--porcelain') || '')
     .split('\n').filter(l => l.trim() && !l.startsWith('??'));
 if (stillDirty.length) {
     stop('there are other uncommitted changes, and a pull would fight them:\n  ' +
         stillDirty.join('\n  '),
         'commit them:  git add -A && git commit -m "..."',
-        'or drop them: git checkout -- <file>');
+        'or drop them: git checkout -- <file>   (NOT decisions.json - that is the reviewing)');
 }
 
 head('Pull');

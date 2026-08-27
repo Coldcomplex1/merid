@@ -333,6 +333,10 @@ if (!NO_PHOTOS) {
     // again: everything else in state/ is a cache of a computation. This is an
     // hour of somebody's attention, and it has lived in an uncommitted folder
     // on one machine before.
+    // Immediately, and before stage 06 or the tests get a chance to fail. This
+    // is not the only place that commits it - ship.mjs does too, as a backstop
+    // for anyone running that on its own - but "immediately" is the property
+    // being bought here, so both are deliberate.
     head('Commit the reviewing, immediately');
     const decisions = path.join(ROOT, 'scripts', 'visual', 'state', 'decisions.json');
     if (!fs.existsSync(decisions)) {
