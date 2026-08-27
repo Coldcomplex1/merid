@@ -1326,5 +1326,159 @@
       "clear": true
     },
     "at": "2026-08-20T14:04:55.090Z"
+  },
+  "agriculture-yiok": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\agriculture-yiok-2aa86eb787.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "USDAgov",
+      "sourceUrl": "https://www.flickr.com/photos/41284017@N08/47580194672",
+      "score": 0.2406,
+      "margin": 0.0671,
+      "clear": true
+    },
+    "at": "2026-08-27T00:54:45.028Z"
+  },
+  "colossus-0lfs": {
+    "pick": 2,
+    "candidate": {
+      "file": "candidates\\colossus-0lfs-e11fe072ca.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Tony  Wu",
+      "sourceUrl": "https://www.pexels.com/photo/statue-of-buddha-21777753/",
+      "score": 0.2397,
+      "margin": 0.0186,
+      "clear": false
+    },
+    "at": "2026-08-27T00:54:51.683Z"
+  },
+  "artifact-mqcj": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\artifact-mqcj-d24768cba2.img",
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "author": "Charlotte Keep",
+      "sourceUrl": "https://www.flickr.com/photos/143062359@N04/27873392410",
+      "score": 0.2581,
+      "margin": 0.034,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:00.147Z"
+  },
+  "anarchist-fwli": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\anarchist-fwli-3ed48a5077.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "HarisX.",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Protest_march_in_Jakarta,_Indonesia_-_20070501.jpg",
+      "score": 0.2603,
+      "margin": 0.0351,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:05.777Z"
+  },
+  "abduct-gvez": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\abduct-gvez-c9d77503a1.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Mikael Blomkvist",
+      "sourceUrl": "https://www.pexels.com/photo/men-fighting-in-warehouse-8684915/",
+      "score": 0.2618,
+      "margin": 0.032,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:08.950Z"
+  },
+  "aquatic-4jpg": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\aquatic-4jpg-5d82deca65.img",
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "author": "Flip Schulke",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:A_FEW_OF_THE_MANY_SPECIES_OF_CORAL_AND_MARINE_LIFE_AT_JOHN_PENNEKAMP_CORAL_REEF_STATE_PARK_NEAR_KEY_LARGO._THE_FISH..._-_NARA_-_548718.tif",
+      "score": 0.262,
+      "margin": 0.0284,
+      "clear": false
+    },
+    "at": "2026-08-27T00:55:13.068Z"
+  },
+  "aisle-eo24": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\aisle-eo24-84819fee87.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Mehmet Turgut  Kirkgoz",
+      "sourceUrl": "https://www.pexels.com/photo/interior-design-of-cathedral-of-saint-claire-of-assisi-in-cuba-11772024/",
+      "score": 0.2649,
+      "margin": 0.0502,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:22.230Z"
+  },
+  "arboreal-epwa": {
+    "pick": 1,
+    "candidate": {
+      "file": "candidates\\arboreal-epwa-62fbf99c5d.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Karolina",
+      "sourceUrl": "https://www.pexels.com/photo/lush-green-tree-branches-with-moss-in-forest-38708767/",
+      "score": 0.2737,
+      "margin": 0.0522,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:31.932Z"
+  },
+  "confection-1fly": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\confection-1fly-a4aa8d8272.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Vladimir Srajber",
+      "sourceUrl": "https://www.pexels.com/photo/close-up-photo-of-cakes-12124906/",
+      "score": 0.2809,
+      "margin": 0.0683,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:35.965Z"
+  },
+  "canvas-rw3e": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\canvas-rw3e-a4b078818d.img",
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "author": "",
+      "sourceUrl": "https://www.rawpixel.com/image/5962168/free-public-domain-cc0-photo",
+      "score": 0.3075,
+      "margin": 0.0534,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:38.601Z"
+  },
+  "cobbler-by8q": {
+    "pick": 0,
+    "candidate": {
+      "file": "candidates\\cobbler-by8q-b106a8996c.img",
+      "source": "pexels",
+      "license": "PEXELS",
+      "author": "Mahmut Göğüs",
+      "sourceUrl": "https://www.pexels.com/photo/skilled-cobbler-restoring-leather-shoes-in-workshop-34510831/",
+      "score": 0.3239,
+      "margin": 0.0363,
+      "clear": true
+    },
+    "at": "2026-08-27T00:55:42.679Z"
   }
 }
