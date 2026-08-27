@@ -454,6 +454,43 @@ Muốn duyệt hết 290 từ thì cứ bỏ `--sample` — cách cũ vẫn nguy
 
 ---
 
+## 5c. Muốn NHIỀU ảnh hơn nữa
+
+Số ảnh bị chặn bởi một hằng số ở `scripts/visual/01-classify.mjs`: chỉ từ có
+điểm cụ-thể (Brysbaert) từ `3.5` trở lên mới được đi tìm ảnh. Hạ nó xuống là
+pool nở ra:
+
+| `MERID_CONCRETE_AT` | Số từ được đi tìm ảnh |
+|---|---|
+| **3.5** (mặc định) | ~640 |
+| 3.0 | ~850 |
+| **2.8** | ~950 |
+| 2.6 | ~1.060 |
+
+```powershell
+$env:MERID_CONCRETE_AT='2.8'
+node scripts/visual/01-classify.mjs --reclassify   # ~1 phút, 0 request
+node scripts/visual/02-query.mjs                   # câu tìm cho từ mới
+node scripts/visual/03-fetch.mjs --per-entry 10    # ~40-60 phút
+$env:MERID_CLIP_FLOOR='0.20'
+python scripts/visual/04-rank.py                   # ~25 phút
+node scripts/visual/06-build.mjs --dry-run         # xem mỗi ngưỡng ship bao nhiêu
+node scripts/visual/ship.mjs --accept-above 0.20   # nhận hàng loạt
+```
+
+**`--reclassify` không phải tuỳ chọn.** Không có nó, stage 01 đọc cache và
+báo lại đúng con số cũ — nhìn như đã đổi mà thực ra không. Nó chỉ xoá các
+câu trả lời stage 01 tự tính (`norms`/`pos`); câu trả lời của model được giữ
+nguyên nên bước này **tốn 0 request**.
+
+Đánh đổi: từ ở dải 2.8–3.5 là `policy`, `method`, `purpose`… ảnh cho chúng
+thường là cảnh dàn dựng chứ không phải vật chụp được.
+
+Dung lượng không phải lo: đo thật là **~4,9KB/ảnh**, nên 800 ảnh ≈ 3,7MB,
+vẫn dưới trần 6MB.
+
+---
+
 ## 6. Kiểm tra kết quả
 
 `run.mjs` đã chạy `npm test` và `npm run build` giùm bạn và chỉ push khi cả hai

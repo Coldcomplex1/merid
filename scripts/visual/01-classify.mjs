@@ -27,7 +27,11 @@
 // own definition attached.
 //
 // Usage:
-//   node scripts/visual/01-classify.mjs [--offline] [--limit N]
+//   node scripts/visual/01-classify.mjs [--offline] [--limit N] [--reclassify]
+//
+//   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
+//     widen the pool of entries eligible for a photograph. --reclassify is not
+//     optional there: without it the cached answers are kept and nothing moves.
 import fs from 'node:fs';
 import { loadEntries, sensesPerWord, statePath, ensureState, writeJson, readJson, progress } from './lib/entries.mjs';
 import { Llm, LlmUnusable, parseJsonish, chunk } from './lib/llm.mjs';
@@ -39,12 +43,43 @@ const LIMIT = (() => {
     return i >= 0 ? Number(args[i + 1]) : Infinity;
 })();
 
+/**
+ * Throw away the answers this stage worked out for itself, and work them out
+ * again.
+ *
+ * Only the local ones - `norms` and `pos`. They are a threshold applied to a
+ * lookup table, so they cost nothing to redo and they are the ONLY answers a
+ * changed threshold can change. The model's answers are kept: they cost quota,
+ * and no threshold here has any bearing on what a model said about a word.
+ *
+ * Without this the thresholds below are decorative. The loop in main() skips
+ * every entry already in classification.json, so lowering CONCRETE_AT and
+ * running again reads the cache and reports the old numbers - a change that
+ * looks applied and is not.
+ */
+const RECLASSIFY = args.includes('--reclassify');
+
 // Brysbaert's own thresholds are not prescribed; these come from where the
 // distribution actually separates for this vocabulary. 3.5 keeps "anchor" and
 // drops "tendency"; 2.6 is low enough that anything under it is not worth six
 // API calls to confirm.
-const CONCRETE_AT = 3.5;
-const ABSTRACT_AT = 2.6;
+//
+// Overridable because they are the one knob that decides how much of the
+// vocabulary is even ELIGIBLE for a photograph, and the right setting is a
+// judgement about the product rather than a fact about the data. At 3.5 about
+// 640 entries go looking for a picture; at 2.8, about 950. Lower admits words
+// whose "photograph" is a staged scene rather than the thing itself, which is
+// why the default stays where it is.
+//
+//   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
+const CONCRETE_AT = Number(process.env.MERID_CONCRETE_AT || 3.5);
+const ABSTRACT_AT = Number(process.env.MERID_ABSTRACT_AT || 2.6);
+if (!Number.isFinite(CONCRETE_AT) || !Number.isFinite(ABSTRACT_AT) ||
+    ABSTRACT_AT >= CONCRETE_AT) {
+    console.error('[01] MERID_CONCRETE_AT must be a number above MERID_ABSTRACT_AT');
+    console.error('     got concrete=' + CONCRETE_AT + ' abstract=' + ABSTRACT_AT);
+    process.exit(1);
+}
 
 // Parts of speech no photograph can carry, whatever the norms say about the
 // word form. Checked first because it is free and never wrong.
@@ -218,6 +253,28 @@ async function main() {
     result.v = 1;
     result.entries = result.entries || {};
 
+    // What the thresholds decided last time, dropped so this run's thresholds
+    // decide it instead. Counted before and after so the summary can say what
+    // actually moved rather than leaving it to be inferred from a total.
+    const before = { concrete: 0, abstract: 0 };
+    let dropped = 0;
+    let keptLlm = 0;
+    if (RECLASSIFY) {
+        for (const [slug, c] of Object.entries(result.entries)) {
+            if (c && (c.source === 'norms' || c.source === 'pos')) {
+                before[c.kind] = (before[c.kind] || 0) + 1;
+                delete result.entries[slug];
+                dropped++;
+            } else if (c && c.source === 'llm') {
+                keptLlm++;
+            }
+        }
+        console.log('[01] --reclassify: dropped ' + dropped +
+            ' local answers (' + before.concrete + ' concrete, ' + before.abstract + ' abstract), ' +
+            'kept ' + keptLlm + ' from the model');
+        console.log('[01] thresholds: concrete >= ' + CONCRETE_AT + ', abstract <= ' + ABSTRACT_AT);
+    }
+
     const ask = [];
     const counts = { pos: 0, norms: 0, cached: 0, polysemous: 0, unknown: 0, borderline: 0, posMismatch: 0 };
 
@@ -245,6 +302,18 @@ async function main() {
     console.log('[01] settled without asking: ' + (counts.pos + counts.norms) +
         ' (' + counts.pos + ' by part of speech, ' + counts.norms + ' by norms)' +
         (counts.cached ? ', ' + counts.cached + ' already done' : ''));
+    if (RECLASSIFY) {
+        // The number worth reading before spending an hour on stage 03: how many
+        // entries this threshold just made eligible for a photograph, and how
+        // that compares with what the last threshold allowed.
+        let nowConcrete = 0;
+        for (const c of Object.values(result.entries)) if (c && c.kind === 'concrete') nowConcrete++;
+        const delta = nowConcrete - before.concrete;
+        console.log('[01] concrete by norms/pos: ' + nowConcrete +
+            ' (was ' + before.concrete + ', ' + (delta >= 0 ? '+' : '') + delta + ')');
+        console.log('[01] plus whatever the model calls concrete among the ' + ask.length +
+            ' below - that is the pool stage 02 will write queries for.');
+    }
     console.log('[01] need the model: ' + ask.length +
         ' (' + counts.polysemous + ' polysemous, ' + counts.unknown + ' not in norms, ' +
         counts.posMismatch + ' scored as a different part of speech, ' +

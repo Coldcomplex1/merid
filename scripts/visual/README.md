@@ -262,6 +262,7 @@ node --import ./scripts/visual/test/fake-gemini.mjs scripts/visual/02-query.mjs
 python3 scripts/visual/04-rank.py --pretrained none   # architecture, random weights
 node scripts/visual/test/agreement.mjs                # the sample → measure → accept loop
 node scripts/visual/test/fetch-limits.mjs            # what stage 03 does when a source says 429
+node scripts/visual/test/classify-threshold.mjs      # what CONCRETE_AT admits, and --reclassify
 ```
 
 The answers are invented; the plumbing is not.
