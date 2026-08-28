@@ -80,6 +80,16 @@ function encoder() {
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
 
+/**
+ * Exit status for "the artwork is built, but it is short of --target".
+ *
+ * Distinct from 1 on purpose. A caller has to be able to tell "this stage
+ * failed, do not ship what it wrote" from "this stage did all it could, ship it
+ * and know it fell short" - ship.mjs and run.mjs both branch on exactly that,
+ * and with a bare 1 the run that produced 112 pictures pushed none of them.
+ */
+const SHORT_EXIT = 3;
+
 // Take the first candidate, unseen, for every unreviewed entry scoring at least
 // this. There is no default and there deliberately is not one: the number comes
 // out of the reviewing, which is different for every dataset, and a number
@@ -420,7 +430,17 @@ function analyse(items, decisions) {
         ceiling: () => {
             const lowest = cuts[cuts.length - 1];
             return lowest ? lowest.unreviewed : 0;
-        }
+        },
+
+        /**
+         * The most permissive cutoff there is, for a target that cannot be met.
+         *
+         * A run that asked for 800 and can only reach 112 should still deliver
+         * the 112. Refusing to pick a cutoff at all - which is what a bare null
+         * from cutoffFor used to mean - threw away every picture the queue did
+         * hold, and printed no diagnosis of why it was thin.
+         */
+        lowest: () => cuts[cuts.length - 1] || null
     };
 }
 
@@ -505,6 +525,12 @@ async function main() {
     // at this point rather than at the flag means the number reported is the one
     // the accept step below actually uses.
     let acceptAbove = ACCEPT_ABOVE;
+    // Why a target could not be met, when it could not. Held rather than acted
+    // on, because the answer to "I asked for 800 and there are 112" is to build
+    // the 112 and then say so: exiting here instead threw away every picture
+    // the queue did hold AND skipped the diagnosis below, which is the one part
+    // of the output that says which stage ran dry. Read again at the very end.
+    let missed = null;
     if (TARGET !== null) {
         const have = picked.length;
         const want = Math.max(0, TARGET - have);
@@ -513,34 +539,43 @@ async function main() {
             console.log('[06] --target ' + TARGET + ': already there from ' + have +
                 ' reviewed entries. Nothing taken unseen.');
         } else if (!measured.cutoffFor) {
-            console.error('');
-            console.error('[06] --target ' + TARGET + ' needs a scored queue and there is none.');
-            console.error('     Run stage 04:  python3 scripts/visual/04-rank.py');
-            process.exit(1);
-        } else {
-            const c = measured.cutoffFor(want);
-            if (!c) {
-                const ceiling = measured.ceiling() + have;
-                console.error('');
-                console.error('[06] --target ' + TARGET + ' cannot be reached from this queue.');
-                console.error('     Even taking every scored entry gives ' + ceiling + ' pictures (' +
-                    have + ' reviewed + ' + measured.ceiling() + ' unseen).');
-                console.error('');
-                console.error('     That is a shortage of candidates, not of cutoff. Either:');
-                console.error('       MERID_CLIP_FLOOR=0.18 python3 scripts/visual/04-rank.py');
-                console.error('       node scripts/visual/03-fetch.mjs --per-entry 12');
-                console.error('     or widen what may have a photograph at all:');
-                console.error('       node scripts/visual/01-classify.mjs --for-target ' + TARGET);
-                process.exit(1);
-            }
-            acceptAbove = c.cutoff;
             console.log('');
-            console.log('[06] --target ' + TARGET + ': cutoff ' + c.cutoff.toFixed(3) +
-                ' ships ' + c.unreviewed + ' unseen, on top of ' + have + ' reviewed.');
-            console.log('     ' + (c.seen
-                ? 'Of the ' + c.seen + ' you looked at above it, ' + c.first +
-                  ' kept the first candidate - so at least ' + Math.round(c.low * 100) + '% right.'
-                : 'You looked at none above it, so nothing here says how right they are.'));
+            console.log('[06] --target ' + TARGET + ' needs a scored queue and there is none,');
+            console.log('     so only the ' + have + ' entries you reviewed can become pictures.');
+            console.log('     Run stage 04 and then this again:  python3 scripts/visual/04-rank.py');
+            missed = { why: 'there is no scored queue to take anything from' };
+        } else {
+            const reach = measured.cutoffFor(want);
+            const c = reach || measured.lowest();
+            if (!reach) {
+                const ceiling = measured.ceiling() + have;
+                console.log('');
+                console.log('[06] --target ' + TARGET + ' cannot be reached from this queue.');
+                console.log('     Even taking every scored entry gives ' + ceiling + ' pictures (' +
+                    have + ' reviewed + ' + measured.ceiling() + ' unseen), so that is what');
+                console.log('     this run does' + (c ? ', at cutoff ' + c.cutoff.toFixed(3) : '') +
+                    '. Fewer than asked for beats none at all.');
+                console.log('');
+                console.log('     That is a shortage of candidates, not of cutoff. To widen it:');
+                console.log('       MERID_CLIP_FLOOR=0.18 python3 scripts/visual/04-rank.py');
+                console.log('       node scripts/visual/03-fetch.mjs --per-entry 12');
+                console.log('     or widen what may have a photograph at all:');
+                console.log('       node scripts/visual/01-classify.mjs --for-target ' + TARGET);
+                console.log('');
+                console.log('     Read "where the photographs went" below first - it says which of');
+                console.log('     those three is the one that ran dry.');
+                missed = { why: 'the queue holds ' + measured.ceiling() +
+                    ' scored entries nobody has reviewed, and ' + have + ' were reviewed' };
+            } else {
+                console.log('');
+                console.log('[06] --target ' + TARGET + ': cutoff ' + c.cutoff.toFixed(3) +
+                    ' ships ' + c.unreviewed + ' unseen, on top of ' + have + ' reviewed.');
+                console.log('     ' + (c.seen
+                    ? 'Of the ' + c.seen + ' you looked at above it, ' + c.first +
+                      ' kept the first candidate - so at least ' + Math.round(c.low * 100) + '% right.'
+                    : 'You looked at none above it, so nothing here says how right they are.'));
+            }
+            if (c) acceptAbove = c.cutoff;
         }
     }
 
@@ -845,6 +880,19 @@ async function main() {
     }
     console.log(DRY ? '[06] dry run, nothing written' : '[06] wrote ' + INDEX_FILE + ' and ' + VIS_DIR);
     warnUncommittedDecisions('06');
+
+    // Last, and against what was actually built rather than against what the
+    // cutoff was expected to give: entries can still drop out between the two
+    // (a cached file that moved, a picture that would not fit the size cap).
+    // The number here is the number in vis/.
+    if (TARGET !== null && photo.length < TARGET) {
+        console.log('');
+        console.log('[06] SHORT: ' + photo.length + ' pictures, asked for ' + TARGET + '.');
+        if (missed) console.log('     ' + missed.why + '.');
+        console.log('     Everything above is written - this run delivered what it could.');
+        console.log('     Exit status ' + SHORT_EXIT + ' says "built, but short", not "failed".');
+        process.exit(SHORT_EXIT);
+    }
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

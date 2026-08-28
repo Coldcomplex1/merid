@@ -19,7 +19,7 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { makePng } from './png.mjs';
@@ -163,6 +163,20 @@ function build06(extra = []) {
     return execFileSync(process.execPath,
         ['scripts/visual/06-build.mjs', '--dry-run', '--format', 'webp', ...extra],
         { cwd: ROOT, env: { ...process.env, MERID_STATE: STATE }, encoding: 'utf8' });
+}
+
+/**
+ * The same, for the runs that are MEANT to end non-zero.
+ *
+ * execFileSync throws on a non-zero status and hands back the output on the
+ * error object, which is a fiddly way to read the thing being asserted. A
+ * missed target is a normal outcome of this stage, so it gets a normal runner.
+ */
+function build06Status(extra = []) {
+    const r = spawnSync(process.execPath,
+        ['scripts/visual/06-build.mjs', '--dry-run', '--format', 'webp', ...extra],
+        { cwd: ROOT, env: { ...process.env, MERID_STATE: STATE }, encoding: 'utf8' });
+    return { status: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
 /**
@@ -467,6 +481,55 @@ async function main() {
 
     ok(/only supports \d+% correct/.test(all),
         'a cutoff below what the sample supports is warned about');
+
+    // ---- asking for a count rather than a cutoff ---------------------------
+    //
+    // The failure this covers cost a whole run: --target 800 against a queue
+    // that held 112 pictures printed "cannot be reached", exited 1 BEFORE the
+    // block that says which stage ran dry, and shipped none of the 112. A run
+    // that misses its target still has to deliver what it has, and say what it
+    // delivered.
+    console.log('\nasking for a count the queue cannot reach');
+    const basePictures = Number((out.match(/\[06\] (\d+) pictures,/) || [])[1]);
+    ok(basePictures > 0, 'the plain build makes pictures to compare against (' + basePictures + ')');
+
+    const impossible = build06Status(['--target', '5000']);
+    ok(impossible.status === 3,
+        'an unreachable target exits 3 - "built, but short", not "failed"',
+        'got status ' + impossible.status);
+    ok(/cannot be reached from this queue/.test(impossible.out), 'it says the target is out of reach');
+    ok(/where the photographs went/.test(impossible.out),
+        'the diagnosis block is printed rather than skipped by an early exit');
+
+    // The last row of the cutoff table is the most permissive one there is, so
+    // its "would ship" is everything the queue could possibly yield. Taking
+    // exactly that many is what "did all it could" means here.
+    const cutRows = [...impossible.out.matchAll(/^ {7}>= (0\.\d{3})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%$/gm)];
+    const ceiling = cutRows.length ? Number(cutRows[cutRows.length - 1][2]) : -1;
+    const tookWhole = Number((impossible.out.match(/took the first candidate for (\d+) entries/) || [])[1]);
+    ok(ceiling > 0 && tookWhole === ceiling,
+        'it takes the whole queue instead of shipping none of it',
+        'took ' + tookWhole + ', queue holds ' + ceiling);
+
+    const shortLine = impossible.out.match(/SHORT: (\d+) pictures, asked for 5000/);
+    ok(!!shortLine, 'it reports the shortfall in the terms that were asked');
+    ok(shortLine && Number(shortLine[1]) >= basePictures,
+        'and the count it reports is the artwork it actually built, not zero',
+        shortLine ? shortLine[1] + ' vs ' + basePictures + ' from the reviewing alone' : 'no line');
+
+    console.log('\nasking for a count the queue can reach');
+    const reachable = basePictures + 10;
+    const met = build06Status(['--target', String(reachable)]);
+    ok(met.status === 0, 'a target within reach exits 0', 'got status ' + met.status);
+    ok(new RegExp('--target ' + reachable + ': cutoff 0\\.\\d+ ships \\d+ unseen').test(met.out),
+        'it names the cutoff it chose to get there');
+    ok(!/SHORT:/.test(met.out), 'and reports no shortfall');
+    const madeIt = Number((met.out.match(/\[06\] (\d+) pictures,/) || [])[1]);
+    ok(madeIt >= reachable, 'it built at least what was asked for (' + madeIt + ' of ' + reachable + ')');
+
+    const already = build06Status(['--target', String(Math.max(1, Math.floor(basePictures / 2)))]);
+    ok(already.status === 0 && /already there from \d+ reviewed entries/.test(already.out),
+        'a target the reviewing alone already meets takes nothing unseen');
 
     // ---- the sweep of vis/ -------------------------------------------------
     //

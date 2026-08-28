@@ -464,8 +464,25 @@ Nói số ảnh bạn muốn, nó tự lo phần còn lại: tự chọn ngưỡ
 tự đặt sàn CLIP, tự tải thêm ứng viên mỗi từ, tự chọn cutoff. **Không biến môi
 trường, không thứ tự lệnh phải nhớ.**
 
-Khác biệt quan trọng nhất so với chạy tay: nó **dừng ngay tại bước không đạt**
-thay vì đi tiếp rồi ship thiếu. Và nếu cuối cùng vẫn thiếu, nó nói thẳng và
+Khác biệt quan trọng nhất so với chạy tay: sau **mỗi** chặng nó đếm xem chặng
+đó giao lại được bao nhiêu, và in ngay tại chỗ:
+
+```
+[gate] words with something to search for: 18 of 943 - this run needs 800.
+```
+
+Chặng nào teo là thấy ngay ở chặng đó, không phải đoán ngược từ số ảnh cuối
+cùng. Quy tắc dừng: **chỉ dừng khi dừng còn rẻ hơn đi tiếp.**
+
+- Thiếu ở **sau bước 02** (chưa tải gì) → **dừng**. Đi tiếp là một tiếng tải ảnh
+  cho một tập không bao giờ đủ, mà nguyên nhân thường là hết quota Gemini trong
+  ngày — mai chạy lại đúng lệnh đó là xong, mọi câu trả lời đã hỏi đều còn cache.
+- Thiếu ở **sau 03 hoặc 04** (đã trả tiền cho phần đắt) → **nói rõ rồi chạy
+  tiếp**. Dừng lúc này nghĩa là không có ảnh nào cả; chạy tiếp thì ít ảnh hơn
+  mong muốn nhưng vẫn có ảnh.
+
+Cùng nguyên tắc đó ở bước cuối: `--target 800` mà hàng đợi chỉ đủ 112 thì nó
+**vẫn dựng và vẫn push 112 tấm**, in trọn khối chẩn đoán, rồi mới báo thiếu và
 **thoát với mã lỗi**:
 
 ```

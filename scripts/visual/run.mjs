@@ -30,6 +30,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findPython } from './lib/entries.mjs';
+import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
+    needFor } from './lib/gates.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -100,6 +102,49 @@ function stop(why, ...fix) {
 /** Run a command, streaming its output. Returns the raw result. */
 function run(cmd, args, opts = {}) {
     return spawnSync(cmd, args, { cwd: opts.cwd || ROOT, stdio: 'inherit', shell: !!opts.shell });
+}
+
+/** Stage 06's "built, but short of --target". Must match 06-build.mjs. */
+const SHORT_EXIT = 3;
+
+/**
+ * What each stage handed on to the next, checked against what it was given.
+ *
+ * The chain used to check twice - after stage 01, and at the very end. In
+ * between, a stage that produced almost nothing looked exactly like a stage
+ * that worked: 02 ran out of the day's Gemini quota, wrote queries for 18 of
+ * 943 words, and 03, 04 and 05 then did their jobs perfectly on the 18. Every
+ * exit status was 0. The run printed "Done" and shipped fifteen pictures.
+ *
+ * So each gate counts what the stage just wrote. It reads the state file rather
+ * than the stage's output because the count is the thing being checked, and a
+ * printed line can be reworded while a JSON key cannot.
+ */
+const shortfalls = [];
+
+/**
+ * @param {boolean} o.hard  stop here, or say it and carry on?
+ *
+ * Hard only while stopping is CHEAPER than continuing. Before the fetch that is
+ * true: its hour would be spent on a set that cannot reach the target, and the
+ * usual cause is a daily quota that fixes itself overnight. After it, it is
+ * false - the expensive stages are paid for, and stopping then means no artwork
+ * at all, where carrying on means fewer pictures than asked for. Fewer beats
+ * none, which is the same rule stage 06 follows when a target is out of reach.
+ */
+function gate(o) {
+    const ok = o.got >= o.need;
+    say('');
+    say('[gate] ' + o.name + ': ' + o.got + ' of ' + o.of + ' - this run needs ' + o.need + '.');
+    if (ok) return true;
+    if (o.hard) stop(o.name + ' gives ' + o.got + ', short of the ' + o.need + ' needed.\n  ' + o.why,
+        ...o.fix);
+    say('  SHORT here: ' + o.why);
+    say('  Carrying on anyway - the stages after this still turn what there is into');
+    say('  pictures, and fewer pictures beats none. To widen it and run again:');
+    for (const f of o.fix) say('    ' + f);
+    shortfalls.push(o.name + ': ' + o.got + ' of ' + o.of + ', needed ' + o.need);
+    return false;
 }
 
 /**
@@ -371,6 +416,42 @@ if (TARGET === null) {
 stage('Query: what to go looking for (~5 min)',
     'node', [HERE + '/02-query.mjs']);
 
+// The gate that would have caught this run four stages before anyone noticed.
+// A query is what stage 03 goes to the archives WITH, so a word without one is
+// a word that can never have a photograph, however well everything downstream
+// works.
+//
+// Nothing to gate under --no-photos: it asks for symbols, and symbols come from
+// 02b, which does not read this file.
+if (!NO_PHOTOS) {
+    const pool = concreteCount();
+    gate({
+        name: 'words with something to search for',
+        got: searchableCount(),
+        of: pool,
+        // A quarter, not a half, when there is no target. Stage 02 legitimately
+        // refuses a lot of what stage 01 lets through - that is its job, and at
+        // a lowered CONCRETE_AT it refuses more of it - so a proportion strict
+        // enough to be useful under a target would stop healthy runs without
+        // one. Under a target the floor is exact and there is no such worry.
+        need: needFor(TARGET, pool, 0.25),
+        // Hard only under a target, where the promise is a number and this
+        // stage has already made it unreachable. Without one there is no
+        // promise to break, and an hour of fetching for however many words
+        // there are is what the reader asked for.
+        hard: TARGET !== null,
+        why: 'stage 03 spends an hour at the archives and can only ever visit these.',
+        fix: [
+            'read the "[02] unanswered:" line above. If it is most of the batch, the',
+            'day\'s Gemini free-tier quota is gone - that is the usual cause, and the',
+            'only fix is tomorrow. Nothing is lost: every answer so far is cached, so',
+            'running this same command again picks up exactly where it stopped.',
+            '',
+            'node ' + HERE + '/run.mjs' + (TARGET !== null ? ' --target ' + TARGET : '')
+        ]
+    });
+}
+
 // The stage that decides how most cards look. Seven entries in eight end up
 // wearing a concept symbol, so this is the main path, not the fallback.
 stage('Concepts: a symbol for every abstract entry (~15 min)',
@@ -385,6 +466,28 @@ if (!NO_PHOTOS) {
     stage('Fetch: candidate photographs from three archives (~40-60 min)',
         'node', fetchArgs);
 
+    {
+        const searchable = searchableCount();
+        gate({
+            name: 'words with at least one candidate picture',
+            got: candidateCount(),
+            of: searchable,
+            need: needFor(TARGET, searchable, 0.5),
+            hard: false,
+            why: 'the archives answered for fewer words than this run needs pictures.',
+            fix: [
+                'a rate limit at one of the three is the usual cause - the per-source',
+                'summary stage 03 just printed says which one went quiet:',
+                '',
+                '  $env:MERID_PEXELS_PER_HOUR=\'180\'   # if Pexels was the quiet one',
+                '  $env:OPENVERSE_TOKEN=\'...\'          # free, raises Openverse\'s limit',
+                '  node ' + HERE + '/03-fetch.mjs --per-entry 12',
+                '',
+                'stage 03 resumes: it re-fetches only the words it has nothing for.'
+            ]
+        });
+    }
+
     const py = findPython();
     if (TARGET !== null && !process.env.MERID_CLIP_FLOOR) {
         // Set here rather than asked of the reader: an environment variable in
@@ -394,6 +497,25 @@ if (!NO_PHOTOS) {
     }
     stage('Score: CLIP, every candidate against its own query (~15-25 min)',
         py.cmd, [...py.pre, HERE + '/04-rank.py']);
+
+    {
+        const scored = scoredCount();
+        gate({
+            name: 'words whose best candidate cleared the scoring',
+            got: clearCount(),
+            of: scored,
+            need: needFor(TARGET, scored, 0.4),
+            hard: false,
+            why: 'only these can become a picture without somebody looking at them first.',
+            fix: [
+                '  $env:MERID_CLIP_FLOOR=\'0.18\'',
+                '  python ' + HERE + '/04-rank.py            # re-scores, downloads nothing',
+                '',
+                'or fetch more to choose between, which costs another hour:',
+                '  node ' + HERE + '/03-fetch.mjs --per-entry 12'
+            ]
+        });
+    }
 
     // ---- the part with a person in it -------------------------------------
     //
@@ -476,7 +598,11 @@ const shipArgs = [HERE + '/ship.mjs'];
 if (TARGET !== null) shipArgs.push('--target', String(TARGET));
 if (DRY) shipArgs.push('--dry-run');
 const ship = run('node', shipArgs);
-if (ship.status !== 0) process.exit(ship.status || 1);
+// SHORT_EXIT is stage 06 and ship.mjs saying "built it, checked it, pushed it,
+// and it is fewer pictures than you asked for". That is a result, not a
+// failure to run, and the place to report it is the block below - which is
+// also the only place that knows what to do about it.
+if (ship.status !== 0 && ship.status !== SHORT_EXIT) process.exit(ship.status || 1);
 
 // ---------------------------------------------------------------------------
 // Did it do what it was asked?
@@ -497,6 +623,14 @@ if (TARGET !== null) {
     } else {
         say('SHORT: ' + got + ' pictures, asked for ' + TARGET + '.');
         say('');
+        if (shortfalls.length) {
+            // The gates already answered "which stage ran dry", each one at the
+            // moment it happened. Repeating them here saves scrolling back
+            // through an hour of output to find them.
+            say('The stages that came up short, in the order they ran:');
+            for (const f of shortfalls) say('  ' + f);
+            say('');
+        }
         say('Read the "[06] where the photographs went" block above - it says which');
         say('of the three it was:');
         say('');

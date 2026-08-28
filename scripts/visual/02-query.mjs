@@ -242,6 +242,40 @@ async function main() {
               '      Check the [llm] line above for which model answered.');
         process.exit(1);
     }
+
+    // The same dead end, reached from the other side, and the one that actually
+    // happened. `usable` counts the queries on disk, cache included - so on a
+    // re-run after the pool was widened, fifteen old answers keep it comfortably
+    // above zero while every one of the nine hundred new words goes unanswered.
+    // The stage then exits 0, stage 03 finds fifteen words of work, and the
+    // shortage surfaces four stages later as a picture count nobody can explain.
+    //
+    // Not answering is not an answer. Half the batch silently dropped means the
+    // day's quota, and the honest thing to do with that is stop here and say so.
+    const MOSTLY = 0.5;
+    if (todo.length >= 10 && unanswered >= todo.length * MOSTLY) {
+        console.error('\n[02] the model answered ' + (todo.length - unanswered) + ' of ' +
+            todo.length + ' entries. The rest got nothing back.');
+        console.error('      That is not "these words cannot be photographed" - that answer is a');
+        console.error('      depictable:false and is counted as refused above. This is silence.');
+        console.error('');
+        if (OFFLINE) {
+            console.error('      --offline never asks the model at all, so nothing new could be');
+            console.error('      produced. It shows what a stage would do; it is not a way to run');
+            console.error('      the pipeline. Set GEMINI_API_KEY and drop the flag.');
+        } else {
+            console.error('      The usual reason is the day\'s free-tier quota. Nothing is lost:');
+            console.error('      every answer already given is cached in');
+            console.error('      ' + OUT + ',');
+            console.error('      so running this same command tomorrow asks only about what is left');
+            console.error('      and spends no quota on what it already has.');
+        }
+        console.error('');
+        console.error('      Stopping here on purpose: stages 03-05 would run perfectly on the');
+        console.error('      ' + usable + ' queries that do exist and hand back a build nobody');
+        console.error('      could explain the size of.');
+        process.exit(1);
+    }
 }
 
 main().catch(err => {

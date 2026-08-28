@@ -86,12 +86,27 @@ const NPM = { shell: process.platform === 'win32' };
 
 /** Run a command, streaming its output. Returns false rather than throwing. */
 function run(cmd, args, opts = {}) {
+    return runStatus(cmd, args, opts) === 0;
+}
+
+/**
+ * The same, but giving back the exit status.
+ *
+ * Only stage 06 needs it, and it needs it because it has three outcomes rather
+ * than two: fine, failed, and SHORT_EXIT - built everything it could but fewer
+ * pictures than --target asked for. Collapsing the third into "failed" is what
+ * made a run that produced 112 pictures push none of them.
+ */
+function runStatus(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, {
         cwd: opts.cwd || ROOT, stdio: 'inherit', shell: !!opts.shell
     });
-    if (r.error) say('  could not run ' + cmd + ': ' + r.error.message);
-    return r.status === 0;
+    if (r.error) { say('  could not run ' + cmd + ': ' + r.error.message); return r.status || 1; }
+    return r.status === null ? 1 : r.status;
 }
+
+/** Stage 06's "built, but short of --target". Must match 06-build.mjs. */
+const SHORT_EXIT = 3;
 
 /** Run a command and capture its output (still printed). */
 function capture(cmd, args, opts = {}) {
@@ -256,7 +271,12 @@ if (DRY) args.push('--dry-run');
 // output it produced - and so "the flag was parsed but never passed on" is a
 // thing anyone can see rather than infer from a picture count.
 say('$ node ' + args.join(' ') + '\n');
-if (!run('node', args)) stop('stage 06 failed - read the message above');
+const built = runStatus('node', args);
+if (built !== 0 && built !== SHORT_EXIT) stop('stage 06 failed - read the message above');
+// Short of the target is not a reason to withhold the pictures it did make -
+// they are already written, and pushing them is what this script is for. Said
+// again at the end, where it is the last thing on screen.
+const short = built === SHORT_EXIT;
 
 const visDir = path.join(EXT, 'vis');
 const pics = fs.existsSync(visDir)
@@ -301,7 +321,7 @@ if (!b.ok) {
 }
 
 head('Commit and push');
-if (DRY) { say('dry run - nothing committed'); process.exit(0); }
+if (DRY) { say('dry run - nothing committed'); process.exit(short ? SHORT_EXIT : 0); }
 git('add', 'merid-extension-final/vis', 'merid-extension-final/visual-index.json');
 const staged = git('diff', '--cached', '--name-only');
 if (!staged) {
@@ -315,6 +335,11 @@ if (!staged) {
 }
 
 say('\n' + '='.repeat(62));
-say('Done. ' + pics + ' pictures are on GitHub.');
+say((short ? 'SHORT of ' + TARGET + ', but done: ' : 'Done. ') + pics + ' pictures are on GitHub.');
+if (short) {
+    say('Stage 06 said above which stage ran dry. Everything it could build is');
+    say('pushed; running this again after widening that stage adds to it.');
+}
 say('Load the extension from: ' + EXT);
 say('='.repeat(62));
+if (short) process.exit(SHORT_EXIT);
