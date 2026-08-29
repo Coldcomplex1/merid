@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "generated": "2026-08-27",
+  "generated": "2026-08-29",
   "credits": {
     "convene-kmqx": {
       "source": "pexels",
@@ -85,12 +85,6 @@
       "license": "CC0 1.0",
       "author": "pixellaphoto",
       "url": "https://www.flickr.com/photos/137643065@N06/23958235129"
-    },
-    "clergy-c5xk": {
-      "source": "pexels",
-      "license": "PEXELS",
-      "author": "cottonbro studio",
-      "url": "https://www.pexels.com/photo/man-in-black-suit-standing-near-white-wall-6276716/"
     }
   }
 }
