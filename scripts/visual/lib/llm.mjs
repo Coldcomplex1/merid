@@ -58,7 +58,23 @@ export class LlmUnusable extends Error {
  * GEMINI_API_KEY is the ordinary case and the documented one, so accept it and
  * normalise rather than making the caller know which name a shared module
  * happens to want.
+ *
+ * Exported because run.mjs's preflight has to answer "is there a key" with
+ * exactly this rule. It used to test GEMINI_API_KEY alone, and .env.example and
+ * api/_lib/gemini.js both name the PLURAL - so a key put under the name the
+ * repository documents made the pipeline work and the preflight refuse to
+ * start it. Two copies of one rule, disagreeing. Now there is one copy.
+ *
+ * @returns {{keys: string[], from: string|null}} `from` is the name the keys
+ *   were actually found under, which is worth printing: it is the difference
+ *   between "no key" and "a key the check was not looking at".
  */
+export function geminiKeyEnv() {
+    const from = process.env.GEMINI_API_KEYS ? 'GEMINI_API_KEYS'
+        : (process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : null);
+    return { keys: normaliseKeyEnv(), from };
+}
+
 function normaliseKeyEnv() {
     if (!process.env.GEMINI_API_KEYS && process.env.GEMINI_API_KEY) {
         process.env.GEMINI_API_KEYS = process.env.GEMINI_API_KEY;

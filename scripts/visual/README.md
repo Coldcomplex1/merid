@@ -266,6 +266,7 @@ node scripts/visual/test/fetch-limits.mjs            # what stage 03 does when a
 node scripts/visual/test/classify-threshold.mjs      # what CONCRETE_AT admits, and --reclassify
 node scripts/visual/test/query-silence.mjs           # stage 02 when the model stops answering
 node scripts/visual/test/gates.mjs                   # the counts run.mjs stops on
+node scripts/visual/test/env-file.mjs                # keys read from .env, terminal wins
 ```
 
 `try.mjs --sample 80` is not a test but belongs beside them: it runs the real

@@ -16,8 +16,68 @@ import { spawnSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 export const EXT = path.join(ROOT, 'merid-extension-final');
+
+/**
+ * Keys and settings from a `.env` at the repository root, for the runs that
+ * outlive a terminal window.
+ *
+ * A full run is about three hours, and when the day's model quota goes it has
+ * to be finished tomorrow - by which time the PowerShell window that held
+ * `$env:GEMINI_API_KEY` is closed and the key is gone. That is not a small
+ * annoyance: it is the same screen ("GEMINI_API_KEY is not set in this
+ * terminal") that stops the run before it starts, and run.mjs exists precisely
+ * to remove the class of failure where a setting is in the wrong shell.
+ *
+ * Three rules, and the second is the important one:
+ *
+ *   Here, in the module every stage imports, so `node 02-query.mjs` on its own
+ *   picks it up too - not only a run driven by run.mjs. llm.mjs imports this
+ *   file before its own body runs, and a module's imports are fully evaluated
+ *   first, so the keys are in place before anything reads them.
+ *
+ *   The environment WINS. Only names that are absent are filled in, so
+ *   `$env:MERID_CLIP_FLOOR='0.16'` for one run still overrides the file, and
+ *   nothing a person typed a second ago is silently replaced by a file they
+ *   wrote last week.
+ *
+ *   No dependency and no cleverness: blank lines and `#` comments skipped, an
+ *   `export ` prefix tolerated, one layer of matching quotes stripped. A
+ *   malformed file is not a reason to stop a three-hour run, so anything
+ *   unreadable is simply not read.
+ *
+ * `.env` is in .gitignore, which is what makes this safe to suggest: the rule
+ * that an API key is never committed still holds. MERID_ENV_FILE points
+ * somewhere else - a keyfile kept outside the repository entirely, or the
+ * fixture test/env-file.mjs reads, which must never be the reader's own.
+ */
+export const ENV_FILE = process.env.MERID_ENV_FILE
+    ? path.resolve(process.env.MERID_ENV_FILE)
+    : path.join(ROOT, '.env');
+
+function loadDotEnv() {
+    let text;
+    try { text = fs.readFileSync(ENV_FILE, 'utf8'); }
+    catch (e) { return []; }
+    const took = [];
+    for (const line of text.split(/\r?\n/)) {
+        const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+        if (!m) continue;                       // blank, comment, or not a setting
+        let value = m[2].trim();
+        const quoted = /^(["']).*\1$/.test(value);
+        value = quoted ? value.slice(1, -1) : value.replace(/\s+#.*$/, '').trim();
+        if (process.env[m[1]] !== undefined && process.env[m[1]] !== '') continue;
+        process.env[m[1]] = value;
+        took.push(m[1]);
+    }
+    return took;
+}
+
+/** Which names came from .env rather than the terminal, for run.mjs to report. */
+export const FROM_DOTENV = loadDotEnv();
+
 // Overridable so a trial run can keep its working files somewhere of its own
-// and never disturb a real run's state.
+// and never disturb a real run's state. Read AFTER .env, so a state directory
+// can be set there too.
 export const STATE = process.env.MERID_STATE
     ? path.resolve(process.env.MERID_STATE)
     : path.join(ROOT, 'scripts', 'visual', 'state');

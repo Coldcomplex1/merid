@@ -117,14 +117,46 @@ $env:PEXELS_API_KEY='key-pexels-moi-cua-ban'
 $env:OPENVERSE_TOKEN='token-openverse'        # tuỳ chọn
 ```
 
-Key chỉ sống trong phiên terminal đó. Đóng terminal là mất, phải set lại.
-**Đừng** ghi key vào file trong repo.
+Key chỉ sống trong **đúng cửa sổ terminal đó**. Đóng cửa sổ là mất.
 
-Kiểm tra đã set chưa:
+Kiểm tra đã set chưa — hỏi bằng chính Node, thứ mà pipeline đọc:
 ```bash
 node -e "console.log(process.env.GEMINI_API_KEY ? 'gemini OK' : 'gemini CHUA CO')"
 node -e "console.log(process.env.PEXELS_API_KEY ? 'pexels OK' : 'pexels CHUA CO')"
 ```
+
+#### Ba cái bẫy trên Windows
+
+| Bạn gõ | Chuyện gì xảy ra |
+|---|---|
+| `set GEMINI_API_KEY=...` | **Không làm gì cả, và không báo lỗi.** Trong PowerShell `set` là bí danh của `Set-Variable`, nên nó tạo một *biến PowerShell*, không phải biến môi trường. Đó là cú pháp `cmd.exe`. |
+| `setx GEMINI_API_KEY ...` | Chỉ có tác dụng ở cửa sổ **mở sau đó**. Cửa sổ đang gõ vẫn trống. |
+| Set ở cửa sổ này, chạy ở cửa sổ kia | Terminal tích hợp của VS Code và cửa sổ PowerShell ngoài là hai tiến trình khác nhau. |
+
+### Cách bền hơn: file `.env` ở gốc repo
+
+Lần chạy đầy đủ mất ~3 tiếng, và nếu hết quota Gemini thì mai mới xong — lúc
+đó cửa sổ terminal cũ đã đóng và key đã mất. Ghi một lần vào file `.env` ở
+**gốc repo**:
+
+```
+GEMINI_API_KEY=AQ.Ab...
+PEXELS_API_KEY=...
+OPENVERSE_TOKEN=...
+```
+
+- **Mọi stage đều đọc**, kể cả khi bạn chạy thẳng `node scripts/visual/02-query.mjs`.
+- **Biến môi trường vẫn thắng file**, nên `$env:MERID_CLIP_FLOOR='0.16'` cho
+  một lần chạy vẫn đè lên được.
+- `.env` **đã nằm trong `.gitignore`** nên không có đường nào lọt vào git —
+  nguyên tắc "không bao giờ commit API key" vẫn giữ nguyên. Mẫu đầy đủ ở cuối
+  `.env.example`.
+
+Muốn để key ngoài repo hẳn: `MERID_ENV_FILE=D:\keys\merid.env`.
+
+> **Tên số ít hay số nhiều?** Pipeline nhận **cả hai**: `GEMINI_API_KEY` (số ít,
+> tên trong tài liệu này) và `GEMINI_API_KEYS` (số nhiều, tên của web app trong
+> `.env.example`). Preflight in ra nó đã lấy key từ tên nào.
 
 ### Kiểm tra key Gemini có thật sự dùng được
 
@@ -664,6 +696,7 @@ gitignore vì tái tạo được.
 | Hiện tượng | Nguyên nhân |
 |---|---|
 | `no GEMINI_API_KEY set - offline` | Chưa `export`, hoặc đang ở terminal khác |
+| `no Gemini key: neither GEMINI_API_KEY nor GEMINI_API_KEYS is set` | Xem ba cái bẫy Windows ở phần 3: `set` không phải `$env:`, `setx` cần cửa sổ mới, hoặc set nhầm cửa sổ. Hoặc ghi vào `.env` cho xong. |
 | `the key was rejected (HTTP 400)` | Key hỏng dạng — copy thiếu, dính dấu nháy hoặc khoảng trắng |
 | `the key was rejected (HTTP 401)` | Key đúng dạng nhưng bị từ chối: đã xoá/tạo lại, hoặc project chưa bật Generative Language API |
 | `the key works but can call no text model` | Project chưa bật Generative Language API |

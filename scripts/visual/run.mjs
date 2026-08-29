@@ -32,7 +32,8 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findPython, readJson, loadEntries } from './lib/entries.mjs';
+import { findPython, readJson, loadEntries, FROM_DOTENV, ENV_FILE } from './lib/entries.mjs';
+import { geminiKeyEnv } from './lib/llm.mjs';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
     uncoveredCount, needFor } from './lib/gates.mjs';
 
@@ -260,21 +261,64 @@ const warnings = [];
 
 // The one key nothing works without. Two stages classify with it and a third
 // assigns every concept symbol; without it there is no index worth shipping.
-const gem = process.env.GEMINI_API_KEY || '';
+//
+// Asked of the same function the pipeline asks, rather than of GEMINI_API_KEY
+// alone. Both names are accepted, and .env.example documents the plural - so
+// the old check refused to start runs whose key was sitting right there under
+// the name this repository itself recommends.
+const { keys: gemKeys, from: gemFrom } = geminiKeyEnv();
+const gem = gemKeys[0] || '';
 if (!gem) {
-    problems.push([
-        'GEMINI_API_KEY is not set in this terminal',
-        process.platform === 'win32'
-            ? "$env:GEMINI_API_KEY='your-key'"
-            : "export GEMINI_API_KEY='your-key'",
-        'get one at https://aistudio.google.com/apikey'
-    ]);
+    const ps = process.platform === 'win32';
+    const fix = [
+        ps ? "$env:GEMINI_API_KEY='your-key'" : "export GEMINI_API_KEY='your-key'",
+        'in THIS window, then run this command again in the same window.',
+        ''
+    ];
+    if (ps) {
+        // Three ways to have "already set it" and still be here, all of them
+        // silent. Named, because the reader who hits this has usually done one
+        // of them and has no way to tell which.
+        fix.push('$env: only, and only that window:',
+            '  set GEMINI_API_KEY=... does NOTHING in PowerShell - `set` is an alias for',
+            '  Set-Variable there, so it makes a PowerShell variable, not an environment',
+            '  one, and says nothing. That syntax is cmd.exe.',
+            '  setx GEMINI_API_KEY ... only reaches windows opened AFTER it.',
+            '  A key set in another window - including VS Code\'s terminal vs an outside',
+            '  one - is not in this one.',
+            '');
+    }
+    // The durable answer, and the one that matters for a run that may have to
+    // be finished tomorrow when the day's quota resets.
+    fix.push('Or write it once, in a file at the repository root called .env:',
+        '  GEMINI_API_KEY=your-key',
+        '  PEXELS_API_KEY=your-key',
+        'every stage reads it, it survives closing the terminal, and .gitignore',
+        'already keeps it out of git.',
+        '');
+    if (FROM_DOTENV.length) {
+        fix.push('There IS a .env here and it set ' + FROM_DOTENV.join(', ') +
+            ' - but no Gemini key.');
+    } else if (fs.existsSync(ENV_FILE)) {
+        fix.push('There is a ' + path.basename(ENV_FILE) + ' here, but nothing in it was used -',
+            'check it for',
+            'typos in the names, and remember the terminal wins over the file.');
+    }
+    fix.push('Get a key at https://aistudio.google.com/apikey');
+    problems.push(['no Gemini key: neither GEMINI_API_KEY nor GEMINI_API_KEYS is set', ...fix]);
 } else {
+    // Where it came from, said out loud. When this line disagrees with what the
+    // reader thinks they set - the wrong name, or a .env from last week winning
+    // because this window has nothing - that is the whole diagnosis, and it
+    // costs one clause.
+    const extra = [FROM_DOTENV.includes(gemFrom) ? 'from .env' : '',
+        gemKeys.length > 1 ? gemKeys.length + ' keys' : ''].filter(Boolean);
+    const source = gemFrom + (extra.length ? ' (' + extra.join(', ') + ')' : '');
     const check = await checkGeminiKey(gem);
     if (check.ok) {
-        say('gemini key: works, ' + check.models + ' models available');
+        say('gemini key: works, ' + check.models + ' models available  [' + source + ']');
     } else if (check.unreachable) {
-        warnings.push('could not reach Google to check GEMINI_API_KEY (' + check.msg + ').\n' +
+        warnings.push('could not reach Google to check the key in ' + gemFrom + ' (' + check.msg + ').\n' +
             '      Carrying on - stage 01 will say within seconds if the key is no good.');
     } else {
         const fix = [
@@ -302,7 +346,7 @@ if (!gem) {
         fix.push('',
             'Make one at https://aistudio.google.com/apikey - a key beginning "AQ.Ab" is',
             'fine, that is the format Google issues now.');
-        problems.push(['GEMINI_API_KEY was rejected by Google', ...fix]);
+        problems.push(['the key in ' + source + ' was rejected by Google', ...fix]);
     }
 }
 
