@@ -268,6 +268,13 @@ node scripts/visual/test/query-silence.mjs           # stage 02 when the model s
 node scripts/visual/test/gates.mjs                   # the counts run.mjs stops on
 ```
 
+`try.mjs --sample 80` is not a test but belongs beside them: it runs the real
+chain on eighty random words in a state directory of its own and reports what
+fraction of eligible words ends with a picture. That fraction is what `--target`
+divides by to size its pool, and it used to be a constant 1.15 - an assumption
+that 87% of eligible words find a photograph, which is how a pool of 771 came to
+be treated as enough for 800 pictures.
+
 The answers are invented; the plumbing is not.
 
 `agreement.mjs` is the one that matters most, because it covers the only part of

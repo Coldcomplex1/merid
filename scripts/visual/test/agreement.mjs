@@ -122,6 +122,46 @@ function build(slugs, { rising }) {
     return truth;
 }
 
+/**
+ * Entries the archives found something for and stage 04 refused.
+ *
+ * The realistic shape of the thing --target has to fall back on: a candidate on
+ * disk, a score, and `anyClear: false` because it missed the floor, the margin,
+ * or both. eligible() drops these, which is right for a reviewing queue and
+ * wrong for a queue that has to reach a number - the alternative for these
+ * words is not a better photograph, it is no photograph.
+ */
+function addBelowBar(slugs) {
+    const file = f => path.join(STATE, f);
+    const ranked = JSON.parse(fs.readFileSync(file('ranked.json'), 'utf8'));
+    const queries = JSON.parse(fs.readFileSync(file('queries.json'), 'utf8'));
+    slugs.forEach((slug, k) => {
+        // Below LO, so these sort under everything the scoring accepted and the
+        // cutoff walk reaches them last - which is the order they deserve.
+        const best = +(0.08 + 0.09 * (k / Math.max(1, slugs.length - 1))).toFixed(4);
+        const candidates = [0, 1].map(n => {
+            const rel = 'candidates/below-' + slug + '-' + n + '.img';
+            try { fs.writeFileSync(file(rel), makePng(64, 40, 900 + k * 2 + n), { flag: 'wx' }); }
+            catch (e) { if (e.code !== 'EEXIST') throw e; }
+            return {
+                source: 'wikimedia', id: 'b' + k + n, title: slug + ' below ' + n,
+                author: 'A. Photographer', license: 'CC0',
+                sourceUrl: 'https://example.invalid/below/' + slug + '/' + n,
+                thumbUrl: 'https://example.invalid/tb/' + slug + '/' + n, file: rel,
+                score: +(best - n * 0.01).toFixed(4), distractor: best - 0.005,
+                margin: 0.005, clear: false
+            };
+        });
+        ranked.entries[slug] = {
+            query: slug.replace(/-[0-9a-z]{4}$/, '') + ' photograph',
+            negative: [], best, anyClear: false, candidates
+        };
+        queries.entries[slug] = { query: slug + ' photograph', kind: 'object', negative: [] };
+    });
+    fs.writeFileSync(file('ranked.json'), JSON.stringify(ranked));
+    fs.writeFileSync(file('queries.json'), JSON.stringify(queries));
+}
+
 /** Start 05, answer every card it offers, stop it. Returns the slugs it showed. */
 async function review(truth) {
     const port = await freePort();
@@ -362,7 +402,8 @@ async function main() {
     checkPairs(sameRoot);
     await checkDuplicateReport(loadEntries());
     await checkEncodeToFit();
-    const slugs = loadEntries().slice(0, N).map(e => e.slug);
+    const allSlugs = loadEntries().map(e => e.slug);
+    const slugs = allSlugs.slice(0, N);
     if (slugs.length < N) throw new Error('need ' + N + ' entries, got ' + slugs.length);
 
     // ---- a run where the score means something -----------------------------
@@ -530,6 +571,54 @@ async function main() {
     const already = build06Status(['--target', String(Math.max(1, Math.floor(basePictures / 2)))]);
     ok(already.status === 0 && /already there from \d+ reviewed entries/.test(already.out),
         'a target the reviewing alone already meets takes nothing unseen');
+
+    // ---- the queue below the scoring bar -----------------------------------
+    //
+    // 800 was asked for against a queue of 18. Every other lever - a wider pool,
+    // more candidates, a lower floor - costs another hour at the archives. This
+    // one costs nothing: the pictures are already downloaded and scored, and
+    // stage 04 declined them. Declining them is right when a person is going to
+    // look; it is not right when the alternative is no picture at all and a
+    // number was asked for.
+    console.log('\ntaking entries the scoring refused, when a target needs them');
+    addBelowBar(allSlugs.slice(N, N + 100));
+    const wideTarget = basePictures + ceiling + 40;
+    const wide = build06Status(['--target', String(wideTarget)]);
+    ok(/cleared stage 04's bar/.test(wide.out),
+        'it says how short the scored queue is before widening past it');
+    ok(/Widening to every entry with a candidate at all/.test(wide.out),
+        'and that widening is what it is doing');
+    ok(/was asked for/.test(wide.out),
+        'and why they are in: the target, not their score');
+    const madeWide = Number((wide.out.match(/\[06\] (\d+) pictures,/) || [])[1]);
+    ok(wide.status === 0, 'a target reachable only that way still exits 0',
+        'got status ' + wide.status);
+    ok(madeWide >= wideTarget, 'and it reaches the target',
+        madeWide + ' of ' + wideTarget);
+
+    // The half that keeps this honest: a target the scored queue can meet must
+    // not quietly drag in entries the scoring refused.
+    const narrow = build06Status(['--target', String(basePictures + 10)]);
+    ok(!/Widening to every entry/.test(narrow.out),
+        'a target the scored queue can meet does not reach below the bar');
+
+    // ---- the size cap, sized from the target -------------------------------
+    //
+    // Not a detail: 800 pictures at the 9KB cap is 7.2MB, the build refuses
+    // anything over 6MB, and ship.mjs will not push what the build refuses. A
+    // run can encode every picture correctly and still deliver nothing.
+    console.log('\nkeeping the artwork inside the budget by construction');
+    const BUDGET = 6.0 * 1024 * 1024;
+    const big = build06Status(['--target', '800']);
+    const capKB = Number((big.out.match(/per-picture cap ([\d.]+)KB/) || [])[1]);
+    ok(Number.isFinite(capKB) && capKB < 9,
+        'a target of 800 tightens the per-picture cap below the 9KB default',
+        capKB + 'KB');
+    ok(capKB * 1024 * 800 <= BUDGET,
+        '800 pictures at that cap cannot exceed the 6MB budget',
+        ((capKB * 1024 * 800) / 1024 / 1024).toFixed(2) + 'MB worst case');
+    ok(!/per-picture cap/.test(narrow.out),
+        'and a small target leaves the default cap alone');
 
     // ---- the sweep of vis/ -------------------------------------------------
     //

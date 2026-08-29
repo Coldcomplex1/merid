@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    needFor } from '../lib/gates.mjs';
+    uncoveredCount, needFor } from '../lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'state', 'test-gates');
@@ -105,6 +105,37 @@ write('ranked.json', {
 ok(scoredCount(DIR) === 4, 'every scored entry is counted as scored');
 ok(clearCount(DIR) === 2, 'only the ones that cleared count as clear',
     'got ' + clearCount(DIR) + ' of 4 scored');
+
+// ---- stage 02b: the count that decides whether anything ships at all --------
+//
+// Coverage is the one gate whose failure is total. Below 90% the extension's
+// own test is red, and ship.mjs will not push while it is - so a perfect
+// artwork run with a half-finished 02b puts nothing on the repository. Three
+// sources cover an entry, and this has to agree with the two that stage 06 uses
+// an hour later or the check is worthless.
+console.log('\nstage 02b: entries with something to draw');
+const CORPUS = ['a-1111', 'b-2222', 'c-3333', 'd-4444', 'e-5555', 'f-6666'];
+fs.writeFileSync(path.join(DIR, 'iconmap.json'), JSON.stringify({
+    v: 1, entries: { 'a-1111': 'growth', 'b-2222': 'doubt' }
+}));
+fs.writeFileSync(path.join(DIR, 'queries.json'), JSON.stringify({
+    v: 1,
+    entries: {
+        'c-3333': { depictable: true, query: 'x', kind: 'object' },
+        'd-4444': { depictable: true, query: 'y', kind: 'action' },
+        // Searched for, and stage 02 recorded no kind - so if this one ends
+        // without a photograph there is nothing to draw for it.
+        'e-5555': { depictable: true, query: 'z' },
+        // Refused, and 02b has not given it a concept either.
+        'f-6666': { depictable: false, query: '' }
+    }
+}));
+const cov = uncoveredCount(DIR, CORPUS);
+ok(cov.corpus === 6 && cov.covered === 4 && cov.uncovered === 2,
+    'a concept from 02b or a kind from 02 counts; neither does not',
+    cov.covered + ' of ' + cov.corpus + ' covered');
+ok(Math.ceil(cov.corpus * 0.90) === 6 && cov.covered < 6,
+    'and 4 of 6 is under the 90% the extension test enforces');
 
 // ---- what a gate demands ----------------------------------------------------
 //

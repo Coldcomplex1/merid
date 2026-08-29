@@ -464,6 +464,35 @@ Nói số ảnh bạn muốn, nó tự lo phần còn lại: tự chọn ngưỡ
 tự đặt sàn CLIP, tự tải thêm ứng viên mỗi từ, tự chọn cutoff. **Không biến môi
 trường, không thứ tự lệnh phải nhớ.**
 
+### Việc đầu tiên nó làm: **đo**, không đoán
+
+12 phút đầu chạy trọn 01→04 trên **80 từ ngẫu nhiên** trong `state/probe/`
+(state thật không bị đụng), rồi trả lời câu hỏi duy nhất quyết định mọi thứ:
+*bao nhiêu phần trăm từ đủ điều kiện thật sự có ảnh ở cuối?*
+
+```
+  eligible for a photograph     34   43% of the corpus at CONCRETE_AT=2.0
+  got at least one candidate    29   85% of those
+  one candidate cleared 04      21   62% of those
+
+  yield  0.62 measured, 0.51 at the low end of a 90% interval
+   800 pictures need a pool of about  1569
+```
+
+Con số đó chia ra kích thước pool: `pool = target ÷ yield`. Trước đây nó là
+hằng số 1,15 (ngầm giả định yield 87%) — chính vì thế pool 771 bị coi là "đủ cho
+800" và kết quả ra 15 ảnh. Lấy **cận dưới** chứ không lấy con số mặt: 21/34
+không phải "62%", nó là "từ 51% trở lên", và pool tính theo 62% là pool hụt.
+
+Bước đo cũng **chứng minh CLIP chạy được** trên máy bạn trước khi bỏ 2 tiếng —
+đúng thứ tôi nghi đã hỏng lần trước (hàng đợi chỉ 18 mục).
+
+Đo lại tốn 12 phút; đã biết rồi thì bỏ qua:
+
+```powershell
+node scripts/visual/run.mjs --target 800 --yield 0.51
+```
+
 Khác biệt quan trọng nhất so với chạy tay: sau **mỗi** chặng nó đếm xem chặng
 đó giao lại được bao nhiêu, và in ngay tại chỗ:
 
@@ -497,8 +526,24 @@ of the three it was:
 `--target` bỏ qua bước duyệt tay (nó lấp corpus bằng điểm số, không bằng hàng
 đợi). Muốn duyệt nữa thì thêm `--sample 80`, hoặc chạy riêng sau.
 
-Trần của bộ từ này là ~1.560 ảnh; xin quá số đó nó từ chối và nói trần là bao
+Trần của bộ từ này là **~1.712 ảnh** (thang ngưỡng xuống tới 1.0, pool tối đa
+1.713 từ norms cộng phần model); xin quá số đó nó từ chối và nói trần là bao
 nhiêu, chứ không im lặng hạ ngưỡng xuống đáy.
+
+### Ba đường nó tự đi để không hụt
+
+1. **Hạ cả hai nút CLIP.** `MERID_CLIP_FLOOR=0.20` **và** `MERID_CLIP_MARGIN=0`.
+   Vạch của stage 04 là hai phép thử, không phải một; hạ mỗi cái đầu thì cái thứ
+   hai vẫn âm thầm loại entry.
+2. **Lấy cả phần dưới vạch, khi cần.** Nếu hàng đợi "đạt vạch" không đủ, stage 06
+   mở sang **mọi entry có ứng viên** — ảnh đã tải, đã chấm, chỉ là stage 04 chê.
+   Trần nhận tự động chuyển từ "số từ qua vạch" thành "số từ có ứng viên". Nó in
+   rõ bao nhiêu tấm vào theo đường này, và vì sao: *vì bạn xin 800, không phải vì
+   chúng đạt.*
+3. **Trần dung lượng mỗi ảnh tính từ target.** 800 ảnh × 9KB = 7,2MB, vượt ngân
+   sách 6MB → `npm run build` từ chối → `ship.mjs` không push → **0 ảnh lên
+   repo** dù mọi thứ khác hoàn hảo. Với `--target 800` cap thành 7,1KB, và
+   800 × 7,1KB = 5,5MB, không thể vượt.
 
 ---
 

@@ -127,6 +127,38 @@ const git = (...args) => {
     return r.status === 0 ? String(r.stdout || '').trim() : null;
 };
 
+/**
+ * Push, and try again when the network is the problem.
+ *
+ * Everything this script does is in service of one thing: the artwork ending up
+ * on GitHub. The last step was the only one with no second chance - a dropped
+ * connection there left every picture built, encoded, tested and committed on
+ * one machine, which from the outside is indistinguishable from the run having
+ * failed entirely. Four tries, backing off, then the message as before.
+ *
+ * Only the transport is retried. A rejected push - the branch moved, no
+ * permission - fails the same way every time, and the fix for it is in the
+ * message rather than in another attempt.
+ */
+function push() {
+    const waits = [2000, 4000, 8000, 16000];
+    for (let i = 0; ; i++) {
+        const r = spawnSync('git', ['push', '-u', 'origin', 'HEAD'],
+            { cwd: ROOT, encoding: 'utf8' });
+        const out = (r.stdout || '') + (r.stderr || '');
+        process.stdout.write(out);
+        if (r.status === 0) return true;
+        const transport = /could not resolve|connection|timed out|timeout|network|TLS|SSL|RPC failed|early EOF|unexpected disconnect|remote end hung up/i
+            .test(out);
+        if (!transport || i >= waits.length) return false;
+        say('\npush failed on the network - trying again in ' + (waits[i] / 1000) + 's' +
+            ' (' + (waits.length - i) + ' left)');
+        // Synchronous on purpose: there is nothing else for this script to do,
+        // and a promise here would mean making main() async for one sleep.
+        spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},' + waits[i] + ')']);
+    }
+}
+
 // ---------------------------------------------------------------------------
 
 head('Where are we');
@@ -328,7 +360,7 @@ if (!staged) {
     say('nothing new to commit - the artwork on GitHub already matches this build');
 } else {
     if (!run('git', ['commit', '-m', 'Add the artwork'])) stop('the commit failed - read above');
-    if (!run('git', ['push'])) {
+    if (!push()) {
         stop('the push failed - read the message above',
             'if it says the branch moved: git pull --no-edit, then run this again');
     }

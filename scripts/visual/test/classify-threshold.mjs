@@ -219,11 +219,78 @@ function main() {
         (((huge.stdout || '') + (huge.stderr || '')).match(/Pick a target at or under \d+/) || [''])[0]);
 
 
-    // ---- a threshold that makes no sense is refused ------------------------
-    console.log('\nnonsense thresholds');
-    const bad = classify(['--reclassify'], { MERID_CONCRETE_AT: '2.0' });
-    ok(/must be a number above MERID_ABSTRACT_AT/.test(bad),
-        'a concrete floor below the abstract ceiling is refused, not silently applied');
+    // ---- a measured yield sizes the pool, a guessed one flatters it -------
+    //
+    // The fixed 1.15 margin assumes 87% of eligible words end with a picture.
+    // The real figure on the first full run was nothing like that, and the gap
+    // between the two is the whole distance between "pool of 771" and "fifteen
+    // pictures". --yield replaces the assumption with a measurement.
+    console.log('\n--yield');
+    fresh();
+    const guessed = classify(['--for-target', '800']);
+    ok(/aiming at 920/.test(guessed),
+        'without --yield the aim is the old 15% margin', 'aiming at 920');
+
+    fresh();
+    const halved = classify(['--for-target', '800', '--yield', '0.5']);
+    ok(/aiming at 1600/.test(halved),
+        'a yield of 0.5 asks for twice the target, not 15% more',
+        (halved.match(/aiming at \d+/) || [''])[0]);
+    ok(/measured yield of 0\.5/.test(halved),
+        'and says the number came from a measurement rather than a default');
+    const halvedPool = count(read(), c => c.kind === 'concrete');
+    ok(halvedPool >= 1600,
+        'and the pool it builds actually reaches that aim', String(halvedPool));
+
+    fresh();
+    const generous = classify(['--for-target', '800', '--yield', '0.95']);
+    ok(/aiming at 843/.test(generous),
+        'a high yield asks for barely more than the target',
+        (generous.match(/aiming at \d+/) || [''])[0]);
+
+    const badYield = classify(['--for-target', '800', '--yield', '1.5']);
+    ok(/--yield needs a fraction/.test(badYield),
+        'a yield outside 0-1 is refused rather than silently clamped');
+
+    // ---- the ladder reaches past 2.0 ---------------------------------------
+    //
+    // It used to stop there, which capped the pool at about 1,565 and made any
+    // target over 1,361 "impossible" - a property of the ladder reported as a
+    // property of the vocabulary.
+    console.log('\nthe bottom of the ladder');
+    fresh();
+    const deep = classify(['--for-target', '1600']);
+    ok(!/cannot reach/.test(deep),
+        'a target that needs a threshold under 2.0 is reachable now');
+    const picked = (deep.match(/picked CONCRETE_AT=([\d.]+)/) || [])[1];
+    ok(picked !== undefined && Number(picked) < 2.0,
+        'and it goes below 2.0 to get there', 'picked ' + picked);
+    ok(count(read(), c => c.kind === 'concrete') >= 1600,
+        'the pool really is that wide',
+        String(count(read(), c => c.kind === 'concrete')));
+
+    // ---- the two bars, when the lower one is the concrete one --------------
+    //
+    // This used to be refused as nonsense, and the refusal was the nonsense:
+    // --for-target walks to 1.0 with the abstract bar left at 2.6, so the
+    // configuration rejected from the environment is the one this stage runs on
+    // itself - and it is the one every doc and stop message recommends.
+    console.log('\nthe concrete bar below the abstract one');
+    fresh();
+    const inverted = classify(['--reclassify'], { MERID_CONCRETE_AT: '2.0' });
+    ok(!/must be a number/.test(inverted),
+        'a concrete bar under the abstract one runs rather than being refused');
+    ok(/settled abstract from the norms/.test(inverted),
+        'and says what the pair means instead of leaving it to be guessed');
+    const invertedPool = count(read(), c => c.kind === 'concrete');
+    ok(invertedPool >= 1315,
+        'it really does widen the pool, the same as the ladder does internally',
+        String(invertedPool));
+    ok(count(read(), c => !c.kind) === 0,
+        'and every entry still has an answer - nothing falls between the bars');
+
+    const nan = classify(['--reclassify'], { MERID_CONCRETE_AT: 'wide' });
+    ok(/must be numbers/.test(nan), 'a threshold that is not a number is still refused');
 
     report();
 }

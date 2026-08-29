@@ -33,6 +33,10 @@
 //     name how many entries should be able to have a photograph and let this
 //     stage find the threshold. Implies --reclassify.
 //
+//   node scripts/visual/01-classify.mjs --for-target 800 --yield 0.62
+//     the same, sized from a MEASURED yield rather than a guessed one.
+//     node scripts/visual/try.mjs --sample 80 measures it.
+//
 //   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
 //     widen the pool of entries eligible for a photograph. --reclassify is not
 //     optional there: without it the cached answers are kept and nothing moves.
@@ -89,10 +93,43 @@ const FOR_TARGET = (() => {
     return n;
 })();
 
+/**
+ * What fraction of an eligible entry becomes a picture, measured rather than
+ * assumed.
+ *
+ * The pool has to be bigger than the target because being ELIGIBLE for a
+ * photograph is not having one: the model still refuses some, the archives find
+ * nothing for others, and a few will not encode. TARGET_MARGIN below puts that
+ * loss at 13%, which is a guess, and an optimistic one - it is why a pool of
+ * 771 was treated as enough for 800 pictures and produced fifteen.
+ *
+ * try.mjs --sample measures the real figure on this machine in about twelve
+ * minutes. Given here, it replaces the guess: aim = target / yield.
+ */
+const YIELD = (() => {
+    const i = args.indexOf('--yield');
+    if (i < 0) return null;
+    const n = Number(args[i + 1]);
+    if (!Number.isFinite(n) || n <= 0 || n > 1) {
+        console.error('[01] --yield needs a fraction between 0 and 1, e.g. --yield 0.62');
+        console.error('      Measure it:  node scripts/visual/try.mjs --sample 80');
+        process.exit(1);
+    }
+    return n;
+})();
+
 // Tried in this order, stopping at the first that reaches the target. Coarse on
 // purpose: the difference between 2.9 and 2.8 is a handful of words, and a
 // finer sweep would suggest a precision the underlying ratings do not have.
-const TARGET_STEPS = [3.5, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0];
+//
+// The tail below 2.0 is not where anyone should want to be: at 1.0 every word
+// the norms scored is eligible, "purpose" and "method" included, and what a
+// photograph of those means is a staged scene. It is there because the ladder
+// stopping at 2.0 capped the pool at about 1,565 entries, and a target that
+// needs more than that was refused with "this vocabulary cannot carry it" when
+// the vocabulary can - the ladder could not. Stage 02 is the real gate on
+// whether a word can be photographed honestly, and it still refuses these.
+const TARGET_STEPS = [3.5, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0, 1.8, 1.5, 1.0];
 
 /**
  * How far above the target to aim.
@@ -130,11 +167,44 @@ const MODEL_SHARE = 1 / 6;
 //   MERID_CONCRETE_AT=2.8 node scripts/visual/01-classify.mjs --reclassify
 let CONCRETE_AT = Number(process.env.MERID_CONCRETE_AT || 3.5);
 const ABSTRACT_AT = Number(process.env.MERID_ABSTRACT_AT || 2.6);
-if (!Number.isFinite(CONCRETE_AT) || !Number.isFinite(ABSTRACT_AT) ||
-    ABSTRACT_AT >= CONCRETE_AT) {
-    console.error('[01] MERID_CONCRETE_AT must be a number above MERID_ABSTRACT_AT');
-    console.error('     got concrete=' + CONCRETE_AT + ' abstract=' + ABSTRACT_AT);
+if (!Number.isFinite(CONCRETE_AT) || !Number.isFinite(ABSTRACT_AT)) {
+    console.error('[01] MERID_CONCRETE_AT and MERID_ABSTRACT_AT must be numbers');
+    console.error('     got concrete=' + process.env.MERID_CONCRETE_AT +
+        ' abstract=' + process.env.MERID_ABSTRACT_AT);
     process.exit(1);
+}
+// A concrete bar under the abstract one used to be refused as nonsense. It is
+// not nonsense, and refusing it was: --for-target walks the ladder down to 1.0
+// and leaves the abstract bar at 2.6 the whole way, so the run refused from the
+// environment was the run it performs on itself. Worse, every piece of advice
+// in the docs and in run.mjs's own stop messages - MERID_CONCRETE_AT=2.4 - hit
+// it. Read the pair as two bars rather than a band and it is plain: over the
+// concrete one is concrete, and everything under it is settled as abstract by
+// the arm below. Nothing is unanswered, and nothing extra goes to the model.
+if (ABSTRACT_AT >= CONCRETE_AT) {
+    console.log('[01] concrete >= ' + CONCRETE_AT + ' sits under abstract <= ' + ABSTRACT_AT +
+        ', so every word below the concrete bar is settled abstract from the norms.');
+}
+
+/**
+ * Move the concrete bar. ABSTRACT_AT deliberately does NOT move with it.
+ *
+ * The two look like a pair bracketing a band of "worth asking the model about",
+ * and below 2.6 the pair inverts - which reads like a bug and is not. Look at
+ * what classifyLocally does with an inverted pair, say concrete 2.2 and
+ * abstract 2.6: a word scoring 2.4 is over the concrete bar, so it is concrete
+ * when the part of speech agrees and a question for the model when it does not;
+ * a word scoring 2.1 falls through to `conc <= 2.6` and is settled as abstract.
+ * Every word is still answered, and answered locally.
+ *
+ * Dragging ABSTRACT_AT down to stay under CONCRETE_AT breaks exactly that. The
+ * 2.1 above then matches neither arm, so it goes to the model - and at 2.2 that
+ * is hundreds of entries sent off to be asked a question the norms had already
+ * answered, for a pool that comes out SMALLER. Measured: 1,097 eligible became
+ * 958. This function exists to hold that comment next to the assignment.
+ */
+function setConcreteAt(v) {
+    CONCRETE_AT = v;
 }
 
 // Parts of speech no photograph can carry, whatever the norms say about the
@@ -203,6 +273,25 @@ function posAgrees(entryType, normPos) {
 }
 
 /**
+ * How big a pool a target of `n` pictures needs.
+ *
+ * With a measured yield this is division; without one it is TARGET_MARGIN's
+ * 13% guess, kept as the default so a run that does not measure behaves as it
+ * always did. Both callers go through here so they cannot disagree.
+ */
+function aimFor(n) {
+    return Math.ceil(YIELD ? n / YIELD : n * TARGET_MARGIN);
+}
+
+/** How the aim was arrived at, for the line that reports it. */
+function aimWhy() {
+    return YIELD
+        ? 'at a measured yield of ' + YIELD + ' - ' +
+          Math.round((1 - YIELD) * 100) + '% of eligible words end without a picture'
+        : 'since not every eligible word finds a usable picture';
+}
+
+/**
  * The highest threshold that still leaves `target` entries able to have a
  * photograph, or null if even the lowest one cannot get there.
  *
@@ -224,7 +313,7 @@ function thresholdFor(target, entries, norms, senses, cached) {
     const was = CONCRETE_AT;
     let picked = null;
     for (const step of TARGET_STEPS) {
-        CONCRETE_AT = step;               // classifyLocally reads it
+        setConcreteAt(step);              // classifyLocally reads both
         let local = 0;
         let fromModel = 0;
         let unasked = 0;
@@ -383,11 +472,11 @@ async function main() {
         // not having one: some of these words will turn up no candidate that
         // scores, and some of those candidates will not encode. A pool the exact
         // size of the target can only miss it.
-        const aim = Math.ceil(FOR_TARGET * TARGET_MARGIN);
+        const aim = aimFor(FOR_TARGET);
         const { picked, tried } = thresholdFor(aim, entries, norms, senses, cached);
 
         console.log('[01] --for-target ' + FOR_TARGET + ': aiming at ' + aim +
-            ' eligible, since not every eligible word finds a usable picture');
+            ' eligible, ' + aimWhy());
         console.log('[01] ' + tried.map(t => t.step.toFixed(1) + ' -> ' + t.total).join(', ') +
             (tried[0] && tried[0].exact
                 ? '   (counted, not estimated - the model has already answered)'
@@ -404,10 +493,11 @@ async function main() {
             console.error('');
             console.error('     Below that the words are ones no photograph can mean - the whole');
             console.error('     corpus is ' + entries.length + ' senses and most of them are abstract.');
-            console.error('     Pick a target at or under ' + Math.floor(best.total / TARGET_MARGIN) + '.');
+            console.error('     Pick a target at or under ' +
+                Math.floor(YIELD ? best.total * YIELD : best.total / TARGET_MARGIN) + '.');
             process.exit(1);
         }
-        CONCRETE_AT = picked;
+        setConcreteAt(picked);
         const at = tried[tried.length - 1];
         console.log('[01] picked CONCRETE_AT=' + picked.toFixed(1) + ' -> ' + at.total +
             ' eligible (' + at.local + ' by the norms, ' + cached.concrete + ' from the model)');
@@ -567,11 +657,11 @@ async function main() {
     // Widening is a table lookup over the norms - no request, no network - so
     // several attempts cost milliseconds.
     if (FOR_TARGET && !held) {
-        const aim = Math.ceil(FOR_TARGET * TARGET_MARGIN);
+        const aim = aimFor(FOR_TARGET);
         const lower = TARGET_STEPS.filter(t => t < CONCRETE_AT);
         for (const step of lower) {
             if (totals.concrete >= aim) break;
-            CONCRETE_AT = step;
+            setConcreteAt(step);
             for (const entry of entries) {
                 const c = result.entries[entry.slug];
                 // The model's answers are its own; only the local ones move.

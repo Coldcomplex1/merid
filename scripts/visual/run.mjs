@@ -19,6 +19,9 @@
 //   produce a smaller, quieter, wronger version of the same result.
 //
 //   node scripts/visual/run.mjs --target 800   end with 800 pictures, or say why not
+//   node scripts/visual/run.mjs --target 800 --yield 0.51
+//                                             skip the measuring step, using a
+//                                             figure an earlier run measured
 //   node scripts/visual/run.mjs                trial-free full run, review 50
 //   node scripts/visual/run.mjs --sample 80    look at more of them
 //   node scripts/visual/run.mjs --all          review every eligible entry
@@ -29,9 +32,9 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findPython } from './lib/entries.mjs';
+import { findPython, readJson, loadEntries } from './lib/entries.mjs';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    needFor } from './lib/gates.mjs';
+    uncoveredCount, needFor } from './lib/gates.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -69,6 +72,28 @@ if (TARGET !== null && NO_PHOTOS) {
     console.error('[run] --target asks for photographs and --no-photos refuses them. Pass one.');
     process.exit(1);
 }
+
+/**
+ * What fraction of an eligible word becomes a picture on THIS machine.
+ *
+ * Sizing the pool is a division by this number, and getting it wrong is how a
+ * pool of 771 was treated as enough for 800 pictures. Left unset with a target,
+ * the run measures it first - twelve minutes against two hours, and it also
+ * proves CLIP works here before the two hours start. Given, that step is
+ * skipped: a second run of the day already knows the answer.
+ */
+const YIELD = (() => {
+    const i = argv.indexOf('--yield');
+    if (i < 0) return null;
+    const n = Number(argv[i + 1]);
+    if (!Number.isFinite(n) || n <= 0 || n > 1) {
+        console.error('[run] --yield needs a fraction between 0 and 1, e.g. --yield 0.51');
+        console.error('      Measure it:  node scripts/visual/try.mjs --sample 80');
+        process.exit(1);
+    }
+    return n;
+})();
+const PROBE_YIELD = path.join(ROOT, 'scripts', 'visual', 'state', 'probe', 'yield.json');
 const REVIEW_ALL = argv.includes('--all');
 const SAMPLE = (() => {
     const i = argv.indexOf('--sample');
@@ -383,13 +408,70 @@ if (problems.length) {
 // The stages.
 // ---------------------------------------------------------------------------
 
+// The measuring step, which is the only reason a target can be promised at all.
+//
+// Everything after this is arithmetic: the pool is the target divided by this
+// number, and stage 01 says on the spot whether the vocabulary can carry that
+// pool. Without it the divisor is a guess of 0.87, which is where "a pool of
+// 771 is enough for 800 pictures" came from.
+let useYield = YIELD;
+if (TARGET !== null && useYield === null) {
+    stage('Measure: what fraction of eligible words ends with a picture (~12 min)',
+        'node', [HERE + '/try.mjs', '--sample', '80']);
+    const probe = readJson(PROBE_YIELD, null);
+    if (!probe || !probe.yield) {
+        stop('the measuring step did not leave a yield behind',
+            'read its output above - it says which stage produced nothing',
+            'or skip it with a figure of your own:  --yield 0.5');
+    }
+    // Zero is not a small yield, it is a broken stage - most often CLIP loading
+    // no model at all. Dividing by the 0.05 floor would send stage 01 off to
+    // build a pool of sixteen thousand and stop there, blaming the vocabulary
+    // for something that has nothing to do with it.
+    if (!probe.clear) {
+        stop('nothing in the sample of ' + probe.pool + ' eligible words ended with a picture.',
+            'this is stage 03 or stage 04, not the size of the pool. Read the [04] lines',
+            'in the output above: a model that loaded no weights scores everything at zero.',
+            '',
+            'when it is fixed, run this again - the sample is cached and costs nothing twice.');
+    }
+    useYield = probe.yield;
+    say('');
+    say('measured yield: ' + useYield + '  (' + probe.clear + ' of ' + probe.pool +
+        ' eligible words in the sample ended with a picture, read at the low end)');
+    const need = Math.ceil(TARGET / useYield);
+    say('so ' + TARGET + ' pictures need a pool of about ' + need + '.');
+
+    // A yield low enough to ask for more words than exist. Stage 01 would say
+    // "this vocabulary cannot carry that many photographs", which is true and
+    // misleading in the same breath: the vocabulary is not the thing that went
+    // wrong, the rate at which words turn into pictures is.
+    const corpus = loadEntries().length;
+    if (need > corpus) {
+        stop(TARGET + ' pictures at a yield of ' + useYield + ' would need ' + need +
+            ' eligible words,\n  and the whole corpus is ' + corpus + '.',
+            'that is a yield problem, not a pool problem. At this rate the most this',
+            'corpus can give is about ' + Math.floor(corpus * useYield) + ' pictures.',
+            '',
+            'the sample above says where it is being lost - the archives finding',
+            'nothing, or stage 04 refusing what they found. Widening either is worth',
+            'more here than any threshold:',
+            '  node ' + HERE + '/03-fetch.mjs --per-entry 12',
+            '  $env:MERID_CLIP_FLOOR=\'0.16\'',
+            '',
+            'or ask for what it can carry:  node ' + HERE + '/run.mjs --target ' +
+                Math.floor(corpus * useYield * 0.9));
+    }
+}
+
 if (TARGET === null) {
     stage('Classify: what can a photograph honestly mean? (~5 min)',
         'node', [HERE + '/01-classify.mjs']);
 } else {
     const out = captureStage(
         'Classify: widen until ' + TARGET + ' entries could carry a photograph (~2 min)',
-        'node', [HERE + '/01-classify.mjs', '--for-target', String(TARGET)]);
+        'node', [HERE + '/01-classify.mjs', '--for-target', String(TARGET),
+            '--yield', String(useYield)]);
 
     // The first place this run can still be saved cheaply. Stage 01 picks its
     // threshold from an ESTIMATE of what the model will add; if the model then
@@ -402,14 +484,22 @@ if (TARGET === null) {
         stop('stage 01 did not report how many entries it made concrete',
             'send me its output - the chain cannot check itself without that line');
     }
-    say('\npool that may carry a photograph: ' + pool + '  (target ' + TARGET + ')');
-    if (pool < TARGET) {
-        stop('the pool is ' + pool + ', short of the ' + TARGET + ' asked for.\n' +
+    const needPool = Math.ceil(TARGET / useYield);
+    say('\npool that may carry a photograph: ' + pool + '  (need ' + needPool +
+        ' for ' + TARGET + ' pictures at a yield of ' + useYield + ')');
+    if (pool < needPool) {
+        stop('the pool is ' + pool + ', short of the ' + needPool + ' this target needs.\n' +
             '  Fetching and scoring on this would take an hour and could not reach it.',
-            'lower the bar further and try again:',
-            '  MERID_CONCRETE_AT=2.4 node ' + HERE + '/01-classify.mjs --reclassify',
-            'or ask for a target this vocabulary can carry - stage 01 above prints',
-            'what each threshold gives.');
+            'stage 01 has already walked its thresholds down as far as they go - the',
+            'table above shows what each one gave - so there is no wider pool to ask',
+            'for. What is left is the target itself:',
+            '',
+            '  node ' + HERE + '/run.mjs --target ' + Math.floor(pool * useYield) +
+                ' --yield ' + useYield,
+            '',
+            'or a better yield, which is worth more than a wider pool: the sample',
+            'measured ' + useYield + ', and --per-entry 12 or a lower MERID_CLIP_FLOOR',
+            'both raise it.');
     }
 }
 
@@ -457,6 +547,35 @@ if (!NO_PHOTOS) {
 stage('Concepts: a symbol for every abstract entry (~15 min)',
     'node', [HERE + '/02b-iconmap.mjs']);
 
+// The gate on the step that can make a perfect run ship nothing.
+//
+// npm test refuses a build under 90% coverage and ship.mjs refuses to push when
+// npm test is red - so 02b stopping half way is not a worse-looking feature, it
+// is zero pictures on the repository however well stages 03 to 06 went. Every
+// entry needs a photograph, a concept from 02b, or a kind from 02; the ones
+// with none of the three are the uncovered ones, and they are countable here,
+// an hour before the push that would be refused.
+{
+    const cov = uncoveredCount();
+    gate({
+        name: 'entries with a symbol or a kind to fall back on',
+        got: cov.covered,
+        of: cov.corpus,
+        need: Math.ceil(cov.corpus * 0.90),
+        hard: true,
+        why: 'npm test refuses a build under 90%, and ship.mjs will not push a red test.',
+        fix: [
+            'stage 02b has not finished. It resumes and costs no quota for what it',
+            'already answered:',
+            '',
+            '  node ' + HERE + '/02b-iconmap.mjs',
+            '',
+            'if it stops again with most of a batch unanswered, that is the day\'s',
+            'Gemini quota, and tomorrow is the fix.'
+        ]
+    });
+}
+
 if (!NO_PHOTOS) {
     // More candidates an entry, and a lower bar for one of them to count as a
     // match. Both only under a target: they trade certainty for reach, which is
@@ -494,6 +613,17 @@ if (!NO_PHOTOS) {
         // the wrong shell is one of the ways the old sequence failed silently.
         process.env.MERID_CLIP_FLOOR = '0.20';
         say('\nMERID_CLIP_FLOOR=0.20 for this run, so more entries have a candidate that counts.');
+    }
+    if (TARGET !== null && !process.env.MERID_CLIP_MARGIN) {
+        // The bar stage 04 sets is TWO tests, and lowering only the first one
+        // leaves the second one throwing entries away in silence. The margin
+        // asks the picture to beat the distractors stage 02 named by 0.03,
+        // which is a fine thing to ask of a candidate being offered to a person
+        // and the wrong thing to ask when the queue has to fill a target: a
+        // photograph that ties with a distractor is still usually the right
+        // photograph, and the alternative for that word is no picture at all.
+        process.env.MERID_CLIP_MARGIN = '0';
+        say('MERID_CLIP_MARGIN=0 as well - the margin is the other half of that bar.');
     }
     stage('Score: CLIP, every candidate against its own query (~15-25 min)',
         py.cmd, [...py.pre, HERE + '/04-rank.py']);

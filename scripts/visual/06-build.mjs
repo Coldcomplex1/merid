@@ -48,6 +48,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
     warnUncommittedDecisions, sameRoot } from './lib/entries.mjs';
+import { wilsonLow } from './lib/gates.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -143,7 +144,7 @@ const FORMAT = (() => {
 
 const WIDTH = 320;
 const HEIGHT = 160;      // 2:1, matching .vm-visual's aspect-ratio in content.css
-const FILE_MAX = 9 * 1024;               // matches scripts/build.js
+const FILE_CAP = 9 * 1024;               // matches scripts/build.js
 
 // Quality 45 puts almost every picture well under the cap. The exceptions are
 // busy photographs - foliage, crowds, texture - and there is no single quality
@@ -153,6 +154,28 @@ const FILE_MAX = 9 * 1024;               // matches scripts/build.js
 // of them.
 const QUALITY_STEPS = [45, 38, 32, 26, 20];
 const BUDGET = 6.0 * 1024 * 1024;
+
+/**
+ * The per-file cap this run will actually use.
+ *
+ * 9KB is the cap scripts/build.js enforces, and at fifteen pictures averaging
+ * 4.6KB it never came close to mattering. At eight hundred it does: 800 files
+ * are allowed 7.7KB each before the 6MB total is spent, and a run that hits the
+ * total is a run whose `npm run build` refuses the artwork and whose ship.mjs
+ * therefore pushes nothing - every picture built, none delivered.
+ *
+ * So when a target is named, the cap is whatever keeps that many pictures
+ * inside the budget with room to spare. Encoding is per-picture and quality
+ * steps down until it fits, so a tighter cap costs a little sharpness on the
+ * few busy photographs rather than costing pictures.
+ */
+const FILE_MAX = TARGET_CAP();
+function TARGET_CAP() {
+    const i = args.indexOf('--target');
+    const n = i >= 0 ? Number(args[i + 1]) : NaN;
+    if (!Number.isInteger(n) || n < 1) return FILE_CAP;
+    return Math.max(3 * 1024, Math.min(FILE_CAP, Math.floor(BUDGET * 0.92 / n)));
+}
 
 const QUERIES = statePath('queries.json');
 const CANDIDATES = statePath('candidates.json');
@@ -218,12 +241,25 @@ const BANDS = 5;
  * Rebuilt rather than stored, because it has to match what the reviewer was
  * actually shown - same filter, same sort. The one case it does not cover is a
  * review run with --all, whose extra entries are counted separately below.
+ *
+ * @param {boolean} [opts.clear=true] require a candidate to have cleared stage
+ *   04's bar - which is what makes this the reviewer's queue.
+ *
+ * That bar is two tests, not one: a score over MERID_CLIP_FLOOR and a margin of
+ * MERID_CLIP_MARGIN over the distractors stage 02 named. An entry failing
+ * either is absent from the queue entirely, however usable its top candidate
+ * looks. Right for a list a person is going to work through - their time goes
+ * to the likeliest words first. Wrong when a count has been asked for and the
+ * queue cannot fill it, because then the alternative for those words is not a
+ * better photograph, it is none. So a target may ask for the list without the
+ * bar, and says so out loud before using it.
  */
-function eligible(ranked, entries) {
+function eligible(ranked, entries, opts = {}) {
+    const needClear = opts.clear !== false;
     const items = [];
     for (const [slug, r] of Object.entries(ranked.entries || {})) {
         if (!entries.has(slug) || !r.candidates || !r.candidates.length) continue;
-        if (!r.anyClear) continue;
+        if (needClear && !r.anyClear) continue;
         items.push({ slug, best: r.best, candidates: r.candidates });
     }
     items.sort((a, b) => a.best - b.best);
@@ -236,25 +272,6 @@ function bandsOf(items, n = BANDS) {
         out.push(items.slice(Math.floor(items.length * b / n), Math.floor(items.length * (b + 1) / n)));
     }
     return out;
-}
-
-/**
- * The low end of a one-sided 90% Wilson interval.
- *
- * Nine out of ten is not 90%. It is a sample of ten, and the honest reading of
- * it is "somewhere upwards of 72%". Printing the raw fraction is what makes a
- * fifty-word sample look like it settled something it did not, and the whole
- * point of the sample is to decide the fate of entries nobody will ever check.
- * So the report leads with this number and the cutoff is chosen on it.
- */
-function wilsonLow(hits, n) {
-    if (!n) return 0;
-    const z = 1.2816;
-    const p = hits / n;
-    const d = 1 + z * z / n;
-    const centre = p + z * z / (2 * n);
-    const spread = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
-    return Math.max(0, (centre - spread) / d);
 }
 
 // How sure the sample has to make us before an unreviewed picture ships. Seven
@@ -518,7 +535,32 @@ async function main() {
     // opened. Printed every run, with or without --accept-above: the number to
     // pass to that flag is the last line of it.
     const ranked = readJson(RANKED, { entries: {} });
-    const items = eligible(ranked, entries);
+    let items = eligible(ranked, entries);
+
+    // A target the scored queue cannot fill, before the queue is measured
+    // rather than after: analyse() prints the cutoff table, and a table drawn
+    // over the wrong set of entries would have to be drawn twice.
+    let belowBar = 0;
+    if (TARGET !== null) {
+        const want = Math.max(0, TARGET - picked.length);
+        const unseen = arr => arr.reduce((n, it) => n + (decisions[it.slug] ? 0 : 1), 0);
+        if (unseen(items) < want) {
+            const all = eligible(ranked, entries, { clear: false });
+            if (unseen(all) > unseen(items)) {
+                belowBar = all.length - items.length;
+                console.log('');
+                console.log('[06] ' + unseen(items) + ' unreviewed entries cleared stage 04\'s bar, ' +
+                    'and ' + want + ' are needed.');
+                console.log('     Widening to every entry with a candidate at all: ' + all.length +
+                    ' entries, ' + belowBar + ' of them');
+                console.log('     with nothing above that bar. They are here because ' + TARGET +
+                    ' was asked for,');
+                console.log('     not because they scored. The table below is the only thing that says');
+                console.log('     how right they are, and for these it will say very little.');
+                items = all;
+            }
+        }
+    }
     const measured = analyse(items, decisions);
 
     // A target becomes a cutoff here, once the queue has been measured. Doing it
@@ -829,7 +871,11 @@ async function main() {
         console.log('       node scripts/visual/02b-iconmap.mjs');
     }
     console.log('[06] vis/ is ' + (total / 1024 / 1024).toFixed(2) + 'MB' +
-        ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)');
+        ' (budget ' + (BUDGET / 1024 / 1024).toFixed(1) + 'MB)' +
+        (FILE_MAX < FILE_CAP
+            ? ', per-picture cap ' + (FILE_MAX / 1024).toFixed(1) + 'KB rather than ' +
+              (FILE_CAP / 1024) + 'KB, so ' + TARGET + ' of them cannot overrun it'
+            : ''));
 
     if (duplicates.length) {
         const wordOf = sl => (entries.get(sl) || {}).word || sl.replace(/-[0-9a-z]{4}$/, '');
@@ -866,7 +912,7 @@ async function main() {
     }
     if (softened.length) {
         console.log('[06] ' + softened.length + ' picture(s) needed a lower quality to fit the ' +
-            (FILE_MAX / 1024) + 'KB cap: ' +
+            (FILE_MAX / 1024).toFixed(1) + 'KB cap: ' +
             softened.slice(0, 6).map(([s, q]) => s + ' Q' + q).join(', ') +
             (softened.length > 6 ? ', ...' : ''));
     }

@@ -14,7 +14,7 @@
 // been deliberately cut short at each stage, which is the only way to know a
 // counter reads the key it thinks it reads.
 import path from 'node:path';
-import { readJson, statePath } from './entries.mjs';
+import { readJson, statePath, loadEntries } from './entries.mjs';
 
 const entriesOf = (dir, file) => readJson(path.join(dir, file), { entries: {} }).entries || {};
 
@@ -51,6 +51,37 @@ export function clearCount(dir = statePath()) {
 }
 
 /**
+ * Stage 02b: how much of the corpus has something to draw at all.
+ *
+ * Not a photograph - a photograph is the exception. Every entry ends with one
+ * of three things: a picture, a concept from 02b, or the kind of thing it is
+ * from 02 ("object", "action", "role"). An entry with none of the three gets a
+ * card with no picture panel, and merid-extension-final's own test refuses a
+ * build where more than a tenth of the corpus is in that state.
+ *
+ * Which makes this the one count that can turn a flawless artwork run into zero
+ * pictures on the repository: ship.mjs will not push while npm test is red. It
+ * is checked against the same three sources 06 uses, so the number here is the
+ * number that test will compute an hour later.
+ *
+ * Photographs are not counted: they are not built yet when this is asked, and
+ * every entry that gets one had a kind from 02 anyway, so it is covered either
+ * way. That makes this a lower bound on the coverage 06 will report.
+ */
+export function uncoveredCount(dir = statePath(), corpusSlugs = null) {
+    const slugs = corpusSlugs || loadEntries().map(e => e.slug);
+    const icons = entriesOf(dir, 'iconmap.json');
+    const queries = entriesOf(dir, 'queries.json');
+    const KINDS = new Set(['object', 'action', 'role']);
+    let covered = 0;
+    for (const slug of slugs) {
+        const q = queries[slug];
+        if (icons[slug] || (q && KINDS.has(q.kind))) covered++;
+    }
+    return { corpus: slugs.length, covered, uncovered: slugs.length - covered };
+}
+
+/**
  * How many a stage has to have handed on for the run to be worth continuing.
  *
  * Under a target the answer is exact and unforgiving: fewer words with a query
@@ -62,4 +93,29 @@ export function clearCount(dir = statePath()) {
 export function needFor(target, of, share) {
     if (target !== null && target !== undefined) return target;
     return Math.ceil(of * share);
+}
+
+/**
+ * The low end of a one-sided 90% Wilson interval.
+ *
+ * Nine out of ten is not 90%. It is a sample of ten, and the honest reading of
+ * it is "somewhere upwards of 72%". Printing the raw fraction is what makes a
+ * fifty-word sample look like it settled something it did not, and the whole
+ * point of the sample is to decide the fate of entries nobody will ever check.
+ * So the report leads with this number and the cutoff is chosen on it.
+ *
+ * Two callers now, which is why it lives here rather than inside stage 06.
+ * Stage 06 asks "how often was the top candidate right above this score"; the
+ * probe in try.mjs asks "what fraction of eligible words end with a picture".
+ * Both are a proportion measured on a sample and then made to decide the fate
+ * of a few hundred entries, and both have to be read at their low end.
+ */
+export function wilsonLow(hits, n) {
+    if (!n) return 0;
+    const z = 1.2816;
+    const p = hits / n;
+    const d = 1 + z * z / n;
+    const centre = p + z * z / (2 * n);
+    const spread = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+    return Math.max(0, (centre - spread) / d);
 }
