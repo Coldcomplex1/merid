@@ -1,90 +1,279 @@
 {
   "v": 1,
-  "generated": "2026-08-29",
+  "generated": "2026-08-31",
   "credits": {
     "convene-kmqx": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Jopwell",
       "url": "https://www.pexels.com/photo/shallow-focus-photography-of-man-facing-backward-1325762/"
     },
     "agriculture-yiok": {
       "source": "openverse",
       "license": "PDM 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
       "author": "USDAgov",
       "url": "https://www.flickr.com/photos/41284017@N08/47580194672"
     },
     "colossus-0lfs": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Tony  Wu",
       "url": "https://www.pexels.com/photo/statue-of-buddha-21777753/"
     },
     "artifact-mqcj": {
       "source": "openverse",
       "license": "PDM 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
       "author": "Charlotte Keep",
       "url": "https://www.flickr.com/photos/143062359@N04/27873392410"
     },
     "anarchist-fwli": {
       "source": "wikimedia",
       "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
       "author": "HarisX.",
       "url": "https://commons.wikimedia.org/wiki/File:Protest_march_in_Jakarta,_Indonesia_-_20070501.jpg"
     },
     "abduct-gvez": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Mikael Blomkvist",
       "url": "https://www.pexels.com/photo/men-fighting-in-warehouse-8684915/"
     },
     "aquatic-4jpg": {
       "source": "wikimedia",
       "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
       "author": "Flip Schulke",
       "url": "https://commons.wikimedia.org/wiki/File:A_FEW_OF_THE_MANY_SPECIES_OF_CORAL_AND_MARINE_LIFE_AT_JOHN_PENNEKAMP_CORAL_REEF_STATE_PARK_NEAR_KEY_LARGO._THE_FISH..._-_NARA_-_548718.tif"
     },
     "aisle-eo24": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Mehmet Turgut  Kirkgoz",
       "url": "https://www.pexels.com/photo/interior-design-of-cathedral-of-saint-claire-of-assisi-in-cuba-11772024/"
     },
     "arboreal-epwa": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Karolina",
       "url": "https://www.pexels.com/photo/lush-green-tree-branches-with-moss-in-forest-38708767/"
     },
     "confection-1fly": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Vladimir Srajber",
       "url": "https://www.pexels.com/photo/close-up-photo-of-cakes-12124906/"
     },
     "canvas-rw3e": {
       "source": "openverse",
       "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "author": "",
       "url": "https://www.rawpixel.com/image/5962168/free-public-domain-cc0-photo"
     },
     "cobbler-by8q": {
       "source": "pexels",
       "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
       "author": "Mahmut Göğüs",
       "url": "https://www.pexels.com/photo/skilled-cobbler-restoring-leather-shoes-in-workshop-34510831/"
     },
     "coronation-b8vr": {
       "source": "wikimedia",
       "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
       "author": "Mattia Preti",
       "url": "https://commons.wikimedia.org/wiki/File:Preti,_Mattia_-_Queen_Tomyris_Receiving_the_Head_of_Cyrus,_King_of_Persia_-_1670-72.jpg"
     },
     "amenity-offi": {
       "source": "openverse",
       "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "author": "pixellaphoto",
       "url": "https://www.flickr.com/photos/137643065@N06/23958235129"
+    },
+    "calibrate-b49y": {
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "Allen, Horatio",
+      "url": "https://n2t.net/ark:/65665/ng49ca746a6-7b23-704b-e053-15f76fa0b4fa"
+    },
+    "adorn-l4pe": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "Susan Sterner",
+      "url": "https://commons.wikimedia.org/wiki/File:2003_Blue_Room_Christmas_tree.jpg"
+    },
+    "salutation-ugpk": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Bia Limova",
+      "url": "https://www.pexels.com/photo/professional-handshake-in-business-meeting-33175650/"
+    },
+    "convention-9xle": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "White House Photographic Office (WHPO) - Fitz-Patrick",
+      "url": "https://commons.wikimedia.org/wiki/File:Ford_B0730_NLGRF_photo_contact_sheet_(1976-07-14)(Gerald_Ford_Library).jpg"
+    },
+    "commodious-ps72": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Mike Bird",
+      "url": "https://www.pexels.com/photo/seats-in-mercedes-s450-26691343/"
+    },
+    "accolade-hpzd": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "Internet Archive Book Images",
+      "url": "https://commons.wikimedia.org/wiki/File:Ridpath%27s_Universal_history_-_an_account_of_the_origin,_primitive_condition_and_ethnic_development_of_the_great_races_of_mankind,_and_of_the_principal_events_in_the_evolution_and_progress_of_the_(14782645272).jpg"
+    },
+    "annex-hfcy": {
+      "source": "openverse",
+      "license": "PDM 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "blizzy63",
+      "url": "https://www.flickr.com/photos/45379817@N08/18739530152"
+    },
+    "acclaim-a4er": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Matteo Petralli",
+      "url": "https://www.pexels.com/photo/group-of-men-performing-on-stage-1772873/"
+    },
+    "corrosive-i6jl": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Krakograff Textures",
+      "url": "https://www.pexels.com/photo/texture-metal-grunge-texturas-18485294/"
+    },
+    "altercation-u9o7": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Budgeron Bach",
+      "url": "https://www.pexels.com/photo/young-ethnic-couple-arguing-on-street-6532746/"
+    },
+    "behemoth-223i": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Christian Palau",
+      "url": "https://www.pexels.com/photo/majestic-aircraft-carrier-on-open-sea-38485170/"
+    },
+    "amorphous-buyo": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Dan Cristian Pădureț",
+      "url": "https://www.pexels.com/photo/photo-of-white-smoke-with-a-black-background-4041756/"
+    },
+    "chronicle-qzb0": {
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "",
+      "url": "https://www.rawpixel.com/image/3296008/free-photo-image-old-book-couch-reading"
+    },
+    "battery-ts66": {
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "",
+      "url": "https://www.rawpixel.com/image/5916147/photo-image-lights-public-domain-interior"
+    },
+    "bard-0qlu": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "Edmund Blair Leighton",
+      "url": "https://commons.wikimedia.org/wiki/File:Edmund_Blair_Leighton_-_The_End_of_the_Song_(first_version).jpg"
+    },
+    "consumption-76pf": {
+      "source": "openverse",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "Artem Beliaikin",
+      "url": "https://www.flickr.com/photos/157635012@N07/42805125694"
+    },
+    "gluttony-6ulu": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "Print made by: Robert Seymour\n\nPublished by: Thomas McLean",
+      "url": "https://commons.wikimedia.org/wiki/File:A_reform._(BM_1868,0808.12296).jpg"
+    },
+    "chaos-cp2v": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Francesco Paggiaro",
+      "url": "https://www.pexels.com/photo/file-of-junks-in-the-room-938045/"
+    },
+    "anthology-23kc": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Alexandra Krainyukhova",
+      "url": "https://www.pexels.com/photo/person-holding-a-stack-of-hardbound-books-8762862/"
+    },
+    "compound-g9pj": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Nikita Nikitin",
+      "url": "https://www.pexels.com/photo/prison-wall-with-a-lookout-tower-behind-10102329/"
+    },
+    "apprehend-g41g": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "Petty Officer 1st Class matthew leistikow",
+      "url": "https://commons.wikimedia.org/wiki/File:Suspect_apprehension_training_DVIDS235380.jpg"
+    },
+    "aerial-r1vz": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "Cristian Benavides",
+      "url": "https://www.pexels.com/photo/four-gray-planes-on-sky-2665150/"
+    },
+    "clergy-c5xk": {
+      "source": "pexels",
+      "license": "PEXELS",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "author": "cottonbro studio",
+      "url": "https://www.pexels.com/photo/man-in-black-suit-standing-near-white-wall-6276716/"
+    },
+    "fledgling-pr2b": {
+      "source": "wikimedia",
+      "license": "PUBLIC DOMAIN",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "author": "NPS Staff",
+      "url": "https://commons.wikimedia.org/wiki/File:Bird_chicks_in_a_nest_(d36f8507f3584f6ca90dae489dd2c72f).jpg"
+    },
+    "ballad-0w70": {
+      "source": "wikimedia",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "author": "Acagastya",
+      "url": "https://commons.wikimedia.org/wiki/File:Close-up_of_a_guitar.jpg"
     }
   }
 }
