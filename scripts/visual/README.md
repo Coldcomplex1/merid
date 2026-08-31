@@ -268,6 +268,7 @@ node scripts/visual/test/query-silence.mjs           # stage 02 when the model s
 node scripts/visual/test/gates.mjs                   # the counts run.mjs stops on
 node scripts/visual/test/env-file.mjs                # keys read from .env, terminal wins
 node scripts/visual/test/licence.mjs                 # which licences may be shipped
+node scripts/visual/01-classify.mjs --ceiling         # the largest pool, read-only
 ```
 
 `licence.mjs` is the one whose failure is not a bad-looking card. Stage 03

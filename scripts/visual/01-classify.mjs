@@ -33,6 +33,9 @@
 //     name how many entries should be able to have a photograph and let this
 //     stage find the threshold. Implies --reclassify.
 //
+//   node scripts/visual/01-classify.mjs --ceiling
+//     the largest pool this vocabulary can give, printed and nothing else.
+//
 //   node scripts/visual/01-classify.mjs --for-target 800 --yield 0.62
 //     the same, sized from a MEASURED yield rather than a guessed one.
 //     node scripts/visual/try.mjs --sample 80 measures it.
@@ -66,6 +69,15 @@ const LIMIT = (() => {
  * looks applied and is not.
  */
 const RECLASSIFY = args.includes('--reclassify') || args.includes('--for-target');
+
+/**
+ * Report the largest pool this vocabulary can give, and change nothing.
+ *
+ * Read-only on purpose: a caller asking "what is the most this could ever be"
+ * must not have to reclassify the corpus to find out, and must not be left with
+ * a widened pool it did not ask for.
+ */
+const CEILING = args.includes('--ceiling');
 
 /**
  * How many entries this run should leave eligible for a photograph.
@@ -459,6 +471,31 @@ async function main() {
     const result = readJson(OUT, { v: 1, entries: {} });
     result.v = 1;
     result.entries = result.entries || {};
+
+    // The largest pool this vocabulary can be made to yield, asked and answered
+    // without changing anything.
+    //
+    // It exists because the caller that needed it was guessing. run.mjs was
+    // multiplying the measured yield by the CORPUS - 3,257 senses - to say what
+    // the most this could give was, and the corpus is not the pool: at the
+    // bottom of the ladder about 1,969 entries can carry a photograph, and the
+    // rest are words no photograph means. That arithmetic promised 651 pictures
+    // where the truth was 394, twice, in a message whose whole job was to be
+    // the honest number.
+    if (CEILING) {
+        const cached = cachedFromModel(result.entries);
+        // An unreachable ask, so the walk runs out of thresholds and reports
+        // what the last one gave - which is the ceiling by definition.
+        const { tried } = thresholdFor(Infinity, entries, norms, senses, cached);
+        const best = tried[tried.length - 1];
+        console.log('[01] ceiling: ' + best.total + ' entries could carry a photograph at ' +
+            'CONCRETE_AT=' + best.step.toFixed(1) + ',');
+        console.log('     the lowest threshold this will go to (' + best.local +
+            ' from the norms, ' + cached.concrete + ' from the model' +
+            (best.exact ? '' : ', part estimated') + ').');
+        console.log('[01] ceiling=' + best.total);
+        return;                                  // writes nothing, changes nothing
+    }
 
     // What the whole corpus looked like before this run touched it, for the
     // one comparison anybody wants: did the pool get bigger, and by how much.

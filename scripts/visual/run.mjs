@@ -32,7 +32,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findPython, readJson, loadEntries, FROM_DOTENV, ENV_FILE } from './lib/entries.mjs';
+import { findPython, readJson, FROM_DOTENV, ENV_FILE } from './lib/entries.mjs';
 import { geminiKeyEnv } from './lib/llm.mjs';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
     uncoveredCount, needFor, worstStep } from './lib/gates.mjs';
@@ -549,26 +549,51 @@ if (TARGET !== null && useYield === null) {
     say('');
     say('measured yield: ' + useYield + '  (' + probe.clear + ' of ' + probe.pool +
         ' eligible words in the sample ended with a picture, read at the low end)');
-    const need = Math.ceil(TARGET / useYield);
-    say('so ' + TARGET + ' pictures need a pool of about ' + need + '.');
+}
 
-    // A yield low enough to ask for more words than exist. Stage 01 would say
-    // "this vocabulary cannot carry that many photographs", which is true and
-    // misleading in the same breath: the vocabulary is not the thing that went
-    // wrong, the rate at which words turn into pictures is.
-    const corpus = loadEntries().length;
-    if (need > corpus) {
-        // Where it is being lost, quoted rather than pointed at. The three
-        // counts are already in yield.json, and "the sample above says" meant
-        // scrolling back through twelve minutes of output to find them.
-        // Which stage lost them, judged step by step rather than end to end.
+// Is this target reachable at all, before an hour is spent finding out?
+//
+// Outside the probe block on purpose. It used to sit inside it, so passing
+// --yield by hand skipped the whole check and the run failed later, at stage
+// 01, with a message about the vocabulary rather than about the arithmetic.
+// The measurement can come from either place; the arithmetic is the same.
+if (TARGET !== null && useYield !== null) {
+    const probe = readJson(PROBE_YIELD, {}) || {};
+    const need = Math.ceil(TARGET / useYield);
+    say('');
+    say(TARGET + ' pictures at a yield of ' + useYield + ' need a pool of about ' + need + '.');
+
+    // The most this vocabulary can be made to yield - asked of stage 01, which
+    // owns the threshold ladder, rather than guessed from the corpus size.
+    //
+    // Guessing it was wrong twice, in the message whose whole job is to be the
+    // honest number: multiplying the yield by all 3,257 senses said "the most
+    // this corpus can give is 651" when the pool tops out around 1,969 and the
+    // truth was 394. The corpus is not the pool. Most of a vocabulary is words
+    // no photograph means.
+    const ceilOut = captureStage('How many entries could ever carry a photograph',
+        'node', [HERE + '/01-classify.mjs', '--ceiling']);
+    const cm = ceilOut.match(/ceiling=(\d+)/);
+    const maxPool = cm ? Number(cm[1]) : 0;
+    if (!maxPool) {
+        stop('stage 01 did not report a ceiling',
+            'send me its output - the chain cannot size a target without that line');
+    }
+    const most = Math.floor(maxPool * useYield);
+    say('the largest pool this vocabulary can give is ' + maxPool + ', so at this yield');
+    say('the most it can produce is about ' + most + ' pictures.');
+
+    if (need > maxPool) {
+        // Which step lost them, quoted rather than pointed at, and judged step
+        // by step rather than end to end. The counts are in yield.json already;
+        // "the sample above says" meant scrolling back through twelve minutes
+        // of output to find them.
         //
-        // The first version compared "has a candidate" against the whole
-        // eligible pool and blamed the archives - for words they were never
-        // asked about. Stage 03 only visits what stage 02 called depictable, so
-        // a word refused there is missing from candidates.json without any
-        // archive having failed. Each step is measured against the one before
-        // it, and the largest drop is the one named.
+        // End to end was also wrong, not just inconvenient: comparing "has a
+        // candidate" against the whole eligible pool blamed the archives for
+        // words they were never asked about. Stage 03 only visits what stage 02
+        // called depictable, so a word refused there is missing from
+        // candidates.json without any archive having failed.
         const worst = worstStep(probe);
 
         const advice = {
@@ -580,6 +605,12 @@ if (TARGET !== null && useYield === null) {
                 'The honest move is a smaller target, not a wider pool.'
             ],
             'the ARCHIVES': [
+                ...(probe.reach
+                    ? ['each archive reached: ' + ['wikimedia', 'openverse', 'pexels']
+                        .map(n => n + ' ' + (probe.reach[n] || 0)).join(', ') + '.',
+                       'an archive at zero is a missing key or a rate limit, not a shortage',
+                       'of photographs.']
+                    : []),
                 'a Pexels key, an Openverse token, and more candidates per word all',
                 'raise that; the scoring cannot help with a word that has no pictures.',
                 '  node ' + HERE + '/03-fetch.mjs --per-entry 12'
@@ -599,9 +630,9 @@ if (TARGET !== null && useYield === null) {
                ...advice[worst.name]]
             : ['the sample was too small to say which step lost them.'];
         stop(TARGET + ' pictures at a yield of ' + useYield + ' would need ' + need +
-            ' eligible words,\n  and the whole corpus is ' + corpus + '.',
-            'that is a yield problem, not a pool problem. At this rate the most this',
-            'corpus can give is about ' + Math.floor(corpus * useYield) + ' pictures.',
+            ' eligible words,\n  and this vocabulary tops out at ' + maxPool + '.',
+            'that is a yield problem, not a pool problem. At this yield the most it',
+            'can give is about ' + most + ' pictures.',
             '',
             ...lost,
             '',
@@ -609,7 +640,7 @@ if (TARGET !== null && useYield === null) {
             '  node ' + HERE + '/try.mjs --sample 80 --fresh',
             '',
             'or ask for what it can carry:  node ' + HERE + '/run.mjs --target ' +
-                Math.floor(corpus * useYield * 0.9));
+                Math.floor(most * 0.9));
     }
 }
 

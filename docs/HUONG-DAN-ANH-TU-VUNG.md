@@ -595,9 +595,19 @@ of the three it was:
 `--target` bỏ qua bước duyệt tay (nó lấp corpus bằng điểm số, không bằng hàng
 đợi). Muốn duyệt nữa thì thêm `--sample 80`, hoặc chạy riêng sau.
 
-Trần của bộ từ này là **~1.712 ảnh** (thang ngưỡng xuống tới 1.0, pool tối đa
-1.713 từ norms cộng phần model); xin quá số đó nó từ chối và nói trần là bao
-nhiêu, chứ không im lặng hạ ngưỡng xuống đáy.
+### Trần thật = **pool tối đa × yield**, không phải corpus × yield
+
+Pool tối đa của bộ từ này là ~**1.970** mục (thang xuống tới 1.0). Corpus là
+3.257 nghĩa — nhưng phần lớn là từ **không ảnh nào chụp được**, nên nhân yield
+với corpus là hứa những tấm ảnh không thể tồn tại.
+
+```powershell
+node scripts/visual/01-classify.mjs --ceiling   # in pool tối đa, không sửa gì
+```
+
+Trần ảnh = pool tối đa × yield đo được. Ví dụ yield 0,20 → **~394 ảnh**, không
+phải 651. Cổng chặn dùng đúng con số này, và chạy **cả khi bạn tự truyền
+`--yield`** chứ không chỉ khi nó tự đo.
 
 ### Ba đường nó tự đi để không hụt
 

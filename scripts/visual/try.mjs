@@ -44,7 +44,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findPython, loadEntries } from './lib/entries.mjs';
 import { wilsonLow, concreteCount, searchableCount, candidateCount,
-    clearCount } from './lib/gates.mjs';
+    clearCount, reachBySource } from './lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -261,6 +261,7 @@ function measure() {
     const searchable = searchableCount(TRIAL_STATE);
     const withCand = candidateCount(TRIAL_STATE);
     const clear = clearCount(TRIAL_STATE);
+    const reach = reachBySource(TRIAL_STATE);
 
     const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
     console.log('\n');
@@ -278,6 +279,20 @@ function measure() {
     console.log('');
     console.log('  Each percentage is of the line above it - that is the point of the');
     console.log('  table. The biggest drop is the only one worth spending an hour on.');
+
+    // Which archive, not just "the archives". The three fail for different
+    // reasons and are fixed by different things, and the count is free here.
+    const sources = ['wikimedia', 'openverse', 'pexels'];
+    console.log('');
+    console.log('  of those ' + searchable + ' the model sent out, each archive reached:');
+    console.log('    ' + sources
+        .map(n => n + ' ' + String(reach[n] || 0).padStart(3))
+        .join('  ·  '));
+    const absent = sources.filter(n => !reach[n]);
+    if (absent.length) {
+        console.log('    ' + absent.join(' and ') + ' reached nothing at all - a missing key,');
+        console.log('    a rate limit, or a licence filter with nothing left to keep.');
+    }
 
     if (!pool) {
         console.log('');
@@ -298,7 +313,7 @@ function measure() {
     // gates follow: a printed line can be reworded, a JSON key cannot.
     fs.writeFileSync(path.join(TRIAL_STATE, 'yield.json'), JSON.stringify({
         v: 1, at: SAMPLE_AT, measured: new Date().toISOString(),
-        sampled, pool, searchable, withCand, clear,
+        sampled, pool, searchable, withCand, clear, reach,
         yield: round(y), yieldWithCandidate: round(yCand)
     }, null, 2) + '\n');
     console.log('');

@@ -42,6 +42,25 @@ export function candidateCount(dir = statePath()) {
         .filter(v => v && (v.candidates || []).length).length;
 }
 
+/**
+ * Stage 03, per archive: how many entries each one reached.
+ *
+ * "The archives are the bottleneck" is a diagnosis nobody can act on. There are
+ * three of them, and which one is absent decides the fix entirely: a Pexels key
+ * that was never accepted, an Openverse token that would lift a rate limit, or
+ * Wikimedia genuinely having nothing for these words. Counted per entry rather
+ * than per candidate - ten pictures for one word is not reach.
+ */
+export function reachBySource(dir = statePath()) {
+    const out = {};
+    for (const e of Object.values(entriesOf(dir, 'candidates.json'))) {
+        for (const src of new Set((e.candidates || []).map(c => c.source))) {
+            out[src] = (out[src] || 0) + 1;
+        }
+    }
+    return out;
+}
+
 /** Stage 04: entries scored at all, and entries whose best candidate cleared. */
 export function scoredCount(dir = statePath()) {
     return Object.keys(entriesOf(dir, 'ranked.json')).length;

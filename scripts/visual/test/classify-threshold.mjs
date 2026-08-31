@@ -269,6 +269,43 @@ function main() {
         'the pool really is that wide',
         String(count(read(), c => c.kind === 'concrete')));
 
+    // ---- the ceiling, which is not the corpus ------------------------------
+    //
+    // run.mjs multiplied a measured yield by the CORPUS to say what the most
+    // this could give was, and said 651 where the truth was 394 - twice, in the
+    // one message whose job is to be the honest number. The corpus is 3,257
+    // senses; the pool tops out far below that, because most of a vocabulary is
+    // words no photograph means. So the ceiling is asked of the stage that owns
+    // the ladder.
+    console.log('\nthe ceiling');
+    fresh();
+    const before = classify();                          // a pool to compare against
+    const defaultPool = count(read(), c => c.kind === 'concrete');
+    const stamp = fs.readFileSync(OUT, 'utf8');
+
+    const ceilOut = classify(['--ceiling']);
+    const ceiling = Number((ceilOut.match(/ceiling=(\d+)/) || [])[1]);
+    ok(Number.isFinite(ceiling) && ceiling > 0,
+        'it reports a ceiling in a form a caller can read',
+        (ceilOut.match(/ceiling=\d+/) || [''])[0]);
+    ok(ceiling > defaultPool,
+        'which is bigger than the default pool - that is what makes it a ceiling',
+        ceiling + ' vs ' + defaultPool + ' at the default threshold');
+
+    // The invariant that was actually violated. Every entry in the corpus is
+    // not a candidate for a photograph, and a caller that treats it as one
+    // promises pictures that cannot exist.
+    const corpus = 3257;
+    ok(ceiling < corpus,
+        'and smaller than the corpus - most of a vocabulary is not photographable',
+        ceiling + ' of ' + corpus + ' senses');
+
+    ok(fs.readFileSync(OUT, 'utf8') === stamp,
+        'asking costs nothing: classification.json is untouched');
+    ok(!/reclassified|=> concrete/.test(ceilOut),
+        'and it does not reclassify on the way past');
+    ok(before.length > 0, 'the fixture it compared against was a real run');
+
     // ---- the two bars, when the lower one is the concrete one --------------
     //
     // This used to be refused as nonsense, and the refusal was the nonsense:

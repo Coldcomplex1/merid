@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    uncoveredCount, needFor, worstStep } from '../lib/gates.mjs';
+    uncoveredCount, needFor, worstStep, reachBySource } from '../lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'state', 'test-gates');
@@ -158,6 +158,30 @@ ok(18 < needFor(800, 943, 0.25), 'queries for 18 of 943 against --target 800 sto
 // pool is stage 02 doing its job, not stage 02 failing.
 ok(!(400 < needFor(null, 943, 0.25)),
     'queries for 400 of 943 with no target carries on rather than stopping');
+
+// ---- which archive, not just "the archives" ----------------------------------
+//
+// Three archives fail for three different reasons and are fixed by three
+// different things. "The archives are the bottleneck" is a diagnosis nobody can
+// act on; "pexels reached 0" is a missing key.
+console.log('\nwhich archive reached which words');
+fs.writeFileSync(path.join(DIR, 'candidates.json'), JSON.stringify({
+    v: 1,
+    entries: {
+        'a-1111': { candidates: [{ source: 'wikimedia' }, { source: 'wikimedia' }] },
+        'b-2222': { candidates: [{ source: 'wikimedia' }, { source: 'openverse' }] },
+        'c-3333': { candidates: [{ source: 'openverse' }] },
+        'd-4444': { candidates: [] }
+    }
+}));
+const reach = reachBySource(DIR);
+ok(reach.wikimedia === 2,
+    'an archive is counted once per entry, not once per picture',
+    'wikimedia ' + reach.wikimedia + ' (it supplied three candidates over two entries)');
+ok(reach.openverse === 2, 'and every archive that reached an entry is counted');
+ok(!reach.pexels,
+    'an archive that reached nothing is absent, which is the thing worth seeing',
+    JSON.stringify(reach));
 
 // ---- which step lost them ---------------------------------------------------
 //
