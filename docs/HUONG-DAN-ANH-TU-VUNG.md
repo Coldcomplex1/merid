@@ -533,13 +533,20 @@ trường, không thứ tự lệnh phải nhớ.**
 *bao nhiêu phần trăm từ đủ điều kiện thật sự có ảnh ở cuối?*
 
 ```
-  eligible for a photograph     34   43% of the corpus at CONCRETE_AT=2.0
-  got at least one candidate    29   85% of those
-  one candidate cleared 04      21   62% of those
+  eligible for a photograph     49   61% of the corpus at CONCRETE_AT=2.0
+  the model would photograph    11   22% of those        (stage 02)
+  got at least one candidate     9   82% of those        (stage 03)
+  one candidate cleared          7   78% of those        (stage 04)
 
-  yield  0.62 measured, 0.51 at the low end of a 90% interval
-   800 pictures need a pool of about  1569
+  yield  0.14 measured, 0.07 at the low end of a 90% interval
 ```
+
+**Mỗi phần trăm là so với dòng ngay trên nó** — đó mới là cái đáng đọc. Ví dụ
+trên: 9/49 nhìn end-to-end thì tưởng kho ảnh hỏng, nhưng kho ảnh trả về cho
+**9 trong 11** từ nó được hỏi (82%). Chỗ mất là **stage 02**: ở ngưỡng 2.0 pool
+có cả `policy`, `method` — model nói không ảnh nào chụp được nghĩa của chúng, và
+nó đúng. Hạ ngưỡng thêm chỉ thêm loại từ đó, nên **nới pool không giúp gì**;
+trần thật thấp hơn kích thước pool nhiều.
 
 Con số đó chia ra kích thước pool: `pool = target ÷ yield`. Trước đây nó là
 hằng số 1,15 (ngầm giả định yield 87%) — chính vì thế pool 771 bị coi là "đủ cho

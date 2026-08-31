@@ -96,6 +96,39 @@ export function needFor(target, of, share) {
 }
 
 /**
+ * Which step of the chain loses the most of what it was handed.
+ *
+ * Four numbers come out of a probe - eligible, depictable, fetched, scored -
+ * and the useful question is not "how many were lost" but "where". Measured
+ * step by step, each against the one before it, because an end-to-end
+ * comparison blames the wrong stage: comparing "has a candidate" against the
+ * whole eligible pool blamed the archives for words stage 02 had already
+ * refused and never sent them. Stage 03 only visits what stage 02 called
+ * depictable; a word refused there is absent from candidates.json without any
+ * archive having failed.
+ *
+ * Worst SURVIVAL RATE rather than worst absolute loss: a step that keeps 20 of
+ * 100 is the problem even when a later step drops more in raw count.
+ *
+ * `searchable` may be absent on a measurement taken before it was recorded, in
+ * which case that step is skipped rather than guessed at - and the caller says
+ * so instead of quietly reporting one of the other two.
+ *
+ * @returns {{name: string, got: number, of: number, complete: boolean}|null}
+ */
+export function worstStep({ pool, searchable, withCand, clear }) {
+    const complete = searchable !== undefined && searchable !== null;
+    const steps = [
+        complete ? { name: 'the MODEL', of: pool, got: searchable } : null,
+        { name: 'the ARCHIVES', of: complete ? searchable : pool, got: withCand },
+        { name: 'the SCORING', of: withCand, got: clear }
+    ].filter(st => st && st.of > 0 && Number.isFinite(st.got));
+    if (!steps.length) return null;
+    const worst = steps.sort((a, b) => (a.got / a.of) - (b.got / b.of))[0];
+    return { ...worst, complete };
+}
+
+/**
  * The low end of a one-sided 90% Wilson interval.
  *
  * Nine out of ten is not 90%. It is a sample of ten, and the honest reading of

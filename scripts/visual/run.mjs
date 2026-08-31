@@ -35,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { findPython, readJson, loadEntries, FROM_DOTENV, ENV_FILE } from './lib/entries.mjs';
 import { geminiKeyEnv } from './lib/llm.mjs';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    uncoveredCount, needFor } from './lib/gates.mjs';
+    uncoveredCount, needFor, worstStep } from './lib/gates.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -561,16 +561,43 @@ if (TARGET !== null && useYield === null) {
         // Where it is being lost, quoted rather than pointed at. The three
         // counts are already in yield.json, and "the sample above says" meant
         // scrolling back through twelve minutes of output to find them.
-        const lost = probe.withCand < probe.pool * 0.6
-            ? ['the ARCHIVES are the bottleneck: ' + probe.withCand + ' of ' + probe.pool +
-               ' words got any candidate at all.',
-               'a Pexels key, an Openverse token, and more candidates per word all',
-               'raise that; the scoring cannot help with a word that has no pictures.',
-               '  node ' + HERE + '/03-fetch.mjs --per-entry 12']
-            : ['the SCORING is the bottleneck: ' + probe.withCand + ' of ' + probe.pool +
-               ' words had a candidate and only ' + probe.clear + ' cleared stage 04.',
-               'the bar is a floor and a margin, and both can come down:',
-               '  $env:MERID_CLIP_FLOOR=\'0.16\'; $env:MERID_CLIP_MARGIN=\'0\''];
+        // Which stage lost them, judged step by step rather than end to end.
+        //
+        // The first version compared "has a candidate" against the whole
+        // eligible pool and blamed the archives - for words they were never
+        // asked about. Stage 03 only visits what stage 02 called depictable, so
+        // a word refused there is missing from candidates.json without any
+        // archive having failed. Each step is measured against the one before
+        // it, and the largest drop is the one named.
+        const worst = worstStep(probe);
+
+        const advice = {
+            'the MODEL': [
+                'these are words stage 02 says no photograph can honestly show, and at a',
+                'low threshold it is right: the pool has "policy" and "method" in it by',
+                'score. Widening the threshold further adds more of the same, so the',
+                'ceiling here is lower than the pool size suggests.',
+                'The honest move is a smaller target, not a wider pool.'
+            ],
+            'the ARCHIVES': [
+                'a Pexels key, an Openverse token, and more candidates per word all',
+                'raise that; the scoring cannot help with a word that has no pictures.',
+                '  node ' + HERE + '/03-fetch.mjs --per-entry 12'
+            ],
+            'the SCORING': [
+                'the bar is a floor and a margin, and both can come down:',
+                '  $env:MERID_CLIP_FLOOR=\'0.16\'; $env:MERID_CLIP_MARGIN=\'0\''
+            ]
+        };
+        const lost = worst
+            ? [worst.name + ' is where most of it goes: ' + worst.got + ' of ' + worst.of +
+               ' survived that step.',
+               ...(worst.complete
+                   ? []
+                   : ['(this measurement predates the per-stage breakdown, so stage 02 is',
+                      ' not separated out - measure again with --fresh to see it)']),
+               ...advice[worst.name]]
+            : ['the sample was too small to say which step lost them.'];
         stop(TARGET + ' pictures at a yield of ' + useYield + ' would need ' + need +
             ' eligible words,\n  and the whole corpus is ' + corpus + '.',
             'that is a yield problem, not a pool problem. At this rate the most this',

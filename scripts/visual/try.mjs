@@ -43,7 +43,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findPython, loadEntries } from './lib/entries.mjs';
-import { wilsonLow, concreteCount, candidateCount, clearCount } from './lib/gates.mjs';
+import { wilsonLow, concreteCount, searchableCount, candidateCount,
+    clearCount } from './lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -250,6 +251,14 @@ function measure() {
             path.join(TRIAL_STATE, 'classification.json'), 'utf8')).entries || {}).length;
     } catch (e) { /* reported as zero below */ }
     const pool = concreteCount(TRIAL_STATE);
+    // Between "eligible" and "has a candidate" sits stage 02, and leaving it
+    // out made the report blame the archives for words they were never asked
+    // about: stage 03 only visits entries the model called depictable, so a
+    // word refused there never reaches an archive and never appears in
+    // candidates.json. At a low threshold that refusal is the model doing its
+    // job - "policy" and "method" are in the pool by score and are not
+    // photographs - and it can easily be the biggest step of the four.
+    const searchable = searchableCount(TRIAL_STATE);
     const withCand = candidateCount(TRIAL_STATE);
     const clear = clearCount(TRIAL_STATE);
 
@@ -260,10 +269,15 @@ function measure() {
     line();
     console.log('  eligible for a photograph   ' + String(pool).padStart(4) +
         '   ' + pct(pool, sampled) + ' of the corpus at CONCRETE_AT=' + SAMPLE_AT);
+    console.log('  the model would photograph  ' + String(searchable).padStart(4) +
+        '   ' + pct(searchable, pool) + ' of those        (stage 02)');
     console.log('  got at least one candidate  ' + String(withCand).padStart(4) +
-        '   ' + pct(withCand, pool) + ' of those');
-    console.log('  one candidate cleared 04    ' + String(clear).padStart(4) +
-        '   ' + pct(clear, pool) + ' of those');
+        '   ' + pct(withCand, searchable) + ' of those        (stage 03)');
+    console.log('  one candidate cleared       ' + String(clear).padStart(4) +
+        '   ' + pct(clear, withCand) + ' of those        (stage 04)');
+    console.log('');
+    console.log('  Each percentage is of the line above it - that is the point of the');
+    console.log('  table. The biggest drop is the only one worth spending an hour on.');
 
     if (!pool) {
         console.log('');
@@ -284,7 +298,7 @@ function measure() {
     // gates follow: a printed line can be reworded, a JSON key cannot.
     fs.writeFileSync(path.join(TRIAL_STATE, 'yield.json'), JSON.stringify({
         v: 1, at: SAMPLE_AT, measured: new Date().toISOString(),
-        sampled, pool, withCand, clear,
+        sampled, pool, searchable, withCand, clear,
         yield: round(y), yieldWithCandidate: round(yCand)
     }, null, 2) + '\n');
     console.log('');

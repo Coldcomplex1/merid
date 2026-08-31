@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    uncoveredCount, needFor } from '../lib/gates.mjs';
+    uncoveredCount, needFor, worstStep } from '../lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'state', 'test-gates');
@@ -158,6 +158,53 @@ ok(18 < needFor(800, 943, 0.25), 'queries for 18 of 943 against --target 800 sto
 // pool is stage 02 doing its job, not stage 02 failing.
 ok(!(400 < needFor(null, 943, 0.25)),
     'queries for 400 of 943 with no target carries on rather than stopping');
+
+// ---- which step lost them ---------------------------------------------------
+//
+// The report that sends somebody off to spend an hour. Getting it wrong is
+// worse than saying nothing: the first version compared "has a candidate"
+// against the whole eligible pool, decided the archives were at fault, and
+// recommended fetching more candidates - for words stage 02 had refused and no
+// archive had ever been asked about.
+console.log('\nwhere a run loses its pictures');
+
+// The shape that caused it. 49 eligible, 9 with a candidate - which looks like
+// an archive failure end-to-end, and is not: stage 02 only sent 11 of them.
+const modelHeavy = worstStep({ pool: 49, searchable: 11, withCand: 9, clear: 7 });
+ok(modelHeavy.name === 'the MODEL',
+    'a model that refuses most of the pool is not an archive failure',
+    modelHeavy.name + ': ' + modelHeavy.got + ' of ' + modelHeavy.of);
+ok(modelHeavy.got === 11 && modelHeavy.of === 49,
+    'and it is reported against the step it belongs to, not against the corpus');
+
+// The same end-to-end numbers, the opposite cause: stage 02 sent nearly
+// everything and the archives came back empty.
+const archiveHeavy = worstStep({ pool: 49, searchable: 44, withCand: 9, clear: 7 });
+ok(archiveHeavy.name === 'the ARCHIVES',
+    'the same 9 of 49 IS an archive failure when the model sent them all',
+    archiveHeavy.name + ': ' + archiveHeavy.got + ' of ' + archiveHeavy.of);
+
+const scoringHeavy = worstStep({ pool: 49, searchable: 45, withCand: 42, clear: 4 });
+ok(scoringHeavy.name === 'the SCORING',
+    'and a bar nothing clears is the scoring, however well the fetch went',
+    scoringHeavy.name + ': ' + scoringHeavy.got + ' of ' + scoringHeavy.of);
+
+// Worst survival RATE, not worst headcount. Here the model drops fifty words
+// and the scoring drops forty-one, so by headcount the model looks worse - but
+// the model still passes half of what it sees while the scoring passes under a
+// tenth. The scoring is the thing to go and fix.
+const rate = worstStep({ pool: 100, searchable: 50, withCand: 45, clear: 4 });
+ok(rate.name === 'the SCORING' && rate.got === 4 && rate.of === 45,
+    'the step that keeps the smallest share wins, not the one that loses the most',
+    rate.name + ': ' + rate.got + ' of ' + rate.of + ' (the model lost 50, this lost 41)');
+
+// A measurement taken before stage 02 was recorded separately must not be
+// dressed up as one that was.
+const old = worstStep({ pool: 49, withCand: 9, clear: 7 });
+ok(old && old.complete === false,
+    'an older measurement says it cannot separate stage 02', JSON.stringify(old));
+ok(worstStep({ pool: 0, withCand: 0, clear: 0 }) === null,
+    'and nothing at all is null rather than a guess');
 
 if (!process.env.MERID_KEEP) fs.rmSync(DIR, { recursive: true, force: true });
 console.log('\n' + (failures ? failures + ' FAILED' : 'all passed'));
