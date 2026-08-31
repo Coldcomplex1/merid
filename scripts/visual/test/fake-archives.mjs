@@ -24,6 +24,9 @@ export async function startFakeArchives({
     rateLimitFirstCall = false,
     rateLimitPexels = false
 } = {}) {
+    // The key runFetch and the preflight cases pass. Anything else is refused,
+    // which is what lets a test tell a good key from a bad one.
+    const PEXELS_KEY = 'test-key';
     let pexelsCalls = 0;
     let openverseCalls = 0;
     let wikimediaCalls = 0;
@@ -80,7 +83,14 @@ export async function startFakeArchives({
 
         if (url.pathname === '/v1/search') {
             pexelsCalls++;
-            if (!req.headers.authorization) return json({ error: 'no key' }, 401);
+            // Pexels rejects a wrong key exactly as it rejects a missing one, and
+            // the difference matters to run.mjs's preflight: "no key" is a NOTE
+            // it prints without asking anybody, "wrong key" is a refusal only
+            // the archive can report. So the fixture has to be able to say the
+            // second, which means knowing which key is the right one.
+            if (req.headers.authorization !== PEXELS_KEY) {
+                return json({ error: 'invalid api key' }, 401);
+            }
             if (rateLimitPexels) return json({ error: 'slow down' }, 429);
             if (rateLimitFirstCall && pexelsCalls === 1) return json({ error: 'slow down' }, 429);
             const q = url.searchParams.get('query') || '';

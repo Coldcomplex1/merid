@@ -232,7 +232,75 @@ async function main() {
     ok(/pexels/.test(c.out) && /skipped/.test(c.out),
         'the summary says how many entries each source reached');
 
+    // ---- the key check that runs BEFORE any of this ------------------------
+    //
+    // A refused key is invisible to stage 03: getJson turns every status that
+    // is not a 429 into "this source had nothing for that word", so a key with
+    // a character missing costs one of three archives for two hours and shows
+    // up only in the summary at the very end. run.mjs asks the archive in the
+    // first ten seconds instead. Never fatally - Wikimedia needs no key, so a
+    // bad Pexels key is a smaller run, not a stopped one, and the difference
+    // between a warning and a problem is what these assertions are about.
+    console.log('\nthe preflight asks the archive whether the key works:');
+    const gate = await startFakeArchives();
+    const good = await preflight(gate.base, { PEXELS_API_KEY: 'test-key' });
+    ok(/pexels key: works/.test(good.out),
+        'a key the archive accepts is reported as working',
+        (good.out.match(/pexels key:.*/) || [''])[0]);
+
+    // The fake refuses any key but its own, exactly as Pexels refuses a key
+    // with a character missing - which is the case worth catching, because it
+    // is indistinguishable from a working one until something asks.
+    const bad = await preflight(gate.base, { PEXELS_API_KEY: 'wrong-key' });
+    gate.stop();
+    ok(/REJECTED \(HTTP 401\)/.test(bad.out),
+        'a key the archive refuses is reported as refused, with the status',
+        (bad.out.match(/REJECTED[^\n]*/) || [''])[0]);
+    ok(/NOTE: the PEXELS_API_KEY was REJECTED/.test(bad.out),
+        'and as a NOTE rather than a thing to fix - the run can still go on');
+    ok(!/thing\(s\) to fix[\s\S]*PEXELS_API_KEY was REJECTED/.test(bad.out),
+        'a refused Pexels key never lands in the list that stops the run');
+
     report();
+}
+
+/**
+ * run.mjs as far as its preflight, against the fake archives.
+ *
+ * It stops there of its own accord: no GEMINI_API_KEY is deliberately left
+ * unset, so the run refuses to start for that reason - after the archive lines
+ * have been printed, which are the ones under test. Nothing downstream runs, so
+ * this costs a second.
+ */
+function preflight(base, env = {}) {
+    const clean = { ...process.env };
+    for (const n of ['GEMINI_API_KEY', 'GEMINI_API_KEYS', 'PEXELS_API_KEY', 'OPENVERSE_TOKEN']) {
+        delete clean[n];
+    }
+    // spawn and await, for the reason runFetch gives above and this function
+    // proved again: the archives are an http server in THIS process, so
+    // spawnSync blocks the loop that has to answer the child's key check. The
+    // child waits, the server cannot reply until the child exits, and the
+    // preflight reports "could not reach Pexels" - a deadlock wearing the
+    // costume of a network problem.
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, ['scripts/visual/run.mjs'], {
+            cwd: ROOT,
+            env: {
+                ...clean,
+                MERID_STATE: STATE,
+                MERID_ENV_FILE: path.join(STATE, 'no-such-env-file'),
+                MERID_PEXELS_URL: base,
+                MERID_OPENVERSE_URL: base,
+                ...env
+            }
+        });
+        let out = '';
+        child.stdout.on('data', d => { out += d; });
+        child.stderr.on('data', d => { out += d; });
+        child.on('error', reject);
+        child.on('close', status => resolve({ status, out }));
+    });
 }
 
 function report() {

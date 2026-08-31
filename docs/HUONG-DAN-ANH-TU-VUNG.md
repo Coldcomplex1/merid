@@ -1,11 +1,15 @@
 # Merid — Hướng dẫn sinh ảnh minh hoạ từ vựng
 
-> ⚠️ **Không bao giờ commit API key vào git**, kể cả repo private. Các khóa
-> dưới đây chỉ đặt trong biến môi trường của phiên terminal đang chạy.
+> ⚠️ **Không bao giờ commit API key vào git**, kể cả repo private. Đặt key
+> trong biến môi trường của phiên terminal, hoặc trong file `.env` ở gốc repo —
+> `.env` đã nằm sẵn trong `.gitignore` nên không có đường nào lọt vào git.
 
 Pipeline này biến ba file CSV từ vựng thành ảnh minh hoạ mà extension hiển thị
-khi người đọc hover một từ. Mất khoảng 2 giờ, trong đó 1 giờ là bạn ngồi duyệt
-ảnh; phần còn lại là máy chạy.
+khi người đọc hover một từ.
+
+Thời gian phụ thuộc bạn xin bao nhiêu ảnh. Chạy mặc định (~640 từ đủ điều kiện,
+có ngồi duyệt tay): khoảng 2 giờ. Chạy `--target 800` (pool rộng gấp đôi, không
+phải duyệt): khoảng **3 giờ**, gần hết là máy tải ảnh ở bước 03.
 
 **Phải chạy ít nhất một lần.** Không có `visual-index.json` thì thẻ học không
 có ảnh nào cả — extension vẫn chạy đúng, chỉ là không có phần hình. Chạy tối
@@ -35,10 +39,11 @@ việc đang nằm trên một nhánh riêng thì `git checkout <tên-nhánh>` t
 ### Kiểm tra Node
 
 ```bash
-node -v      # phải là v22.x
+node -v      # v22 trở lên
 ```
 
-Chưa có thì cài từ nodejs.org (bản LTS 22).
+Chưa có thì cài từ nodejs.org (bản LTS). Preflight chỉ từ chối dưới v22; v24
+chạy bình thường.
 
 ### Cài dependencies
 
@@ -153,6 +158,21 @@ OPENVERSE_TOKEN=...
   `.env.example`.
 
 Muốn để key ngoài repo hẳn: `MERID_ENV_FILE=D:\keys\merid.env`.
+
+**Thêm key vào `.env` đã có** — dùng `Add-Content`, **đừng** dùng `Out-File`
+(nó ghi đè cả file, mất luôn dòng cũ):
+
+```powershell
+Add-Content -Encoding utf8 .env "PEXELS_API_KEY=key-cua-ban"
+```
+
+Key Pexels lấy ở https://www.pexels.com/api/new/ — miễn phí, đăng nhập là hiện.
+
+Preflight **gọi thử** cả ba key (Gemini, Pexels, Openverse) trong 10 giây đầu.
+Key Pexels sai thì `getJson` coi như "kho này không có ảnh cho từ đó" và im
+lặng suốt cả lần chạy — nên nó được hỏi trước. Trả lời là **cảnh báo chứ không
+chặn**: Wikimedia không cần key nào, nên key Pexels hỏng là lần chạy nhỏ hơn,
+không phải lần chạy dừng.
 
 > **Tên số ít hay số nhiều?** Pipeline nhận **cả hai**: `GEMINI_API_KEY` (số ít,
 > tên trong tài liệu này) và `GEMINI_API_KEYS` (số nhiều, tên của web app trong

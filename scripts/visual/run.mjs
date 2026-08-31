@@ -207,6 +207,48 @@ const git = (...args) => {
     return r.status === 0 ? String(r.stdout || '').trim() : null;
 };
 
+// The same endpoints stage 03 uses, overridable the same way, so the check and
+// the stage cannot end up talking about two different services - and so a test
+// can point both at a fake archive.
+const PEXELS_URL = process.env.MERID_PEXELS_URL || 'https://api.pexels.com';
+const OPENVERSE_URL = process.env.MERID_OPENVERSE_URL || 'https://api.openverse.org';
+
+/**
+ * Whether an archive key actually works, asked of the archive.
+ *
+ * "Present" is not the question. getJson in 03-fetch treats every failure that
+ * is not a 429 as "this source had nothing for that word" and moves on - which
+ * is right for a search that found nothing and wrong for a key that is
+ * refused, because the refusal then repeats silently for every entry in the
+ * run. A key with a character missing costs one of three archives for two
+ * hours, and the only sign of it is a per-source summary at the very end.
+ *
+ * One request answers it in the first ten seconds. Never fatal: Wikimedia
+ * needs no key at all, so a bad Pexels key is a smaller run, not a stopped one.
+ */
+async function checkArchiveKey(url, headers) {
+    try {
+        const resp = await fetch(url, {
+            headers: { 'User-Agent': 'merid-visual-vocab/1.0', ...headers }
+        });
+        // 429 means the key is good and the rate limit is not - stage 03 rests
+        // a source and comes back to it, so this is a working key.
+        if (resp.ok || resp.status === 429) return { ok: true };
+        // What the refusal SAYS, not just its number. A 403 from Pexels and a
+        // 403 from a corporate proxy or a sandbox that blocks the host are the
+        // same status and opposite problems, and the reader cannot tell them
+        // apart from a number - one means "fix your key", the other means "your
+        // key is fine, your network is not". The body says which; Pexels
+        // answers JSON, a proxy answers HTML or its own name.
+        const body = await resp.text().catch(() => '');
+        const said = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+        return { ok: false, status: resp.status, said };
+    } catch (e) {
+        // No network here says nothing about the key. Stage 03 will find out.
+        return { unreachable: true, msg: e.message };
+    }
+}
+
 /**
  * Whether the key can actually call the API, asked of Google rather than of its
  * first six characters.
@@ -363,7 +405,19 @@ if (NO_PHOTOS) {
         warnings.push('PEXELS_API_KEY is not set - Openverse and Wikimedia still run, ' +
             'but with a smaller pool to choose from');
     } else {
-        say('pexels key: present');
+        const r = await checkArchiveKey(
+            PEXELS_URL + '/v1/search?query=test&per_page=1',
+            { Authorization: process.env.PEXELS_API_KEY });
+        if (r.ok) say('pexels key: works');
+        else if (r.unreachable) say('pexels key: present (could not reach Pexels to check: ' + r.msg + ')');
+        else {
+            warnings.push('the PEXELS_API_KEY was REJECTED (HTTP ' + r.status + ') - Openverse and\n' +
+                '      Wikimedia still run, so this is not fatal, but one of the three archives\n' +
+                '      will be silent for the whole run.\n' +
+                (r.said ? '      Pexels said: ' + r.said + '\n' : '') +
+                '      If that reads like a proxy or a firewall rather than Pexels, the key is\n' +
+                '      fine and the network is not. Otherwise: https://www.pexels.com/api/new/');
+        }
     }
 
     if (!process.env.OPENVERSE_TOKEN) {
@@ -371,7 +425,17 @@ if (NO_PHOTOS) {
             '      lower rate. It is free and takes a minute:\n' +
             '      https://api.openverse.org/v1/auth_tokens/register/');
     } else {
-        say('openverse token: present');
+        const r = await checkArchiveKey(
+            OPENVERSE_URL + '/v1/images/?q=test&page_size=1',
+            { Authorization: 'Bearer ' + process.env.OPENVERSE_TOKEN });
+        if (r.ok) say('openverse token: works');
+        else if (r.unreachable) say('openverse token: present (could not reach Openverse to check)');
+        else {
+            warnings.push('the OPENVERSE_TOKEN was REJECTED (HTTP ' + r.status + ') - Openverse\n' +
+                '      falls back to answering anonymously, at a lower rate. Nothing stops,\n' +
+                '      but the token is doing nothing for you.' +
+                (r.said ? '\n      Openverse said: ' + r.said : ''));
+        }
     }
 
     say('wikimedia: no key needed');
