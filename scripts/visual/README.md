@@ -267,7 +267,16 @@ node scripts/visual/test/classify-threshold.mjs      # what CONCRETE_AT admits, 
 node scripts/visual/test/query-silence.mjs           # stage 02 when the model stops answering
 node scripts/visual/test/gates.mjs                   # the counts run.mjs stops on
 node scripts/visual/test/env-file.mjs                # keys read from .env, terminal wins
+node scripts/visual/test/licence.mjs                 # which licences may be shipped
 ```
+
+`licence.mjs` is the one whose failure is not a bad-looking card. Stage 03
+accepts CC0, public domain, CC BY and the Pexels Licence, and refuses `-SA`,
+`-ND` and `-NC` - every picture is cropped and re-encoded, which makes it a
+derivative work, and those three each attach an obligation this project decided
+against. The rule is `lib/licence.mjs`, it refuses anything it does not
+positively recognise, and the test runs it against both a table of the strings
+the archives really return and the artwork already in the package.
 
 `try.mjs --sample 80` is not a test but belongs beside them: it runs the real
 chain on eighty random words in a state directory of its own and reports what

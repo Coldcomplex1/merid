@@ -49,6 +49,7 @@ import { createRequire } from 'node:module';
 import { EXT, statePath, readJson, writeJson, loadEntries, Visual, progress,
     warnUncommittedDecisions, sameRoot } from './lib/entries.mjs';
 import { wilsonLow } from './lib/gates.mjs';
+import { licenceDeed } from './lib/licence.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -716,8 +717,13 @@ async function main() {
         photo.push(slug);
 
         const c = d.candidate;
+        // licenseUrl as well as the name, because CC BY obliges us to point at
+        // the licence and not merely name it. Older decisions were recorded
+        // before this field existed, so it is derived from the licence when the
+        // decision does not carry one.
         credits[slug] = {
             source: c.source, license: c.license || '',
+            licenseUrl: c.licenseUrl || licenceDeed(c.license || ''),
             author: c.author || '', url: c.sourceUrl || ''
         };
 

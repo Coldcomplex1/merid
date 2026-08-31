@@ -1002,7 +1002,7 @@
     "message": "Where the pictures come from"
   },
   "optCreditsIntro": {
-    "message": "Every picture on a learning card is part of Merid rather than fetched while you read. Each one comes from a public archive under a licence that permits redistribution."
+    "message": "Every picture on a learning card is part of Merid rather than fetched while you read. Each one comes from a public archive under a licence that permits redistribution, and each has been cropped to 320\u00d7160 and re-encoded to fit the card."
   },
   "optCreditsCount": {
     "message": "$N$ pictures",

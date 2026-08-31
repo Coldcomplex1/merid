@@ -33,6 +33,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { statePath, ensureState, writeJson, readJson, loadEntries, progress } from './lib/entries.mjs';
+import { acceptableLicence, licenceDeed } from './lib/licence.mjs';
 import crypto from 'node:crypto';
 
 const args = process.argv.slice(2);
@@ -189,7 +190,10 @@ const openverse = {
     async search(query, want) {
         const url = OPENVERSE + '/v1/images/?' + new URLSearchParams({
             q: query,
-            license: 'cc0,pdm',            // no attribution obligation at all
+            // Asked of the archive as well as checked below. 'by' is plain
+            // CC BY only - Openverse spells share-alike 'by-sa', which is a
+            // different code and is not in this list.
+            license: 'cc0,pdm,by',
             page_size: String(want),
             mature: 'false'
         });
@@ -203,9 +207,10 @@ const openverse = {
             title: r.title || '',
             author: r.creator || '',
             license: [r.license, r.license_version].filter(Boolean).join(' ').toUpperCase(),
+            licenseUrl: r.license_url || licenceDeed(r.license, r.license_version),
             sourceUrl: r.foreign_landing_url || r.url || '',
             thumbUrl: r.thumbnail || r.url || ''
-        })).filter(c => c.thumbUrl);
+        })).filter(c => c.thumbUrl && acceptableLicence(c.license));
     }
 };
 
@@ -237,16 +242,18 @@ const wikimedia = {
             if (!info) continue;
             const meta = info.extmetadata || {};
             const licence = String((meta.LicenseShortName || {}).value || '').toUpperCase();
-            // Read the file's own licence rather than trusting the search: a
-            // CC-BY-SA photograph redistributed without its attribution chain
-            // is a licence breach, not a styling detail.
-            if (!/^(CC0|PUBLIC DOMAIN|PD)/.test(licence)) continue;
+            // Read the FILE's own licence rather than trusting the search. The
+            // search index and the file disagree often enough to matter, and
+            // shipping a CC BY-SA or -ND photograph on the strength of an index
+            // entry is a licence breach, not a styling detail.
+            if (!acceptableLicence(licence)) continue;
             out.push({
                 source: 'wikimedia',
                 id: String(page.pageid),
                 title: (page.title || '').replace(/^File:/, ''),
                 author: stripTags(String((meta.Artist || {}).value || '')),
                 license: licence,
+                licenseUrl: String((meta.LicenseUrl || {}).value || '') || licenceDeed(licence),
                 sourceUrl: info.descriptionurl || '',
                 thumbUrl: info.thumburl || info.url || ''
             });
@@ -274,9 +281,10 @@ const pexels = {
             title: p.alt || '',
             author: p.photographer || '',
             license: 'PEXELS',
+            licenseUrl: 'https://www.pexels.com/license/',
             sourceUrl: p.url || '',
             thumbUrl: (p.src || {}).large || (p.src || {}).medium || ''
-        })).filter(c => c.thumbUrl);
+        })).filter(c => c.thumbUrl && acceptableLicence(c.license));
     }
 };
 

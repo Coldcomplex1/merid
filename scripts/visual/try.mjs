@@ -37,6 +37,7 @@
 //   node scripts/visual/try.mjs anchor monk aisle  words you choose
 //   node scripts/visual/try.mjs --review           open the review UI afterwards
 //   node scripts/visual/try.mjs --sample 80        measure the yield, for --target
+//   node scripts/visual/try.mjs --sample 80 --fresh   ...ignoring an earlier measurement
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -50,6 +51,13 @@ const ROOT = path.resolve(HERE, '..', '..');
 const args = process.argv.slice(2);
 const REVIEW = args.includes('--review');
 const words = args.filter(a => !a.startsWith('--'));
+
+// Measure now, not last week. state/probe/ survives between runs, and every
+// stage resumes from it - which is right for a stage and wrong for a
+// measurement: change the licence filter or the CLIP floor, run the probe
+// again, and it hands back the number it found before the change. That trap
+// has cost this project a day more than once.
+const FRESH = args.includes('--fresh');
 
 const SAMPLE = (() => {
     const i = args.indexOf('--sample');
@@ -144,6 +152,7 @@ function run(cmd, argv, extraEnv) {
 function line(n = 74) { console.log('-'.repeat(n)); }
 
 async function main() {
+    if (FRESH) fs.rmSync(TRIAL_STATE, { recursive: true, force: true });
     fs.mkdirSync(TRIAL_STATE, { recursive: true });
 
     // The concreteness norms are 1.6MB and stage 01 fetches them on first use.
@@ -175,7 +184,13 @@ async function main() {
     const stages = [
         ['node', ['scripts/visual/01-classify.mjs']],
         ['node', ['scripts/visual/02-query.mjs']],
-        ['node', ['scripts/visual/03-fetch.mjs']],
+        // --per-entry 10 under --sample, because that is what a --target run
+        // uses (run.mjs passes it) and a probe that fetches fewer candidates
+        // measures a worse run than the one it is sizing. Same mistake as
+        // measuring at a different CLIP floor, which this file already avoids.
+        ['node', SAMPLE
+            ? ['scripts/visual/03-fetch.mjs', '--per-entry', '10']
+            : ['scripts/visual/03-fetch.mjs']],
         [PY.cmd, [...PY.pre, 'scripts/visual/04-rank.py']]
     ];
     // A sample measures the yield of a WIDE pool under the settings a target run

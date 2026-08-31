@@ -1002,7 +1002,7 @@
     "message": "Ảnh lấy từ đâu"
   },
   "optCreditsIntro": {
-    "message": "Mọi ảnh trên thẻ từ vựng đều nằm sẵn trong Merid, không tải về lúc bạn đọc. Tất cả đến từ kho ảnh công khai, với giấy phép cho phép phân phối lại."
+    "message": "Mọi ảnh trên thẻ từ vựng đều nằm sẵn trong Merid, không tải về lúc bạn đọc. Tất cả đến từ kho ảnh công khai, với giấy phép cho phép phân phối lại, và đều đã được cắt về 320\u00d7160 rồi mã hoá lại cho vừa thẻ."
   },
   "optCreditsCount": {
     "message": "$N$ ảnh",

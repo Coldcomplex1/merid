@@ -43,14 +43,24 @@ export async function startFakeArchives({
             const q = url.searchParams.get('q') || '';
             const n = Number(url.searchParams.get('page_size') || 6);
             // The stage must be asking for redistributable work only.
-            if (url.searchParams.get('license') !== 'cc0,pdm') return json({ results: [] });
+            if (url.searchParams.get('license') !== 'cc0,pdm,by') return json({ results: [] });
+            // One of these is share-alike, which the archive was NOT asked for.
+            // It is here because an archive answering with something outside
+            // the filter is exactly what the stage's own re-check is for: the
+            // question is what the file is licensed as, not what a search
+            // engine believed.
+            const licences = [
+                { license: 'cc0', license_version: '1.0' },
+                { license: 'by', license_version: '4.0' },
+                { license: 'by-sa', license_version: '4.0' }
+            ];
             return json({
-                results: Array.from({ length: Math.min(n, 3) }, (_, i) => ({
+                results: Array.from({ length: Math.min(n, licences.length) }, (_, i) => ({
                     id: 'ov-' + q.replace(/\W+/g, '') + '-' + i,
                     title: q + ' ' + i,
                     creator: 'Openverse Contributor ' + i,
-                    license: i % 2 ? 'cc0' : 'pdm',
-                    license_version: '1.0',
+                    ...licences[i],
+                    license_url: 'https://example.invalid/deed/' + licences[i].license,
                     foreign_landing_url: 'https://example.invalid/ov/' + i,
                     thumbnail: 'http://127.0.0.1:' + server.address().port + '/img/ov' + i + '.png'
                 }))
@@ -61,8 +71,14 @@ export async function startFakeArchives({
             wikimediaCalls++;
             const search = url.searchParams.get('gsrsearch') || '';
             const port = server.address().port;
-            // Two keepable, two that must be filtered out.
-            const licences = ['CC0', 'CC BY-SA 4.0', 'Public domain', 'CC BY 3.0'];
+            // Three keepable, three that must be filtered out. Every refusal
+            // here is a different obligation the project declined: share-alike
+            // on a crop, no-derivatives against a crop, non-commercial next to
+            // a commercial store.
+            const licences = [
+                'CC0', 'CC BY-SA 4.0', 'Public domain',
+                'CC BY 3.0', 'CC BY-ND 4.0', 'CC BY-NC 2.0'
+            ];
             const pages = {};
             licences.forEach((lic, i) => {
                 pages['p' + i] = {
@@ -73,6 +89,7 @@ export async function startFakeArchives({
                         thumburl: 'http://127.0.0.1:' + port + '/img/wm' + i + '.png',
                         extmetadata: {
                             LicenseShortName: { value: lic },
+                            LicenseUrl: { value: 'https://example.invalid/wm-deed/' + i },
                             Artist: { value: '<a href="#">Wiki Author ' + i + '</a>' }
                         }
                     }]

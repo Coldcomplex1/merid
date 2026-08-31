@@ -525,7 +525,9 @@ if (problems.length) {
 let useYield = YIELD;
 if (TARGET !== null && useYield === null) {
     stage('Measure: what fraction of eligible words ends with a picture (~12 min)',
-        'node', [HERE + '/try.mjs', '--sample', '80']);
+        // --fresh: an automatic measurement has to measure this run's settings,
+        // not whatever was cached from a run before the last change.
+        'node', [HERE + '/try.mjs', '--sample', '80', '--fresh']);
     const probe = readJson(PROBE_YIELD, null);
     if (!probe || !probe.yield) {
         stop('the measuring step did not leave a yield behind',
@@ -556,16 +558,28 @@ if (TARGET !== null && useYield === null) {
     // wrong, the rate at which words turn into pictures is.
     const corpus = loadEntries().length;
     if (need > corpus) {
+        // Where it is being lost, quoted rather than pointed at. The three
+        // counts are already in yield.json, and "the sample above says" meant
+        // scrolling back through twelve minutes of output to find them.
+        const lost = probe.withCand < probe.pool * 0.6
+            ? ['the ARCHIVES are the bottleneck: ' + probe.withCand + ' of ' + probe.pool +
+               ' words got any candidate at all.',
+               'a Pexels key, an Openverse token, and more candidates per word all',
+               'raise that; the scoring cannot help with a word that has no pictures.',
+               '  node ' + HERE + '/03-fetch.mjs --per-entry 12']
+            : ['the SCORING is the bottleneck: ' + probe.withCand + ' of ' + probe.pool +
+               ' words had a candidate and only ' + probe.clear + ' cleared stage 04.',
+               'the bar is a floor and a margin, and both can come down:',
+               '  $env:MERID_CLIP_FLOOR=\'0.16\'; $env:MERID_CLIP_MARGIN=\'0\''];
         stop(TARGET + ' pictures at a yield of ' + useYield + ' would need ' + need +
             ' eligible words,\n  and the whole corpus is ' + corpus + '.',
             'that is a yield problem, not a pool problem. At this rate the most this',
             'corpus can give is about ' + Math.floor(corpus * useYield) + ' pictures.',
             '',
-            'the sample above says where it is being lost - the archives finding',
-            'nothing, or stage 04 refusing what they found. Widening either is worth',
-            'more here than any threshold:',
-            '  node ' + HERE + '/03-fetch.mjs --per-entry 12',
-            '  $env:MERID_CLIP_FLOOR=\'0.16\'',
+            ...lost,
+            '',
+            'then measure again - the old measurement is cached and would be reused:',
+            '  node ' + HERE + '/try.mjs --sample 80 --fresh',
             '',
             'or ask for what it can carry:  node ' + HERE + '/run.mjs --target ' +
                 Math.floor(corpus * useYield * 0.9));

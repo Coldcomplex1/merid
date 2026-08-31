@@ -92,6 +92,16 @@ Pipeline lấy ảnh từ **ba kho**, và chỉ một trong ba bắt buộc ph�
 | **Openverse** | `OPENVERSE_TOKEN` — **tuỳ chọn**, miễn phí | vẫn chạy ẩn danh, hạn mức thấp hơn |
 | **Pexels** | `PEXELS_API_KEY` | tắt hẳn kho đó, hai kho kia vẫn chạy |
 
+> **Pexels một mình không tới 800 được.** Hạn mức thật là 200 request/**giờ**,
+> nên trong một lần chạy dài Pexels chỉ với tới ~400 từ. Phần còn lại phải do
+> Wikimedia và Openverse gánh — và đó là lý do bộ lọc giấy phép nhận thêm
+> **CC BY** (ngoài CC0 / public domain / Pexels Licence). `-SA`, `-ND`, `-NC`
+> vẫn bị từ chối: ảnh nào cũng bị cắt và mã hoá lại, tức là tác phẩm phái sinh,
+> nên ba giấy phép đó kèm nghĩa vụ mà dự án đã chọn không nhận. Luật nằm ở
+> `scripts/visual/lib/licence.mjs`; đổi lại, trang Settings phải hiện tác giả,
+> giấy phép **có link**, link bản gốc, và câu "đã cắt và mã hoá lại" — CC BY
+> đòi đủ bốn thứ đó.
+
 Còn `GEMINI_API_KEY` là cho bước 01/02/02b (phân loại, câu tìm kiếm, ký hiệu) —
 **không có nó thì không chạy được gì cả**.
 

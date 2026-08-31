@@ -232,6 +232,43 @@ async function main() {
     ok(/pexels/.test(c.out) && /skipped/.test(c.out),
         'the summary says how many entries each source reached');
 
+    // ---- what actually gets shipped, licence by licence --------------------
+    //
+    // The only assertion in this repository whose failure is a licence breach
+    // rather than a bad-looking card. The archives answer with a mix, some of
+    // it under terms this project has declined - share-alike on a crop,
+    // no-derivatives against a crop, non-commercial next to a commercial
+    // store - and none of that may reach candidates.json.
+    console.log('\nonly licences a cropped copy may ship under:');
+    writeQueries();
+    const licensed = await startFakeArchives();
+    const lic = await runFetch(licensed.base, FAST);
+    licensed.stop();
+    ok(lic.status === 0 && !lic.killed, 'stage 03 finished', 'exit ' + lic.status);
+
+    const kept = Object.values(readCandidates())
+        .flatMap(e => e.candidates || [])
+        .map(c => String(c.license || '').toUpperCase());
+    const refused = kept.filter(l => /-SA|-ND|-NC/.test(l));
+    ok(kept.length > 0, 'there are candidates to judge at all', kept.length + ' kept');
+    ok(refused.length === 0,
+        'nothing share-alike, no-derivatives or non-commercial is kept',
+        refused.length ? refused.slice(0, 4).join(', ') : 'none');
+    ok(kept.some(l => /^CC BY 3\.0$/.test(l)),
+        'and CC BY is kept - the whole point of widening the filter',
+        [...new Set(kept)].sort().join(', '));
+    ok(kept.some(l => /^(CC0|PUBLIC DOMAIN)/.test(l)),
+        'alongside the CC0 and public-domain ones that were always kept');
+
+    // CC BY obliges us to point AT the licence, not just name it, so the URL
+    // has to survive the trip from the archive into the candidate.
+    const withUrl = Object.values(readCandidates())
+        .flatMap(e => e.candidates || [])
+        .filter(c => c.licenseUrl);
+    ok(withUrl.length === kept.length,
+        'every kept candidate carries a link to its licence terms',
+        withUrl.length + ' of ' + kept.length);
+
     // ---- the key check that runs BEFORE any of this ------------------------
     //
     // A refused key is invisible to stage 03: getJson turns every status that
@@ -301,6 +338,13 @@ function preflight(base, env = {}) {
         child.on('error', reject);
         child.on('close', status => resolve({ status, out }));
     });
+}
+
+/** What stage 03 wrote, for the assertions that care about its contents. */
+function readCandidates() {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(STATE, 'candidates.json'), 'utf8')).entries || {};
+    } catch (e) { return {}; }
 }
 
 function report() {

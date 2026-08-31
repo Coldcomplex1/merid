@@ -1338,9 +1338,18 @@ async function renderCredits() {
                     ? '<a href="' + escHtml(c.url) + '" target="_blank" rel="noopener noreferrer">' +
                       source + ' \u2197</a>'
                     : source;
+                // The licence is a link when we know where its terms are. CC BY
+                // asks us to name the licence AND point at it, and a reader who
+                // wants to know what they may do with a picture should not have
+                // to search for the text themselves.
+                const lic = escHtml(c.license || '');
+                const licence = c.licenseUrl && lic
+                    ? '<a href="' + escHtml(c.licenseUrl) + '" target="_blank" rel="noopener noreferrer">' +
+                      lic + '</a>'
+                    : lic;
                 return '<tr><td>' + escHtml(wordFromSlug(slug)) + '</td><td>' +
                     escHtml(who) + '</td><td>' + where + '</td><td>' +
-                    escHtml(c.license || '') + '</td></tr>';
+                    licence + '</td></tr>';
             }).join('') + '</tbody></table>';
             built = true;
         }

@@ -525,10 +525,12 @@ test('a picture beside the card is only chosen when it fits', () => {
 // ---------------------------------------------------------------------------
 // The credits card.
 //
-// THIRD-PARTY.md promises that "the Settings page shows it". None of the three
-// archives obliges us to credit anybody - CC0, Public Domain and the Pexels
-// Licence all waive attribution - which is exactly why this is easy to let rot:
-// nothing breaks and nobody complains. So the promise is checked here.
+// This used to be a courtesy. It is not any more: the pipeline accepts CC BY,
+// and CC BY asks for four things - the author's name, the licence and a link to
+// it, a link to the original, and a statement that the work was changed. Every
+// picture here is cropped to 320x160 and re-encoded, so that last one always
+// applies. THIRD-PARTY.md promises all four ship on this page; a promise about
+// a licence is not one to leave to whoever last looked at the page.
 // ---------------------------------------------------------------------------
 test('Settings can show where every shipped picture came from', () => {
     const html = fs.readFileSync(path.join(ROOT, 'options.html'), 'utf8');
@@ -553,7 +555,48 @@ test('Settings can show where every shipped picture came from', () => {
     assert.match(js, /function escHtml/, 'options.js must escape credit strings');
     assert.ok(!/\+ (c\.author|who) \+/.test(js.replace(/escHtml\([^)]*\)/g, 'ESC')),
         'an author name must never reach innerHTML unescaped');
+
+    // Naming the licence is not pointing at it, and CC BY asks for both.
+    assert.match(js, /c\.licenseUrl/,
+        'the licence must be a link when CREDITS.json knows where its terms are');
 });
+
+test('the credits say the pictures were changed, in every language', () => {
+    // The fourth thing CC BY asks for, and the only one that is not per-picture:
+    // every picture is cropped to the card's shape and re-encoded, so it is said
+    // once, above the list. A locale that drops the sentence drops the
+    // obligation for every reader using that language.
+    for (const locale of ['en', 'vi']) {
+        const file = path.join(ROOT, '_locales', locale, 'messages.json');
+        const messages = JSON.parse(fs.readFileSync(file, 'utf8'));
+        const intro = (messages.optCreditsIntro || {}).message || '';
+        assert.ok(intro, locale + ' has no optCreditsIntro');
+        assert.match(intro, /320.160/,
+            locale + ' credits intro does not say the pictures were cropped and re-encoded');
+    }
+});
+
+test('every shipped credit carries what its licence asks for',
+    { skip: !fs.existsSync(path.join(ROOT, 'vis', 'CREDITS.json')) }, () => {
+        const credits = JSON.parse(
+            fs.readFileSync(path.join(ROOT, 'vis', 'CREDITS.json'), 'utf8')).credits || {};
+        const index = readIndex();
+        for (const [slug, c] of Object.entries(credits)) {
+            assert.ok(c.source, slug + ' has no source');
+            assert.ok(c.license, slug + ' has no licence - a picture whose terms we ' +
+                'cannot state is one we should not have shipped');
+            assert.ok(c.url, slug + ' has no link to the original');
+            if (c.licenseUrl) {
+                assert.match(c.licenseUrl, /^https:\/\//,
+                    slug + ' licence link is not an https URL');
+            }
+        }
+        // A credit for a picture that is not shipped is stale; a shipped picture
+        // with no credit is the one that matters.
+        for (const slug of index.photo) {
+            assert.ok(credits[slug], slug + ' is shipped with no credit at all');
+        }
+    });
 
 test('CREDITS.json is not reachable from a web page', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
