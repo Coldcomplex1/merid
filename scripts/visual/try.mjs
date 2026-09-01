@@ -44,7 +44,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findPython, loadEntries } from './lib/entries.mjs';
 import { wilsonLow, concreteCount, searchableCount, candidateCount,
-    clearCount, reachBySource } from './lib/gates.mjs';
+    clearCount, reachBySource, fetchReport } from './lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -262,6 +262,7 @@ function measure() {
     const withCand = candidateCount(TRIAL_STATE);
     const clear = clearCount(TRIAL_STATE);
     const reach = reachBySource(TRIAL_STATE);
+    const fetched = fetchReport(TRIAL_STATE).sources || {};
 
     const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
     console.log('\n');
@@ -285,13 +286,25 @@ function measure() {
     const sources = ['wikimedia', 'openverse', 'pexels'];
     console.log('');
     console.log('  of those ' + searchable + ' the model sent out, each archive reached:');
-    console.log('    ' + sources
-        .map(n => n + ' ' + String(reach[n] || 0).padStart(3))
-        .join('  ·  '));
-    const absent = sources.filter(n => !reach[n]);
-    if (absent.length) {
-        console.log('    ' + absent.join(' and ') + ' reached nothing at all - a missing key,');
-        console.log('    a rate limit, or a licence filter with nothing left to keep.');
+    for (const name of sources) {
+        const f = fetched[name] || {};
+        // Reach alone cannot tell "refused" from "had nothing", and those two
+        // want opposite things done about them - one is a budget to change, the
+        // other is nothing anybody can configure.
+        const why = f.enabled === false ? 'off (no key)'
+            : f.refused ? 'REFUSED ' + f.refused + ' times - a rate limit'
+                : f.skipped ? 'asked ' + f.asked + ', skipped ' + f.skipped + ' (budget ran out)'
+                    : f.asked !== undefined ? 'asked ' + f.asked + ', never refused'
+                        : '';
+        console.log('    ' + name.padEnd(10) + String(reach[name] || 0).padStart(3) +
+            (why ? '   ' + why : ''));
+    }
+    const answered = sources.filter(n => (fetched[n] || {}).asked && !(fetched[n] || {}).refused);
+    if (answered.length) {
+        console.log('');
+        console.log('  ' + answered.join(', ') + ' answered every time asked. Where their reach is');
+        console.log('  low it is because they had no photograph of that word - no key, token or');
+        console.log('  budget changes that.');
     }
 
     if (!pool) {
@@ -313,7 +326,7 @@ function measure() {
     // gates follow: a printed line can be reworded, a JSON key cannot.
     fs.writeFileSync(path.join(TRIAL_STATE, 'yield.json'), JSON.stringify({
         v: 1, at: SAMPLE_AT, measured: new Date().toISOString(),
-        sampled, pool, searchable, withCand, clear, reach,
+        sampled, pool, searchable, withCand, clear, reach, sources: fetched,
         yield: round(y), yieldWithCandidate: round(yCand)
     }, null, 2) + '\n');
     console.log('');

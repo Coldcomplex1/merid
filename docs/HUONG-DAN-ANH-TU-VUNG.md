@@ -89,7 +89,7 @@ Pipeline lấy ảnh từ **ba kho**, và chỉ một trong ba bắt buộc ph�
 | Kho | Cần gì | Không có thì sao |
 |---|---|---|
 | **Wikimedia Commons** | **không gì cả** | — |
-| **Openverse** | `OPENVERSE_TOKEN` — **tuỳ chọn**, miễn phí | vẫn chạy ẩn danh, hạn mức thấp hơn |
+| **Openverse** | **không gì cả** (`OPENVERSE_TOKEN` tuỳ chọn, lợi ích chưa đo được) | vẫn chạy ẩn danh |
 | **Pexels** | `PEXELS_API_KEY` | tắt hẳn kho đó, hai kho kia vẫn chạy |
 
 > **Pexels một mình không tới 800 được.** Hạn mức thật là 200 request/**giờ**,
@@ -105,9 +105,18 @@ Pipeline lấy ảnh từ **ba kho**, và chỉ một trong ba bắt buộc ph�
 Còn `GEMINI_API_KEY` là cho bước 01/02/02b (phân loại, câu tìm kiếm, ký hiệu) —
 **không có nó thì không chạy được gì cả**.
 
-Token Openverse lấy ở <https://api.openverse.org/v1/auth_tokens/register/>,
-mất một phút. Đáng lấy: bước 03 gọi vài trăm request, và hạn mức ẩn danh thấp
-hơn nhiều so với khi có token.
+**Openverse không cần token.** Nó trả lời ẩn danh — 4 trong 14 tấm đầu tiên dự
+án ship là của Openverse, không có token nào — và ở quy mô này ngân sách mặc
+định 30 request/phút chưa bao giờ là ràng buộc: một lần chạy 1.500 từ mất ~100
+phút, tức có sẵn ~3.000 lượt.
+
+Token chỉ nâng một hạn mức mà chưa lần chạy nào chạm tới. Nó cũng **không phải
+trang web bấm được** mà là một endpoint POST của API. Muốn biết nó có đáng
+không thì đọc `state/fetch-report.json` sau bước 03:
+
+- `refused > 0` → hạn mức có chạm thật, lúc đó token mới có nghĩa.
+- `asked` cao, `refused = 0`, reach thấp → kho ảnh đã trả lời và **không có ảnh**
+  cho những từ đó. Không key, token hay ngân sách nào sửa được.
 
 > **Key Gemini có hai dạng và CẢ HAI đều dùng được:** dạng cũ `AIzaSy...` và
 > dạng mới `AQ.Ab...` mà Google đang chuyển sang. Lấy ở

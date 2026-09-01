@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { concreteCount, searchableCount, candidateCount, scoredCount, clearCount,
-    uncoveredCount, needFor, worstStep, reachBySource } from '../lib/gates.mjs';
+    uncoveredCount, needFor, worstStep, reachBySource, fetchReport } from '../lib/gates.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'state', 'test-gates');
@@ -182,6 +182,33 @@ ok(reach.openverse === 2, 'and every archive that reached an entry is counted');
 ok(!reach.pexels,
     'an archive that reached nothing is absent, which is the thing worth seeing',
     JSON.stringify(reach));
+
+// ---- why an archive reached few words ---------------------------------------
+//
+// Reach alone cannot tell a rate limit from an empty archive, and the two want
+// opposite things done about them: one is a budget to raise, the other is
+// nothing anybody can configure. Sending somebody to fetch a token for the
+// second is an errand that cannot work.
+console.log('\nwhy an archive reached what it reached');
+ok(Object.keys(fetchReport(DIR)).length === 0,
+    'no report yet reads as empty rather than throwing');
+
+fs.writeFileSync(path.join(DIR, 'fetch-report.json'), JSON.stringify({
+    v: 1,
+    entries: 30,
+    sources: {
+        wikimedia: { reach: 12, enabled: true, asked: 30, skipped: 0, refused: 0 },
+        openverse: { reach: 6, enabled: true, asked: 30, skipped: 0, refused: 0 },
+        pexels: { reach: 2, enabled: true, asked: 2, skipped: 28, refused: 0 }
+    }
+}));
+const report = fetchReport(DIR).sources;
+ok(report.openverse.asked === 30 && report.openverse.refused === 0,
+    'an archive asked every time and never refused simply had nothing',
+    'openverse reached ' + report.openverse.reach + ' of 30, asked 30, refused 0');
+ok(report.pexels.skipped === 28,
+    'while a budget that ran out is a different thing entirely, and says so',
+    'pexels asked ' + report.pexels.asked + ', skipped ' + report.pexels.skipped);
 
 // ---- which step lost them ---------------------------------------------------
 //

@@ -421,9 +421,16 @@ if (NO_PHOTOS) {
     }
 
     if (!process.env.OPENVERSE_TOKEN) {
-        warnings.push('OPENVERSE_TOKEN is not set - Openverse still answers anonymously, at a\n' +
-            '      lower rate. It is free and takes a minute:\n' +
-            '      https://api.openverse.org/v1/auth_tokens/register/');
+        // Deliberately not an errand. Openverse answers anonymously - it supplied
+        // four of the first fourteen pictures this project shipped, with no
+        // token - and at this pipeline's volumes the default budget of 30 a
+        // minute is never the constraint: a 1,500-word fetch takes about a
+        // hundred minutes and has 3,000 turns available. The token raises a
+        // rate limit that has not been shown to bind. Whether it binds shows up
+        // as "refused" in stage 03's own summary, and that is what to read.
+        warnings.push('OPENVERSE_TOKEN is not set - Openverse answers anonymously and this\n' +
+            '      pipeline has never measured the anonymous limit binding. If stage 03\n' +
+            '      reports Openverse REFUSED, it binds; otherwise a token changes nothing.');
     } else {
         const r = await checkArchiveKey(
             OPENVERSE_URL + '/v1/images/?q=test&page_size=1',
@@ -551,6 +558,57 @@ if (TARGET !== null && useYield === null) {
         ' eligible words in the sample ended with a picture, read at the low end)');
 }
 
+/**
+ * What to do about archives that reached few words - which depends entirely on
+ * WHY, and the why is in the numbers stage 03 wrote down.
+ *
+ * An archive that was refused has a rate limit, and there is a knob for that.
+ * An archive that was asked every time and never refused answered honestly: it
+ * has no photograph of those words, and no key, token or budget will change it.
+ * Telling somebody to go and get a token for the second case sends them on an
+ * errand that cannot work - which is exactly what the first version of this
+ * message did.
+ */
+function archiveAdvice(probe) {
+    const sources = probe.sources || {};
+    const names = ['wikimedia', 'openverse', 'pexels'];
+    const known = names.filter(n => sources[n]);
+    if (!known.length) {
+        return ['more candidates per word is the lever that does not need a key:',
+            '  node ' + HERE + '/03-fetch.mjs --per-entry 12'];
+    }
+
+    const lines = ['what each archive did:'];
+    for (const n of known) {
+        const f = sources[n];
+        lines.push('  ' + n.padEnd(10) + 'reached ' + String(f.reach).padStart(4) +
+            (f.enabled === false ? '   off (no key)'
+                : f.refused ? '   REFUSED ' + f.refused + ' times - a rate limit'
+                    : f.skipped ? '   asked ' + f.asked + ', skipped ' + f.skipped +
+                        ' (budget ran out)'
+                        : '   asked ' + f.asked + ', never refused'));
+    }
+    lines.push('');
+
+    const off = known.filter(n => sources[n].enabled === false);
+    const limited = known.filter(n => sources[n].refused || sources[n].skipped);
+    const honest = known.filter(n => sources[n].asked && !sources[n].refused && !sources[n].skipped);
+
+    if (off.length) lines.push(off.join(' and ') + ' is off for want of a key - that is the cheapest fix here.');
+    if (limited.length) {
+        lines.push(limited.join(' and ') + ' ran into its budget. Raise it:');
+        lines.push('  $env:MERID_PEXELS_PER_HOUR=\'200\'; $env:MERID_OPENVERSE_PER_MIN=\'60\'');
+    }
+    if (honest.length && !off.length && !limited.length) {
+        lines.push(honest.join(', ') + ' answered every time asked and were never refused.');
+        lines.push('Their reach is low because they have no photograph of those words, and');
+        lines.push('no key, token or budget changes that. More candidates per word is the');
+        lines.push('only lever left, and it is a small one:');
+    }
+    lines.push('  node ' + HERE + '/03-fetch.mjs --per-entry 12');
+    return lines;
+}
+
 // Is this target reachable at all, before an hour is spent finding out?
 //
 // Outside the probe block on purpose. It used to sit inside it, so passing
@@ -604,17 +662,7 @@ if (TARGET !== null && useYield !== null) {
                 'ceiling here is lower than the pool size suggests.',
                 'The honest move is a smaller target, not a wider pool.'
             ],
-            'the ARCHIVES': [
-                ...(probe.reach
-                    ? ['each archive reached: ' + ['wikimedia', 'openverse', 'pexels']
-                        .map(n => n + ' ' + (probe.reach[n] || 0)).join(', ') + '.',
-                       'an archive at zero is a missing key or a rate limit, not a shortage',
-                       'of photographs.']
-                    : []),
-                'a Pexels key, an Openverse token, and more candidates per word all',
-                'raise that; the scoring cannot help with a word that has no pictures.',
-                '  node ' + HERE + '/03-fetch.mjs --per-entry 12'
-            ],
+            'the ARCHIVES': archiveAdvice(probe),
             'the SCORING': [
                 'the bar is a floor and a margin, and both can come down:',
                 '  $env:MERID_CLIP_FLOOR=\'0.16\'; $env:MERID_CLIP_MARGIN=\'0\''

@@ -170,6 +170,15 @@ async function main() {
         'the refused source is not asked again for every entry',
         callsA.pexelsCalls + ' calls over ' + wanted + ' entries');
 
+    // A refusal is the one case where a budget knob or a key can help, so it
+    // has to be distinguishable afterwards from an archive that simply had
+    // nothing - those two look identical in the reach column and want opposite
+    // things done about them.
+    const refusedReport = readReport().sources || {};
+    ok(refusedReport.pexels && refusedReport.pexels.refused > 0,
+        'a 429 is recorded as REFUSED, which is what tells a rate limit from an empty archive',
+        refusedReport.pexels ? 'refused ' + refusedReport.pexels.refused : 'no report');
+
     // ---------------------------------------------------------------------
     // 2. ...and the other two carry on answering while it rests.
     // ---------------------------------------------------------------------
@@ -231,6 +240,18 @@ async function main() {
         c.ms + 'ms for ' + wanted + ' entries');
     ok(/pexels/.test(c.out) && /skipped/.test(c.out),
         'the summary says how many entries each source reached');
+
+    // The same figures, written down: the question they answer comes up an hour
+    // later in another process, where the terminal output is long gone.
+    const starved = readReport().sources || {};
+    ok(starved.pexels && starved.pexels.skipped > 0,
+        'a budget that ran out is recorded as skipped, not as an empty archive',
+        starved.pexels ? 'asked ' + starved.pexels.asked + ', skipped ' + starved.pexels.skipped
+            : 'no report');
+    ok(starved.wikimedia && starved.wikimedia.asked > 0 && !starved.wikimedia.refused,
+        'and an archive that answered every time is recorded as never refused',
+        starved.wikimedia ? 'asked ' + starved.wikimedia.asked + ', refused ' +
+            starved.wikimedia.refused : 'no report');
 
     // ---- what actually gets shipped, licence by licence --------------------
     //
@@ -338,6 +359,13 @@ function preflight(base, env = {}) {
         child.on('error', reject);
         child.on('close', status => resolve({ status, out }));
     });
+}
+
+/** Stage 03's account of what each archive did, written beside the candidates. */
+function readReport() {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(STATE, 'fetch-report.json'), 'utf8'));
+    } catch (e) { return {}; }
 }
 
 /** What stage 03 wrote, for the assertions that care about its contents. */

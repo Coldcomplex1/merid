@@ -41,9 +41,20 @@ rather than maintaining it, is in `docs/HUONG-DAN-ANH-TU-VUNG.md`.
 |---|---|---|
 | `GEMINI_API_KEY` | aistudio.google.com/apikey — `AIzaSy...` or the newer `AQ.Ab...`, both work | 01, 02, 02b |
 | `PEXELS_API_KEY` | pexels.com/api — free, 200 req/hour | 03 |
-| `OPENVERSE_TOKEN` | api.openverse.org/v1/auth_tokens/register — optional, raises the rate limit | 03 |
+| `OPENVERSE_TOKEN` | optional, and probably pointless here — see below | 03 |
 
 Wikimedia needs no key. All three sources are free; nothing here costs money.
+
+Openverse needs no key either. It answers anonymously — it supplied four of the
+first fourteen pictures this project shipped — and at these volumes its default
+budget of 30 requests a minute is not the constraint: a 1,500-word fetch runs
+for about a hundred minutes and has three thousand turns available. The token
+(a POST to `api.openverse.org/v1/auth_tokens/register/`, an API endpoint rather
+than a page you can sign up on) raises a rate limit nothing here has been shown
+to hit. Stage 03 writes `state/fetch-report.json` with `asked`, `skipped` and
+`refused` per archive: if Openverse is refused, the limit binds and a token
+might help; if it was asked every time and never refused, it answered honestly
+and had no photograph of those words, which no token can fix.
 
 Those limits are budgets stage 03 keeps to, not trivia: Pexels' 200 an hour is
 the reason `PEXELS_PER_MIN` is three and not a hundred and eighty. A source that

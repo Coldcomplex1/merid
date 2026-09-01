@@ -61,6 +61,27 @@ export function reachBySource(dir = statePath()) {
     return out;
 }
 
+/**
+ * What each archive did during the last fetch: reached, asked, skipped, refused.
+ *
+ * reachBySource above answers "how many entries did this archive supply", which
+ * is half the question. The other half is why the number is what it is, and the
+ * two halves want opposite actions:
+ *
+ *   refused > 0        a rate limit. Lower the budget, or raise the allowance.
+ *   skipped > 0        the budget ran out before the words did.
+ *   asked high,        the archive answered and had nothing for those words.
+ *   refused 0,         No key, token or budget changes that - it is the only
+ *   reach low          one of the three that is not a configuration problem.
+ *
+ * Written by stage 03 rather than parsed out of its output, for the usual
+ * reason: the numbers are the thing being read, and they are read by a
+ * different process an hour later.
+ */
+export function fetchReport(dir = statePath()) {
+    return readJson(path.join(dir, 'fetch-report.json'), {}) || {};
+}
+
 /** Stage 04: entries scored at all, and entries whose best candidate cleared. */
 export function scoredCount(dir = statePath()) {
     return Object.keys(entriesOf(dir, 'ranked.json')).length;

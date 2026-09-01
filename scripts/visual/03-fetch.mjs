@@ -46,6 +46,8 @@ const PER_ENTRY = numArg('--per-entry', 6);
 
 const QUERIES = statePath('queries.json');
 const OUT = statePath('candidates.json');
+// What each archive actually did, for the stages and reports that come after.
+const REPORT = statePath('fetch-report.json');
 const THUMBS = statePath('candidates');
 
 // Overridable so the test can point them at a local server. Not a feature for
@@ -370,8 +372,8 @@ async function main() {
             (provider.budget.blocking ? ', waited for' : ', skipped when not due'));
     }
     if (!process.env.OPENVERSE_TOKEN) {
-        console.log('[03] no OPENVERSE_TOKEN - anonymous limits apply. It is free and raises');
-        console.log('     them: https://api.openverse.org/v1/auth_tokens/register/');
+        console.log('[03] no OPENVERSE_TOKEN - anonymous limits apply. Whether that costs');
+        console.log('     anything is in the "refused" column of the summary below, not here.');
     }
 
     let downloaded = 0;
@@ -524,6 +526,29 @@ async function main() {
         console.log('     has some, change its query in stage 02 or raise the budget:');
         console.log('       MERID_PEXELS_PER_HOUR=... MERID_OPENVERSE_PER_MIN=...');
     }
+    // The same figures, written down.
+    //
+    // Printed, they answer the question only for whoever is watching the
+    // terminal at the time. The question they answer is the one that decides
+    // what to do next, and it comes up an hour later, in another process: an
+    // archive that reached few entries because it was REFUSED has a rate limit
+    // to raise, and an archive that was asked and simply had nothing has no fix
+    // at all - no key, no token, no budget changes it. Those two look identical
+    // in the reach column and opposite in this file.
+    writeJson(REPORT, {
+        v: 1,
+        generated: new Date().toISOString(),
+        entries: Object.keys(result.entries).length,
+        sources: Object.fromEntries(PROVIDERS.map(p => [p.name, {
+            reach: reach.get(p.name) || 0,
+            enabled: p.enabled(),
+            perMin: Math.round(60000 / p.budget.gap * 100) / 100,
+            asked: p.budget.asked,
+            skipped: p.budget.skipped,
+            refused: p.budget.refused
+        }]))
+    });
+
     console.log('[03] wrote ' + OUT);
 }
 
